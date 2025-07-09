@@ -3,6 +3,7 @@ export interface Team {
   name: string;
   description?: string;
   color?: string;
+  sprint_length_weeks?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -65,4 +66,21 @@ export interface TeamContextType {
   teams: Team[];
   setSelectedTeam: (team: Team | null) => void;
   switchTeam: () => void;
+}
+
+export interface TeamSprint {
+  id: number;
+  team_id: number;
+  sprint_number: number;
+  start_date: string;
+  end_date: string;
+  created_at?: string;
+}
+
+export interface TeamAnalytics {
+  currentWeekHours: number;
+  sprintHours: number;
+  averageHoursPerMember: number;
+  capacityUtilization: number;
+  teamCapacity: number;
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, User } from 'lucide-react';
+import { Calendar, User, ArrowLeft } from 'lucide-react';
 import ScheduleTable from '@/components/ScheduleTable';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
+import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -69,10 +70,29 @@ function HomeContent() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-md w-full">
+          {/* Back button */}
+          <div className="mb-4">
+            <button
+              onClick={() => setSelectedTeam(null)}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Back to Teams</span>
+            </button>
+          </div>
+          
+          {/* Breadcrumb navigation */}
+          <BreadcrumbNavigation
+            selectedTeam={selectedTeam}
+            selectedUser={selectedUser}
+            onNavigateToTeamSelection={() => setSelectedTeam(null)}
+            onNavigateToMemberSelection={() => setSelectedUser(null)}
+          />
+          
           <div className="text-center mb-6">
             <Calendar className="text-blue-600 w-12 h-12 mx-auto mb-3" />
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-              Team Availability Tracker
+              {selectedTeam?.name}
             </h1>
             <p className="text-gray-600 text-sm sm:text-base">Select your name to continue:</p>
           </div>
@@ -81,7 +101,7 @@ function HomeContent() {
               <button
                 key={member.id}
                 onClick={() => setSelectedUser(member)}
-                className="w-full flex items-center gap-3 p-3 sm:p-4 text-left bg-gray-50 active:bg-blue-50 rounded-lg transition-colors min-h-[60px] touch-manipulation"
+                className="w-full flex items-center gap-3 p-3 sm:p-4 text-left bg-gray-50 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-colors min-h-[60px] touch-manipulation"
               >
                 <User className="text-gray-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -104,6 +124,14 @@ function HomeContent() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col gap-4 mb-4 sm:mb-8">
           <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
+            {/* Breadcrumb navigation */}
+            <BreadcrumbNavigation
+              selectedTeam={selectedTeam}
+              selectedUser={selectedUser}
+              onNavigateToTeamSelection={() => setSelectedTeam(null)}
+              onNavigateToMemberSelection={() => setSelectedUser(null)}
+            />
+            
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg sm:text-3xl font-bold text-gray-900 mb-1 flex items-center gap-2">
@@ -120,13 +148,13 @@ function HomeContent() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setSelectedUser(null)}
-                  className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg active:bg-gray-300 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
+                  className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
                 >
                   Switch User
                 </button>
                 <button
                   onClick={() => setSelectedTeam(null)}
-                  className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg active:bg-blue-700 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
+                  className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
                 >
                   Switch Team
                 </button>

@@ -108,6 +108,20 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
     return `${formatDate(startDate)} - ${formatDate(endDate)}`;
   };
 
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isPastDate = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0);
+    return compareDate < today;
+  };
+
+
   const updateSchedule = async (memberId: number, date: Date, value: string | null, reason?: string) => {
     // Only allow users to edit their own schedule (unless they're a manager)
     if (!currentUser.isManager && memberId !== currentUser.id) return;
@@ -175,6 +189,23 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
       const { memberId, dateKey, value } = reasonDialog.data;
       const date = new Date(dateKey);
       updateSchedule(memberId, date, value, reason);
+    }
+  };
+
+  const handleFullWeekSet = async (memberId: number) => {
+    const confirmMessage = currentUser.isManager && memberId !== currentUser.id 
+      ? `Set full week (all working days) for ${teamMembers.find(m => m.id === memberId)?.name}?`
+      : 'Set your full week to all working days?';
+      
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      // Set each weekday to full working day
+      for (const date of weekDays) {
+        await updateSchedule(memberId, date, '1');
+      }
+    } catch (error) {
+      console.error('Error setting full week:', error);
     }
   };
 
@@ -371,14 +402,36 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
                 <th className="sticky left-0 z-20 bg-gray-50 text-left py-3 px-2 sm:py-4 sm:px-6 font-semibold text-gray-900 border-r min-w-[120px] sm:min-w-[140px]">
                   <div className="text-xs sm:text-sm">Team Member</div>
                 </th>
-                {dayNames.map((day, index) => (
-                  <th key={day} className="text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold text-gray-900 border-r min-w-[85px] sm:min-w-[120px]">
-                    <div className="flex flex-col">
-                      <span className="text-xs sm:text-sm font-medium">{day.slice(0, 3)}</span>
-                      <span className="text-xs text-gray-500 mt-0.5 sm:mt-1">{formatDate(weekDays[index])}</span>
-                    </div>
-                  </th>
-                ))}
+                {dayNames.map((day, index) => {
+                  const dayDate = weekDays[index];
+                  const today = isToday(dayDate);
+                  const past = isPastDate(dayDate);
+                  
+                  return (
+                    <th key={day} className={`text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold border-r min-w-[85px] sm:min-w-[120px] ${
+                      today 
+                        ? 'bg-blue-100 text-blue-900 border-blue-300' 
+                        : past
+                        ? 'bg-gray-50 text-gray-600'
+                        : 'bg-gray-50 text-gray-900'
+                    }`}>
+                      <div className="flex flex-col">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-xs sm:text-sm font-medium">{day.slice(0, 3)}</span>
+                          {today && (
+                            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                          )}
+                        </div>
+                        <span className={`text-xs mt-0.5 sm:mt-1 ${
+                          today ? 'text-blue-700 font-medium' : 'text-gray-500'
+                        }`}>
+                          {formatDate(dayDate)}
+                          {today && <span className="block text-xs font-medium">Today</span>}
+                        </span>
+                      </div>
+                    </th>
+                  );
+                })}
                 <th className="text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold text-gray-900 bg-blue-50 min-w-[70px] sm:min-w-[80px]">
                   <div className="flex items-center justify-center gap-1">
                     <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -410,15 +463,32 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
                               <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full">You</span>
                             )}
                           </div>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleFullWeekSet(member.id)}
+                              className="mt-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded transition-colors"
+                              title="Set full working week"
+                            >
+                              Full Week
+                            </button>
+                          )}
                         </div>
                       </div>
                     </td>
                     {weekDays.map((date) => {
                       const dateKey = date.toISOString().split('T')[0];
                       const currentValue = scheduleData[member.id]?.[dateKey];
+                      const today = isToday(date);
+                      const past = isPastDate(date);
                       
                       return (
-                        <td key={dateKey} className="py-2 px-1 sm:py-4 sm:px-4 text-center border-r">
+                        <td key={dateKey} className={`py-2 px-1 sm:py-4 sm:px-4 text-center border-r ${
+                          today 
+                            ? 'bg-blue-50 border-blue-200' 
+                            : past
+                            ? 'bg-gray-25'
+                            : ''
+                        }`}>
                           <div className="flex gap-0.5 sm:gap-1 justify-center">
                             {workOptions.map(option => {
                               const isSelected = currentValue?.value === option.value;

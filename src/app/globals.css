@@ -41,3 +41,59 @@ body {
     outline-offset: 2px;
   }
 }
+
+/* Enhanced text contrast for Android compatibility */
+.text-gray-400 {
+  color: #6b7280 !important; /* Darker than default */
+}
+
+.text-gray-500 {
+  color: #374151 !important; /* Much darker for better contrast */
+}
+
+.text-gray-600 {
+  color: #1f2937 !important; /* Even darker */
+}
+
+/* Improved button contrast */
+.bg-gray-50 {
+  background-color: #f9fafb;
+  color: #374151 !important; /* Dark text for better contrast */
+}
+
+.bg-gray-100 {
+  background-color: #f3f4f6;
+  color: #1f2937 !important; /* Darker text */
+}
+
+.bg-gray-200 {
+  background-color: #e5e7eb;
+  color: #111827 !important; /* Very dark text */
+}
+
+/* Enhanced mobile touch targets */
+@media (max-width: 768px) {
+  .touch-manipulation {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  button {
+    min-height: 44px !important;
+    touch-action: manipulation;
+  }
+}
+
+/* Better mobile table scrolling */
+.table-mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Enhanced focus visibility for accessibility */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
