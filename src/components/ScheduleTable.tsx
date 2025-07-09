@@ -285,52 +285,56 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Navigation buttons */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-            <button
-              onClick={() => setCurrentWeekOffset(prev => prev - 1)}
-              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Previous</span>
-            </button>
-            <button
-              onClick={() => setCurrentWeekOffset(prev => prev + 1)}
-              className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-            >
-              <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            {currentWeekOffset !== 0 && (
-              <button
-                onClick={() => setCurrentWeekOffset(0)}
-                className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-              >
-                <Calendar className="w-4 h-4" />
-                <span className="hidden sm:inline">Current</span>
-              </button>
-            )}
-          </div>
-          
-          {/* Week info and manager buttons */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
-            <div className="text-sm text-gray-600 font-medium">
+      <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Week info - moved to top for mobile */}
+          <div className="text-center sm:text-left">
+            <div className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
               Week of {getCurrentWeekString()}
             </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Navigation buttons */}
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <button
+                onClick={() => setCurrentWeekOffset(prev => prev - 1)}
+                className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg active:bg-gray-200 transition-colors text-sm min-h-[44px] touch-manipulation"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="sm:inline">Previous</span>
+              </button>
+              {currentWeekOffset !== 0 && (
+                <button
+                  onClick={() => setCurrentWeekOffset(0)}
+                  className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2.5 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span className="sm:inline">Current</span>
+                </button>
+              )}
+              <button
+                onClick={() => setCurrentWeekOffset(prev => prev + 1)}
+                className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg active:bg-gray-200 transition-colors text-sm min-h-[44px] touch-manipulation"
+              >
+                <span className="sm:inline">Next</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {/* Manager buttons */}
             {currentUser.isManager && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 justify-center sm:justify-end">
                 <button 
                   onClick={() => setViewReasonsModal(true)}
-                  className="flex items-center gap-2 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                  className="flex items-center gap-1.5 bg-gray-600 text-white px-3 py-2.5 rounded-lg active:bg-gray-700 transition-colors text-sm min-h-[44px] touch-manipulation"
                 >
                   <Eye className="w-4 h-4" />
-                  <span className="hidden sm:inline">View Reasons</span>
+                  <span className="hidden sm:inline">Reasons</span>
                 </button>
                 <button 
                   onClick={exportToExcel}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2.5 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
                 >
                   <Download className="w-4 h-4" />
                   <span className="hidden sm:inline">Export</span>
@@ -341,15 +345,15 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
         </div>
 
         {/* Legend */}
-        <div className="mt-4">
-          <h3 className="font-semibold mb-2">Work Options:</h3>
-          <div className="flex flex-wrap gap-3">
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <h3 className="font-semibold mb-2 text-sm sm:text-base">Work Options:</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             {workOptions.map(option => (
-              <div key={option.value} className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-md border font-medium text-sm ${option.color}`}>
+              <div key={option.value} className="flex items-center gap-2 p-2 sm:p-0 bg-gray-50 sm:bg-transparent rounded-lg">
+                <span className={`px-2 sm:px-3 py-1 rounded-md border font-medium text-xs sm:text-sm min-w-[32px] text-center ${option.color}`}>
                   {option.label}
                 </span>
-                <span className="text-sm text-gray-600 hidden sm:inline">{option.description}</span>
+                <span className="text-xs sm:text-sm text-gray-600 flex-1">{option.description}</span>
               </div>
             ))}
           </div>
@@ -358,25 +362,25 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
 
       {/* Schedule Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto scrollbar-hide">
+          <table className="w-full min-w-[640px]">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
-                <th className="text-left py-4 px-3 sm:px-6 font-semibold text-gray-900 border-r">
-                  Team Member
+                <th className="sticky left-0 z-20 bg-gray-50 text-left py-3 px-2 sm:py-4 sm:px-6 font-semibold text-gray-900 border-r min-w-[120px] sm:min-w-[140px]">
+                  <div className="text-xs sm:text-sm">Team Member</div>
                 </th>
                 {dayNames.map((day, index) => (
-                  <th key={day} className="text-center py-4 px-2 sm:px-4 font-semibold text-gray-900 border-r min-w-[100px] sm:min-w-[120px]">
+                  <th key={day} className="text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold text-gray-900 border-r min-w-[85px] sm:min-w-[120px]">
                     <div className="flex flex-col">
-                      <span className="text-xs sm:text-sm font-medium">{day}</span>
-                      <span className="text-xs text-gray-500 mt-1 hidden sm:inline">{formatDate(weekDays[index])}</span>
+                      <span className="text-xs sm:text-sm font-medium">{day.slice(0, 3)}</span>
+                      <span className="text-xs text-gray-500 mt-0.5 sm:mt-1">{formatDate(weekDays[index])}</span>
                     </div>
                   </th>
                 ))}
-                <th className="text-center py-4 px-2 sm:px-4 font-semibold text-gray-900 bg-blue-50 min-w-[80px]">
+                <th className="text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold text-gray-900 bg-blue-50 min-w-[70px] sm:min-w-[80px]">
                   <div className="flex items-center justify-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    <span className="hidden sm:inline">Weekly </span>Hours
+                    <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="text-xs sm:text-sm">Hours</span>
                   </div>
                 </th>
               </tr>
@@ -387,22 +391,24 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
                 const isCurrentUserRow = member.id === currentUser.id;
                 
                 return (
-                  <tr key={member.id} className={`border-b hover:bg-gray-50 transition-colors ${
+                  <tr key={member.id} className={`border-b transition-colors ${
                     isCurrentUserRow ? 'bg-blue-50 ring-2 ring-blue-200' : 
                     memberIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   }`}>
-                    <td className="py-4 px-3 sm:px-6 font-medium text-gray-900 border-r">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div>
-                          <div className="font-medium text-sm sm:text-base">{member.name}</div>
-                          <div className="text-xs sm:text-sm text-gray-500 hidden sm:block">{member.hebrew}</div>
-                          {member.isManager && (
-                            <div className="text-xs text-blue-600">Manager</div>
-                          )}
+                    <td className="sticky left-0 z-10 py-3 px-2 sm:py-4 sm:px-6 font-medium text-gray-900 border-r bg-inherit">
+                      <div className="flex items-center gap-1 sm:gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-xs sm:text-base truncate">{member.name}</div>
+                          <div className="text-xs text-gray-500 sm:block">{member.hebrew}</div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {member.isManager && (
+                              <span className="text-xs text-blue-600 bg-blue-100 px-1 rounded">Mgr</span>
+                            )}
+                            {isCurrentUserRow && (
+                              <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full">You</span>
+                            )}
+                          </div>
                         </div>
-                        {isCurrentUserRow && (
-                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">You</span>
-                        )}
                       </div>
                     </td>
                     {weekDays.map((date) => {
@@ -410,8 +416,8 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
                       const currentValue = scheduleData[member.id]?.[dateKey];
                       
                       return (
-                        <td key={dateKey} className="py-4 px-2 sm:px-4 text-center border-r">
-                          <div className="flex gap-1 justify-center">
+                        <td key={dateKey} className="py-2 px-1 sm:py-4 sm:px-4 text-center border-r">
+                          <div className="flex gap-0.5 sm:gap-1 justify-center">
                             {workOptions.map(option => {
                               const isSelected = currentValue?.value === option.value;
                               return (
@@ -419,12 +425,12 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
                                   key={option.value}
                                   onClick={() => canEdit && handleWorkOptionClick(member.id, date, option.value)}
                                   disabled={!canEdit}
-                                  className={`px-2 sm:px-3 py-1 sm:py-2 rounded-md border font-medium text-xs sm:text-sm transition-all ${
-                                    canEdit ? 'hover:scale-105 cursor-pointer' : 'cursor-not-allowed opacity-60'
+                                  className={`min-h-[36px] w-8 sm:w-auto px-1.5 sm:px-3 py-1.5 sm:py-2 rounded-md border font-medium text-xs sm:text-sm transition-all touch-manipulation ${
+                                    canEdit ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-60'
                                   } ${
                                     isSelected 
                                       ? option.color + ' ring-2 ring-offset-1 ring-blue-500' 
-                                      : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                                      : 'bg-gray-50 text-gray-400 border-gray-200 active:bg-gray-100'
                                   }`}
                                   title={canEdit ? option.description : 'You can only edit your own schedule'}
                                 >
@@ -436,16 +442,16 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
                         </td>
                       );
                     })}
-                    <td className="py-4 px-2 sm:px-4 text-center bg-blue-50 font-bold text-sm sm:text-lg">
+                    <td className="py-3 px-1 sm:py-4 sm:px-4 text-center bg-blue-50 font-bold text-xs sm:text-lg">
                       {calculateWeeklyHours(member.id)}h
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-            <tfoot className="bg-gray-100">
+            <tfoot className="bg-gray-100 sticky bottom-0">
               <tr>
-                <td className="py-4 px-3 sm:px-6 font-bold text-gray-900 border-r text-sm sm:text-base">
+                <td className="sticky left-0 z-10 bg-gray-100 py-3 px-2 sm:py-4 sm:px-6 font-bold text-gray-900 border-r text-xs sm:text-base">
                   Team Total
                 </td>
                 {weekDays.map((date) => {
@@ -457,12 +463,12 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
                   }, 0);
                   
                   return (
-                    <td key={date.toISOString().split('T')[0]} className="py-4 px-2 sm:px-4 text-center border-r font-semibold text-sm sm:text-base">
+                    <td key={date.toISOString().split('T')[0]} className="py-3 px-1 sm:py-4 sm:px-4 text-center border-r font-semibold text-xs sm:text-base">
                       {dayTotal}h
                     </td>
                   );
                 })}
-                <td className="py-4 px-2 sm:px-4 text-center bg-blue-100 font-bold text-lg sm:text-xl">
+                <td className="py-3 px-1 sm:py-4 sm:px-4 text-center bg-blue-100 font-bold text-sm sm:text-xl">
                   {getTeamTotalHours()}h
                 </td>
               </tr>
@@ -472,14 +478,14 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
       </div>
 
       {/* Instructions */}
-      <div className="bg-blue-50 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">Instructions:</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• <strong>Your row</strong> is highlighted - you can only edit your own availability</li>
-          <li>• Click 1, 0.5, or X to set your daily status</li>
-          <li>• <strong>1</strong> = Full day (7 hours), <strong>0.5</strong> = Half day (3.5 hours), <strong>X</strong> = Sick/Out (0 hours)</li>
-          {currentUser.isManager && <li>• As a manager, you can edit anyone&apos;s schedule and export data</li>}
-          <li>• <strong>Real-time sync</strong> - changes are automatically saved and synced across all devices</li>
+      <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+        <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Quick Guide:</h3>
+        <ul className="text-xs sm:text-sm text-blue-800 space-y-1.5">
+          <li>• <strong>Your row</strong> is highlighted - tap buttons to set your availability</li>
+          <li>• <strong>1</strong> = Full day (7h), <strong>0.5</strong> = Half day (3.5h), <strong>X</strong> = Sick/Out (0h)</li>
+          {currentUser.isManager && <li>• <strong>Manager access:</strong> You can edit anyone&apos;s schedule and export data</li>}
+          <li>• <strong>Real-time sync</strong> - changes save automatically across all devices</li>
+          <li className="sm:hidden">• <strong>Scroll table</strong> horizontally to see all days</li>
         </ul>
       </div>
 
