@@ -3,43 +3,49 @@
 import { useState, useEffect } from 'react';
 import { Calendar, User } from 'lucide-react';
 import ScheduleTable from '@/components/ScheduleTable';
+import TeamSelectionScreen from '@/components/TeamSelectionScreen';
+import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember } from '@/types';
 import { DatabaseService } from '@/lib/database';
 
-export default function Home() {
+function HomeContent() {
+  const { selectedTeam, setSelectedTeam } = useTeam();
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadTeamMembers = async () => {
+      if (!selectedTeam) return;
+      
       try {
+        setLoading(true);
         // Initialize team members if needed
         await DatabaseService.initializeTeamMembers();
-        // Load team members from database
-        const members = await DatabaseService.getTeamMembers();
+        // Load team members from database for selected team
+        const members = await DatabaseService.getTeamMembers(selectedTeam.id);
         setTeamMembers(members);
       } catch (error) {
         console.error('Error loading team members:', error);
-        // Fallback to hardcoded data
-        const fallbackMembers: TeamMember[] = [
-          { id: 1, name: 'Natan Shemesh', hebrew: 'נתן שמש', isManager: false },
-          { id: 2, name: 'Ido Keller', hebrew: 'עידו קלר', isManager: false },
-          { id: 3, name: 'Amit Zriker', hebrew: 'עמית צריקר', isManager: true },
-          { id: 4, name: 'Alon Mesika', hebrew: 'אלון מסיקה', isManager: false },
-          { id: 5, name: 'Nadav Aharon', hebrew: 'נדב אהרון', isManager: false },
-          { id: 6, name: 'Yarom Kloss', hebrew: 'ירום קלוס', isManager: false },
-          { id: 7, name: 'Ziv Edelstein', hebrew: 'זיב אדלשטיין', isManager: false },
-          { id: 8, name: 'Harel Mazan', hebrew: 'הראל מזן', isManager: true },
-        ];
-        setTeamMembers(fallbackMembers);
+        // Fallback to empty array for team-specific loading
+        setTeamMembers([]);
       } finally {
         setLoading(false);
       }
     };
 
     loadTeamMembers();
-  }, []);
+  }, [selectedTeam]);
+
+  // Reset selected user when team changes
+  useEffect(() => {
+    setSelectedUser(null);
+  }, [selectedTeam]);
+
+  // Show team selection screen if no team is selected
+  if (!selectedTeam) {
+    return <TeamSelectionScreen onTeamSelect={setSelectedTeam} />;
+  }
 
   if (loading) {
     return (
@@ -104,17 +110,27 @@ export default function Home() {
                   <Calendar className="text-blue-600 w-5 h-5 sm:w-8 sm:h-8" />
                   <span className="truncate">Team Availability</span>
                 </h1>
-                <p className="text-sm sm:text-base text-gray-600 truncate">
-                  Welcome, <strong>{selectedUser.name}</strong>
-                  {selectedUser.isManager && <span className="text-blue-600 ml-1">(Manager)</span>}
-                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                  <p className="text-sm sm:text-base text-gray-600 truncate">
+                    <strong>{selectedTeam.name}</strong> • Welcome, <strong>{selectedUser.name}</strong>
+                    {selectedUser.isManager && <span className="text-blue-600 ml-1">(Manager)</span>}
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={() => setSelectedUser(null)}
-                className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg active:bg-gray-300 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
-              >
-                Switch User
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg active:bg-gray-300 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
+                >
+                  Switch User
+                </button>
+                <button
+                  onClick={() => setSelectedTeam(null)}
+                  className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg active:bg-blue-700 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
+                >
+                  Switch Team
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -122,8 +138,17 @@ export default function Home() {
         <ScheduleTable 
           currentUser={selectedUser} 
           teamMembers={teamMembers}
+          selectedTeam={selectedTeam}
         />
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <TeamProvider>
+      <HomeContent />
+    </TeamProvider>
   );
 }

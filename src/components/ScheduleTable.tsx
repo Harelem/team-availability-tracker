@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Clock, Calendar, ChevronLeft, ChevronRight, Download, Eye } from 'lucide-react';
-import { TeamMember, WorkOption, WeekData, ReasonDialogData } from '@/types';
+import { TeamMember, Team, WorkOption, WeekData, ReasonDialogData } from '@/types';
 import ReasonDialog from './ReasonDialog';
 import ViewReasonsModal from './ViewReasonsModal';
 import { DatabaseService } from '@/lib/database';
@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx';
 interface ScheduleTableProps {
   currentUser: TeamMember;
   teamMembers: TeamMember[];
+  selectedTeam: Team;
 }
 
 const workOptions: WorkOption[] = [
@@ -21,7 +22,7 @@ const workOptions: WorkOption[] = [
 
 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 
-export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTableProps) {
+export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }: ScheduleTableProps) {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [scheduleData, setScheduleData] = useState<WeekData>({});
   const [reasonDialog, setReasonDialog] = useState<{ isOpen: boolean; data: ReasonDialogData | null }>({ isOpen: false, data: null });
@@ -54,7 +55,7 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
       const endDate = currentWeekDates[4].toISOString().split('T')[0];
       
       try {
-        const data = await DatabaseService.getScheduleEntries(startDate, endDate);
+        const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
         setScheduleData(data);
       } catch (error) {
         console.error('Error loading schedule data:', error);
@@ -66,7 +67,7 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
     };
 
     loadScheduleData();
-  }, [currentWeekOffset]);
+  }, [currentWeekOffset, selectedTeam.id]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -77,11 +78,12 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
     const subscription = DatabaseService.subscribeToScheduleChanges(
       startDate,
       endDate,
+      selectedTeam.id,
       () => {
         // Reload data when changes occur
         const loadScheduleData = async () => {
           try {
-            const data = await DatabaseService.getScheduleEntries(startDate, endDate);
+            const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
             setScheduleData(data);
           } catch (error) {
             console.error('Error reloading schedule data:', error);
@@ -94,7 +96,7 @@ export default function ScheduleTable({ currentUser, teamMembers }: ScheduleTabl
     return () => {
       subscription.unsubscribe();
     };
-  }, [currentWeekOffset]);
+  }, [currentWeekOffset, selectedTeam.id]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

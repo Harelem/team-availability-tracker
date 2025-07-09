@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember } from '@/types'
+import { TeamMember, Team, TeamStats } from '@/types'
 
 const isSupabaseConfigured = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -8,16 +8,67 @@ const isSupabaseConfigured = () => {
 }
 
 export const DatabaseService = {
-  // Team Members
-  async getTeamMembers(): Promise<TeamMember[]> {
+  // Teams
+  async getTeams(): Promise<Team[]> {
     if (!isSupabaseConfigured()) {
       return []
     }
     
     const { data, error } = await supabase
-      .from('team_members')
+      .from('teams')
       .select('*')
       .order('name')
+    
+    if (error) {
+      console.error('Error fetching teams:', error)
+      return []
+    }
+    
+    return data.map(team => ({
+      id: team.id,
+      name: team.name,
+      description: team.description || undefined,
+      color: team.color || '#3b82f6',
+      created_at: team.created_at,
+      updated_at: team.updated_at
+    }))
+  },
+
+  async getTeamStats(): Promise<TeamStats[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    const { data, error } = await supabase
+      .from('team_stats')
+      .select('*')
+      .order('name')
+    
+    if (error) {
+      console.error('Error fetching team stats:', error)
+      return []
+    }
+    
+    return data
+  },
+
+  // Team Members (now filtered by team)
+  async getTeamMembers(teamId?: number): Promise<TeamMember[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    let query = supabase
+      .from('team_members')
+      .select('*')
+    
+    if (teamId) {
+      query = query.eq('team_id', teamId)
+    }
+    
+    query = query.order('name')
+    
+    const { data, error } = await query
     
     if (error) {
       console.error('Error fetching team members:', error)
@@ -30,47 +81,60 @@ export const DatabaseService = {
       hebrew: member.hebrew,
       isManager: member.is_manager,
       email: member.email || undefined,
+      team_id: member.team_id,
       created_at: member.created_at,
       updated_at: member.updated_at
     }))
+  },
+
+  async initializeTeams(): Promise<void> {
+    if (!isSupabaseConfigured()) {
+      return
+    }
+    
+    // This will be handled by the migration script
+    // Just check if teams exist
+    const teams = await this.getTeams()
+    if (teams.length === 0) {
+      console.warn('No teams found. Please run the migration script.')
+    }
   },
 
   async initializeTeamMembers(): Promise<void> {
     if (!isSupabaseConfigured()) {
       return
     }
-    const teamMembers = [
-      { name: 'Natan Shemesh', hebrew: 'נתן שמש', is_manager: false },
-      { name: 'Ido Keller', hebrew: 'עידו קלר', is_manager: false },
-      { name: 'Amit Zriker', hebrew: 'עמית צריקר', is_manager: true },
-      { name: 'Alon Mesika', hebrew: 'אלון מסיקה', is_manager: false },
-      { name: 'Nadav Aharon', hebrew: 'נדב אהרון', is_manager: false },
-      { name: 'Yarom Kloss', hebrew: 'ירום קלוס', is_manager: false },
-      { name: 'Ziv Edelstein', hebrew: 'זיב אדלשטיין', is_manager: false },
-      { name: 'Harel Mazan', hebrew: 'הראל מזן', is_manager: true },
-    ]
-
-    for (const member of teamMembers) {
-      const { error } = await supabase
-        .from('team_members')
-        .upsert(member, { onConflict: 'name' })
-      
-      if (error) {
-        console.error('Error inserting team member:', error)
-      }
+    
+    // This will be handled by the migration script
+    // Just check if team members exist
+    const members = await this.getTeamMembers()
+    if (members.length === 0) {
+      console.warn('No team members found. Please run the migration script.')
     }
   },
 
-  // Schedule Entries
-  async getScheduleEntries(startDate: string, endDate: string): Promise<Record<number, Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>>> {
+  // Schedule Entries (now team-filtered)
+  async getScheduleEntries(startDate: string, endDate: string, teamId?: number): Promise<Record<number, Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>>> {
     if (!isSupabaseConfigured()) {
       return {}
     }
-    const { data, error } = await supabase
+    
+    let query = supabase
       .from('schedule_entries')
-      .select('*')
+      .select(`
+        *,
+        team_members!inner (
+          team_id
+        )
+      `)
       .gte('date', startDate)
       .lte('date', endDate)
+    
+    if (teamId) {
+      query = query.eq('team_members.team_id', teamId)
+    }
+    
+    const { data, error } = await query
     
     if (error) {
       console.error('Error fetching schedule entries:', error)
@@ -132,17 +196,18 @@ export const DatabaseService = {
     }
   },
 
-  // Real-time subscription
+  // Real-time subscription (team-aware)
   subscribeToScheduleChanges(
     startDate: string,
     endDate: string,
+    teamId: number,
     onUpdate: (payload: unknown) => void
   ) {
     if (!isSupabaseConfigured()) {
       return { unsubscribe: () => {} }
     }
     return supabase
-      .channel('schedule_changes')
+      .channel(`schedule_changes_team_${teamId}`)
       .on(
         'postgres_changes',
         {

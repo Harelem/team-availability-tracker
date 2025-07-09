@@ -1,9 +1,19 @@
+export interface Team {
+  id: number;
+  name: string;
+  description?: string;
+  color?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface TeamMember {
   id: number;
   name: string;
   hebrew: string;
   isManager?: boolean;
   email?: string;
+  team_id: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -39,4 +49,20 @@ export interface ReasonDialogData {
   memberId: number;
   dateKey: string;
   value: '0.5' | 'X';
+}
+
+export interface TeamStats {
+  id: number;
+  name: string;
+  description?: string;
+  color?: string;
+  member_count: number;
+  manager_count: number;
+}
+
+export interface TeamContextType {
+  selectedTeam: Team | null;
+  teams: Team[];
+  setSelectedTeam: (team: Team | null) => void;
+  switchTeam: () => void;
 }
