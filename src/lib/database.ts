@@ -39,17 +39,77 @@ export const DatabaseService = {
       return []
     }
     
+    // Try to get from team_stats view first
     const { data, error } = await supabase
       .from('team_stats')
       .select('*')
       .order('name')
     
     if (error) {
-      console.error('Error fetching team stats:', error)
-      return []
+      console.warn('team_stats view not found, calculating stats manually:', error)
+      // Fallback: calculate stats manually
+      return this.calculateTeamStatsManually()
     }
     
     return data
+  },
+
+  async calculateTeamStatsManually(): Promise<TeamStats[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      // Get all teams
+      const { data: teams, error: teamsError } = await supabase
+        .from('teams')
+        .select('*')
+        .order('name')
+      
+      if (teamsError) {
+        console.error('Error fetching teams for manual stats:', teamsError)
+        return []
+      }
+      
+      // Calculate stats for each team
+      const teamStats = await Promise.all(
+        teams.map(async (team) => {
+          const { data: members, error: membersError } = await supabase
+            .from('team_members')
+            .select('*')
+            .eq('team_id', team.id)
+          
+          if (membersError) {
+            console.error(`Error fetching members for team ${team.id}:`, membersError)
+            return {
+              id: team.id,
+              name: team.name,
+              description: team.description,
+              color: team.color,
+              member_count: 0,
+              manager_count: 0
+            }
+          }
+          
+          const member_count = members?.length || 0
+          const manager_count = members?.filter(m => m.is_manager).length || 0
+          
+          return {
+            id: team.id,
+            name: team.name,
+            description: team.description,
+            color: team.color,
+            member_count,
+            manager_count
+          }
+        })
+      )
+      
+      return teamStats
+    } catch (error) {
+      console.error('Error calculating team stats manually:', error)
+      return []
+    }
   },
 
   // Team Members (now filtered by team)
