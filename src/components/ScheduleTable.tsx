@@ -5,6 +5,7 @@ import { Clock, Calendar, ChevronLeft, ChevronRight, Download, Eye } from 'lucid
 import { TeamMember, Team, WorkOption, WeekData, ReasonDialogData } from '@/types';
 import ReasonDialog from './ReasonDialog';
 import ViewReasonsModal from './ViewReasonsModal';
+import MobileScheduleView from './MobileScheduleView';
 import { DatabaseService } from '@/lib/database';
 import * as XLSX from 'xlsx';
 
@@ -317,8 +318,29 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
+      {/* Mobile View */}
+      <MobileScheduleView
+        currentUser={currentUser}
+        teamMembers={teamMembers}
+        selectedTeam={selectedTeam}
+        scheduleData={scheduleData}
+        workOptions={workOptions}
+        weekDays={weekDays}
+        currentWeekOffset={currentWeekOffset}
+        loading={loading}
+        onWeekChange={setCurrentWeekOffset}
+        onWorkOptionClick={handleWorkOptionClick}
+        onFullWeekSet={handleFullWeekSet}
+        onExportToExcel={exportToExcel}
+        onViewReasons={() => setViewReasonsModal(true)}
+        isToday={isToday}
+        isPastDate={isPastDate}
+        getCurrentWeekString={getCurrentWeekString}
+        getTeamTotalHours={getTeamTotalHours}
+      />
+
+      {/* Desktop Header */}
+      <div className="hidden lg:block bg-white rounded-lg p-3 sm:p-4 shadow-sm">
         <div className="flex flex-col gap-3 sm:gap-4">
           {/* Week info - moved to top for mobile */}
           <div className="text-center sm:text-left">
@@ -393,8 +415,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         </div>
       </div>
 
-      {/* Schedule Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Desktop Schedule Table */}
+      <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto scrollbar-hide">
           <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 sticky top-0 z-10">
@@ -549,8 +571,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+      {/* Desktop Instructions */}
+      <div className="hidden lg:block bg-blue-50 rounded-lg p-3 sm:p-4">
         <h3 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Quick Guide:</h3>
         <ul className="text-xs sm:text-sm text-blue-800 space-y-1.5">
           <li>• <strong>Your row</strong> is highlighted - tap buttons to set your availability</li>

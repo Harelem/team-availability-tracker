@@ -5,6 +5,7 @@ import { Calendar, User, ArrowLeft } from 'lucide-react';
 import ScheduleTable from '@/components/ScheduleTable';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
+import MobileBreadcrumb from '@/components/MobileBreadcrumb';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -81,13 +82,23 @@ function HomeContent() {
             </button>
           </div>
           
-          {/* Breadcrumb navigation */}
-          <BreadcrumbNavigation
+          {/* Mobile Breadcrumb */}
+          <MobileBreadcrumb
             selectedTeam={selectedTeam}
             selectedUser={selectedUser}
             onNavigateToTeamSelection={() => setSelectedTeam(null)}
             onNavigateToMemberSelection={() => setSelectedUser(null)}
           />
+          
+          {/* Desktop Breadcrumb */}
+          <div className="hidden lg:block">
+            <BreadcrumbNavigation
+              selectedTeam={selectedTeam}
+              selectedUser={selectedUser}
+              onNavigateToTeamSelection={() => setSelectedTeam(null)}
+              onNavigateToMemberSelection={() => setSelectedUser(null)}
+            />
+          </div>
           
           <div className="text-center mb-6">
             <Calendar className="text-blue-600 w-12 h-12 mx-auto mb-3" />
@@ -124,13 +135,23 @@ function HomeContent() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col gap-4 mb-4 sm:mb-8">
           <div className="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
-            {/* Breadcrumb navigation */}
-            <BreadcrumbNavigation
+            {/* Mobile Breadcrumb */}
+            <MobileBreadcrumb
               selectedTeam={selectedTeam}
               selectedUser={selectedUser}
               onNavigateToTeamSelection={() => setSelectedTeam(null)}
               onNavigateToMemberSelection={() => setSelectedUser(null)}
             />
+            
+            {/* Desktop Breadcrumb */}
+            <div className="hidden lg:block">
+              <BreadcrumbNavigation
+                selectedTeam={selectedTeam}
+                selectedUser={selectedUser}
+                onNavigateToTeamSelection={() => setSelectedTeam(null)}
+                onNavigateToMemberSelection={() => setSelectedUser(null)}
+              />
+            </div>
             
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">

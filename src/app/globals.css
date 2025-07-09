@@ -97,3 +97,159 @@ a:focus-visible {
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
+
+/* Mobile-first responsive breakpoints */
+@media (max-width: 480px) {
+  /* Extra small phones */
+  .mobile-card {
+    margin-bottom: 0.5rem;
+  }
+  
+  .mobile-card .card-header {
+    padding: 0.75rem;
+  }
+  
+  .mobile-card .card-content {
+    padding: 0.75rem;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 640px) {
+  /* Small mobile devices */
+  .mobile-card {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 768px) {
+  /* Large mobile / small tablet */
+  .mobile-schedule-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Tablet */
+  .mobile-schedule-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  /* Show both mobile and desktop elements for hybrid experience */
+  .mobile-desktop-hybrid {
+    display: block;
+  }
+}
+
+/* Mobile card animations */
+@media (max-width: 1024px) {
+  .mobile-card {
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .mobile-card:active {
+    transform: scale(0.98);
+  }
+  
+  .mobile-card-expanded {
+    animation: expand 0.3s ease-out;
+  }
+  
+  @keyframes expand {
+    from {
+      max-height: 0;
+      opacity: 0;
+    }
+    to {
+      max-height: 1000px;
+      opacity: 1;
+    }
+  }
+}
+
+/* Mobile work option buttons */
+@media (max-width: 768px) {
+  .work-option-mobile {
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    transition: all 0.15s ease-in-out;
+  }
+  
+  .work-option-mobile:active {
+    transform: scale(0.95);
+  }
+  
+  .work-option-mobile.selected {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  }
+}
+
+/* Mobile navigation improvements */
+@media (max-width: 768px) {
+  .mobile-nav-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 0.15s ease-in-out;
+  }
+  
+  .mobile-breadcrumb {
+    font-size: 0.75rem;
+    gap: 0.25rem;
+  }
+  
+  .mobile-breadcrumb-item {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Improve mobile scroll behavior */
+@media (max-width: 768px) {
+  body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  .mobile-scroll-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Custom scrollbar for mobile */
+@media (max-width: 768px) {
+  .mobile-scroll-container::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  .mobile-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .mobile-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+  }
+}
+
+/* Add safe area padding for mobile devices */
+@media (max-width: 768px) {
+  .mobile-safe-area {
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
