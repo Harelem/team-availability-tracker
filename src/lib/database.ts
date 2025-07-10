@@ -364,7 +364,19 @@ export const DatabaseService = {
     return true
   },
 
-  async getSprintStats(teamId: number, sprintId?: number): Promise<any> {
+  async getSprintStats(teamId: number, sprintId?: number): Promise<{
+    sprint_id: number;
+    team_id: number;
+    sprint_number: number;
+    start_date: string;
+    end_date: string;
+    team_name: string;
+    sprint_length_weeks: number;
+    team_size: number;
+    total_capacity_hours: number;
+    actual_hours: number;
+    capacity_utilization: number;
+  } | null> {
     if (!isSupabaseConfigured()) {
       return null
     }
