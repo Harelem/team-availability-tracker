@@ -19,6 +19,16 @@ export interface TeamMember {
   updated_at?: string;
 }
 
+export interface COOUser {
+  id: number;
+  name: string;
+  hebrew: string;
+  title: string;
+  description: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface WorkOption {
   value: '1' | '0.5' | 'X';
   label: string;
@@ -71,6 +81,17 @@ export interface TeamContextType {
   teams: Team[];
   setSelectedTeam: (team: Team | null) => void;
   switchTeam: () => void;
+}
+
+// Access mode for the application
+export type AccessMode = 'coo' | 'team' | null;
+
+// Team selection screen props
+export interface TeamSelectionScreenProps {
+  teams: Team[];
+  cooUsers: COOUser[];
+  onTeamSelect: (team: Team) => void;
+  onCOOAccess: (cooUser: COOUser) => void;
 }
 
 // Global Sprint System Types

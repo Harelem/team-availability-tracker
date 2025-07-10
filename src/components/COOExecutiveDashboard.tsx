@@ -15,16 +15,19 @@ import {
   AlertCircle,
   ChevronRight,
   Award,
-  Activity
+  Activity,
+  ArrowLeft
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
-import { COODashboardData } from '@/types';
+import { COODashboardData, COOUser } from '@/types';
 
 interface COOExecutiveDashboardProps {
+  currentUser?: COOUser;
+  onBack?: () => void;
   className?: string;
 }
 
-export default function COOExecutiveDashboard({ className = '' }: COOExecutiveDashboardProps) {
+export default function COOExecutiveDashboard({ currentUser, onBack, className = '' }: COOExecutiveDashboardProps) {
   const [dashboardData, setDashboardData] = useState<COODashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,23 +128,46 @@ export default function COOExecutiveDashboard({ className = '' }: COOExecutiveDa
   return (
     <div className={`bg-white rounded-lg shadow-md p-4 sm:p-6 ${className}`}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
-            <span>COO Executive Dashboard</span>
-          </h2>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
-            Company-wide workforce capacity analytics • {new Date().toLocaleDateString()}
-          </p>
+      <div className="flex flex-col gap-4 mb-6">
+        {/* Back Navigation */}
+        {onBack && (
+          <div className="flex items-center">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Back to Selection</span>
+            </button>
+          </div>
+        )}
+        
+        {/* Main Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+              <span>COO Executive Dashboard</span>
+            </h2>
+            {currentUser && (
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
+                Welcome, {currentUser.name} • {currentUser.title} • {new Date().toLocaleDateString()}
+              </p>
+            )}
+            {!currentUser && (
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
+                Company-wide workforce capacity analytics • {new Date().toLocaleDateString()}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={refreshDashboard}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            <Activity className="w-4 h-4" />
+            Refresh Data
+          </button>
         </div>
-        <button
-          onClick={refreshDashboard}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-        >
-          <Activity className="w-4 h-4" />
-          Refresh Data
-        </button>
       </div>
 
       {/* Company Overview Cards */}

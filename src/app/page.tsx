@@ -9,9 +9,9 @@ import MobileBreadcrumb from '@/components/MobileBreadcrumb';
 import GlobalSprintDashboard from '@/components/GlobalSprintDashboard';
 import COOExecutiveDashboard from '@/components/COOExecutiveDashboard';
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
-import { canViewSprints, canAccessCOODashboard, getUserRole } from '@/utils/permissions';
+import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
-import { TeamMember } from '@/types';
+import { TeamMember, COOUser, AccessMode, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
 
 function HomeContent() {
@@ -19,21 +19,54 @@ function HomeContent() {
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // New access mode state
+  const [accessMode, setAccessMode] = useState<AccessMode>(null);
+  const [cooUser, setCooUser] = useState<COOUser | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [cooUsers, setCooUsers] = useState<COOUser[]>([]);
 
+  // Load initial data (teams and COO users)
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        
+        // Initialize data
+        await DatabaseService.initializeTeams();
+        await DatabaseService.initializeTeamMembers();
+        
+        // Load teams and COO users in parallel
+        const [teamsData, cooUsersData] = await Promise.all([
+          DatabaseService.getTeams(),
+          DatabaseService.getCOOUsers()
+        ]);
+        
+        setTeams(teamsData);
+        setCooUsers(cooUsersData);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        setTeams([]);
+        setCooUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+  
+  // Load team members when a team is selected
   useEffect(() => {
     const loadTeamMembers = async () => {
-      if (!selectedTeam) return;
+      if (!selectedTeam || accessMode !== 'team') return;
       
       try {
         setLoading(true);
-        // Initialize team members if needed
-        await DatabaseService.initializeTeamMembers();
-        // Load team members from database for selected team
         const members = await DatabaseService.getTeamMembers(selectedTeam.id);
         setTeamMembers(members);
       } catch (error) {
         console.error('Error loading team members:', error);
-        // Fallback to empty array for team-specific loading
         setTeamMembers([]);
       } finally {
         setLoading(false);
@@ -41,19 +74,57 @@ function HomeContent() {
     };
 
     loadTeamMembers();
-  }, [selectedTeam]);
+  }, [selectedTeam, accessMode]);
 
-  // Reset selected user when team changes
+  // Reset states when access mode changes
   useEffect(() => {
     setSelectedUser(null);
-  }, [selectedTeam]);
+  }, [selectedTeam, accessMode]);
 
-  // Show team selection screen if no team is selected
-  if (!selectedTeam) {
-    return <TeamSelectionScreen onTeamSelect={setSelectedTeam} />;
+  // Handler functions for the new flow
+  const handleTeamSelect = (team: Team) => {
+    setSelectedTeam(team);
+    setAccessMode('team');
+  };
+
+  const handleCOOAccess = (user: COOUser) => {
+    setCooUser(user);
+    setAccessMode('coo');
+  };
+
+  const handleBackToSelection = () => {
+    setAccessMode(null);
+    setSelectedTeam(null);
+    setSelectedUser(null);
+    setCooUser(null);
+  };
+
+  // Routing logic based on access mode
+  if (!accessMode) {
+    return (
+      <TeamSelectionScreen 
+        teams={teams}
+        cooUsers={cooUsers}
+        onTeamSelect={handleTeamSelect}
+        onCOOAccess={handleCOOAccess}
+      />
+    );
   }
 
-  if (loading) {
+  // COO Dashboard Access
+  if (accessMode === 'coo' && cooUser) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <COOExecutiveDashboard 
+          currentUser={cooUser}
+          onBack={handleBackToSelection}
+        />
+      </div>
+    );
+  }
+
+  // Team access mode - user selection
+  if (accessMode === 'team' && selectedTeam && loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
@@ -71,18 +142,19 @@ function HomeContent() {
     );
   }
 
-  if (!selectedUser) {
+  // Team access mode - show user selection
+  if (accessMode === 'team' && selectedTeam && !selectedUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-md w-full">
           {/* Back button */}
           <div className="mb-4">
             <button
-              onClick={() => setSelectedTeam(null)}
+              onClick={handleBackToSelection}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="text-sm">Back to Teams</span>
+              <span className="text-sm">Back to Selection</span>
             </button>
           </div>
           
@@ -90,7 +162,7 @@ function HomeContent() {
           <MobileBreadcrumb
             selectedTeam={selectedTeam}
             selectedUser={selectedUser}
-            onNavigateToTeamSelection={() => setSelectedTeam(null)}
+            onNavigateToTeamSelection={handleBackToSelection}
             onNavigateToMemberSelection={() => setSelectedUser(null)}
           />
           
@@ -99,7 +171,7 @@ function HomeContent() {
             <BreadcrumbNavigation
               selectedTeam={selectedTeam}
               selectedUser={selectedUser}
-              onNavigateToTeamSelection={() => setSelectedTeam(null)}
+              onNavigateToTeamSelection={handleBackToSelection}
               onNavigateToMemberSelection={() => setSelectedUser(null)}
             />
           </div>
@@ -143,7 +215,7 @@ function HomeContent() {
             <MobileBreadcrumb
               selectedTeam={selectedTeam}
               selectedUser={selectedUser}
-              onNavigateToTeamSelection={() => setSelectedTeam(null)}
+              onNavigateToTeamSelection={handleBackToSelection}
               onNavigateToMemberSelection={() => setSelectedUser(null)}
             />
             
@@ -152,7 +224,7 @@ function HomeContent() {
               <BreadcrumbNavigation
                 selectedTeam={selectedTeam}
                 selectedUser={selectedUser}
-                onNavigateToTeamSelection={() => setSelectedTeam(null)}
+                onNavigateToTeamSelection={handleBackToSelection}
                 onNavigateToMemberSelection={() => setSelectedUser(null)}
               />
             </div>
@@ -165,7 +237,7 @@ function HomeContent() {
                 </h1>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                   <p className="text-sm sm:text-base text-gray-600 truncate">
-                    <strong>{selectedTeam.name}</strong> • Welcome, <strong>{selectedUser.name}</strong>
+                    <strong>{selectedTeam?.name}</strong> • Welcome, <strong>{selectedUser?.name}</strong>
                     <span className="text-blue-600 ml-1">({getUserRole(selectedUser)})</span>
                   </p>
                 </div>
@@ -179,10 +251,10 @@ function HomeContent() {
                     Switch User
                   </button>
                   <button
-                    onClick={() => setSelectedTeam(null)}
+                    onClick={handleBackToSelection}
                     className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
                   >
-                    Switch Team
+                    Change Access
                   </button>
                 </div>
               </div>
@@ -190,15 +262,8 @@ function HomeContent() {
           </div>
         </div>
         
-        {/* COO Executive Dashboard - Only for COO/Admin users */}
-        {canAccessCOODashboard(selectedUser) && (
-          <div className="mb-4 sm:mb-6">
-            <COOExecutiveDashboard />
-          </div>
-        )}
-        
         {/* Global Sprint Provider wraps both dashboard and schedule table */}
-        {canViewSprints(selectedUser) && (
+        {canViewSprints(selectedUser) && selectedTeam && selectedUser && (
           <GlobalSprintProvider teamId={selectedTeam.id}>
             <div className="mb-4 sm:mb-6">
               <GlobalSprintDashboard team={selectedTeam} />
@@ -213,7 +278,7 @@ function HomeContent() {
         
         
         {/* Show schedule table without sprint features if user can't view sprints */}
-        {!canViewSprints(selectedUser) && (
+        {!canViewSprints(selectedUser) && selectedTeam && selectedUser && (
           <ScheduleTable 
             currentUser={selectedUser} 
             teamMembers={teamMembers}

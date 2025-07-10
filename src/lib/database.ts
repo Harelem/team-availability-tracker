@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData } from '@/types'
+import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser } from '@/types'
 
 const isSupabaseConfigured = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -739,6 +739,32 @@ export const DatabaseService = {
     } catch (error) {
       console.error('Error fetching COO dashboard data:', error)
       return null
+    }
+  },
+
+  // COO User Management
+  async getCOOUsers(): Promise<COOUser[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      // For now, return a hardcoded COO user since we know Nir Shilo should be the COO
+      // In a real system, this could be based on a user_role column or separate executives table
+      const cooUsers: COOUser[] = [
+        {
+          id: 1,
+          name: 'Nir Shilo',
+          hebrew: 'ניר שילה',
+          title: 'Chief Operating Officer',
+          description: 'Company-wide analytics and team oversight'
+        }
+      ]
+      
+      return cooUsers
+    } catch (error) {
+      console.error('Error fetching COO users:', error)
+      return []
     }
   }
 }
