@@ -5,16 +5,36 @@
 -- STEP 1: CLEANUP - Remove existing complex sprint infrastructure
 -- =========================================================================
 
--- Drop existing sprint tables and views
+-- Drop existing sprint tables and views (safe cleanup)
 DROP VIEW IF EXISTS current_sprints CASCADE;
 DROP VIEW IF EXISTS sprint_stats CASCADE;
 DROP TABLE IF EXISTS team_sprints CASCADE;
 
--- Remove sprint_length_weeks column from teams table if it exists
-ALTER TABLE teams DROP COLUMN IF EXISTS sprint_length_weeks CASCADE;
+-- Remove sprint_length_weeks column from teams table if it exists (safe)
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'teams' AND column_name = 'sprint_length_weeks'
+    ) THEN
+        ALTER TABLE teams DROP COLUMN sprint_length_weeks CASCADE;
+    END IF;
+END $$;
 
--- Drop any sprint-related triggers and functions
-DROP TRIGGER IF EXISTS update_team_sprints_updated_at ON team_sprints;
+-- Drop any sprint-related triggers safely
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.triggers 
+        WHERE trigger_name = 'update_team_sprints_updated_at'
+    ) THEN
+        DROP TRIGGER update_team_sprints_updated_at ON team_sprints;
+    END IF;
+EXCEPTION
+    WHEN undefined_table THEN
+        -- Table doesn't exist, continue
+        NULL;
+END $$;
 
 -- =========================================================================
 -- STEP 2: CREATE GLOBAL SPRINT SYSTEM
@@ -123,11 +143,11 @@ SELECT
             ELSE 0
         END
     ), 0) as sprint_hours,
-    -- Calculate current week hours
+    -- Calculate current week hours (Sunday to Thursday)
     COALESCE(SUM(
         CASE 
-            WHEN se.value = '1' AND se.date BETWEEN DATE_TRUNC('week', CURRENT_DATE) AND DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '4 days' THEN 7
-            WHEN se.value = '0.5' AND se.date BETWEEN DATE_TRUNC('week', CURRENT_DATE) AND DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '4 days' THEN 3.5
+            WHEN se.value = '1' AND se.date BETWEEN date_trunc('week', CURRENT_DATE) AND date_trunc('week', CURRENT_DATE) + INTERVAL '4 days' THEN 7
+            WHEN se.value = '0.5' AND se.date BETWEEN date_trunc('week', CURRENT_DATE) AND date_trunc('week', CURRENT_DATE) + INTERVAL '4 days' THEN 3.5
             ELSE 0
         END
     ), 0) as current_week_hours,
