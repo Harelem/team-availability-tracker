@@ -189,20 +189,28 @@ function HomeContent() {
           </div>
         </div>
         
-        {/* Global Sprint Dashboard - Visible to all users */}
+        {/* Global Sprint Provider wraps both dashboard and schedule table */}
         {canViewSprints(selectedUser) && (
           <GlobalSprintProvider teamId={selectedTeam.id}>
             <div className="mb-6">
               <GlobalSprintDashboard team={selectedTeam} />
             </div>
+            <ScheduleTable 
+              currentUser={selectedUser} 
+              teamMembers={teamMembers}
+              selectedTeam={selectedTeam}
+            />
           </GlobalSprintProvider>
         )}
         
-        <ScheduleTable 
-          currentUser={selectedUser} 
-          teamMembers={teamMembers}
-          selectedTeam={selectedTeam}
-        />
+        {/* Show schedule table without sprint features if user can't view sprints */}
+        {!canViewSprints(selectedUser) && (
+          <ScheduleTable 
+            currentUser={selectedUser} 
+            teamMembers={teamMembers}
+            selectedTeam={selectedTeam}
+          />
+        )}
       </div>
     </div>
   );
