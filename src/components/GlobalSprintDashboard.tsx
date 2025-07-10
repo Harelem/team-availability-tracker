@@ -93,7 +93,7 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
   // Minimized view
   if (isMinimized) {
     return (
-      <div className={`bg-white rounded-lg shadow-md p-3 sm:p-4 transition-all duration-300 ${className}`}>
+      <div className={`bg-white rounded-lg shadow-md p-3 sm:p-4 transition-all duration-300 border-l-4 border-blue-500 ${className}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" />
@@ -117,17 +117,13 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
             <Plus className="w-4 h-4 text-gray-600" />
           </button>
         </div>
-        {/* Mobile debug */}
-        <div className="mt-2 text-xs text-red-600 sm:hidden">
-          MOBILE DEBUG: Sprint minimized view visible
-        </div>
       </div>
     );
   }
 
   // Full view
   return (
-    <div className={`bg-white rounded-lg shadow-md p-3 sm:p-6 transition-all duration-300 ${className}`}>
+    <div className={`bg-white rounded-lg shadow-md p-3 sm:p-6 transition-all duration-300 border-l-4 border-blue-500 ${className}`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2 sm:gap-0">
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -149,10 +145,6 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
         </div>
       </div>
       
-      {/* Mobile debug */}
-      <div className="mb-4 text-xs text-green-600 sm:hidden bg-green-50 p-2 rounded">
-        MOBILE DEBUG: Sprint full dashboard visible
-      </div>
 
       {/* Global Sprint Overview */}
       <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg">

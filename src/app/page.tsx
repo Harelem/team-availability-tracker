@@ -203,12 +203,6 @@ function HomeContent() {
           </GlobalSprintProvider>
         )}
         
-        {/* Mobile debug - show if sprint dashboard is missing */}
-        {process.env.NODE_ENV === 'production' && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 sm:hidden">
-            <strong>Mobile Debug:</strong> User: {selectedUser?.name}, Can view: {canViewSprints(selectedUser) ? 'YES' : 'NO'}
-          </div>
-        )}
         
         {/* Show schedule table without sprint features if user can't view sprints */}
         {!canViewSprints(selectedUser) && (
