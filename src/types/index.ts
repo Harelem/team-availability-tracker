@@ -57,8 +57,13 @@ export interface TeamStats {
   name: string;
   description?: string;
   color?: string;
+  sprint_length_weeks?: number;
   member_count: number;
   manager_count: number;
+  current_sprint_number?: number;
+  current_sprint_start?: string;
+  current_sprint_end?: string;
+  current_sprint_progress?: number;
 }
 
 export interface TeamContextType {

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, Calendar, ChevronLeft, ChevronRight, Download, Eye } from 'lucide-react';
+import { Clock, Calendar, ChevronLeft, ChevronRight, Download, Eye, Settings } from 'lucide-react';
 import { TeamMember, Team, WorkOption, WeekData, ReasonDialogData } from '@/types';
 import ReasonDialog from './ReasonDialog';
 import ViewReasonsModal from './ViewReasonsModal';
 import MobileScheduleView from './MobileScheduleView';
+import SprintSettingsModal from './SprintSettingsModal';
 import { DatabaseService } from '@/lib/database';
 import * as XLSX from 'xlsx';
 
@@ -28,6 +29,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
   const [scheduleData, setScheduleData] = useState<WeekData>({});
   const [reasonDialog, setReasonDialog] = useState<{ isOpen: boolean; data: ReasonDialogData | null }>({ isOpen: false, data: null });
   const [viewReasonsModal, setViewReasonsModal] = useState(false);
+  const [sprintSettingsModal, setSprintSettingsModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Calculate current week dates
@@ -381,6 +383,13 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
             {currentUser.isManager && (
               <div className="flex gap-2 justify-center sm:justify-end">
                 <button 
+                  onClick={() => setSprintSettingsModal(true)}
+                  className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2.5 rounded-lg active:bg-purple-700 transition-colors text-sm min-h-[44px] touch-manipulation"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Sprints</span>
+                </button>
+                <button 
                   onClick={() => setViewReasonsModal(true)}
                   className="flex items-center gap-1.5 bg-gray-600 text-white px-3 py-2.5 rounded-lg active:bg-gray-700 transition-colors text-sm min-h-[44px] touch-manipulation"
                 >
@@ -596,6 +605,16 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         scheduleData={scheduleData}
         teamMembers={teamMembers}
         weekDays={weekDays}
+      />
+      
+      <SprintSettingsModal
+        isOpen={sprintSettingsModal}
+        onClose={() => setSprintSettingsModal(false)}
+        team={selectedTeam}
+        onSprintUpdate={() => {
+          // Optionally refresh data or show notification
+          console.log('Sprint updated');
+        }}
       />
     </div>
   );

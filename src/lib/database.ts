@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, TeamStats } from '@/types'
+import { TeamMember, Team, TeamStats, TeamSprint, TeamAnalytics } from '@/types'
 
 const isSupabaseConfigured = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -29,6 +29,7 @@ export const DatabaseService = {
       name: team.name,
       description: team.description || undefined,
       color: team.color || '#3b82f6',
+      sprint_length_weeks: team.sprint_length_weeks || 1,
       created_at: team.created_at,
       updated_at: team.updated_at
     }))
@@ -99,6 +100,7 @@ export const DatabaseService = {
             name: team.name,
             description: team.description,
             color: team.color,
+            sprint_length_weeks: team.sprint_length_weeks || 1,
             member_count,
             manager_count
           }
@@ -279,5 +281,193 @@ export const DatabaseService = {
         onUpdate
       )
       .subscribe()
+  },
+
+  // Sprint Management
+  async getCurrentSprint(teamId: number): Promise<TeamSprint | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    const { data, error } = await supabase
+      .from('current_sprints')
+      .select('*')
+      .eq('team_id', teamId)
+      .single()
+    
+    if (error) {
+      console.error('Error fetching current sprint:', error)
+      return null
+    }
+    
+    return data
+  },
+
+  async getTeamSprints(teamId: number): Promise<TeamSprint[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    const { data, error } = await supabase
+      .from('team_sprints')
+      .select('*')
+      .eq('team_id', teamId)
+      .order('sprint_number', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching team sprints:', error)
+      return []
+    }
+    
+    return data
+  },
+
+  async createSprint(teamId: number, sprintNumber: number, startDate: string, endDate: string): Promise<TeamSprint | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    const { data, error } = await supabase
+      .from('team_sprints')
+      .insert({
+        team_id: teamId,
+        sprint_number: sprintNumber,
+        start_date: startDate,
+        end_date: endDate
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('Error creating sprint:', error)
+      return null
+    }
+    
+    return data
+  },
+
+  async updateTeamSprintLength(teamId: number, sprintLengthWeeks: number): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+    
+    const { error } = await supabase
+      .from('teams')
+      .update({ sprint_length_weeks: sprintLengthWeeks })
+      .eq('id', teamId)
+    
+    if (error) {
+      console.error('Error updating sprint length:', error)
+      return false
+    }
+    
+    return true
+  },
+
+  async getSprintStats(teamId: number, sprintId?: number): Promise<any> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    let query = supabase
+      .from('sprint_stats')
+      .select('*')
+      .eq('team_id', teamId)
+    
+    if (sprintId) {
+      query = query.eq('sprint_id', sprintId)
+    }
+    
+    const { data, error } = await query.single()
+    
+    if (error) {
+      console.error('Error fetching sprint stats:', error)
+      return null
+    }
+    
+    return data
+  },
+
+  async calculateTeamAnalytics(teamId: number): Promise<TeamAnalytics> {
+    if (!isSupabaseConfigured()) {
+      return {
+        currentWeekHours: 0,
+        sprintHours: 0,
+        averageHoursPerMember: 0,
+        capacityUtilization: 0,
+        teamCapacity: 0
+      }
+    }
+    
+    try {
+      // Get current sprint
+      const currentSprint = await this.getCurrentSprint(teamId)
+      if (!currentSprint) {
+        throw new Error('No current sprint found')
+      }
+      
+      // Get team members
+      const members = await this.getTeamMembers(teamId)
+      const teamSize = members.length
+      
+      // Get current week dates
+      const today = new Date()
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(today.getDate() - today.getDay())
+      const endOfWeek = new Date(startOfWeek)
+      endOfWeek.setDate(startOfWeek.getDate() + 4) // Friday
+      
+      // Calculate current week hours
+      const currentWeekSchedule = await this.getScheduleEntries(
+        startOfWeek.toISOString().split('T')[0],
+        endOfWeek.toISOString().split('T')[0],
+        teamId
+      )
+      
+      let currentWeekHours = 0
+      Object.values(currentWeekSchedule).forEach(memberSchedule => {
+        Object.values(memberSchedule).forEach(entry => {
+          if (entry.value === '1') currentWeekHours += 7
+          else if (entry.value === '0.5') currentWeekHours += 3.5
+        })
+      })
+      
+      // Calculate sprint hours
+      const sprintSchedule = await this.getScheduleEntries(
+        currentSprint.start_date,
+        currentSprint.end_date,
+        teamId
+      )
+      
+      let sprintHours = 0
+      Object.values(sprintSchedule).forEach(memberSchedule => {
+        Object.values(memberSchedule).forEach(entry => {
+          if (entry.value === '1') sprintHours += 7
+          else if (entry.value === '0.5') sprintHours += 3.5
+        })
+      })
+      
+      // Calculate capacity
+      const sprintDays = Math.ceil((new Date(currentSprint.end_date).getTime() - new Date(currentSprint.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1
+      const workingDays = Math.floor(sprintDays / 7) * 5 + Math.min(sprintDays % 7, 5)
+      const teamCapacity = teamSize * workingDays * 7
+      
+      return {
+        currentWeekHours,
+        sprintHours,
+        averageHoursPerMember: teamSize > 0 ? sprintHours / teamSize : 0,
+        capacityUtilization: teamCapacity > 0 ? (sprintHours / teamCapacity) * 100 : 0,
+        teamCapacity
+      }
+    } catch (error) {
+      console.error('Error calculating team analytics:', error)
+      return {
+        currentWeekHours: 0,
+        sprintHours: 0,
+        averageHoursPerMember: 0,
+        capacityUtilization: 0,
+        teamCapacity: 0
+      }
+    }
   }
 }

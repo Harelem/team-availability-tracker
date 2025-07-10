@@ -6,6 +6,8 @@ import ScheduleTable from '@/components/ScheduleTable';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
+import SprintProgressIndicator from '@/components/SprintProgressIndicator';
+import SprintAnalytics from '@/components/SprintAnalytics';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -166,23 +168,41 @@ function HomeContent() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSelectedUser(null)}
-                  className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
-                >
-                  Switch User
-                </button>
-                <button
-                  onClick={() => setSelectedTeam(null)}
-                  className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
-                >
-                  Switch Team
-                </button>
+              <div className="flex items-center gap-4">
+                {/* Sprint Progress - Desktop Only */}
+                <div className="hidden lg:block">
+                  <SprintProgressIndicator team={selectedTeam} className="w-64" />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedUser(null)}
+                    className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
+                  >
+                    Switch User
+                  </button>
+                  <button
+                    onClick={() => setSelectedTeam(null)}
+                    className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
+                  >
+                    Switch Team
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+          {/* Sprint Progress Indicator */}
+          <SprintProgressIndicator 
+            team={selectedTeam} 
+            className="lg:hidden"
+          />
         </div>
+        
+        {/* Sprint Analytics - Desktop Only */}
+        {selectedUser.isManager && (
+          <div className="hidden lg:block mb-6">
+            <SprintAnalytics team={selectedTeam} />
+          </div>
+        )}
         
         <ScheduleTable 
           currentUser={selectedUser} 
