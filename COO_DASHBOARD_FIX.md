@@ -8,7 +8,7 @@ Add "Nir Shilo" (COO) to the production database so he can be selected as a user
 
 ## Production Database Fix
 
-### Option A: Quick Fix - Add to Existing Team
+### Option A: Quick Fix - Add to Existing Team (RECOMMENDED)
 Run this SQL in **Production Supabase SQL Editor**:
 
 ```sql
@@ -16,9 +16,11 @@ Run this SQL in **Production Supabase SQL Editor**:
 INSERT INTO team_members (name, hebrew, is_manager, team_id) VALUES
     ('Nir Shilo', 'ניר שילה', true, (SELECT id FROM teams WHERE name = 'Data Team'))
 ON CONFLICT (name) DO UPDATE SET
-    team_id = EXCLUDED.team_id,
-    is_manager = EXCLUDED.is_manager;
+    team_id = (SELECT id FROM teams WHERE name = 'Data Team'),
+    is_manager = true;
 ```
+
+Or simply run the complete script: `sql/quick-coo-fix.sql`
 
 ### Option B: Recommended - Create Executive Team
 Run the complete script from `sql/add-executive-team.sql`:

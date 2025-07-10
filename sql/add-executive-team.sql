@@ -2,12 +2,11 @@
 -- This script creates a dedicated Executive team for COO and other executives
 
 -- Step 1: Create Executive Team
-INSERT INTO teams (name, description, color, sprint_length_weeks) VALUES
-    ('Executive Team', 'Company executives and leadership', '#6B46C1', 2)
+INSERT INTO teams (name, description, color) VALUES
+    ('Executive Team', 'Company executives and leadership', '#6B46C1')
 ON CONFLICT (name) DO UPDATE SET
     description = EXCLUDED.description,
-    color = EXCLUDED.color,
-    sprint_length_weeks = EXCLUDED.sprint_length_weeks;
+    color = EXCLUDED.color;
 
 -- Step 2: Add COO and other executives to Executive Team
 INSERT INTO team_members (name, hebrew, is_manager, team_id) VALUES
@@ -29,8 +28,7 @@ SELECT
     id,
     name,
     description,
-    color,
-    sprint_length_weeks
+    color
 FROM teams 
 WHERE name = 'Executive Team';
 
