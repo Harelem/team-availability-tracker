@@ -1,10 +1,13 @@
 -- Migration script to add sprint functionality to existing database
 -- Run this script in your Supabase SQL editor to enable sprint features
 
--- First, add the sprint_length_weeks column to teams table
+-- First, add missing columns to teams table
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS color VARCHAR(7) DEFAULT '#3b82f6';
 ALTER TABLE teams ADD COLUMN IF NOT EXISTS sprint_length_weeks INTEGER DEFAULT 1;
 
--- Set default sprint length for existing teams
+-- Set default values for existing teams
+UPDATE teams SET color = '#3b82f6' WHERE color IS NULL;
 UPDATE teams SET sprint_length_weeks = 1 WHERE sprint_length_weeks IS NULL;
 
 -- Create team_sprints table
