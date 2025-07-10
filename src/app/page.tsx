@@ -8,7 +8,6 @@ import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
 import SprintProgressIndicator from '@/components/SprintProgressIndicator';
 import SprintAnalytics from '@/components/SprintAnalytics';
-import SprintDebugPanel from '@/components/SprintDebugPanel';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -198,28 +197,12 @@ function HomeContent() {
           />
         </div>
         
-        {/* DEBUG: Comprehensive Sprint Debug Panel */}
-        <SprintDebugPanel 
-          selectedTeam={selectedTeam}
-          selectedUser={selectedUser}
-          teamMembers={teamMembers}
-        />
-
         {/* Sprint Analytics - Desktop Only */}
-        {/* TEMPORARILY VISIBLE TO ALL USERS FOR TESTING */}
-        <div className="hidden lg:block mb-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-2">
-            <span className="text-xs text-blue-600">🧪 TEST MODE: Sprint Analytics (normally manager-only)</span>
-          </div>
-          <SprintAnalytics team={selectedTeam} />
-        </div>
-        
-        {/* Original manager-only version (commented out for testing) */}
-        {/* {selectedUser.isManager && (
+        {selectedUser.isManager && (
           <div className="hidden lg:block mb-6">
             <SprintAnalytics team={selectedTeam} />
           </div>
-        )} */}
+        )}
         
         <ScheduleTable 
           currentUser={selectedUser} 
