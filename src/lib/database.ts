@@ -295,7 +295,6 @@ export const DatabaseService = {
       .single()
     
     if (error) {
-      console.error('Error fetching current global sprint:', error)
       return null
     }
     
@@ -314,7 +313,6 @@ export const DatabaseService = {
       .single()
     
     if (error) {
-      console.error('Error fetching team sprint stats:', error)
       return null
     }
     
@@ -336,7 +334,6 @@ export const DatabaseService = {
       .eq('id', 1) // Assuming single row
     
     if (error) {
-      console.error('Error updating global sprint settings:', error)
       return false
     }
     
@@ -364,7 +361,6 @@ export const DatabaseService = {
       .eq('id', 1) // Assuming single row
     
     if (error) {
-      console.error('Error starting new global sprint:', error)
       return false
     }
     
