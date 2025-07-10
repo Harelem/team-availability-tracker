@@ -50,14 +50,14 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
 
   if (isLoading) {
     return (
-      <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
+      <div className={`bg-white rounded-lg shadow-md p-3 sm:p-6 ${className}`}>
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="h-4 sm:h-6 bg-gray-200 rounded w-32 sm:w-48 mb-3 sm:mb-4"></div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-20"></div>
-                <div className="h-8 bg-gray-200 rounded w-16"></div>
+                <div className="h-3 sm:h-4 bg-gray-200 rounded w-16 sm:w-20"></div>
+                <div className="h-6 sm:h-8 bg-gray-200 rounded w-12 sm:w-16"></div>
               </div>
             ))}
           </div>
@@ -95,15 +95,15 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
     return (
       <div className={`bg-white rounded-lg shadow-md p-3 sm:p-4 transition-all duration-300 ${className}`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BarChart3 className="w-5 h-5 text-blue-600" />
-            <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" />
+            <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm flex-wrap">
               <span className="font-semibold text-gray-900">Sprint {currentSprint.current_sprint_number}</span>
               <span className="text-gray-500">•</span>
               <span className="text-blue-600 font-medium">{currentSprint.progress_percentage}%</span>
               {teamStats && (
                 <>
-                  <span className="text-gray-500">•</span>
+                  <span className="text-gray-500 hidden xs:inline">•</span>
                   <span className="text-green-600 font-medium">{teamStats.sprint_hours}h/{teamStats.total_capacity_hours}h</span>
                 </>
               )}
@@ -111,11 +111,15 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
           </div>
           <button
             onClick={toggleMinimized}
-            className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors shrink-0 ml-2"
             title="Expand sprint dashboard"
           >
             <Plus className="w-4 h-4 text-gray-600" />
           </button>
+        </div>
+        {/* Mobile debug */}
+        <div className="mt-2 text-xs text-red-600 sm:hidden">
+          MOBILE DEBUG: Sprint minimized view visible
         </div>
       </div>
     );
@@ -143,6 +147,11 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
             <Minus className="w-4 h-4 text-gray-600" />
           </button>
         </div>
+      </div>
+      
+      {/* Mobile debug */}
+      <div className="mb-4 text-xs text-green-600 sm:hidden bg-green-50 p-2 rounded">
+        MOBILE DEBUG: Sprint full dashboard visible
       </div>
 
       {/* Global Sprint Overview */}

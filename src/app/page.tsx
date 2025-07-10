@@ -192,7 +192,7 @@ function HomeContent() {
         {/* Global Sprint Provider wraps both dashboard and schedule table */}
         {canViewSprints(selectedUser) && (
           <GlobalSprintProvider teamId={selectedTeam.id}>
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <GlobalSprintDashboard team={selectedTeam} />
             </div>
             <ScheduleTable 
@@ -201,6 +201,13 @@ function HomeContent() {
               selectedTeam={selectedTeam}
             />
           </GlobalSprintProvider>
+        )}
+        
+        {/* Mobile debug - show if sprint dashboard is missing */}
+        {process.env.NODE_ENV === 'production' && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 sm:hidden">
+            <strong>Mobile Debug:</strong> User: {selectedUser?.name}, Can view: {canViewSprints(selectedUser) ? 'YES' : 'NO'}
+          </div>
         )}
         
         {/* Show schedule table without sprint features if user can't view sprints */}
