@@ -203,13 +203,6 @@ function HomeContent() {
           </GlobalSprintProvider>
         )}
         
-        {/* Debug info for production */}
-        {process.env.NODE_ENV === 'production' && (
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-4">
-            <strong>DEBUG INFO:</strong> User: {selectedUser?.name}, Can view sprints: {canViewSprints(selectedUser).toString()}
-          </div>
-        )}
-        
         {/* Show schedule table without sprint features if user can't view sprints */}
         {!canViewSprints(selectedUser) && (
           <ScheduleTable 

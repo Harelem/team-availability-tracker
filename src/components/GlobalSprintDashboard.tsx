@@ -1,6 +1,7 @@
 'use client';
 
-import { Calendar, Clock, Users, Target, TrendingUp, BarChart3 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Clock, Users, Target, TrendingUp, BarChart3, Minus, Plus } from 'lucide-react';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { Team } from '@/types';
 
@@ -11,6 +12,22 @@ interface GlobalSprintDashboardProps {
 
 export default function GlobalSprintDashboard({ team, className = '' }: GlobalSprintDashboardProps) {
   const { currentSprint, teamStats, isLoading, error } = useGlobalSprint();
+  const [isMinimized, setIsMinimized] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sprintDashboardMinimized') === 'true';
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sprintDashboardMinimized', isMinimized.toString());
+    }
+  }, [isMinimized]);
+
+  const toggleMinimized = () => {
+    setIsMinimized(!isMinimized);
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -73,36 +90,78 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
     );
   }
 
+  // Minimized view
+  if (isMinimized) {
+    return (
+      <div className={`bg-white rounded-lg shadow-md p-3 sm:p-4 transition-all duration-300 ${className}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <BarChart3 className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-semibold text-gray-900">Sprint {currentSprint.current_sprint_number}</span>
+              <span className="text-gray-500">•</span>
+              <span className="text-blue-600 font-medium">{currentSprint.progress_percentage}%</span>
+              {teamStats && (
+                <>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-green-600 font-medium">{teamStats.sprint_hours}h/{teamStats.total_capacity_hours}h</span>
+                </>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={toggleMinimized}
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+            title="Expand sprint dashboard"
+          >
+            <Plus className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Full view
   return (
-    <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
+    <div className={`bg-white rounded-lg shadow-md p-3 sm:p-6 transition-all duration-300 ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-blue-600" />
-          Global Sprint Dashboard
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2 sm:gap-0">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+          <span className="hidden sm:inline">Global Sprint Dashboard</span>
+          <span className="sm:hidden">Sprint Dashboard</span>
         </h2>
-        <div className="text-sm text-gray-500">
-          Sprint #{currentSprint.current_sprint_number}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-500">
+            Sprint #{currentSprint.current_sprint_number}
+          </div>
+          <button
+            onClick={toggleMinimized}
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+            title="Minimize sprint dashboard"
+          >
+            <Minus className="w-4 h-4 text-gray-600" />
+          </button>
         </div>
       </div>
 
       {/* Global Sprint Overview */}
-      <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-blue-900">Global Sprint Progress</h3>
-          <span className="text-sm text-blue-700">
+      <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-1 sm:gap-0">
+          <h3 className="font-semibold text-blue-900 text-sm sm:text-base">Global Sprint Progress</h3>
+          <span className="text-xs sm:text-sm text-blue-700">
             {formatDate(currentSprint.sprint_start_date)} - {formatDate(currentSprint.sprint_end_date)}
           </span>
         </div>
         
-        <div className="w-full bg-blue-200 rounded-full h-3 mb-2">
+        <div className="w-full bg-blue-200 rounded-full h-2 sm:h-3 mb-2">
           <div 
-            className={`h-3 rounded-full transition-all duration-300 ${getProgressColor(currentSprint.progress_percentage)}`}
+            className={`h-2 sm:h-3 rounded-full transition-all duration-300 ${getProgressColor(currentSprint.progress_percentage)}`}
             style={{ width: `${currentSprint.progress_percentage}%` }}
           ></div>
         </div>
         
-        <div className="flex justify-between text-sm text-blue-700">
+        <div className="flex justify-between text-xs sm:text-sm text-blue-700">
           <span>{currentSprint.progress_percentage}% complete</span>
           <span>
             {currentSprint.days_remaining} day{currentSprint.days_remaining !== 1 ? 's' : ''} remaining
@@ -113,50 +172,50 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
       {/* Team-Specific Statistics */}
       {teamStats && (
         <>
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5 text-gray-600" />
-              {team.name} Sprint Statistics
+          <div className="mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+              <span className="truncate">{team.name} Sprint Statistics</span>
             </h3>
             
             {/* Key Metrics Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-700">Current Week</span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+              <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
+                  <span className="text-xs sm:text-sm font-medium text-blue-700">This Week</span>
                 </div>
-                <div className="text-2xl font-bold text-blue-900">
+                <div className="text-lg sm:text-2xl font-bold text-blue-900">
                   {teamStats.current_week_hours}h
                 </div>
               </div>
 
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-700">Sprint Total</span>
+              <div className="bg-green-50 p-3 sm:p-4 rounded-lg">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                  <Target className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                  <span className="text-xs sm:text-sm font-medium text-green-700">Sprint Total</span>
                 </div>
-                <div className="text-2xl font-bold text-green-900">
+                <div className="text-lg sm:text-2xl font-bold text-green-900">
                   {teamStats.sprint_hours}h
                 </div>
               </div>
 
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="w-4 h-4 text-purple-600" />
-                  <span className="text-sm font-medium text-purple-700">Team Size</span>
+              <div className="bg-purple-50 p-3 sm:p-4 rounded-lg">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                  <Users className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
+                  <span className="text-xs sm:text-sm font-medium text-purple-700">Team Size</span>
                 </div>
-                <div className="text-2xl font-bold text-purple-900">
+                <div className="text-lg sm:text-2xl font-bold text-purple-900">
                   {teamStats.team_size}
                 </div>
               </div>
 
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <BarChart3 className="w-4 h-4 text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-700">Capacity</span>
+              <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg">
+                <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                  <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
+                  <span className="text-xs sm:text-sm font-medium text-yellow-700">Capacity</span>
                 </div>
-                <div className="text-2xl font-bold text-yellow-900">
+                <div className="text-lg sm:text-2xl font-bold text-yellow-900">
                   {teamStats.total_capacity_hours}h
                 </div>
               </div>
@@ -164,25 +223,26 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
           </div>
 
           {/* Capacity Utilization */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-gray-600" />
-                Team Capacity Utilization
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2 sm:gap-0">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                <span className="hidden sm:inline">Team Capacity Utilization</span>
+                <span className="sm:hidden">Capacity</span>
               </h3>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getUtilizationColor(teamStats.capacity_utilization)}`}>
+              <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getUtilizationColor(teamStats.capacity_utilization)}`}>
                 {Math.round(teamStats.capacity_utilization)}%
               </span>
             </div>
             
-            <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+            <div className="w-full bg-gray-200 rounded-full h-3 sm:h-4 mb-2">
               <div 
-                className="h-4 rounded-full transition-all duration-300 bg-gradient-to-r from-green-500 to-blue-500"
+                className="h-3 sm:h-4 rounded-full transition-all duration-300 bg-gradient-to-r from-green-500 to-blue-500"
                 style={{ width: `${Math.min(100, teamStats.capacity_utilization)}%` }}
               ></div>
             </div>
             
-            <div className="flex justify-between text-sm text-gray-600">
+            <div className="flex justify-between text-xs sm:text-sm text-gray-600">
               <span>0%</span>
               <span>50%</span>
               <span>100%</span>
@@ -190,10 +250,10 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
           </div>
 
           {/* Sprint Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-2">Sprint Overview</h4>
-              <div className="space-y-2 text-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+              <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Sprint Overview</h4>
+              <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Sprint Length:</span>
                   <span className="font-medium">{currentSprint.sprint_length_weeks} week{currentSprint.sprint_length_weeks !== 1 ? 's' : ''}</span>
@@ -209,9 +269,9 @@ export default function GlobalSprintDashboard({ team, className = '' }: GlobalSp
               </div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-2">Team Performance</h4>
-              <div className="space-y-2 text-sm">
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+              <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Team Performance</h4>
+              <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Average per Member:</span>
                   <span className="font-medium">

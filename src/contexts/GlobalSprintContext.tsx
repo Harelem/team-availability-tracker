@@ -23,26 +23,19 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
     setError(null);
     
     try {
-      console.log('🌍 DEBUG: Loading global sprint data...');
-      
       // Load global sprint (always available)
       const globalSprint = await DatabaseService.getCurrentGlobalSprint();
-      console.log('🌍 DEBUG: Global sprint loaded:', globalSprint);
       setCurrentSprint(globalSprint);
       
       // Load team-specific stats if teamId is provided
       if (teamId) {
-        console.log('📊 DEBUG: Loading team sprint stats for team:', teamId);
         const stats = await DatabaseService.getTeamSprintStats(teamId);
-        console.log('📊 DEBUG: Team stats loaded:', stats);
         setTeamStats(stats);
       } else {
         setTeamStats(null);
       }
-      
-      console.log('✅ DEBUG: Global sprint data loaded successfully');
     } catch (err) {
-      console.error('❌ DEBUG: Error loading sprint data:', err);
+      console.error('Error loading sprint data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load sprint data');
     } finally {
       setIsLoading(false);
