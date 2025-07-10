@@ -36,7 +36,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Create trigger for team_sprints
+-- Create trigger for team_sprints (drop if exists first)
+DROP TRIGGER IF EXISTS update_team_sprints_updated_at ON team_sprints;
 CREATE TRIGGER update_team_sprints_updated_at 
     BEFORE UPDATE ON team_sprints
     FOR EACH ROW 
