@@ -61,11 +61,11 @@ SELECT
         WHEN CURRENT_DATE BETWEEN ts.start_date AND ts.end_date THEN true
         ELSE false
     END as is_current,
-    EXTRACT(DAY FROM (ts.end_date - CURRENT_DATE)) as days_remaining,
-    EXTRACT(DAY FROM (ts.end_date - ts.start_date)) + 1 as total_days,
+    (ts.end_date - CURRENT_DATE) as days_remaining,
+    (ts.end_date - ts.start_date) + 1 as total_days,
     ROUND(
-        EXTRACT(DAY FROM (CURRENT_DATE - ts.start_date)) * 100.0 / 
-        (EXTRACT(DAY FROM (ts.end_date - ts.start_date)) + 1), 2
+        (CURRENT_DATE - ts.start_date) * 100.0 / 
+        NULLIF((ts.end_date - ts.start_date) + 1, 0), 2
     ) as progress_percentage
 FROM team_sprints ts
 JOIN teams t ON ts.team_id = t.id
@@ -85,8 +85,8 @@ SELECT
     ts.end_date,
     t.name as team_name,
     t.sprint_length_weeks,
-    COUNT(tm.id) as team_size,
-    COUNT(tm.id) * t.sprint_length_weeks * 5 * 7 as total_capacity_hours,
+    COUNT(DISTINCT tm.id) as team_size,
+    COUNT(DISTINCT tm.id) * COALESCE(t.sprint_length_weeks, 1) * 5 * 7 as total_capacity_hours,
     COALESCE(SUM(
         CASE 
             WHEN se.value = '1' THEN 7
@@ -102,7 +102,7 @@ SELECT
                 ELSE 0
             END
         ), 0) * 100.0 / 
-        NULLIF(COUNT(tm.id) * t.sprint_length_weeks * 5 * 7, 0), 2
+        NULLIF(COUNT(DISTINCT tm.id) * COALESCE(t.sprint_length_weeks, 1) * 5 * 7, 0), 2
     ) as capacity_utilization
 FROM team_sprints ts
 JOIN teams t ON ts.team_id = t.id
@@ -120,7 +120,7 @@ SELECT
     t.description,
     t.color,
     t.sprint_length_weeks,
-    COUNT(tm.id) as member_count,
+    COUNT(DISTINCT tm.id) as member_count,
     COUNT(CASE WHEN tm.is_manager = true THEN 1 END) as manager_count,
     cs.sprint_number as current_sprint_number,
     cs.start_date as current_sprint_start,
