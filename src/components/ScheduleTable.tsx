@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, Calendar, ChevronLeft, ChevronRight, Download, Eye, Settings } from 'lucide-react';
+import { Clock, Calendar, ChevronLeft, ChevronRight, Eye, Settings } from 'lucide-react';
 import { TeamMember, Team, WorkOption, WeekData, ReasonDialogData } from '@/types';
 import ReasonDialog from './ReasonDialog';
 import ViewReasonsModal from './ViewReasonsModal';
 import MobileScheduleView from './MobileScheduleView';
 import GlobalSprintSettings from './GlobalSprintSettings';
+import ExportDropdown from './ExportDropdown';
 import { canManageSprints } from '@/utils/permissions';
 import { DatabaseService } from '@/lib/database';
-import * as XLSX from 'xlsx';
 
 interface ScheduleTableProps {
   currentUser: TeamMember;
@@ -232,76 +232,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
     return teamMembers.reduce((total, member) => total + calculateWeeklyHours(member.id), 0);
   };
 
-  const exportToExcel = () => {
-    const worksheetData = [];
-    
-    // Add header row
-    const headerRow = ['Team Member', 'Hebrew Name', 'Role', ...dayNames.map((day, index) => `${day} (${formatDate(weekDays[index])})`), 'Weekly Hours'];
-    worksheetData.push(headerRow);
-    
-    // Add data rows
-    teamMembers.forEach(member => {
-      const row = [
-        member.name,
-        member.hebrew,
-        member.isManager ? 'Manager' : 'Employee'
-      ];
-      
-      // Add daily data
-      weekDays.forEach(date => {
-        const dateKey = date.toISOString().split('T')[0];
-        const entry = scheduleData[member.id]?.[dateKey];
-        if (entry) {
-          const option = workOptions.find(opt => opt.value === entry.value);
-          let cellValue = `${entry.value} (${option?.hours || 0}h)`;
-          if (entry.reason) {
-            cellValue += ` - ${entry.reason}`;
-          }
-          row.push(cellValue);
-        } else {
-          row.push('');
-        }
-      });
-      
-      // Add weekly total
-      row.push(`${calculateWeeklyHours(member.id)}h`);
-      worksheetData.push(row);
-    });
-    
-    // Add totals row
-    const totalsRow = ['TEAM TOTAL', '', ''];
-    weekDays.forEach(date => {
-      const dayTotal = teamMembers.reduce((total, member) => {
-        const dateKey = date.toISOString().split('T')[0];
-        const entry = scheduleData[member.id]?.[dateKey];
-        const option = workOptions.find(opt => opt.value === entry?.value);
-        return total + (option ? option.hours : 0);
-      }, 0);
-      totalsRow.push(`${dayTotal}h`);
-    });
-    totalsRow.push(`${getTeamTotalHours()}h`);
-    worksheetData.push(totalsRow);
-    
-    // Create workbook and worksheet
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
-    
-    // Auto-size columns
-    const columnWidths = [];
-    for (let i = 0; i < headerRow.length; i++) {
-      const maxLength = Math.max(
-        ...worksheetData.map(row => (row[i] || '').toString().length)
-      );
-      columnWidths.push({ width: Math.min(maxLength + 2, 30) });
-    }
-    ws['!cols'] = columnWidths;
-    
-    XLSX.utils.book_append_sheet(wb, ws, 'Team Availability');
-    
-    // Generate filename with current week
-    const filename = `team-availability-${getCurrentWeekString().replace(/\s+/g, '-')}.xlsx`;
-    XLSX.writeFile(wb, filename);
-  };
 
   if (loading) {
     return (
@@ -334,7 +264,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         onWeekChange={setCurrentWeekOffset}
         onWorkOptionClick={handleWorkOptionClick}
         onFullWeekSet={handleFullWeekSet}
-        onExportToExcel={exportToExcel}
         onViewReasons={() => setViewReasonsModal(true)}
         isToday={isToday}
         isPastDate={isPastDate}
@@ -403,13 +332,13 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
                     <Eye className="w-4 h-4" />
                     <span className="hidden sm:inline">Reasons</span>
                   </button>
-                  <button 
-                    onClick={exportToExcel}
-                    className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2.5 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Export</span>
-                  </button>
+                  <ExportDropdown
+                    currentUser={currentUser}
+                    teamMembers={teamMembers}
+                    selectedTeam={selectedTeam}
+                    scheduleData={scheduleData}
+                    currentWeekDays={weekDays}
+                  />
                 </>
               )}
             </div>

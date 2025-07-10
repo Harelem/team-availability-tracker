@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Download, Eye, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Eye, RefreshCw } from 'lucide-react';
 import MobileScheduleCard from './MobileScheduleCard';
+import ExportDropdown from './ExportDropdown';
 import { TeamMember, Team, WorkOption, WeekData } from '@/types';
 
 interface MobileScheduleViewProps {
@@ -17,7 +18,6 @@ interface MobileScheduleViewProps {
   onWeekChange: (offset: number) => void;
   onWorkOptionClick: (memberId: number, date: Date, value: string) => void;
   onFullWeekSet: (memberId: number) => void;
-  onExportToExcel: () => void;
   onViewReasons: () => void;
   isToday: (date: Date) => boolean;
   isPastDate: (date: Date) => boolean;
@@ -37,7 +37,6 @@ export default function MobileScheduleView({
   onWeekChange,
   onWorkOptionClick,
   onFullWeekSet,
-  onExportToExcel,
   onViewReasons,
   isToday,
   isPastDate,
@@ -138,13 +137,15 @@ export default function MobileScheduleView({
               <Eye className="w-4 h-4" />
               <span>View Reasons</span>
             </button>
-            <button 
-              onClick={onExportToExcel}
-              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export</span>
-            </button>
+            <div className="flex-1">
+              <ExportDropdown
+                currentUser={currentUser}
+                teamMembers={teamMembers}
+                selectedTeam={selectedTeam}
+                scheduleData={scheduleData}
+                currentWeekDays={weekDays}
+              />
+            </div>
           </div>
         )}
       </div>

@@ -126,3 +126,59 @@ export interface GlobalSprintContextType {
   updateSprintSettings: (settings: Partial<GlobalSprintSettings>) => Promise<boolean>;
   startNewSprint: (lengthWeeks: number) => Promise<boolean>;
 }
+
+// Export-related types
+export type WeekExportType = 'current-week' | 'previous-week' | 'next-week' | 'specific-week';
+export type SprintExportType = 'current-sprint' | 'previous-sprint' | 'specific-sprint';
+export type ExportFormat = 'csv' | 'excel';
+export type ExportGroupBy = 'week' | 'month' | 'none';
+
+export interface WeekExportOptions {
+  exportType: WeekExportType;
+  specificWeekStart?: Date;
+  includeReasons: boolean;
+  includeStatistics: boolean;
+  format: ExportFormat;
+}
+
+export interface SprintExportOptions {
+  exportType: SprintExportType;
+  sprintId?: number;
+  includeWeeklyBreakdown: boolean;
+  includeCapacityAnalysis: boolean;
+  includeTeamSummary: boolean;
+  format: ExportFormat;
+}
+
+export interface CustomExportOptions {
+  startDate: Date;
+  endDate: Date;
+  groupBy: ExportGroupBy;
+  includeReasons: boolean;
+  includeStatistics: boolean;
+  includeWeekends: boolean;
+  format: ExportFormat;
+}
+
+export interface ExportOptions {
+  type: 'week' | 'sprint' | 'custom';
+  weekOptions?: WeekExportOptions;
+  sprintOptions?: SprintExportOptions;
+  customOptions?: CustomExportOptions;
+}
+
+export interface ExportData {
+  teamName: string;
+  exportType: string;
+  dateRange: string;
+  generatedBy: string;
+  generatedAt: Date;
+  members: TeamMember[];
+  scheduleData: WeekData;
+  statistics?: {
+    totalHours: number;
+    averageHours: number;
+    utilizationPercentage: number;
+    capacityHours: number;
+  };
+}
