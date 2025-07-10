@@ -44,18 +44,42 @@ export default function ExportDropdown({
     setIsOpen(false);
     
     try {
+      // Validate inputs
+      if (!selectedTeam?.id || !selectedTeam?.name) {
+        throw new Error('Invalid team selected');
+      }
+      
+      if (!currentUser?.name) {
+        throw new Error('Invalid user information');
+      }
+      
+      if (!Array.isArray(teamMembers) || teamMembers.length === 0) {
+        throw new Error('No team members found');
+      }
+      
       const { startDate, endDate } = calculateWeekRange(type);
       const weekDays = getWeekDays(startDate);
+      
+      // Validate calculated dates
+      if (!startDate || !endDate || weekDays.length === 0) {
+        throw new Error('Invalid date range calculated');
+      }
       
       // Fetch data for the specific week
       const startDateStr = startDate.toISOString().split('T')[0];
       const endDateStr = endDate.toISOString().split('T')[0];
       const weekData = await DatabaseService.getScheduleEntries(startDateStr, endDateStr, selectedTeam.id);
       
-      // Calculate statistics
-      const statistics = calculateExportStatistics(teamMembers, weekData, weekDays);
+      // Handle case where no data is returned
+      if (!weekData) {
+        console.warn('No schedule data found for the selected week');
+        // Continue with empty data - this is valid for weeks without entries
+      }
       
-      // Prepare export data
+      // Calculate statistics with error handling
+      const statistics = calculateExportStatistics(teamMembers, weekData || {}, weekDays);
+      
+      // Prepare export data with validation
       const exportData = {
         teamName: selectedTeam.name,
         exportType: getWeekExportTypeName(type),
@@ -63,18 +87,27 @@ export default function ExportDropdown({
         generatedBy: currentUser.name,
         generatedAt: new Date(),
         members: teamMembers,
-        scheduleData: weekData,
+        scheduleData: weekData || {},
         statistics
       };
       
-      // Generate and download
+      // Generate and download with error handling
       const csvContent = generateWeekCSV(exportData);
+      if (!csvContent || csvContent.trim().length === 0) {
+        throw new Error('Failed to generate export content');
+      }
+      
       const filename = generateExportFilename('week', selectedTeam.name, startDate, endDate, 'excel');
+      if (!filename) {
+        throw new Error('Failed to generate filename');
+      }
+      
       downloadFile(csvContent, filename, 'excel');
       
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      console.error('Week export failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Export failed';
+      alert(`Export failed: ${errorMessage}. Please try again.`);
     } finally {
       setIsExporting(false);
     }

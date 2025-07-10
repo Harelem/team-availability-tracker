@@ -367,6 +367,101 @@ export const DatabaseService = {
     return true
   },
 
+  async updateSprintDates(startDate: string, endDate?: string, updatedBy: string = 'Harel Mazan'): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      console.error('Supabase not configured for updateSprintDates')
+      return false
+    }
+
+    try {
+      // Validate input parameters
+      if (!startDate || typeof startDate !== 'string') {
+        console.error('Invalid startDate parameter')
+        return false
+      }
+
+      if (updatedBy !== 'Harel Mazan') {
+        console.error('Unauthorized user attempting to update sprint dates:', updatedBy)
+        return false
+      }
+
+      // Get current sprint settings to calculate end date if not provided
+      const currentSprint = await this.getCurrentGlobalSprint()
+      if (!currentSprint) {
+        console.error('No current sprint found for date update')
+        return false
+      }
+
+      let calculatedEndDate = endDate
+      if (!calculatedEndDate) {
+        // Calculate end date based on start date and current sprint length
+        const start = new Date(startDate)
+        if (isNaN(start.getTime())) {
+          console.error('Invalid start date format:', startDate)
+          return false
+        }
+        
+        const end = new Date(start)
+        end.setDate(start.getDate() + (currentSprint.sprint_length_weeks * 7) - 1)
+        calculatedEndDate = end.toISOString().split('T')[0]
+      }
+
+      // Validate dates
+      const start = new Date(startDate)
+      const end = new Date(calculatedEndDate)
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        console.error('Invalid date format in updateSprintDates:', { startDate, endDate: calculatedEndDate })
+        return false
+      }
+      
+      if (start >= end) {
+        console.error('Invalid date range: start date must be before end date')
+        return false
+      }
+
+      // Check for reasonable date bounds
+      const now = new Date()
+      const tenYearsAgo = new Date(now.getFullYear() - 10, now.getMonth(), now.getDate())
+      const tenYearsFromNow = new Date(now.getFullYear() + 10, now.getMonth(), now.getDate())
+      
+      if (start < tenYearsAgo || start > tenYearsFromNow || end < tenYearsAgo || end > tenYearsFromNow) {
+        console.error('Date out of reasonable bounds (±10 years)')
+        return false
+      }
+
+      // Calculate new sprint length based on actual dates
+      const durationDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      const newSprintLength = Math.round(durationDays / 7)
+
+      if (newSprintLength < 1 || newSprintLength > 4) {
+        console.error('Invalid sprint length: must be between 1 and 4 weeks, got:', newSprintLength)
+        return false
+      }
+
+      // Perform database update with error handling
+      const { error } = await supabase
+        .from('global_sprint_settings')
+        .update({
+          sprint_start_date: startDate,
+          sprint_length_weeks: newSprintLength,
+          updated_by: updatedBy,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 1)
+
+      if (error) {
+        console.error('Database error updating sprint dates:', error)
+        return false
+      }
+
+      return true
+    } catch (err) {
+      console.error('Unexpected error in updateSprintDates:', err)
+      return false
+    }
+  },
+
   async getGlobalSprintSettings(): Promise<GlobalSprintSettings | null> {
     if (!isSupabaseConfigured()) {
       return null

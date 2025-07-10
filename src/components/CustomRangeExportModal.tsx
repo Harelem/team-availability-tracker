@@ -5,7 +5,6 @@ import { Calendar, Download, X, AlertCircle } from 'lucide-react';
 import { TeamMember, Team, ExportFormat } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import { 
-  validateDateRange, 
   formatDateRange, 
   generateExportFilename,
   getDaysDifference
@@ -83,10 +82,41 @@ export default function CustomRangeExportModal({
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    try {
-      validateDateRange(start, end);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid date range');
+    // Basic date validation
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      setError('Invalid date format selected');
+      return false;
+    }
+    
+    if (start >= end) {
+      setError('Start date must be before end date');
+      return false;
+    }
+    
+    // Check date range limits
+    const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays > 365) {
+      setError('Date range cannot exceed 1 year (365 days)');
+      return false;
+    }
+    
+    if (diffDays < 1) {
+      setError('Date range must be at least 1 day');
+      return false;
+    }
+    
+    // Check reasonable date bounds
+    const now = new Date();
+    const tenYearsAgo = new Date(now.getFullYear() - 10, now.getMonth(), now.getDate());
+    const tenYearsFromNow = new Date(now.getFullYear() + 10, now.getMonth(), now.getDate());
+    
+    if (start < tenYearsAgo || start > tenYearsFromNow) {
+      setError('Start date must be within reasonable bounds (±10 years)');
+      return false;
+    }
+    
+    if (end < tenYearsAgo || end > tenYearsFromNow) {
+      setError('End date must be within reasonable bounds (±10 years)');
       return false;
     }
     
@@ -100,8 +130,26 @@ export default function CustomRangeExportModal({
     setError(null);
     
     try {
+      // Validate required props
+      if (!selectedTeam?.id || !selectedTeam?.name) {
+        throw new Error('Invalid team selected');
+      }
+      
+      if (!currentUser?.name) {
+        throw new Error('Invalid user information');
+      }
+      
+      if (!Array.isArray(teamMembers) || teamMembers.length === 0) {
+        throw new Error('No team members found');
+      }
+      
       const start = new Date(startDate);
       const end = new Date(endDate);
+      
+      // Double-check date validation
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        throw new Error('Invalid date format');
+      }
       
       // Fetch data for the custom range
       const customData = await DatabaseService.getScheduleEntries(
@@ -110,23 +158,40 @@ export default function CustomRangeExportModal({
         selectedTeam.id
       );
       
+      // Handle case where no data is returned (valid scenario)
+      if (!customData) {
+        console.warn('No schedule data found for the selected date range');
+      }
+      
       // Generate all days in the range
       const allDays: Date[] = [];
       const currentDate = new Date(start);
-      while (currentDate <= end) {
+      let dayCount = 0;
+      const maxDays = 400; // Safety limit to prevent infinite loops
+      
+      while (currentDate <= end && dayCount < maxDays) {
         // Include weekends if requested, otherwise only weekdays (Sun-Thu)
         if (includeWeekends || (currentDate.getDay() >= 0 && currentDate.getDay() <= 4)) {
           allDays.push(new Date(currentDate));
         }
         currentDate.setDate(currentDate.getDate() + 1);
+        dayCount++;
       }
       
-      // Calculate statistics
+      if (dayCount >= maxDays) {
+        throw new Error('Date range too large - please select a smaller range');
+      }
+      
+      if (allDays.length === 0) {
+        throw new Error('No valid days found in the selected range');
+      }
+      
+      // Calculate statistics with error handling
       const statistics = includeStatistics 
-        ? calculateExportStatistics(teamMembers, customData, allDays)
+        ? calculateExportStatistics(teamMembers, customData || {}, allDays)
         : undefined;
       
-      // Prepare export data
+      // Prepare export data with validation
       const exportData = {
         teamName: selectedTeam.name,
         exportType: `Custom Range (${getDaysDifference(start, end) + 1} days)`,
@@ -134,13 +199,26 @@ export default function CustomRangeExportModal({
         generatedBy: currentUser.name,
         generatedAt: new Date(),
         members: teamMembers,
-        scheduleData: customData,
+        scheduleData: customData || {},
         statistics
       };
       
-      // Generate and download
+      // Validate export data
+      if (!exportData.teamName || !exportData.generatedBy) {
+        throw new Error('Invalid export data generated');
+      }
+      
+      // Generate and download with error handling
       const csvContent = generateWeekCSV(exportData);
+      if (!csvContent || csvContent.trim().length === 0) {
+        throw new Error('Failed to generate export content');
+      }
+      
       const filename = generateExportFilename('custom', selectedTeam.name, start, end, format);
+      if (!filename) {
+        throw new Error('Failed to generate filename');
+      }
+      
       downloadFile(csvContent, filename, format);
       
       // Close modal on success
@@ -148,7 +226,8 @@ export default function CustomRangeExportModal({
       
     } catch (err) {
       console.error('Custom range export failed:', err);
-      setError('Export failed. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Export failed';
+      setError(`Export failed: ${errorMessage}`);
     } finally {
       setIsExporting(false);
     }

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Settings, Play, Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { X, Settings, Play, Calendar, Clock, AlertTriangle, Edit } from 'lucide-react';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
+import SprintDateEditor from './SprintDateEditor';
 
 interface GlobalSprintSettingsProps {
   isOpen: boolean;
@@ -10,9 +11,10 @@ interface GlobalSprintSettingsProps {
 }
 
 export default function GlobalSprintSettings({ isOpen, onClose }: GlobalSprintSettingsProps) {
-  const { currentSprint, updateSprintSettings, startNewSprint, isLoading } = useGlobalSprint();
+  const { currentSprint, updateSprintSettings, startNewSprint, updateSprintDates, isLoading } = useGlobalSprint();
   const [newSprintLength, setNewSprintLength] = useState(1);
   const [isStartingNewSprint, setIsStartingNewSprint] = useState(false);
+  const [showDateEditor, setShowDateEditor] = useState(false);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -125,6 +127,17 @@ export default function GlobalSprintSettings({ isOpen, onClose }: GlobalSprintSe
                     </div>
                   </div>
                   
+                  {/* Edit Dates Button */}
+                  <div className="mt-4 pt-4 border-t border-blue-200">
+                    <button
+                      onClick={() => setShowDateEditor(true)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Edit Sprint Dates
+                    </button>
+                  </div>
+                  
                   {/* Progress Bar */}
                   <div className="mt-4">
                     <div className="w-full bg-blue-200 rounded-full h-2">
@@ -219,6 +232,16 @@ export default function GlobalSprintSettings({ isOpen, onClose }: GlobalSprintSe
           )}
         </div>
       </div>
+      
+      {/* Sprint Date Editor Modal */}
+      {currentSprint && (
+        <SprintDateEditor
+          isOpen={showDateEditor}
+          onClose={() => setShowDateEditor(false)}
+          currentSprint={currentSprint}
+          onUpdateDates={updateSprintDates}
+        />
+      )}
     </div>
   );
 }

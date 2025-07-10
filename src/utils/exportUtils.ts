@@ -240,7 +240,7 @@ export const downloadFile = (content: string, filename: string, format: 'csv' | 
 };
 
 /**
- * Calculate export statistics
+ * Calculate export statistics with error handling
  */
 export const calculateExportStatistics = (
   members: TeamMember[],
@@ -252,17 +252,44 @@ export const calculateExportStatistics = (
   utilizationPercentage: number;
   capacityHours: number;
 } => {
-  const totalHours = calculateTeamHours(members, scheduleData, weekDays);
-  const averageHours = members.length > 0 ? Math.round(totalHours / members.length) : 0;
-  const capacityHours = members.length * weekDays.length * 7; // 7 hours per day
-  const utilizationPercentage = capacityHours > 0 
-    ? Math.round((totalHours / capacityHours) * 100) 
-    : 0;
+  // Input validation
+  if (!Array.isArray(members)) {
+    console.error('Invalid members array in calculateExportStatistics');
+    return { totalHours: 0, averageHours: 0, utilizationPercentage: 0, capacityHours: 0 };
+  }
   
-  return {
-    totalHours,
-    averageHours,
-    utilizationPercentage,
-    capacityHours
-  };
+  if (!scheduleData || typeof scheduleData !== 'object') {
+    console.error('Invalid scheduleData in calculateExportStatistics');
+    return { totalHours: 0, averageHours: 0, utilizationPercentage: 0, capacityHours: 0 };
+  }
+  
+  if (!Array.isArray(weekDays) || weekDays.length === 0) {
+    console.error('Invalid weekDays array in calculateExportStatistics');
+    return { totalHours: 0, averageHours: 0, utilizationPercentage: 0, capacityHours: 0 };
+  }
+
+  try {
+    const totalHours = calculateTeamHours(members, scheduleData, weekDays);
+    const averageHours = members.length > 0 ? Math.round(totalHours / members.length) : 0;
+    const capacityHours = members.length * weekDays.length * 7; // 7 hours per day
+    const utilizationPercentage = capacityHours > 0 
+      ? Math.round((totalHours / capacityHours) * 100) 
+      : 0;
+    
+    // Validate results
+    if (isNaN(totalHours) || isNaN(averageHours) || isNaN(utilizationPercentage) || isNaN(capacityHours)) {
+      console.error('NaN values detected in export statistics calculation');
+      return { totalHours: 0, averageHours: 0, utilizationPercentage: 0, capacityHours: 0 };
+    }
+    
+    return {
+      totalHours: Math.max(0, totalHours),
+      averageHours: Math.max(0, averageHours),
+      utilizationPercentage: Math.max(0, Math.min(100, utilizationPercentage)),
+      capacityHours: Math.max(0, capacityHours)
+    };
+  } catch (error) {
+    console.error('Error calculating export statistics:', error);
+    return { totalHours: 0, averageHours: 0, utilizationPercentage: 0, capacityHours: 0 };
+  }
 };

@@ -77,6 +77,24 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
     }
   };
 
+  // Update sprint dates (admin only)
+  const updateSprintDates = async (startDate: string, endDate?: string): Promise<boolean> => {
+    try {
+      const success = await DatabaseService.updateSprintDates(startDate, endDate, 'Harel Mazan');
+      
+      if (success) {
+        await refreshSprint(); // Refresh data after updating dates
+        return true;
+      } else {
+        setError('Failed to update sprint dates');
+        return false;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update sprint dates');
+      return false;
+    }
+  };
+
   // Load data on mount and when teamId changes
   useEffect(() => {
     refreshSprint();
@@ -95,7 +113,8 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
     error,
     refreshSprint,
     updateSprintSettings,
-    startNewSprint
+    startNewSprint,
+    updateSprintDates
   };
 
   return (

@@ -125,6 +125,7 @@ export interface GlobalSprintContextType {
   refreshSprint: () => Promise<void>;
   updateSprintSettings: (settings: Partial<GlobalSprintSettings>) => Promise<boolean>;
   startNewSprint: (lengthWeeks: number) => Promise<boolean>;
+  updateSprintDates: (startDate: string, endDate?: string) => Promise<boolean>;
 }
 
 // Export-related types
