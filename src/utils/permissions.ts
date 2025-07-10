@@ -20,7 +20,9 @@ export const canManageSprints = (user: TeamMember | null): boolean => {
  * Check if user can view sprint information (everyone can)
  */
 export const canViewSprints = (user: TeamMember | null): boolean => {
-  return user !== null;
+  const canView = user !== null;
+  console.log('🔍 DEBUG: canViewSprints called', { user: user?.name, canView });
+  return canView;
 };
 
 /**
