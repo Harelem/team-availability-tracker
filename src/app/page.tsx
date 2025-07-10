@@ -7,8 +7,9 @@ import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
 import GlobalSprintDashboard from '@/components/GlobalSprintDashboard';
+import COOExecutiveDashboard from '@/components/COOExecutiveDashboard';
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
-import { canViewSprints } from '@/utils/permissions';
+import { canViewSprints, canAccessCOODashboard, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -165,7 +166,7 @@ function HomeContent() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                   <p className="text-sm sm:text-base text-gray-600 truncate">
                     <strong>{selectedTeam.name}</strong> • Welcome, <strong>{selectedUser.name}</strong>
-                    {selectedUser.isManager && <span className="text-blue-600 ml-1">(Manager)</span>}
+                    <span className="text-blue-600 ml-1">({getUserRole(selectedUser)})</span>
                   </p>
                 </div>
               </div>
@@ -188,6 +189,13 @@ function HomeContent() {
             </div>
           </div>
         </div>
+        
+        {/* COO Executive Dashboard - Only for COO/Admin users */}
+        {canAccessCOODashboard(selectedUser) && (
+          <div className="mb-4 sm:mb-6">
+            <COOExecutiveDashboard />
+          </div>
+        )}
         
         {/* Global Sprint Provider wraps both dashboard and schedule table */}
         {canViewSprints(selectedUser) && (

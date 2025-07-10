@@ -183,3 +183,108 @@ export interface ExportData {
     capacityHours: number;
   };
 }
+
+// COO Dashboard Types
+export interface CompanyCapacityMetrics {
+  currentWeek: {
+    potentialHours: number;
+    actualHours: number;
+    utilizationPercent: number;
+    capacityGap: number;
+    overCapacityTeams: TeamCapacityStatus[];
+    underUtilizedTeams: TeamCapacityStatus[];
+  };
+  currentSprint: {
+    totalPotentialHours: number;
+    actualHoursToDate: number;
+    projectedSprintTotal: number;
+    sprintUtilizationTrend: number[];
+    expectedSprintOutcome: number;
+  };
+  historicalTrends: {
+    weeklyUtilization: WeeklyUtilization[];
+    averageUtilization: number;
+    peakUtilization: number;
+    minimumUtilization: number;
+  };
+}
+
+export interface TeamCapacityStatus {
+  teamId: number;
+  teamName: string;
+  memberCount: number;
+  weeklyPotential: number;
+  actualHours: number;
+  utilization: number;
+  capacityGap: number;
+  capacityStatus: 'optimal' | 'under' | 'over';
+  color?: string;
+}
+
+export interface WeeklyUtilization {
+  week: string;
+  utilization: number;
+  totalHours: number;
+  potentialHours: number;
+}
+
+export interface CapacityForecast {
+  nextWeekProjection: {
+    potentialHours: number;
+    projectedActual: number;
+    expectedUtilization: number;
+    confidenceLevel: number;
+  };
+  nextSprintProjection: {
+    sprintPotential: number;
+    projectedOutcome: number;
+    riskFactors: string[];
+    recommendedActions: string[];
+  };
+  quarterlyOutlook: {
+    avgUtilization: number;
+    capacityTrends: CapacityTrend[];
+    resourceNeeds: ResourceNeed[];
+  };
+}
+
+export interface CapacityTrend {
+  period: string;
+  trend: 'increasing' | 'decreasing' | 'stable';
+  value: number;
+  change: number;
+}
+
+export interface ResourceNeed {
+  team: string;
+  needType: 'additional' | 'redistribution' | 'optimization';
+  priority: 'high' | 'medium' | 'low';
+  description: string;
+  impact: string;
+}
+
+export interface COODashboardData {
+  companyOverview: {
+    totalTeams: number;
+    totalMembers: number;
+    weeklyPotential: number;
+    currentUtilization: number;
+    capacityGap: number;
+  };
+  teamComparison: TeamCapacityStatus[];
+  sprintAnalytics: {
+    currentSprintNumber: number;
+    sprintWeeks: number;
+    sprintPotential: number;
+    sprintActual: number;
+    sprintUtilization: number;
+    weeklyBreakdown: {
+      week: number;
+      potential: number;
+      actual: number;
+      utilization: number;
+    }[];
+  };
+  optimizationRecommendations: string[];
+  capacityForecast: CapacityForecast;
+}

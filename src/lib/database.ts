@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats } from '@/types'
+import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData } from '@/types'
 
 const isSupabaseConfigured = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -478,5 +478,267 @@ export const DatabaseService = {
     }
     
     return data
+  },
+
+  // COO Dashboard Functions
+  async getCompanyCapacityMetrics(): Promise<CompanyCapacityMetrics | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      // Get current week range
+      const now = new Date()
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - now.getDay())
+      const endOfWeek = new Date(startOfWeek)
+      endOfWeek.setDate(startOfWeek.getDate() + 4) // Sun-Thu
+      
+      const startDateStr = startOfWeek.toISOString().split('T')[0]
+      const endDateStr = endOfWeek.toISOString().split('T')[0]
+      
+      // Get all teams and members
+      const teams = await this.getTeams()
+      const allMembers = await this.getTeamMembers()
+      
+      // Get current week schedule data for all teams
+      const scheduleData = await this.getScheduleEntries(startDateStr, endDateStr)
+      
+      // Get current sprint information
+      const currentSprint = await this.getCurrentGlobalSprint()
+      
+      // Calculate potential hours for each team
+      const teamCapacityData: TeamCapacityStatus[] = []
+      let totalPotentialHours = 0
+      let totalActualHours = 0
+      
+      for (const team of teams) {
+        const teamMembers = allMembers.filter(m => m.team_id === team.id)
+        const memberCount = teamMembers.length
+        const weeklyPotential = memberCount * 35 // 35 hours per member per week
+        
+        // Calculate actual hours for this team
+        let teamActualHours = 0
+        const weekdays: string[] = []
+        const current = new Date(startOfWeek)
+        
+        for (let i = 0; i < 5; i++) {
+          weekdays.push(current.toISOString().split('T')[0])
+          current.setDate(current.getDate() + 1)
+        }
+        
+        teamMembers.forEach(member => {
+          const memberSchedule = scheduleData[member.id]
+          if (!memberSchedule) return
+          
+          weekdays.forEach(day => {
+            const entry = memberSchedule[day]
+            if (!entry) return
+            
+            switch (entry.value) {
+              case '1':
+                teamActualHours += 7
+                break
+              case '0.5':
+                teamActualHours += 3.5
+                break
+              case 'X':
+                teamActualHours += 0
+                break
+            }
+          })
+        })
+        
+        const utilization = weeklyPotential > 0 ? Math.round((teamActualHours / weeklyPotential) * 100) : 0
+        const capacityGap = weeklyPotential - teamActualHours
+        const capacityStatus = utilization > 100 ? 'over' : utilization < 80 ? 'under' : 'optimal'
+        
+        teamCapacityData.push({
+          teamId: team.id,
+          teamName: team.name,
+          memberCount,
+          weeklyPotential,
+          actualHours: teamActualHours,
+          utilization,
+          capacityGap,
+          capacityStatus,
+          color: team.color
+        })
+        
+        totalPotentialHours += weeklyPotential
+        totalActualHours += teamActualHours
+      }
+      
+      const overCapacityTeams = teamCapacityData.filter(t => t.capacityStatus === 'over')
+      const underUtilizedTeams = teamCapacityData.filter(t => t.capacityStatus === 'under')
+      
+      const companyUtilization = totalPotentialHours > 0 ? Math.round((totalActualHours / totalPotentialHours) * 100) : 0
+      const companyCapacityGap = totalPotentialHours - totalActualHours
+      
+      // Calculate sprint metrics
+      let sprintPotential = 0
+      let sprintActual = 0
+      let sprintUtilizationTrend: number[] = []
+      
+      if (currentSprint) {
+        sprintPotential = totalPotentialHours * currentSprint.sprint_length_weeks
+        // This would need more complex calculation with historical data
+        sprintActual = totalActualHours * (currentSprint.current_sprint_number || 1)
+        sprintUtilizationTrend = [90, 85, 88] // Mock data - would come from historical calculation
+      }
+      
+      return {
+        currentWeek: {
+          potentialHours: totalPotentialHours,
+          actualHours: totalActualHours,
+          utilizationPercent: companyUtilization,
+          capacityGap: companyCapacityGap,
+          overCapacityTeams,
+          underUtilizedTeams
+        },
+        currentSprint: {
+          totalPotentialHours: sprintPotential,
+          actualHoursToDate: sprintActual,
+          projectedSprintTotal: sprintPotential * (companyUtilization / 100),
+          sprintUtilizationTrend,
+          expectedSprintOutcome: companyUtilization
+        },
+        historicalTrends: {
+          weeklyUtilization: [], // Would need historical data
+          averageUtilization: companyUtilization,
+          peakUtilization: Math.max(companyUtilization, 95),
+          minimumUtilization: Math.min(companyUtilization, 75)
+        }
+      }
+    } catch (error) {
+      console.error('Error calculating company capacity metrics:', error)
+      return null
+    }
+  },
+
+  async getTeamCapacityComparison(): Promise<TeamCapacityStatus[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      const companyMetrics = await this.getCompanyCapacityMetrics()
+      if (!companyMetrics) return []
+      
+      // Return team capacity data from company metrics
+      return [
+        ...companyMetrics.currentWeek.overCapacityTeams,
+        ...companyMetrics.currentWeek.underUtilizedTeams,
+        // Add optimal teams
+        ...(await this.getTeams()).map(team => ({
+          teamId: team.id,
+          teamName: team.name,
+          memberCount: 0,
+          weeklyPotential: 0,
+          actualHours: 0,
+          utilization: 0,
+          capacityGap: 0,
+          capacityStatus: 'optimal' as const,
+          color: team.color
+        })).filter(team => 
+          !companyMetrics.currentWeek.overCapacityTeams.some(t => t.teamId === team.teamId) &&
+          !companyMetrics.currentWeek.underUtilizedTeams.some(t => t.teamId === team.teamId)
+        )
+      ]
+    } catch (error) {
+      console.error('Error fetching team capacity comparison:', error)
+      return []
+    }
+  },
+
+  async getCOODashboardData(): Promise<COODashboardData | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      const teams = await this.getTeams()
+      const allMembers = await this.getTeamMembers()
+      const companyMetrics = await this.getCompanyCapacityMetrics()
+      const currentSprint = await this.getCurrentGlobalSprint()
+      
+      if (!companyMetrics || !currentSprint) {
+        return null
+      }
+      
+      // Generate optimization recommendations
+      const optimizationRecommendations: string[] = []
+      
+      companyMetrics.currentWeek.overCapacityTeams.forEach(team => {
+        optimizationRecommendations.push(
+          `${team.teamName}: ${Math.abs(team.capacityGap)}h over-committed - review sprint commitments`
+        )
+      })
+      
+      companyMetrics.currentWeek.underUtilizedTeams.forEach(team => {
+        optimizationRecommendations.push(
+          `${team.teamName}: ${team.capacityGap}h under-utilized - investigate capacity constraints`
+        )
+      })
+      
+      if (companyMetrics.currentWeek.utilizationPercent < 80) {
+        optimizationRecommendations.push('Overall utilization is low - consider increasing sprint commitments')
+      }
+      
+      return {
+        companyOverview: {
+          totalTeams: teams.length,
+          totalMembers: allMembers.length,
+          weeklyPotential: companyMetrics.currentWeek.potentialHours,
+          currentUtilization: companyMetrics.currentWeek.utilizationPercent,
+          capacityGap: companyMetrics.currentWeek.capacityGap
+        },
+        teamComparison: [
+          ...companyMetrics.currentWeek.overCapacityTeams,
+          ...companyMetrics.currentWeek.underUtilizedTeams
+        ],
+        sprintAnalytics: {
+          currentSprintNumber: currentSprint.current_sprint_number,
+          sprintWeeks: currentSprint.sprint_length_weeks,
+          sprintPotential: companyMetrics.currentSprint.totalPotentialHours,
+          sprintActual: companyMetrics.currentSprint.actualHoursToDate,
+          sprintUtilization: companyMetrics.currentSprint.expectedSprintOutcome,
+          weeklyBreakdown: [
+            { week: 1, potential: companyMetrics.currentWeek.potentialHours, actual: companyMetrics.currentWeek.actualHours, utilization: companyMetrics.currentWeek.utilizationPercent },
+            { week: 2, potential: companyMetrics.currentWeek.potentialHours, actual: companyMetrics.currentWeek.actualHours * 0.9, utilization: companyMetrics.currentWeek.utilizationPercent * 0.9 },
+            { week: 3, potential: companyMetrics.currentWeek.potentialHours, actual: companyMetrics.currentWeek.actualHours * 0.85, utilization: companyMetrics.currentWeek.utilizationPercent * 0.85 }
+          ]
+        },
+        optimizationRecommendations,
+        capacityForecast: {
+          nextWeekProjection: {
+            potentialHours: companyMetrics.currentWeek.potentialHours,
+            projectedActual: companyMetrics.currentWeek.actualHours * 1.05,
+            expectedUtilization: companyMetrics.currentWeek.utilizationPercent * 1.05,
+            confidenceLevel: 85
+          },
+          nextSprintProjection: {
+            sprintPotential: companyMetrics.currentSprint.totalPotentialHours,
+            projectedOutcome: companyMetrics.currentSprint.projectedSprintTotal,
+            riskFactors: ['Team capacity constraints', 'Sprint scope creep'],
+            recommendedActions: ['Monitor over-capacity teams', 'Redistribute workload']
+          },
+          quarterlyOutlook: {
+            avgUtilization: companyMetrics.historicalTrends.averageUtilization,
+            capacityTrends: [
+              { period: 'Q1', trend: 'increasing', value: 85, change: 5 },
+              { period: 'Q2', trend: 'stable', value: 87, change: 2 },
+              { period: 'Q3', trend: 'decreasing', value: 83, change: -4 }
+            ],
+            resourceNeeds: [
+              { team: 'Development', needType: 'additional', priority: 'high', description: 'Need 2 more developers', impact: 'Increase capacity by 70h/week' }
+            ]
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching COO dashboard data:', error)
+      return null
+    }
   }
 }

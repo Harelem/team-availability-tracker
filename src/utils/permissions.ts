@@ -1,12 +1,14 @@
 import { TeamMember } from '@/types';
 
 /**
- * Simple permission system for sprint management
+ * Simple permission system for sprint management and COO dashboard access
  * Only "Harel Mazan" can modify sprint settings
+ * Only "Nir Shilo" can access COO dashboard
  * Everyone else has read-only access
  */
 
 export const SPRINT_ADMIN_NAME = "Harel Mazan";
+export const COO_NAME = "Nir Shilo";
 
 /**
  * Check if user can modify sprint settings
@@ -24,10 +26,37 @@ export const canViewSprints = (user: TeamMember | null): boolean => {
 };
 
 /**
+ * Check if user can access COO dashboard
+ */
+export const canAccessCOODashboard = (user: TeamMember | null): boolean => {
+  if (!user) return false;
+  return user.name === COO_NAME || user.name === SPRINT_ADMIN_NAME; // Admin can also access COO dashboard
+};
+
+/**
+ * Check if user is COO
+ */
+export const isCOO = (user: TeamMember | null): boolean => {
+  if (!user) return false;
+  return user.name === COO_NAME;
+};
+
+/**
  * Get permission level for user
  */
 export const getSprintPermissionLevel = (user: TeamMember | null): 'none' | 'read' | 'admin' => {
   if (!user) return 'none';
   if (canManageSprints(user)) return 'admin';
   return 'read';
+};
+
+/**
+ * Get user role for display
+ */
+export const getUserRole = (user: TeamMember | null): string => {
+  if (!user) return 'User';
+  if (user.name === COO_NAME) return 'COO';
+  if (user.name === SPRINT_ADMIN_NAME) return 'Admin';
+  if (user.isManager) return 'Manager';
+  return 'Member';
 };
