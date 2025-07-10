@@ -6,8 +6,9 @@ import ScheduleTable from '@/components/ScheduleTable';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
-import SprintProgressIndicator from '@/components/SprintProgressIndicator';
-import SprintAnalytics from '@/components/SprintAnalytics';
+import GlobalSprintDashboard from '@/components/GlobalSprintDashboard';
+import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
+import { canViewSprints } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -169,10 +170,6 @@ function HomeContent() {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                {/* Sprint Progress - Desktop Only */}
-                <div className="hidden lg:block">
-                  <SprintProgressIndicator team={selectedTeam} className="w-64" />
-                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedUser(null)}
@@ -190,18 +187,15 @@ function HomeContent() {
               </div>
             </div>
           </div>
-          {/* Sprint Progress Indicator */}
-          <SprintProgressIndicator 
-            team={selectedTeam} 
-            className="lg:hidden"
-          />
         </div>
         
-        {/* Sprint Analytics - Desktop Only */}
-        {selectedUser.isManager && (
-          <div className="hidden lg:block mb-6">
-            <SprintAnalytics team={selectedTeam} />
-          </div>
+        {/* Global Sprint Dashboard - Visible to all users */}
+        {canViewSprints(selectedUser) && (
+          <GlobalSprintProvider teamId={selectedTeam.id}>
+            <div className="mb-6">
+              <GlobalSprintDashboard team={selectedTeam} />
+            </div>
+          </GlobalSprintProvider>
         )}
         
         <ScheduleTable 

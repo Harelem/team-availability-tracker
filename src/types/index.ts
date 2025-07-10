@@ -73,19 +73,56 @@ export interface TeamContextType {
   switchTeam: () => void;
 }
 
-export interface TeamSprint {
+// Global Sprint System Types
+export interface GlobalSprintSettings {
   id: number;
-  team_id: number;
-  sprint_number: number;
-  start_date: string;
-  end_date: string;
-  created_at?: string;
+  sprint_length_weeks: number;
+  current_sprint_number: number;
+  sprint_start_date: string;
+  created_at: string;
+  updated_at: string;
+  updated_by: string;
 }
 
-export interface TeamAnalytics {
-  currentWeekHours: number;
-  sprintHours: number;
-  averageHoursPerMember: number;
-  capacityUtilization: number;
-  teamCapacity: number;
+export interface CurrentGlobalSprint {
+  id: number;
+  sprint_length_weeks: number;
+  current_sprint_number: number;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  days_remaining: number;
+  progress_percentage: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+export interface TeamSprintStats {
+  team_id: number;
+  team_name: string;
+  description?: string;
+  color?: string;
+  team_size: number;
+  manager_count: number;
+  current_sprint_number: number;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  progress_percentage: number;
+  days_remaining: number;
+  is_active: boolean;
+  sprint_hours: number;
+  current_week_hours: number;
+  total_capacity_hours: number;
+  capacity_utilization: number;
+}
+
+export interface GlobalSprintContextType {
+  currentSprint: CurrentGlobalSprint | null;
+  teamStats: TeamSprintStats | null;
+  isLoading: boolean;
+  error: string | null;
+  refreshSprint: () => Promise<void>;
+  updateSprintSettings: (settings: Partial<GlobalSprintSettings>) => Promise<boolean>;
+  startNewSprint: (lengthWeeks: number) => Promise<boolean>;
 }

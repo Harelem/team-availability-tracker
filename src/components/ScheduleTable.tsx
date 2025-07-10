@@ -6,7 +6,8 @@ import { TeamMember, Team, WorkOption, WeekData, ReasonDialogData } from '@/type
 import ReasonDialog from './ReasonDialog';
 import ViewReasonsModal from './ViewReasonsModal';
 import MobileScheduleView from './MobileScheduleView';
-import SprintSettingsModal from './SprintSettingsModal';
+import GlobalSprintSettings from './GlobalSprintSettings';
+import { canManageSprints } from '@/utils/permissions';
 import { DatabaseService } from '@/lib/database';
 import * as XLSX from 'xlsx';
 
@@ -29,7 +30,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
   const [scheduleData, setScheduleData] = useState<WeekData>({});
   const [reasonDialog, setReasonDialog] = useState<{ isOpen: boolean; data: ReasonDialogData | null }>({ isOpen: false, data: null });
   const [viewReasonsModal, setViewReasonsModal] = useState(false);
-  const [sprintSettingsModal, setSprintSettingsModal] = useState(false);
+  const [globalSprintSettings, setGlobalSprintSettings] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Calculate current week dates
@@ -380,31 +381,38 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
             </div>
             
             {/* Manager buttons */}
-            {currentUser.isManager && (
-              <div className="flex gap-2 justify-center sm:justify-end">
+            <div className="flex gap-2 justify-center sm:justify-end">
+              {/* Sprint Settings - Only for Harel Mazan */}
+              {canManageSprints(currentUser) && (
                 <button 
-                  onClick={() => setSprintSettingsModal(true)}
+                  onClick={() => setGlobalSprintSettings(true)}
                   className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2.5 rounded-lg active:bg-purple-700 transition-colors text-sm min-h-[44px] touch-manipulation"
                 >
                   <Settings className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sprints</span>
+                  <span className="hidden sm:inline">Sprint Settings</span>
                 </button>
-                <button 
-                  onClick={() => setViewReasonsModal(true)}
-                  className="flex items-center gap-1.5 bg-gray-600 text-white px-3 py-2.5 rounded-lg active:bg-gray-700 transition-colors text-sm min-h-[44px] touch-manipulation"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span className="hidden sm:inline">Reasons</span>
-                </button>
-                <button 
-                  onClick={exportToExcel}
-                  className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2.5 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">Export</span>
-                </button>
-              </div>
-            )}
+              )}
+              
+              {/* Standard manager buttons */}
+              {currentUser.isManager && (
+                <>
+                  <button 
+                    onClick={() => setViewReasonsModal(true)}
+                    className="flex items-center gap-1.5 bg-gray-600 text-white px-3 py-2.5 rounded-lg active:bg-gray-700 transition-colors text-sm min-h-[44px] touch-manipulation"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span className="hidden sm:inline">Reasons</span>
+                  </button>
+                  <button 
+                    onClick={exportToExcel}
+                    className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2.5 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Export</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -607,14 +615,9 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         weekDays={weekDays}
       />
       
-      <SprintSettingsModal
-        isOpen={sprintSettingsModal}
-        onClose={() => setSprintSettingsModal(false)}
-        team={selectedTeam}
-        onSprintUpdate={() => {
-          // Optionally refresh data or show notification
-          console.log('Sprint updated');
-        }}
+      <GlobalSprintSettings
+        isOpen={globalSprintSettings}
+        onClose={() => setGlobalSprintSettings(false)}
       />
     </div>
   );
