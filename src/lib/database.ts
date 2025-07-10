@@ -285,10 +285,14 @@ export const DatabaseService = {
 
   // Sprint Management
   async getCurrentSprint(teamId: number): Promise<TeamSprint | null> {
+    console.log('🗄️ DatabaseService.getCurrentSprint: Starting for teamId:', teamId);
+    
     if (!isSupabaseConfigured()) {
+      console.log('🗄️ DatabaseService.getCurrentSprint: Supabase not configured');
       return null
     }
     
+    console.log('🗄️ DatabaseService.getCurrentSprint: Querying current_sprints view');
     const { data, error } = await supabase
       .from('current_sprints')
       .select('*')
@@ -296,10 +300,27 @@ export const DatabaseService = {
       .single()
     
     if (error) {
-      console.error('Error fetching current sprint:', error)
-      return null
+      console.error('🗄️ DatabaseService.getCurrentSprint: Error fetching current sprint:', error)
+      // Try fallback query to team_sprints table directly
+      console.log('🗄️ DatabaseService.getCurrentSprint: Trying fallback query to team_sprints table');
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('team_sprints')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('sprint_number', { ascending: false })
+        .limit(1)
+        .single()
+      
+      if (fallbackError) {
+        console.error('🗄️ DatabaseService.getCurrentSprint: Fallback query also failed:', fallbackError)
+        return null
+      }
+      
+      console.log('🗄️ DatabaseService.getCurrentSprint: Fallback query succeeded:', fallbackData)
+      return fallbackData
     }
     
+    console.log('🗄️ DatabaseService.getCurrentSprint: Success:', data)
     return data
   },
 

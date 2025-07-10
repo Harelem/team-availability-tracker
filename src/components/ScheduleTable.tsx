@@ -380,31 +380,40 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
             </div>
             
             {/* Manager buttons */}
-            {currentUser.isManager && (
-              <div className="flex gap-2 justify-center sm:justify-end">
-                <button 
-                  onClick={() => setSprintSettingsModal(true)}
-                  className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2.5 rounded-lg active:bg-purple-700 transition-colors text-sm min-h-[44px] touch-manipulation"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sprints</span>
-                </button>
-                <button 
-                  onClick={() => setViewReasonsModal(true)}
-                  className="flex items-center gap-1.5 bg-gray-600 text-white px-3 py-2.5 rounded-lg active:bg-gray-700 transition-colors text-sm min-h-[44px] touch-manipulation"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span className="hidden sm:inline">Reasons</span>
-                </button>
-                <button 
-                  onClick={exportToExcel}
-                  className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2.5 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">Export</span>
-                </button>
-              </div>
-            )}
+            <div className="flex gap-2 justify-center sm:justify-end">
+              {/* TEMPORARILY VISIBLE TO ALL USERS FOR TESTING */}
+              <button 
+                onClick={() => {
+                  console.log('🟣 Sprint Settings button clicked!');
+                  setSprintSettingsModal(true);
+                }}
+                className="flex items-center gap-1.5 bg-purple-600 text-white px-3 py-2.5 rounded-lg active:bg-purple-700 transition-colors text-sm min-h-[44px] touch-manipulation"
+                title="🧪 TEST MODE: Sprint Settings (normally manager-only)"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Sprints 🧪</span>
+              </button>
+              
+              {/* Original manager-only buttons */}
+              {currentUser.isManager && (
+                <>
+                  <button 
+                    onClick={() => setViewReasonsModal(true)}
+                    className="flex items-center gap-1.5 bg-gray-600 text-white px-3 py-2.5 rounded-lg active:bg-gray-700 transition-colors text-sm min-h-[44px] touch-manipulation"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span className="hidden sm:inline">Reasons</span>
+                  </button>
+                  <button 
+                    onClick={exportToExcel}
+                    className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2.5 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Export</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

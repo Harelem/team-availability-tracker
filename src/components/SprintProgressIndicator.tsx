@@ -19,12 +19,14 @@ export default function SprintProgressIndicator({ team, className = '' }: Sprint
   }, [team.id]);
 
   const loadCurrentSprint = async () => {
+    console.log('🏃‍♂️ SprintProgressIndicator: Loading current sprint for team:', team.id, team.name);
     setLoading(true);
     try {
       const sprint = await DatabaseService.getCurrentSprint(team.id);
+      console.log('🏃‍♂️ SprintProgressIndicator: Current sprint data:', sprint);
       setCurrentSprint(sprint);
     } catch (error) {
-      console.error('Error loading current sprint:', error);
+      console.error('🏃‍♂️ SprintProgressIndicator: Error loading current sprint:', error);
     } finally {
       setLoading(false);
     }
