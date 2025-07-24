@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Eye, RefreshCw } from 'lucide-react';
 import MobileScheduleCard from './MobileScheduleCard';
-import ExportDropdown from './ExportDropdown';
+import EnhancedManagerExportButton from './EnhancedManagerExportButton';
 import { TeamMember, Team, WorkOption, WeekData } from '@/types';
 
 interface MobileScheduleViewProps {
@@ -138,7 +138,7 @@ export default function MobileScheduleView({
               <span>View Reasons</span>
             </button>
             <div className="flex-1">
-              <ExportDropdown
+              <EnhancedManagerExportButton
                 currentUser={currentUser}
                 teamMembers={teamMembers}
                 selectedTeam={selectedTeam}

@@ -1,4 +1,4 @@
-import { TeamMember } from '@/types';
+import { TeamMember, COOUser } from '@/types';
 
 /**
  * Simple permission system for sprint management and COO dashboard access
@@ -59,4 +59,29 @@ export const getUserRole = (user: TeamMember | null): string => {
   if (user.name === SPRINT_ADMIN_NAME) return 'Admin';
   if (user.isManager) return 'Manager';
   return 'Member';
+};
+
+/**
+ * Check if COO user can export executive reports
+ */
+export const canExportCOOReports = (cooUser: COOUser | null): boolean => {
+  if (!cooUser) return false;
+  return cooUser.name === COO_NAME || cooUser.name === SPRINT_ADMIN_NAME;
+};
+
+/**
+ * Validate COO user permissions for specific actions
+ */
+export const validateCOOPermissions = (cooUser: COOUser | null, action: 'export' | 'view' | 'dashboard'): boolean => {
+  if (!cooUser) return false;
+  
+  switch (action) {
+    case 'export':
+      return canExportCOOReports(cooUser);
+    case 'view':
+    case 'dashboard':
+      return cooUser.name === COO_NAME || cooUser.name === SPRINT_ADMIN_NAME;
+    default:
+      return false;
+  }
 };

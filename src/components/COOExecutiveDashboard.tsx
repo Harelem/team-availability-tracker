@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
 import { COODashboardData, COOUser } from '@/types';
+import COOExportButton from './COOExportButton';
+import MobileCOODashboard from './MobileCOODashboard';
+import { useMobileDetection } from '@/hooks/useMobileDetection';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -32,6 +35,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const isMobile = useMobileDetection();
 
   const loadDashboardData = async () => {
     try {
@@ -90,6 +94,20 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
         return 'text-gray-600 bg-gray-100';
     }
   };
+
+  // Mobile view
+  if (isMobile && dashboardData) {
+    return (
+      <MobileCOODashboard
+        currentUser={currentUser}
+        dashboardData={dashboardData}
+        onBack={onBack}
+        onRefresh={refreshDashboard}
+        isLoading={isLoading}
+        error={error}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -160,13 +178,20 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
               </p>
             )}
           </div>
-          <button
-            onClick={refreshDashboard}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-          >
-            <Activity className="w-4 h-4" />
-            Refresh Data
-          </button>
+          <div className="flex items-center gap-3">
+            <COOExportButton 
+              currentUser={currentUser}
+              disabled={isLoading || error !== null}
+              className="hidden sm:flex"
+            />
+            <button
+              onClick={refreshDashboard}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            >
+              <Activity className="w-4 h-4" />
+              Refresh Data
+            </button>
+          </div>
         </div>
       </div>
 
@@ -224,6 +249,15 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
             {dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'}
           </div>
         </div>
+      </div>
+
+      {/* Mobile Export Button */}
+      <div className="sm:hidden mb-6">
+        <COOExportButton 
+          currentUser={currentUser}
+          disabled={isLoading || error !== null}
+          className="w-full justify-center"
+        />
       </div>
 
       {/* Team Capacity Analysis */}

@@ -7,7 +7,7 @@ import ReasonDialog from './ReasonDialog';
 import ViewReasonsModal from './ViewReasonsModal';
 import MobileScheduleView from './MobileScheduleView';
 import GlobalSprintSettings from './GlobalSprintSettings';
-import ExportDropdown from './ExportDropdown';
+import EnhancedManagerExportButton from './EnhancedManagerExportButton';
 import { canManageSprints } from '@/utils/permissions';
 import { DatabaseService } from '@/lib/database';
 
@@ -332,7 +332,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
                     <Eye className="w-4 h-4" />
                     <span className="hidden sm:inline">Reasons</span>
                   </button>
-                  <ExportDropdown
+                  <EnhancedManagerExportButton
                     currentUser={currentUser}
                     teamMembers={teamMembers}
                     selectedTeam={selectedTeam}

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser } from '@/types'
+import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry } from '@/types'
 
 const isSupabaseConfigured = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -766,5 +766,215 @@ export const DatabaseService = {
       console.error('Error fetching COO users:', error)
       return []
     }
+  },
+
+  // COO Detailed Export Data
+  async getDetailedCompanyScheduleData(startDate: string, endDate: string): Promise<DetailedCompanyScheduleData | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      console.log('🔍 Fetching detailed schedule data for date range:', startDate, 'to', endDate)
+      
+      // Get all teams
+      const teams = await this.getTeams()
+      console.log('📊 Found teams:', teams.length)
+      
+      // Get all team members
+      const allMembers = await this.getTeamMembers()
+      console.log('👥 Found members:', allMembers.length)
+      
+      // Get schedule entries for the date range
+      const scheduleEntries = await this.getScheduleEntries(startDate, endDate)
+      console.log('📅 Found schedule entries for', Object.keys(scheduleEntries).length, 'members')
+      
+      // Generate week days array
+      const weekDays = this.generateWeekDays(startDate, endDate)
+      console.log('📆 Week days:', weekDays)
+      
+      // Process teams and members
+      const detailedTeams: DetailedTeamScheduleData[] = []
+      let companyTotalMembers = 0
+      let companyTotalPotential = 0
+      let companyTotalActual = 0
+      
+      for (const team of teams) {
+        const teamMembers = allMembers.filter(m => m.team_id === team.id)
+        const detailedMembers: DetailedMemberScheduleData[] = []
+        const managers: DetailedMemberScheduleData[] = []
+        
+        let teamTotalPotential = 0
+        let teamTotalActual = 0
+        
+        for (const member of teamMembers) {
+          const memberScheduleData = await this.processMemberScheduleData(
+            member,
+            scheduleEntries[member.id] || {},
+            weekDays
+          )
+          
+          detailedMembers.push(memberScheduleData)
+          
+          if (member.isManager) {
+            managers.push(memberScheduleData)
+          }
+          
+          teamTotalPotential += memberScheduleData.weeklyTotals.potentialHours
+          teamTotalActual += memberScheduleData.weeklyTotals.actualHours
+        }
+        
+        const teamUtilization = teamTotalPotential > 0 ? 
+          Math.round((teamTotalActual / teamTotalPotential) * 100) : 0
+        const capacityGap = teamTotalPotential - teamTotalActual
+        
+        detailedTeams.push({
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || '#3b82f6',
+          description: team.description,
+          members: detailedMembers,
+          managers,
+          teamTotals: {
+            memberCount: teamMembers.length,
+            potentialHours: teamTotalPotential,
+            actualHours: teamTotalActual,
+            utilization: teamUtilization,
+            capacityGap
+          }
+        })
+        
+        companyTotalMembers += teamMembers.length
+        companyTotalPotential += teamTotalPotential
+        companyTotalActual += teamTotalActual
+      }
+      
+      const overallUtilization = companyTotalPotential > 0 ? 
+        Math.round((companyTotalActual / companyTotalPotential) * 100) : 0
+      
+      console.log('✅ Generated detailed schedule data:', {
+        teams: detailedTeams.length,
+        totalMembers: companyTotalMembers,
+        totalActualHours: companyTotalActual,
+        utilization: overallUtilization
+      })
+      
+      return {
+        teams: detailedTeams,
+        dateRange: {
+          startDate,
+          endDate,
+          weekDays
+        },
+        companyTotals: {
+          totalMembers: companyTotalMembers,
+          totalPotentialHours: companyTotalPotential,
+          totalActualHours: companyTotalActual,
+          overallUtilization
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching detailed company schedule data:', error)
+      return null
+    }
+  },
+
+  // Helper: Generate week days array from date range
+  generateWeekDays(startDate: string, endDate: string): string[] {
+    const weekDays: string[] = []
+    const current = new Date(startDate)
+    const end = new Date(endDate)
+    
+    while (current <= end) {
+      // Only include weekdays (Sunday = 0 to Thursday = 4)
+      if (current.getDay() >= 0 && current.getDay() <= 4) {
+        weekDays.push(current.toISOString().split('T')[0])
+      }
+      current.setDate(current.getDate() + 1)
+    }
+    
+    return weekDays
+  },
+
+  // Helper: Process individual member schedule data
+  async processMemberScheduleData(
+    member: TeamMember,
+    memberScheduleEntries: Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>,
+    weekDays: string[]
+  ): Promise<DetailedMemberScheduleData> {
+    const dailySchedule: { [dateKey: string]: MemberDaySchedule } = {}
+    const reasons: MemberReasonEntry[] = []
+    let actualHours = 0
+    let daysWorked = 0
+    
+    weekDays.forEach(date => {
+      const entry = memberScheduleEntries[date]
+      let hours = 0
+      let value: '1' | '0.5' | 'X' | null = null
+      
+      if (entry) {
+        value = entry.value
+        switch (entry.value) {
+          case '1':
+            hours = 7
+            daysWorked++
+            break
+          case '0.5':
+            hours = 3.5
+            daysWorked++
+            break
+          case 'X':
+            hours = 0
+            break
+        }
+        
+        // Collect reasons for non-full days
+        if (entry.reason && (entry.value === '0.5' || entry.value === 'X')) {
+          reasons.push({
+            date,
+            value: entry.value,
+            reason: entry.reason,
+            formattedDate: this.formatDateForReasons(new Date(date))
+          })
+        }
+      }
+      
+      dailySchedule[date] = {
+        date,
+        value,
+        hours,
+        reason: entry?.reason
+      }
+      
+      actualHours += hours
+    })
+    
+    const potentialHours = weekDays.length * 7 // 7 hours per day
+    const utilization = potentialHours > 0 ? Math.round((actualHours / potentialHours) * 100) : 0
+    
+    return {
+      memberId: member.id,
+      memberName: member.name,
+      memberHebrew: member.hebrew,
+      isManager: member.isManager || false,
+      teamId: member.team_id,
+      dailySchedule,
+      weeklyTotals: {
+        actualHours,
+        potentialHours,
+        utilization,
+        daysWorked
+      },
+      reasons
+    }
+  },
+
+  // Helper: Format date for reasons display
+  formatDateForReasons(date: Date): string {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    })
   }
 }

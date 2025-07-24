@@ -309,3 +309,176 @@ export interface COODashboardData {
   optimizationRecommendations: string[];
   capacityForecast: CapacityForecast;
 }
+
+// Enhanced Export Types
+export type COOExportType = 'current-week' | 'current-sprint' | 'previous-sprint' | 'custom-range' | 'complete-overview';
+export type ManagerExportType = 'current-week' | 'current-sprint' | 'previous-sprint' | 'custom-range';
+export type EnhancedExportType = 'current-week' | 'current-sprint' | 'previous-sprint' | 'custom-range' | 'complete-overview';
+
+export interface COOExportOptions {
+  type: COOExportType;
+  startDate?: Date;
+  endDate?: Date;
+  includeRecommendations: boolean;
+  includeForecasting: boolean;
+  includeTeamBreakdowns: boolean;
+  format: 'excel' | 'csv';
+}
+
+export interface COOExportData {
+  exportType: string;
+  dateRange: string;
+  generatedBy: string;
+  generatedAt: Date;
+  companyData: COODashboardData;
+  detailedScheduleData?: DetailedCompanyScheduleData;
+  additionalMetrics?: {
+    historicalTrends: WeeklyUtilization[];
+    teamPerformance: TeamPerformanceMetrics[];
+    sprintHistory: SprintHistoryMetrics[];
+  };
+}
+
+export interface DetailedCompanyScheduleData {
+  teams: DetailedTeamScheduleData[];
+  dateRange: {
+    startDate: string;
+    endDate: string;
+    weekDays: string[];
+  };
+  companyTotals: {
+    totalMembers: number;
+    totalPotentialHours: number;
+    totalActualHours: number;
+    overallUtilization: number;
+  };
+}
+
+export interface DetailedTeamScheduleData {
+  teamId: number;
+  teamName: string;
+  teamColor: string;
+  description?: string;
+  members: DetailedMemberScheduleData[];
+  teamTotals: {
+    memberCount: number;
+    potentialHours: number;
+    actualHours: number;
+    utilization: number;
+    capacityGap: number;
+  };
+  managers: DetailedMemberScheduleData[];
+}
+
+export interface DetailedMemberScheduleData {
+  memberId: number;
+  memberName: string;
+  memberHebrew: string;
+  isManager: boolean;
+  teamId: number;
+  dailySchedule: { [dateKey: string]: MemberDaySchedule };
+  weeklyTotals: {
+    actualHours: number;
+    potentialHours: number;
+    utilization: number;
+    daysWorked: number;
+  };
+  reasons: MemberReasonEntry[];
+}
+
+export interface MemberDaySchedule {
+  date: string;
+  value: '1' | '0.5' | 'X' | null;
+  hours: number;
+  reason?: string;
+}
+
+export interface MemberReasonEntry {
+  date: string;
+  value: '0.5' | 'X';
+  reason: string;
+  formattedDate: string;
+}
+
+export interface TeamPerformanceMetrics {
+  teamId: number;
+  teamName: string;
+  memberCount: number;
+  averageUtilization: number;
+  consistencyScore: number;
+  capacityTrend: 'increasing' | 'decreasing' | 'stable';
+  riskLevel: 'low' | 'medium' | 'high';
+  recommendations: string[];
+}
+
+export interface SprintHistoryMetrics {
+  sprintNumber: number;
+  startDate: string;
+  endDate: string;
+  totalPotential: number;
+  actualHours: number;
+  utilization: number;
+  teamBreakdown: {
+    teamId: number;
+    teamName: string;
+    potential: number;
+    actual: number;
+    utilization: number;
+  }[];
+}
+
+// Enhanced Export Configuration Types
+export interface EnhancedExportConfig {
+  exportType: EnhancedExportType;
+  customStartDate?: string;
+  customEndDate?: string;
+  includeDetailedSchedule: boolean;
+  includeSprintAnalysis: boolean;
+  includeReasons: boolean;
+  includeUtilizationAnalysis: boolean;
+  includeCrossTeamComparison?: boolean; // COO only
+}
+
+export interface DateRangeInfo {
+  start: string;
+  end: string;
+  description: string;
+  exportType: EnhancedExportType;
+  workingDays: number;
+  totalDays: number;
+  weekDays: string[];
+}
+
+export interface SprintExportInfo {
+  sprintNumber: number;
+  startDate: string;
+  endDate: string;
+  lengthWeeks: number;
+  isActive: boolean;
+  totalWorkingDays: number;
+}
+
+export interface ExportStatistics {
+  totalTeams: number;
+  totalMembers: number;
+  totalPotentialHours: number;
+  totalActualHours: number;
+  overallUtilization: number;
+  exportPeriodDays: number;
+  exportWorkingDays: number;
+  highPerformingTeams: number;
+  underPerformingTeams: number;
+  overCapacityTeams: number;
+}
+
+export interface EnhancedExportData {
+  config: EnhancedExportConfig;
+  dateRange: DateRangeInfo;
+  teams: DetailedTeamScheduleData[];
+  scheduleEntries: unknown[];
+  statistics: ExportStatistics;
+  sprintInfo?: SprintExportInfo;
+  userRole: 'coo' | 'manager';
+  generatedBy: string;
+  generatedAt: Date;
+}
