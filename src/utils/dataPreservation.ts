@@ -222,7 +222,7 @@ export const hasExistingUserData = async (): Promise<boolean> => {
       .from('team_members')
       .select('id', { count: 'exact' });
 
-    const hasData = (scheduleCount && scheduleCount > 0) || (membersCount && membersCount > 0);
+    const hasData = Boolean((scheduleCount && scheduleCount > 0) || (membersCount && membersCount > 0));
     
     console.log(hasData ? 
       '✅ Existing user data found - PRESERVATION MODE ENABLED' : 
