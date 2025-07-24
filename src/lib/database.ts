@@ -458,6 +458,15 @@ export const DatabaseService = {
       
       if (error) {
         console.error('Error adding team member:', error)
+        
+        // Provide helpful guidance for RLS policy issues
+        if (error.code === '42501') {
+          console.error('🚨 RLS POLICY ISSUE: Team member management is blocked by database security policies')
+          console.error('📋 Fix required: Run this SQL in Supabase SQL Editor:')
+          console.error('CREATE POLICY "Allow insert/update/delete on team_members" ON team_members FOR ALL USING (true);')
+          console.error('📖 See TEAM_MEMBER_RLS_FIX.md for complete instructions')
+        }
+        
         return null
       }
       
@@ -500,6 +509,15 @@ export const DatabaseService = {
       
       if (error) {
         console.error('Error updating team member:', error)
+        
+        // Provide helpful guidance for RLS policy issues
+        if (error.code === '42501') {
+          console.error('🚨 RLS POLICY ISSUE: Team member management is blocked by database security policies')
+          console.error('📋 Fix required: Run this SQL in Supabase SQL Editor:')
+          console.error('CREATE POLICY "Allow insert/update/delete on team_members" ON team_members FOR ALL USING (true);')
+          console.error('📖 See TEAM_MEMBER_RLS_FIX.md for complete instructions')
+        }
+        
         return false
       }
       
