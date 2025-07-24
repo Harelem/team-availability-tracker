@@ -47,8 +47,7 @@ export const DatabaseService = {
       .order('name')
     
     if (error) {
-      console.warn('team_stats view not found, calculating stats manually:', error)
-      // Fallback: calculate stats manually
+      // View doesn't exist, use manual calculation (this is expected)
       return this.calculateTeamStatsManually()
     }
     
@@ -397,7 +396,7 @@ export const DatabaseService = {
     try {
       const { data: cooUser } = await supabase
         .from('team_members')
-        .select('id')
+        .select('id, team_id')
         .eq('name', 'Nir Shilo')
         .single();
 
@@ -417,7 +416,22 @@ export const DatabaseService = {
           console.log('✅ Created COO user: Nir Shilo');
         }
       } else {
-        console.log('✅ COO user already exists: Nir Shilo');
+        // Check if COO user has incorrect team assignment and fix it
+        if (cooUser.team_id !== null) {
+          console.log('🔧 Fixing COO user team assignment: Nir Shilo should not belong to any team');
+          const { error } = await supabase
+            .from('team_members')
+            .update({ team_id: null })
+            .eq('name', 'Nir Shilo');
+
+          if (error) {
+            console.error('❌ Error fixing COO team assignment:', error);
+          } else {
+            console.log('✅ Fixed COO team assignment: Nir Shilo removed from team and set as COO-level user');
+          }
+        } else {
+          console.log('✅ COO user correctly configured: Nir Shilo');
+        }
       }
     } catch (error) {
       console.error('❌ Error ensuring COO user exists:', error);

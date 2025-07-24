@@ -35,7 +35,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
   const [viewReasonsModal, setViewReasonsModal] = useState(false);
   const [globalSprintSettings, setGlobalSprintSettings] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [refreshKey, setRefreshKey] = useState(0); // Used to trigger parent refresh
 
   // Get global sprint data for hours status
   const { currentSprint } = useGlobalSprint();

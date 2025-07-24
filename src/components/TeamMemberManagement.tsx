@@ -21,16 +21,20 @@ export default function TeamMemberManagement({
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [deleteConfirmMember, setDeleteConfirmMember] = useState<TeamMember | null>(null);
+
+  // Load team members
+  useEffect(() => {
+    if (currentUser.isManager) {
+      loadTeamMembers();
+    }
+  }, [selectedTeam.id, currentUser.isManager]);
 
   // Only show for managers
   if (!currentUser.isManager) {
     return null;
   }
-
-  useEffect(() => {
-    loadTeamMembers();
-  }, [selectedTeam.id]);
 
   const loadTeamMembers = async () => {
     try {

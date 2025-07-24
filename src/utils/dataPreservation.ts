@@ -91,7 +91,7 @@ export const performDataPersistenceCheck = async (): Promise<DataVerificationRes
 
   // Check 1: Database Connection
   try {
-    const { data } = await supabase.from('teams').select('id').limit(1);
+    await supabase.from('teams').select('id').limit(1);
     checks.push({ 
       check: 'Database Connection', 
       status: 'PASS', 
@@ -189,7 +189,7 @@ export const performDataPersistenceCheck = async (): Promise<DataVerificationRes
         `Sprint ${sprint.current_sprint_number} configured` : 
         'No sprint settings found'
     });
-  } catch (error) {
+  } catch {
     checks.push({ 
       check: 'Global Sprint Settings', 
       status: 'WARNING', 

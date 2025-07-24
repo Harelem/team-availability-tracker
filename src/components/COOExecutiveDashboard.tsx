@@ -19,7 +19,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
-import { COODashboardData, COOUser } from '@/types';
+import { COODashboardData, COOUser, Team } from '@/types';
 import COOExportButton from './COOExportButton';
 import COOHoursStatusOverview from './COOHoursStatusOverview';
 import MobileCOODashboard from './MobileCOODashboard';
@@ -34,7 +34,7 @@ interface COOExecutiveDashboardProps {
 
 export default function COOExecutiveDashboard({ currentUser, onBack, className = '' }: COOExecutiveDashboardProps) {
   const [dashboardData, setDashboardData] = useState<COODashboardData | null>(null);
-  const [allTeams, setAllTeams] = useState<any[]>([]);
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);

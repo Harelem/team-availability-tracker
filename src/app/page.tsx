@@ -13,7 +13,7 @@ import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember, COOUser, AccessMode, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
-import { verifyEnvironmentConfiguration, performPreDeploymentCheck, performPostDeploymentVerification } from '@/utils/deploymentSafety';
+import { verifyEnvironmentConfiguration } from '@/utils/deploymentSafety';
 import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPreservation';
 
 function HomeContent() {
@@ -164,10 +164,12 @@ function HomeContent() {
   if (accessMode === 'coo' && cooUser) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <COOExecutiveDashboard 
-          currentUser={cooUser}
-          onBack={handleBackToSelection}
-        />
+        <GlobalSprintProvider>
+          <COOExecutiveDashboard 
+            currentUser={cooUser}
+            onBack={handleBackToSelection}
+          />
+        </GlobalSprintProvider>
       </div>
     );
   }

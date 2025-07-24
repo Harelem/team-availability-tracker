@@ -100,7 +100,7 @@ export const performPreDeploymentCheck = async (): Promise<{
       recommendations.push('Use safe, additive migration patterns only');
       recommendations.push('Verify data persistence after deployment');
     }
-  } catch (error) {
+  } catch {
     issues.push('Cannot verify existing schedule data');
     recommendations.push('Check database connectivity before deployment');
   }
@@ -114,7 +114,7 @@ export const performPreDeploymentCheck = async (): Promise<{
     if (membersCount && membersCount > 0) {
       recommendations.push(`Preserve ${membersCount} existing team members`);
     }
-  } catch (error) {
+  } catch {
     issues.push('Cannot verify existing team member data');
   }
 
