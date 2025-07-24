@@ -21,8 +21,10 @@ import {
 import { DatabaseService } from '@/lib/database';
 import { COODashboardData, COOUser } from '@/types';
 import COOExportButton from './COOExportButton';
+import COOHoursStatusOverview from './COOHoursStatusOverview';
 import MobileCOODashboard from './MobileCOODashboard';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
+import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -32,17 +34,28 @@ interface COOExecutiveDashboardProps {
 
 export default function COOExecutiveDashboard({ currentUser, onBack, className = '' }: COOExecutiveDashboardProps) {
   const [dashboardData, setDashboardData] = useState<COODashboardData | null>(null);
+  const [allTeams, setAllTeams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const isMobile = useMobileDetection();
+  
+  // Get global sprint data for hours status
+  const { currentSprint } = useGlobalSprint();
 
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await DatabaseService.getCOODashboardData();
+      
+      // Load dashboard data and teams
+      const [data, teams] = await Promise.all([
+        DatabaseService.getCOODashboardData(),
+        DatabaseService.getTeams()
+      ]);
+      
       setDashboardData(data);
+      setAllTeams(teams);
     } catch (err) {
       console.error('Error loading COO dashboard data:', err);
       setError('Failed to load dashboard data');
@@ -259,6 +272,14 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
           className="w-full justify-center"
         />
       </div>
+
+      {/* Company-Wide Hours Status Overview */}
+      {allTeams.length > 0 && currentSprint && (
+        <COOHoursStatusOverview 
+          allTeams={allTeams}
+          currentSprint={currentSprint}
+        />
+      )}
 
       {/* Team Capacity Analysis */}
       <div className="mb-6">

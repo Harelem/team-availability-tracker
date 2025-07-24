@@ -175,6 +175,186 @@ export const DatabaseService = {
     }
   },
 
+  // Team Member CRUD Operations
+  async addTeamMember(memberData: { name: string; hebrew: string; teamId: number; isManager?: boolean }): Promise<TeamMember | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .insert([{
+          name: memberData.name,
+          hebrew: memberData.hebrew,
+          team_id: memberData.teamId,
+          is_manager: memberData.isManager || false
+        }])
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('Error adding team member:', error)
+        return null
+      }
+      
+      return {
+        id: data.id,
+        name: data.name,
+        hebrew: data.hebrew,
+        isManager: data.is_manager,
+        team_id: data.team_id,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      }
+    } catch (error) {
+      console.error('Error adding team member:', error)
+      return null
+    }
+  },
+
+  async updateTeamMember(memberId: number, memberData: { name: string; hebrew: string }, managerId: number): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+    
+    try {
+      // First verify the manager has permission to edit this member
+      const canEdit = await this.canManagerEditMember(managerId, memberId)
+      if (!canEdit) {
+        console.error('Manager does not have permission to edit this member')
+        return false
+      }
+      
+      const { error } = await supabase
+        .from('team_members')
+        .update({
+          name: memberData.name,
+          hebrew: memberData.hebrew,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', memberId)
+      
+      if (error) {
+        console.error('Error updating team member:', error)
+        return false
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Error updating team member:', error)
+      return false
+    }
+  },
+
+  async deleteTeamMember(memberId: number, managerId: number): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+    
+    try {
+      // First verify the manager has permission to delete this member
+      const canEdit = await this.canManagerEditMember(managerId, memberId)
+      if (!canEdit) {
+        console.error('Manager does not have permission to delete this member')
+        return false
+      }
+      
+      // Check if member is a manager
+      const member = await this.getTeamMember(memberId)
+      if (member?.isManager) {
+        console.error('Cannot delete team managers')
+        return false
+      }
+      
+      // First delete all schedule entries for this member
+      const { error: scheduleError } = await supabase
+        .from('schedule_entries')
+        .delete()
+        .eq('member_id', memberId)
+      
+      if (scheduleError) {
+        console.error('Error deleting member schedule entries:', scheduleError)
+        return false
+      }
+      
+      // Then delete the team member
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('id', memberId)
+      
+      if (error) {
+        console.error('Error deleting team member:', error)
+        return false
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Error deleting team member:', error)
+      return false
+    }
+  },
+
+  async getTeamMember(memberId: number): Promise<TeamMember | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('id', memberId)
+        .single()
+      
+      if (error) {
+        console.error('Error fetching team member:', error)
+        return null
+      }
+      
+      return {
+        id: data.id,
+        name: data.name,
+        hebrew: data.hebrew,
+        isManager: data.is_manager,
+        email: data.email || undefined,
+        team_id: data.team_id,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      }
+    } catch (error) {
+      console.error('Error fetching team member:', error)  
+      return null
+    }
+  },
+
+  async canManagerEditMember(managerId: number, memberId: number): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+    
+    try {
+      // Get manager info
+      const manager = await this.getTeamMember(managerId)
+      if (!manager?.isManager) {
+        return false
+      }
+      
+      // Get member info
+      const member = await this.getTeamMember(memberId)
+      if (!member) {
+        return false
+      }
+      
+      // Check if they're on the same team
+      return manager.team_id === member.team_id
+    } catch (error) {
+      console.error('Error checking manager permissions:', error)
+      return false
+    }
+  },
+
   // Schedule Entries (now team-filtered)
   async getScheduleEntries(startDate: string, endDate: string, teamId?: number): Promise<Record<number, Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>>> {
     if (!isSupabaseConfigured()) {
@@ -594,7 +774,8 @@ export const DatabaseService = {
           utilizationPercent: companyUtilization,
           capacityGap: companyCapacityGap,
           overCapacityTeams,
-          underUtilizedTeams
+          underUtilizedTeams,
+          allTeamsCapacity: teamCapacityData
         },
         currentSprint: {
           totalPotentialHours: sprintPotential,
@@ -657,8 +838,18 @@ export const DatabaseService = {
     }
     
     try {
+      console.log('🔍 Loading COO dashboard data...')
+      
       const teams = await this.getTeams()
+      console.log('🏢 Teams loaded:', teams.length, teams.map(t => ({ id: t.id, name: t.name })))
+      
       const allMembers = await this.getTeamMembers()
+      console.log('👥 All members loaded:', allMembers.length)
+      
+      // Check for Product Team specifically
+      const productTeam = teams.find(t => t.name.toLowerCase().includes('product'))
+      console.log('📦 Product Team found:', productTeam ? `${productTeam.name} (ID: ${productTeam.id})` : 'NOT FOUND')
+      
       const companyMetrics = await this.getCompanyCapacityMetrics()
       const currentSprint = await this.getCurrentGlobalSprint()
       
@@ -693,10 +884,7 @@ export const DatabaseService = {
           currentUtilization: companyMetrics.currentWeek.utilizationPercent,
           capacityGap: companyMetrics.currentWeek.capacityGap
         },
-        teamComparison: [
-          ...companyMetrics.currentWeek.overCapacityTeams,
-          ...companyMetrics.currentWeek.underUtilizedTeams
-        ],
+        teamComparison: companyMetrics.currentWeek.allTeamsCapacity,
         sprintAnalytics: {
           currentSprintNumber: currentSprint.current_sprint_number,
           sprintWeeks: currentSprint.sprint_length_weeks,

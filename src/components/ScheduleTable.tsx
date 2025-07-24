@@ -8,8 +8,11 @@ import ViewReasonsModal from './ViewReasonsModal';
 import MobileScheduleView from './MobileScheduleView';
 import GlobalSprintSettings from './GlobalSprintSettings';
 import EnhancedManagerExportButton from './EnhancedManagerExportButton';
+import TeamMemberManagement from './TeamMemberManagement';
+import TeamHoursStatus from './TeamHoursStatus';
 import { canManageSprints } from '@/utils/permissions';
 import { DatabaseService } from '@/lib/database';
+import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 
 interface ScheduleTableProps {
   currentUser: TeamMember;
@@ -32,6 +35,10 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
   const [viewReasonsModal, setViewReasonsModal] = useState(false);
   const [globalSprintSettings, setGlobalSprintSettings] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Get global sprint data for hours status
+  const { currentSprint } = useGlobalSprint();
 
   // Calculate current week dates
   const getCurrentWeekDates = () => {
@@ -232,6 +239,11 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
     return teamMembers.reduce((total, member) => total + calculateWeeklyHours(member.id), 0);
   };
 
+  const handleMembersUpdated = () => {
+    // Trigger a refresh of the parent component's team members
+    setRefreshKey(prev => prev + 1);
+  };
+
 
   if (loading) {
     return (
@@ -270,6 +282,23 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         getCurrentWeekString={getCurrentWeekString}
         getTeamTotalHours={getTeamTotalHours}
       />
+
+      {/* Team Member Management - Managers Only */}
+      {currentUser.isManager && (
+        <TeamMemberManagement 
+          currentUser={currentUser}
+          selectedTeam={selectedTeam}
+          onMembersUpdated={handleMembersUpdated}
+        />
+      )}
+
+      {/* Team Hours Status */}
+      {currentSprint && (
+        <TeamHoursStatus 
+          selectedTeam={selectedTeam}
+          currentSprint={currentSprint}
+        />
+      )}
 
       {/* Desktop Header */}
       <div className="hidden lg:block bg-white rounded-lg p-3 sm:p-4 shadow-sm">

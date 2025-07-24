@@ -214,6 +214,7 @@ export interface CompanyCapacityMetrics {
     capacityGap: number;
     overCapacityTeams: TeamCapacityStatus[];
     underUtilizedTeams: TeamCapacityStatus[];
+    allTeamsCapacity: TeamCapacityStatus[];
   };
   currentSprint: {
     totalPotentialHours: number;
