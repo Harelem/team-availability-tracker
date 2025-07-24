@@ -13,6 +13,8 @@ import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember, COOUser, AccessMode, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
+import { verifyEnvironmentConfiguration, performPreDeploymentCheck, performPostDeploymentVerification } from '@/utils/deploymentSafety';
+import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPreservation';
 
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
@@ -32,9 +34,54 @@ function HomeContent() {
       try {
         setLoading(true);
         
-        // Initialize data
-        await DatabaseService.initializeTeams();
-        await DatabaseService.initializeTeamMembers();
+        console.log('🚀 Starting application with SAFE data preservation...');
+        
+        // CRITICAL: Verify environment configuration first
+        const envVerification = verifyEnvironmentConfiguration();
+        if (!envVerification.isConfigValid) {
+          console.error('🚨 Environment configuration issues detected!');
+          envVerification.warnings.forEach(warning => {
+            console.warn(`⚠️ ${warning}`);
+          });
+        }
+        
+        // CRITICAL: Check existing data before any operations
+        console.log('🔍 Performing data persistence verification...');
+        const dataChecks = await performDataPersistenceCheck();
+        const criticalIssues = dataChecks.filter(check => check.status === 'FAIL');
+        
+        if (criticalIssues.length > 0) {
+          console.error('🚨 Critical data issues detected!');
+          criticalIssues.forEach(issue => {
+            console.error(`❌ ${issue.check}: ${issue.data}`);
+          });
+        }
+        
+        // CRITICAL: Verify current database state
+        const dbState = await verifyDatabaseState();
+        if (dbState.totalScheduleEntries > 0) {
+          console.log('🔒 CRITICAL: User schedule data exists - PRESERVATION MODE ENABLED');
+          console.log(`📊 Protecting: ${dbState.totalScheduleEntries} schedule entries, ${dbState.totalTeamMembers} members`);
+        }
+        
+        // CRITICAL: Use safe initialization that preserves existing data
+        const [teamsResult, membersResult] = await Promise.all([
+          DatabaseService.safeInitializeTeams(),
+          DatabaseService.safeInitializeTeamMembers()
+        ]);
+        
+        // Log data preservation results
+        if (teamsResult.preserved) {
+          console.log('🔒 TEAMS DATA PRESERVED:', teamsResult.message);
+        } else {
+          console.log('🆕 Teams initialized:', teamsResult.message);
+        }
+        
+        if (membersResult.preserved) {
+          console.log('🔒 MEMBER DATA PRESERVED:', membersResult.message);
+        } else {
+          console.log('🆕 Members initialized:', membersResult.message);
+        }
         
         // Load teams and COO users in parallel
         const [teamsData, cooUsersData] = await Promise.all([
@@ -44,8 +91,10 @@ function HomeContent() {
         
         setTeams(teamsData);
         setCooUsers(cooUsersData);
+        
+        console.log(`✅ Application initialized successfully with ${teamsData.length} teams`);
       } catch (error) {
-        console.error('Error loading initial data:', error);
+        console.error('❌ Error loading initial data:', error);
         setTeams([]);
         setCooUsers([]);
       } finally {

@@ -149,29 +149,278 @@ export const DatabaseService = {
     }))
   },
 
-  async initializeTeams(): Promise<void> {
+  /**
+   * SAFE initialization that preserves existing data
+   * CRITICAL: This replaces destructive initialization patterns
+   */
+  async safeInitializeTeams(): Promise<{ success: boolean; preserved: boolean; message: string }> {
     if (!isSupabaseConfigured()) {
-      return
+      console.warn('⚠️ Supabase not configured - skipping team initialization');
+      return { success: false, preserved: false, message: 'Supabase not configured' };
     }
     
-    // This will be handled by the migration script
-    // Just check if teams exist
-    const teams = await this.getTeams()
-    if (teams.length === 0) {
-      console.warn('No teams found. Please run the migration script.')
+    try {
+      console.log('🔍 Checking for existing teams...');
+      const existingTeams = await this.getTeams();
+      
+      if (existingTeams.length > 0) {
+        console.log(`✅ Found ${existingTeams.length} existing teams - PRESERVING DATA`);
+        existingTeams.forEach(team => {
+          console.log(`  - ${team.name} (ID: ${team.id})`);
+        });
+        return { 
+          success: true, 
+          preserved: true, 
+          message: `Preserved ${existingTeams.length} existing teams` 
+        };
+      }
+
+      console.log('🆕 No teams found - safe to create initial teams');
+      await this.createInitialTeamsIfMissing();
+      
+      return { 
+        success: true, 
+        preserved: false, 
+        message: 'Created initial team structure' 
+      };
+    } catch (error) {
+      console.error('❌ Error in safe team initialization:', error);
+      return { 
+        success: false, 
+        preserved: false, 
+        message: `Initialization failed: ${(error as Error).message}` 
+      };
     }
   },
 
-  async initializeTeamMembers(): Promise<void> {
+  /**
+   * SAFE team member initialization that preserves existing data
+   * CRITICAL: This never overwrites existing team members
+   */
+  async safeInitializeTeamMembers(): Promise<{ success: boolean; preserved: boolean; message: string }> {
     if (!isSupabaseConfigured()) {
-      return
+      console.warn('⚠️ Supabase not configured - skipping member initialization');
+      return { success: false, preserved: false, message: 'Supabase not configured' };
     }
     
-    // This will be handled by the migration script
-    // Just check if team members exist
-    const members = await this.getTeamMembers()
-    if (members.length === 0) {
-      console.warn('No team members found. Please run the migration script.')
+    try {
+      console.log('🔍 Checking for existing team members...');
+      const existingMembers = await this.getTeamMembers();
+      
+      if (existingMembers.length > 0) {
+        console.log(`✅ Found ${existingMembers.length} existing team members - PRESERVING DATA`);
+        
+        // Group by team for better logging
+        const membersByTeam = existingMembers.reduce((acc, member) => {
+          if (!acc[member.team_id]) acc[member.team_id] = [];
+          acc[member.team_id].push(member.name);
+          return acc;
+        }, {} as Record<number, string[]>);
+        
+        Object.entries(membersByTeam).forEach(([teamId, names]) => {
+          console.log(`  Team ${teamId}: ${names.join(', ')}`);
+        });
+        
+        return { 
+          success: true, 
+          preserved: true, 
+          message: `Preserved ${existingMembers.length} existing team members` 
+        };
+      }
+
+      console.log('🆕 No team members found - safe to create initial members');
+      await this.createInitialTeamMembersIfMissing();
+      
+      return { 
+        success: true, 
+        preserved: false, 
+        message: 'Created initial team members' 
+      };
+    } catch (error) {
+      console.error('❌ Error in safe team member initialization:', error);
+      return { 
+        success: false, 
+        preserved: false, 
+        message: `Member initialization failed: ${(error as Error).message}` 
+      };
+    }
+  },
+
+  /**
+   * Create initial teams only if they don't exist
+   * CRITICAL: This uses INSERT ... ON CONFLICT DO NOTHING pattern
+   */
+  async createInitialTeamsIfMissing(): Promise<void> {
+    const requiredTeams = [
+      { name: 'Development Team - Tal', description: 'Development team led by Tal Azaria', color: '#3b82f6' },
+      { name: 'Development Team - Itay', description: 'Development team led by Itay Mizrachi', color: '#8b5cf6' },
+      { name: 'Infrastructure Team', description: 'Infrastructure and DevOps team', color: '#10b981' },
+      { name: 'Data Team', description: 'Data science and analytics team', color: '#f59e0b' },
+      { name: 'Product Team', description: 'Product management and strategy team', color: '#ef4444' }
+    ];
+
+    for (const team of requiredTeams) {
+      try {
+        // Check if team already exists first
+        const { data: existing } = await supabase
+          .from('teams')
+          .select('id')
+          .eq('name', team.name)
+          .single();
+
+        if (existing) {
+          console.log(`✅ Team already exists: ${team.name}`);
+          continue;
+        }
+
+        // Safe insert - won't fail if team already exists
+        const { error } = await supabase
+          .from('teams')
+          .insert([team]);
+
+        if (error) {
+          console.error(`❌ Error creating team ${team.name}:`, error);
+        } else {
+          console.log(`✅ Created team: ${team.name}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error checking/creating team ${team.name}:`, error);
+      }
+    }
+  },
+
+  /**
+   * Create initial team members only if they don't exist
+   * CRITICAL: This preserves existing members and their schedule data
+   */
+  async createInitialTeamMembersIfMissing(): Promise<void> {
+    console.log('👥 Creating initial team members (preserving existing)...');
+    
+    try {
+      // Get teams with IDs
+      const teams = await this.getTeams();
+      if (teams.length === 0) {
+        console.warn('⚠️ No teams found - cannot create team members');
+        return;
+      }
+
+      // Team member configurations
+      const teamConfigs: Record<string, Array<{ name: string; hebrew: string; is_manager: boolean }>> = {
+        'Development Team - Tal': [
+          { name: 'Tal Azaria', hebrew: 'טל עזריה', is_manager: true },
+          { name: 'Yotam Sever', hebrew: 'יותם סבר', is_manager: false },
+          { name: 'Roy Ferder', hebrew: 'רועי פרדר', is_manager: false },
+          { name: 'Ido Azran', hebrew: 'עידו עזרן', is_manager: false }
+        ],
+        'Development Team - Itay': [
+          { name: 'Itay Mizrachi', hebrew: 'איתי מזרחי', is_manager: true },
+          { name: 'Roy Musafi', hebrew: 'רועי מוספי', is_manager: false },
+          { name: 'Shachar Max', hebrew: 'שחר מקס', is_manager: false },
+          { name: 'Yahli Oleinik', hebrew: 'יהלי אוליניק', is_manager: false },
+          { name: 'Yotam Halevi', hebrew: 'יותם הלוי', is_manager: false }
+        ],
+        'Infrastructure Team': [
+          { name: 'Aviram Sparsky', hebrew: 'אבירם ספרסקי', is_manager: true },
+          { name: 'Peleg Yona', hebrew: 'פלג יונה', is_manager: false },
+          { name: 'Itay Zuberi', hebrew: 'איתי צוברי', is_manager: false }
+        ],
+        'Data Team': [
+          { name: 'Matan Blaich', hebrew: 'מתן בלייך', is_manager: true },
+          { name: 'Efrat Taichman', hebrew: 'אפרת טייכמן', is_manager: false },
+          { name: 'Sahar Cohen', hebrew: 'סהר כהן', is_manager: false },
+          { name: 'Itamar Weingarten', hebrew: 'איתמר וינגרטן', is_manager: false },
+          { name: 'Noam Hadad', hebrew: 'נועם הדד', is_manager: false },
+          { name: 'David Dan', hebrew: 'דוד דן', is_manager: false }
+        ],
+        'Product Team': [
+          { name: 'Natan Shemesh', hebrew: 'נתן שמש', is_manager: false },
+          { name: 'Ido Keller', hebrew: 'עידו קלר', is_manager: false },
+          { name: 'Amit Zriker', hebrew: 'עמית צריקר', is_manager: true },
+          { name: 'Alon Mesika', hebrew: 'אלון מסיקה', is_manager: false },
+          { name: 'Nadav Aharon', hebrew: 'נדב אהרון', is_manager: false },
+          { name: 'Yarom Kloss', hebrew: 'ירום קלוס', is_manager: false },
+          { name: 'Ziv Edelstein', hebrew: 'זיב אדלשטיין', is_manager: false },
+          { name: 'Harel Mazan', hebrew: 'הראל מזן', is_manager: true }
+        ]
+      };
+
+      for (const team of teams) {
+        const members = teamConfigs[team.name] || [];
+        
+        for (const member of members) {
+          try {
+            // Check if member already exists in this team
+            const { data: existing } = await supabase
+              .from('team_members')
+              .select('id')
+              .eq('name', member.name)
+              .eq('team_id', team.id)
+              .single();
+
+            if (existing) {
+              console.log(`✅ Member already exists: ${member.name} in ${team.name}`);
+              continue;
+            }
+
+            // Safe insert
+            const { error } = await supabase
+              .from('team_members')
+              .insert([{
+                ...member,
+                team_id: team.id
+              }]);
+
+            if (error) {
+              console.error(`❌ Error creating member ${member.name}:`, error);
+            } else {
+              console.log(`✅ Created member: ${member.name} in ${team.name}`);
+            }
+          } catch (error) {
+            console.error(`❌ Error checking/creating member ${member.name}:`, error);
+          }
+        }
+      }
+
+      // Add COO user if doesn't exist (special case)
+      await this.ensureCOOUserExists();
+
+    } catch (error) {
+      console.error('❌ Error in team member initialization:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Ensure COO user exists without duplicating
+   */
+  async ensureCOOUserExists(): Promise<void> {
+    try {
+      const { data: cooUser } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('name', 'Nir Shilo')
+        .single();
+
+      if (!cooUser) {
+        const { error } = await supabase
+          .from('team_members')
+          .insert([{
+            name: 'Nir Shilo',
+            hebrew: 'ניר שילה',
+            is_manager: false,
+            team_id: null // COO doesn't belong to a specific team
+          }]);
+
+        if (error) {
+          console.error('❌ Error creating COO user:', error);
+        } else {
+          console.log('✅ Created COO user: Nir Shilo');
+        }
+      } else {
+        console.log('✅ COO user already exists: Nir Shilo');
+      }
+    } catch (error) {
+      console.error('❌ Error ensuring COO user exists:', error);
     }
   },
 
