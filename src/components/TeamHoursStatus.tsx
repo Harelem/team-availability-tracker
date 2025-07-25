@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3, CheckCircle, AlertTriangle, XCircle, Calendar } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { Team, TeamMember, CurrentGlobalSprint } from '@/types';
 import { DatabaseService } from '@/lib/database';
-import { calculateSprintPeriod, calculateWorkingDaysInPeriod, getSprintDescription, formatSprintDateRange } from '@/utils/sprintCalculations';
+import { calculateSprintPeriod, calculateWorkingDaysInPeriod, formatSprintDateRange } from '@/utils/sprintCalculations';
 
 interface MemberHoursStatus {
   memberId: number;
@@ -28,6 +28,7 @@ export default function TeamHoursStatus({ selectedTeam, currentSprint }: TeamHou
   const [nextSprintStatus, setNextSprintStatus] = useState<MemberHoursStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   useEffect(() => {
     if (selectedTeam && currentSprint) {
@@ -136,6 +137,13 @@ export default function TeamHoursStatus({ selectedTeam, currentSprint }: TeamHou
     );
   };
 
+  // Helper function for completion rate
+  const getCompletionRate = (statusList: MemberHoursStatus[]) => {
+    if (!statusList.length) return 0;
+    const complete = statusList.filter(m => m.status === 'complete').length;
+    return Math.round((complete / statusList.length) * 100);
+  };
+
   const CompletionSummary = ({ statusList }: { statusList: MemberHoursStatus[] }) => {
     const complete = statusList.filter(m => m.status === 'complete').length;
     const partial = statusList.filter(m => m.status === 'partial').length;
@@ -193,111 +201,141 @@ export default function TeamHoursStatus({ selectedTeam, currentSprint }: TeamHou
   }
 
   return (
-    <div className="team-hours-status bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-6">
-      <div className="flex items-center gap-3 mb-6">
-        <BarChart3 className="w-5 h-5 text-blue-600" />
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Hours Completion Status</h3>
-          <p className="text-sm text-gray-600">Track team progress for current and upcoming sprints</p>
-        </div>
-      </div>
-      
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Current Sprint Status */}
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-4 h-4 text-blue-600" />
-            <h4 className="font-medium text-blue-900">
-              {getSprintDescription(0)}
-            </h4>
-          </div>
-          <p className="text-xs text-blue-700 mb-4">
-            {formatSprintDateRange(calculateSprintPeriod(currentSprint, 0))}
-          </p>
-          
-          {currentSprintStatus.length === 0 ? (
-            <div className="text-center py-4 text-blue-700">
-              <p className="text-sm">No team members found</p>
+    <div className="team-hours-status mb-6">
+      <div className="bg-white rounded-lg shadow-sm border">
+        {/* Collapsible Header */}
+        <div 
+          className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 rounded-t-lg"
+          onClick={() => setIsMinimized(!isMinimized)}
+        >
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-gray-900">📊 Hours Completion Status</h3>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>Current & Next Sprint Progress</span>
             </div>
-          ) : (
-            <>
-              <div className="space-y-3 mb-4">
-                {currentSprintStatus.map(member => (
-                  <div key={member.memberId} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">
-                        {member.memberName}
-                      </span>
-                      {member.isManager && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-200 text-blue-800 rounded">
-                          Manager
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600">
-                        {member.filledDays}/{member.totalDays}
-                      </span>
-                      <StatusBadge status={member.status} />
-                    </div>
-                  </div>
-                ))}
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Quick Stats Preview When Minimized */}
+            {isMinimized && (
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>Current: {getCompletionRate(currentSprintStatus)}%</span>
+                <span>Next: {getCompletionRate(nextSprintStatus)}%</span>
               </div>
-              
-              <div className="pt-3 border-t border-blue-200">
-                <CompletionSummary statusList={currentSprintStatus} />
-              </div>
-            </>
-          )}
+            )}
+            
+            <button className="text-gray-400 hover:text-gray-600 p-1">
+              {isMinimized ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronUp className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
         
-        {/* Next Sprint Status */}
-        <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-4 h-4 text-green-600" />
-            <h4 className="font-medium text-green-900">
-              {getSprintDescription(1)}
-            </h4>
-          </div>
-          <p className="text-xs text-green-700 mb-4">
-            {formatSprintDateRange(calculateSprintPeriod(currentSprint, 1))}
-          </p>
-          
-          {nextSprintStatus.length === 0 ? (
-            <div className="text-center py-4 text-green-700">
-              <p className="text-sm">No team members found</p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3 mb-4">
-                {nextSprintStatus.map(member => (
-                  <div key={member.memberId} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">
-                        {member.memberName}
-                      </span>
-                      {member.isManager && (
-                        <span className="text-xs px-1.5 py-0.5 bg-green-200 text-green-800 rounded">
-                          Manager
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600">
-                        {member.filledDays}/{member.totalDays}
-                      </span>
-                      <StatusBadge status={member.status} />
-                    </div>
+        {/* Expandable Content */}
+        {!isMinimized && (
+          <div className="px-4 pb-4">
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Current Sprint Status */}
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <h4 className="font-medium text-blue-900">
+                    🏃‍♂️ Current Sprint Status
+                  </h4>
+                </div>
+                <p className="text-xs text-blue-700 mb-4">
+                  {formatSprintDateRange(calculateSprintPeriod(currentSprint, 0))}
+                </p>
+                
+                {currentSprintStatus.length === 0 ? (
+                  <div className="text-center py-4 text-blue-700">
+                    <p className="text-sm">No team members found</p>
                   </div>
-                ))}
+                ) : (
+                  <>
+                    <div className="space-y-3 mb-4">
+                      {currentSprintStatus.map(member => (
+                        <div key={member.memberId} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {member.memberName}
+                            </span>
+                            {member.isManager && (
+                              <span className="text-xs px-1.5 py-0.5 bg-blue-200 text-blue-800 rounded">
+                                Manager
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600">
+                              {member.filledDays}/{member.totalDays}
+                            </span>
+                            <StatusBadge status={member.status} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="pt-3 border-t border-blue-200">
+                      <CompletionSummary statusList={currentSprintStatus} />
+                    </div>
+                  </>
+                )}
               </div>
               
-              <div className="pt-3 border-t border-green-200">
-                <CompletionSummary statusList={nextSprintStatus} />
+              {/* Next Sprint Status */}
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="w-4 h-4 text-green-600" />
+                  <h4 className="font-medium text-green-900">
+                    ⏭️ Next Sprint Status
+                  </h4>
+                </div>
+                <p className="text-xs text-green-700 mb-4">
+                  {formatSprintDateRange(calculateSprintPeriod(currentSprint, 1))}
+                </p>
+                
+                {nextSprintStatus.length === 0 ? (
+                  <div className="text-center py-4 text-green-700">
+                    <p className="text-sm">No team members found</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3 mb-4">
+                      {nextSprintStatus.map(member => (
+                        <div key={member.memberId} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {member.memberName}
+                            </span>
+                            {member.isManager && (
+                              <span className="text-xs px-1.5 py-0.5 bg-green-200 text-green-800 rounded">
+                                Manager
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600">
+                              {member.filledDays}/{member.totalDays}
+                            </span>
+                            <StatusBadge status={member.status} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="pt-3 border-t border-green-200">
+                      <CompletionSummary statusList={nextSprintStatus} />
+                    </div>
+                  </>
+                )}
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

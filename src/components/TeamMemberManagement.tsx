@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { TeamMember, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import MemberFormModal from './MemberFormModal';
@@ -23,6 +23,7 @@ export default function TeamMemberManagement({
   const [isLoading, setIsLoading] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [deleteConfirmMember, setDeleteConfirmMember] = useState<TeamMember | null>(null);
+  const [isMinimized, setIsMinimized] = useState(true); // Start minimized
 
   // Load team members
   useEffect(() => {
@@ -131,90 +132,104 @@ export default function TeamMemberManagement({
   };
 
   return (
-    <div className="team-member-management bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" />
-            Manage Team Members
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Add, edit, or remove members from {selectedTeam.name}
-          </p>
-        </div>
-        <button 
-          onClick={() => setShowAddMember(true)}
-          disabled={isLoading}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-sm font-medium"
+    <div className="team-member-management mb-6">
+      <div className="bg-white rounded-lg shadow-sm border">
+        {/* Collapsible Header */}
+        <div 
+          className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 rounded-t-lg"
+          onClick={() => setIsMinimized(!isMinimized)}
         >
-          <Plus className="w-4 h-4" />
-          Add Member
-        </button>
-      </div>
-
-      {teamMembers.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p>No team members found</p>
-          <p className="text-sm">Add team members to get started</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {teamMembers.map(member => (
-            <div 
-              key={member.id} 
-              className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg gap-3"
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-gray-900">{member.name}</span>
-                  <span className="text-gray-600">({member.hebrew})</span>
-                  {member.isManager && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Manager
-                    </span>
-                  )}
-                </div>
-                <div className="text-sm text-gray-500">
-                  Team Member ID: {member.id}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setEditingMember(member)}
-                  disabled={isLoading}
-                  className="flex items-center gap-1 text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md hover:bg-blue-50 transition-colors text-sm disabled:opacity-50"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  Edit
-                </button>
-                
-                {!member.isManager && (
-                  <button 
-                    onClick={() => handleDeleteMember(member)}
-                    disabled={isLoading}
-                    className="flex items-center gap-1 text-red-600 hover:text-red-800 px-3 py-1 rounded-md hover:bg-red-50 transition-colors text-sm disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Remove
-                  </button>
-                )}
-              </div>
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-gray-900">👥 Manage Team Members</h3>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>Add, edit, or remove team members</span>
             </div>
-          ))}
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Quick Stats Preview When Minimized */}
+            {isMinimized && (
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>{teamMembers.length} members</span>
+                <span>{teamMembers.filter(m => m.isManager).length} managers</span>
+              </div>
+            )}
+            
+            <button className="text-gray-400 hover:text-gray-600 p-1">
+              {isMinimized ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronUp className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
-      )}
+        
+        {/* Expandable Content */}
+        {!isMinimized && (
+          <div className="px-4 pb-4">
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-sm text-gray-600">
+                Manage your team members: add new members, edit names, or remove members who are no longer part of the team.
+              </p>
+              <button 
+                onClick={() => setShowAddMember(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Member
+              </button>
+            </div>
 
-      {/* Manager Protection Notice */}
-      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
-        <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-yellow-800">
-          <p className="font-medium">Security Notice</p>
-          <p>You can only manage members from your own team. Team managers cannot be deleted through this interface.</p>
-        </div>
+            <div className="space-y-2">
+              {teamMembers.map(member => (
+                <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-blue-600">
+                        {member.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{member.name}</div>
+                      <div className="text-sm text-gray-500">
+                        {member.hebrew} {member.isManager && '• Manager'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setEditingMember(member)}
+                      className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded"
+                      title="Edit member"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    {!member.isManager && ( // Can't delete managers
+                      <button 
+                        onClick={() => handleDeleteMember(member)}
+                        className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded"
+                        title="Remove member"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {teamMembers.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No team members found</p>
+                <p className="text-sm">Click &quot;Add Member&quot; to get started</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
+      
       {/* Add/Edit Member Modal */}
       <MemberFormModal 
         isOpen={showAddMember || editingMember !== null}

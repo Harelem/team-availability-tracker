@@ -6,7 +6,6 @@ import {
   Users, 
   TrendingUp, 
   AlertTriangle, 
-  Target, 
   Calendar,
   Building2,
   Zap,
@@ -16,13 +15,16 @@ import {
   ChevronRight,
   Award,
   Activity,
-  ArrowLeft
+  ArrowLeft,
+  CalendarDays
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
-import { COODashboardData, COOUser, Team } from '@/types';
+import { COODashboardData, COOUser, Team, TeamMember, HoursViewType } from '@/types';
 import COOExportButton from './COOExportButton';
 import COOHoursStatusOverview from './COOHoursStatusOverview';
 import MobileCOODashboard from './MobileCOODashboard';
+import COOHoursViewToggle from './COOHoursViewToggle';
+import SprintPlanningCalendar from './SprintPlanningCalendar';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 
@@ -34,10 +36,12 @@ interface COOExecutiveDashboardProps {
 
 export default function COOExecutiveDashboard({ currentUser, onBack, className = '' }: COOExecutiveDashboardProps) {
   const [dashboardData, setDashboardData] = useState<COODashboardData | null>(null);
-  const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [allTeams, setAllTeams] = useState<(Team & { team_members?: TeamMember[] })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [hoursView, setHoursView] = useState<HoursViewType>('weekly');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'sprint-planning'>('dashboard');
   const isMobile = useMobileDetection();
   
   // Get global sprint data for hours status
@@ -48,17 +52,50 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
       setIsLoading(true);
       setError(null);
       
-      // Load dashboard data and teams
+      console.log('🔍 COO Dashboard: Starting data load...');
+      
+      // EMERGENCY: Clean up 26 duplicate Management Teams
+      const emergencyCleanupResult = await DatabaseService.emergencyCleanupDuplicateManagementTeams();
+      if (!emergencyCleanupResult.success) {
+        console.error('🚨 EMERGENCY CLEANUP FAILED:', emergencyCleanupResult.message);
+      } else {
+        console.log('✅ EMERGENCY CLEANUP SUCCESS:', emergencyCleanupResult.message);
+        if (emergencyCleanupResult.teamsRemoved > 0) {
+          console.log(`🗑️ Removed ${emergencyCleanupResult.teamsRemoved} duplicate Management Teams`);
+        }
+      }
+      
+      // Load dashboard data and operational teams only
       const [data, teams] = await Promise.all([
         DatabaseService.getCOODashboardData(),
-        DatabaseService.getTeams()
+        DatabaseService.getOperationalTeams()
       ]);
       
+      console.log(`🔍 COO Dashboard: Loaded ${teams.length} operational teams`);
+      console.log('🔍 Team names:', teams.map(t => t.name));
+      
+      // Validate we have the expected number of teams
+      if (teams.length !== 5) {
+        console.warn(`⚠️ Expected 5 operational teams, got ${teams.length}`);
+      }
+      
+      // Load team members for all operational teams
+      const teamsWithMembers = await Promise.all(
+        teams.map(async (team) => {
+          const members = await DatabaseService.getTeamMembers(team.id);
+          console.log(`🔍 Team ${team.name}: ${members.length} members`);
+          return { ...team, team_members: members };
+        })
+      );
+      
       setDashboardData(data);
-      setAllTeams(teams);
+      setAllTeams(teamsWithMembers);
+      
+      console.log(`✅ COO Dashboard: Successfully loaded ${teamsWithMembers.length} teams`);
+      
     } catch (err) {
-      console.error('Error loading COO dashboard data:', err);
-      setError('Failed to load dashboard data');
+      console.error('❌ Error loading COO dashboard data:', err);
+      setError(`Failed to load dashboard data: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -206,9 +243,44 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
             </button>
           </div>
         </div>
+
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'dashboard'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                <span>Dashboard</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('sprint-planning')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'sprint-planning'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4" />
+                <span>Sprint Planning</span>
+              </div>
+            </button>
+          </nav>
+        </div>
       </div>
 
-      {/* Company Overview Cards */}
+      {/* Tab Content */}
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Company Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-50 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -225,14 +297,17 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
 
         <div className="bg-green-50 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
-            <Target className="w-5 h-5 text-green-600" />
-            <span className="text-sm font-medium text-green-700">Weekly Potential</span>
+            <Calendar className="w-5 h-5 text-green-600" />
+            <span className="text-sm font-medium text-green-700">Sprint Potential</span>
           </div>
           <div className="text-2xl font-bold text-green-900">
             {formatHours(dashboardData.companyOverview.weeklyPotential)}
           </div>
           <div className="text-xs text-green-600">
-            {formatHours(dashboardData.companyOverview.weeklyPotential / dashboardData.companyOverview.totalMembers)} per person
+            {currentSprint ? 
+              `${currentSprint.sprint_length_weeks} weeks × ${formatHours(dashboardData.companyOverview.weeklyPotential / currentSprint.sprint_length_weeks / dashboardData.companyOverview.totalMembers)} per person` :
+              `${formatHours(dashboardData.companyOverview.weeklyPotential / dashboardData.companyOverview.totalMembers)} per person`
+            }
           </div>
         </div>
 
@@ -273,6 +348,16 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
         />
       </div>
 
+      {/* COO Hours View Toggle */}
+      {allTeams.length > 0 && (
+        <COOHoursViewToggle
+          currentView={hoursView}
+          onViewChange={setHoursView}
+          sprintData={currentSprint}
+          allTeams={allTeams}
+        />
+      )}
+
       {/* Company-Wide Hours Status Overview */}
       {allTeams.length > 0 && currentSprint && (
         <COOHoursStatusOverview 
@@ -281,11 +366,35 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
         />
       )}
 
+      {/* Team Count Warning */}
+      {allTeams.length !== 5 && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-600" />
+            <h4 className="text-yellow-800 font-medium">Team Structure Warning</h4>
+          </div>
+          <p className="text-yellow-700 text-sm mb-2">
+            Expected 5 operational teams, but found {allTeams.length}. Some teams may be missing or duplicated.
+          </p>
+          <div className="text-yellow-600 text-xs">
+            <div className="font-medium mb-1">Current teams ({allTeams.length}):</div>
+            <ul className="list-disc list-inside">
+              {allTeams.map(team => (
+                <li key={team.id}>{team.name} ({team.team_members?.length || 0} members)</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* Team Capacity Analysis */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-gray-600" />
           Team Capacity Analysis
+          <span className="text-sm text-gray-500 font-normal">
+            ({dashboardData.teamComparison.length} teams)
+          </span>
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -466,6 +575,16 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
           </div>
         </div>
       </div>
+
+        </>
+      )}
+
+      {/* Sprint Planning Tab */}
+      {activeTab === 'sprint-planning' && (
+        <div className="mt-6">
+          <SprintPlanningCalendar />
+        </div>
+      )}
     </div>
   );
 }

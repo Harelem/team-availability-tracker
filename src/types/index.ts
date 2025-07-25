@@ -149,6 +149,34 @@ export interface GlobalSprintContextType {
   updateSprintDates: (startDate: string, endDate?: string) => Promise<boolean>;
 }
 
+// COO Hours View Toggle Types
+export type HoursViewType = 'weekly' | 'sprint';
+
+export interface DateRange {
+  start: string;
+  end: string;
+  description: string;
+  workingDays: number;
+}
+
+export interface TeamHoursData {
+  current: number;
+  potential: number;
+  utilization: number;
+}
+
+export interface HoursViewToggleProps {
+  currentView: HoursViewType;
+  onViewChange: (view: HoursViewType) => void;
+  sprintData: CurrentGlobalSprint | null;
+}
+
+export interface COOTeamCardProps {
+  team: Team & { team_members?: TeamMember[] };
+  hoursView: HoursViewType;
+  sprintData: CurrentGlobalSprint | null;
+}
+
 // Export-related types
 export type WeekExportType = 'current-week' | 'previous-week' | 'next-week' | 'specific-week';
 export type SprintExportType = 'current-sprint' | 'previous-sprint' | 'specific-sprint';

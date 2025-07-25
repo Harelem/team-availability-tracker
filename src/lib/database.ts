@@ -1,11 +1,42 @@
 import { supabase } from './supabase'
 import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry } from '@/types'
 
+// Sprint History interfaces
+export interface SprintHistoryEntry {
+  id: number;
+  sprint_number: number;
+  sprint_name?: string;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  sprint_length_weeks: number;
+  description?: string;
+  status: 'upcoming' | 'active' | 'completed';
+  progress_percentage: number;
+  days_remaining: number;
+  total_days: number;
+  created_at: string;
+  updated_at: string;
+  created_by?: string;
+  updated_by?: string;
+}
+
+export interface CreateSprintRequest {
+  sprint_name?: string;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  sprint_length_weeks: number;
+  description?: string;
+  created_by?: string;
+}
+
 const isSupabaseConfigured = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   return url && key && url !== 'your_supabase_url_here' && key !== 'your_supabase_anon_key_here'
 }
+
+// Flag to prevent multiple executions of data fixes
+let dataFixInProgress = false
 
 export const DatabaseService = {
   // Teams
@@ -386,6 +417,382 @@ export const DatabaseService = {
     } catch (error) {
       console.error('❌ Error in team member initialization:', error);
       throw error;
+    }
+  },
+
+  /**
+   * Fix Nir Shilo data issue - remove from Data Team, create Management Team
+   */
+  async fixNirShiloDataIssue(): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      console.log('⚠️ Supabase not configured, skipping Nir Shilo data fix');
+      return false;
+    }
+
+    // Prevent multiple simultaneous executions
+    if (dataFixInProgress) {
+      console.log('⚠️ Data fix already in progress, skipping...');
+      return true;
+    }
+
+    dataFixInProgress = true;
+    console.log('🔧 Fixing Nir Shilo data issue...');
+    
+    try {
+      // Step 1: Create Management Team
+      const { data: managementTeam, error: teamError } = await supabase
+        .from('teams')
+        .upsert([{
+          name: 'Management Team',
+          description: 'Executive management and leadership team'
+        }])
+        .select()
+        .single();
+      
+      if (teamError && teamError.code !== '23505') { // Ignore duplicate key error
+        throw teamError;
+      }
+      
+      console.log('✅ Management team created/verified');
+      
+      // Step 2: Remove Nir from Data Team if he exists there
+      const { data: dataTeam } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('name', 'Data Team')
+        .single();
+      
+      if (dataTeam) {
+        await supabase
+          .from('team_members')
+          .delete()
+          .eq('name', 'Nir Shilo')
+          .eq('team_id', dataTeam.id);
+        
+        console.log('✅ Removed Nir from Data Team');
+      }
+      
+      // Step 3: Remove any duplicate Nir Shilo entries
+      const { data: existingNirs } = await supabase
+        .from('team_members')
+        .select('id, name, team_id')
+        .eq('name', 'Nir Shilo');
+      
+      if (existingNirs && existingNirs.length > 1) {
+        // Keep only one (preferably the one without team assignment)
+        const nirToKeep = existingNirs.find(n => n.team_id === null) || existingNirs[0];
+        const nirsToDelete = existingNirs.filter(n => n.id !== nirToKeep.id);
+        
+        for (const nir of nirsToDelete) {
+          await supabase
+            .from('team_members')
+            .delete()
+            .eq('id', nir.id);
+        }
+        
+        console.log(`✅ Removed ${nirsToDelete.length} duplicate Nir entries`);
+      }
+      
+      // Step 4: Ensure proper COO Nir Shilo exists in Management Team
+      const { error: upsertError } = await supabase
+        .from('team_members')
+        .upsert([{
+          name: 'Nir Shilo',
+          hebrew: 'ניר שילה',
+          is_manager: true,
+          team_id: managementTeam?.id || null
+        }], { onConflict: 'name' });
+      
+      if (upsertError) throw upsertError;
+      
+      console.log('✅ COO Nir Shilo properly configured in Management Team');
+      
+      // Step 5: Verify the fix
+      const { data: nirCheck } = await supabase
+        .from('team_members')
+        .select(`
+          name,
+          hebrew,
+          is_manager,
+          teams(name)
+        `)
+        .eq('name', 'Nir Shilo');
+      
+      console.log('🔍 Verification - Nir Shilo records:', nirCheck);
+      
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Error fixing Nir Shilo data:', error);
+      return false;
+    } finally {
+      dataFixInProgress = false;
+    }
+  },
+
+  // Clean up duplicate teams (especially Management Team)
+  async cleanupDuplicateTeams(): Promise<{ success: boolean; message: string }> {
+    if (!isSupabaseConfigured()) {
+      return { success: false, message: 'Supabase not configured' }
+    }
+
+    try {
+      console.log('🔧 Cleaning up duplicate teams...')
+
+      // Check for duplicate Management Teams
+      const { data: managementTeams, error: queryError } = await supabase
+        .from('teams')
+        .select('id, name, created_at')
+        .eq('name', 'Management Team')
+        .order('created_at', { ascending: true })
+
+      if (queryError) {
+        console.error('Error querying Management Teams:', queryError)
+        return { success: false, message: `Query error: ${queryError.message}` }
+      }
+
+      console.log(`🔍 Found ${managementTeams?.length || 0} Management Team entries`)
+
+      if (managementTeams && managementTeams.length > 1) {
+        // Keep the first one (oldest), delete the rest
+        const keepTeam = managementTeams[0]
+        const deleteTeams = managementTeams.slice(1)
+        
+        console.log(`🗑️ Keeping Management Team ID: ${keepTeam.id}`)
+        console.log(`🗑️ Deleting duplicate Management Teams:`, deleteTeams.map(t => t.id))
+
+        // Delete duplicate teams
+        const { error: deleteError } = await supabase
+          .from('teams')
+          .delete()
+          .in('id', deleteTeams.map(t => t.id))
+
+        if (deleteError) {
+          console.error('Error deleting duplicate teams:', deleteError)
+          return { success: false, message: `Delete error: ${deleteError.message}` }
+        }
+
+        console.log(`✅ Deleted ${deleteTeams.length} duplicate Management Team entries`)
+      }
+
+      // Verify expected team structure
+      const { data: allTeams, error: verifyError } = await supabase
+        .from('teams')
+        .select('id, name')
+        .order('name')
+
+      if (verifyError) {
+        console.error('Error verifying teams:', verifyError)
+        return { success: false, message: `Verification error: ${verifyError.message}` }
+      }
+
+      const expectedOperationalTeams = [
+        'Data Team',
+        'Development Team - Itay',
+        'Development Team - Tal', 
+        'Infrastructure Team',
+        'Product Team'
+      ]
+
+      const foundTeams = allTeams?.map(t => t.name) || []
+      const missingTeams = expectedOperationalTeams.filter(name => !foundTeams.includes(name))
+      const operationalTeams = foundTeams.filter(name => name !== 'Management Team')
+
+      console.log('🔍 Team verification:')
+      console.log(`  Total teams: ${foundTeams.length}`)
+      console.log(`  Operational teams: ${operationalTeams.length}`)
+      console.log(`  Found teams: ${foundTeams.join(', ')}`)
+      
+      if (missingTeams.length > 0) {
+        console.warn(`⚠️ Missing expected teams: ${missingTeams.join(', ')}`)
+      }
+
+      const hasManagementTeam = foundTeams.includes('Management Team')
+      const hasCorrectOperationalCount = operationalTeams.length === 5
+
+      return {
+        success: true,
+        message: `Cleanup completed. Found ${foundTeams.length} teams (${operationalTeams.length} operational, Management Team: ${hasManagementTeam ? 'exists' : 'missing'}). Expected structure: ${hasCorrectOperationalCount ? 'correct' : 'incorrect'}`
+      }
+
+    } catch (error) {
+      console.error('Error in cleanupDuplicateTeams:', error)
+      return { success: false, message: `Cleanup failed: ${error}` }
+    }
+  },
+
+  // Emergency cleanup function for critical database state issues
+  async emergencyCleanupDuplicateManagementTeams(): Promise<{ success: boolean; message: string; teamsRemoved: number }> {
+    if (!isSupabaseConfigured()) {
+      return { success: false, message: 'Supabase not configured', teamsRemoved: 0 }
+    }
+
+    try {
+      console.log('🚨 EMERGENCY: Starting cleanup of duplicate Management Teams...')
+      
+      // First, get ALL Management Teams to assess the scale of the problem
+      const { data: allManagementTeams, error: queryError } = await supabase
+        .from('teams')
+        .select('id, name, created_at')
+        .eq('name', 'Management Team')
+        .order('created_at', { ascending: true })
+
+      if (queryError) {
+        console.error('❌ Emergency cleanup query failed:', queryError)
+        return { success: false, message: `Query error: ${queryError.message}`, teamsRemoved: 0 }
+      }
+
+      const totalManagementTeams = allManagementTeams?.length || 0
+      console.log(`🔍 EMERGENCY: Found ${totalManagementTeams} Management Team entries`)
+
+      if (totalManagementTeams <= 1) {
+        console.log('✅ No duplicate Management Teams found - emergency cleanup not needed')
+        return { 
+          success: true, 
+          message: `Found ${totalManagementTeams} Management Team(s) - no cleanup needed`, 
+          teamsRemoved: 0 
+        }
+      }
+
+      // This is the emergency situation - multiple Management Teams exist
+      console.log(`🚨 CRITICAL: ${totalManagementTeams} Management Teams found - emergency cleanup required!`)
+      
+      // Keep the oldest Management Team (first in ascending order by created_at)
+      const keepTeam = allManagementTeams[0]
+      const duplicateTeams = allManagementTeams.slice(1)
+      
+      console.log(`🔒 PRESERVING: Management Team ID ${keepTeam.id} (created: ${keepTeam.created_at})`)
+      console.log(`🗑️ REMOVING: ${duplicateTeams.length} duplicate Management Teams:`)
+      duplicateTeams.forEach(team => {
+        console.log(`   - ID ${team.id} (created: ${team.created_at})`)
+      })
+
+      // Before deleting teams, reassign any team members to the preserved Management Team
+      console.log('🔄 Checking for team members in duplicate teams...')
+      const { data: membersInDuplicateTeams, error: membersError } = await supabase
+        .from('team_members')
+        .select('id, name, team_id')
+        .in('team_id', duplicateTeams.map(t => t.id))
+
+      if (membersError) {
+        console.error('❌ Error checking team members:', membersError)
+        return { 
+          success: false, 
+          message: `Error checking team members: ${membersError.message}`, 
+          teamsRemoved: 0 
+        }
+      }
+
+      if (membersInDuplicateTeams && membersInDuplicateTeams.length > 0) {
+        console.log(`🔄 Found ${membersInDuplicateTeams.length} team members in duplicate teams, reassigning to preserved team...`)
+        
+        // Reassign all members to the preserved Management Team
+        const { error: reassignError } = await supabase
+          .from('team_members')
+          .update({ team_id: keepTeam.id })
+          .in('id', membersInDuplicateTeams.map(m => m.id))
+
+        if (reassignError) {
+          console.error('❌ Error reassigning team members:', reassignError)
+          return { 
+            success: false, 
+            message: `Error reassigning team members: ${reassignError.message}`, 
+            teamsRemoved: 0 
+          }
+        }
+
+        console.log(`✅ Successfully reassigned ${membersInDuplicateTeams.length} team members to preserved Management Team`)
+        membersInDuplicateTeams.forEach(member => {
+          console.log(`   - ${member.name} (ID: ${member.id}) moved from team ${member.team_id} to ${keepTeam.id}`)
+        })
+      } else {
+        console.log('✅ No team members found in duplicate teams - no reassignment needed')
+      }
+
+      // Now execute the emergency deletion
+      const { error: deleteError } = await supabase
+        .from('teams')
+        .delete()
+        .in('id', duplicateTeams.map(t => t.id))
+
+      if (deleteError) {
+        console.error('❌ Emergency deletion failed:', deleteError)
+        return { 
+          success: false, 
+          message: `Emergency deletion failed: ${deleteError.message}`, 
+          teamsRemoved: 0 
+        }
+      }
+
+      console.log(`✅ EMERGENCY CLEANUP SUCCESS: Removed ${duplicateTeams.length} duplicate Management Teams`)
+
+      // Verify the cleanup was successful
+      const { data: verifyTeams, error: verifyError } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('name', 'Management Team')
+
+      if (verifyError) {
+        console.warn('⚠️ Verification query failed, but deletion may have succeeded:', verifyError)
+      } else {
+        const remainingCount = verifyTeams?.length || 0
+        console.log(`🔍 VERIFICATION: ${remainingCount} Management Team(s) remaining after cleanup`)
+        
+        if (remainingCount !== 1) {
+          console.warn(`⚠️ Expected 1 Management Team after cleanup, found ${remainingCount}`)
+        }
+      }
+
+      // Final verification - check total team count
+      const { data: allTeams } = await supabase
+        .from('teams')
+        .select('id, name')
+        .order('name')
+
+      const totalTeams = allTeams?.length || 0
+      const operationalTeams = allTeams?.filter(t => t.name !== 'Management Team') || []
+      
+      console.log(`📊 FINAL STATE: ${totalTeams} total teams (${operationalTeams.length} operational + Management Team)`)
+
+      return {
+        success: true,
+        message: `Emergency cleanup completed successfully. Removed ${duplicateTeams.length} duplicate Management Teams. Final state: ${totalTeams} total teams (${operationalTeams.length} operational).`,
+        teamsRemoved: duplicateTeams.length
+      }
+
+    } catch (error) {
+      console.error('❌ Emergency cleanup failed with exception:', error)
+      return { 
+        success: false, 
+        message: `Emergency cleanup failed: ${error}`, 
+        teamsRemoved: 0 
+      }
+    }
+  },
+
+  // Get only operational teams (excludes Management Team)
+  async getOperationalTeams(): Promise<Team[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('*')
+        .neq('name', 'Management Team')
+        .order('name')
+
+      if (error) {
+        console.error('Error fetching operational teams:', error)
+        return []
+      }
+
+      console.log(`✅ Loaded ${data?.length || 0} operational teams`)
+      return data || []
+    } catch (error) {
+      console.error('Error in getOperationalTeams:', error)
+      return []
     }
   },
 
@@ -941,6 +1348,76 @@ export const DatabaseService = {
     return data
   },
 
+  // Sprint Calculation Helper Functions
+  /**
+   * Calculate sprint potential hours for a team
+   */
+  calculateSprintPotential(memberCount: number, sprintWeeks: number): number {
+    const hoursPerPersonPerWeek = 35; // 7h × 5 days
+    return memberCount * hoursPerPersonPerWeek * sprintWeeks;
+  },
+
+  /**
+   * Get sprint date range from sprint data
+   */
+  getSprintDateRange(sprintData: CurrentGlobalSprint | null): { startDate: string; endDate: string } {
+    if (!sprintData || !sprintData.sprint_start_date) {
+      // Fallback to current week if no sprint data
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 13); // 2 week default
+      
+      return {
+        startDate: startOfWeek.toISOString().split('T')[0],
+        endDate: endOfWeek.toISOString().split('T')[0]
+      };
+    }
+
+    const startDate = new Date(sprintData.sprint_start_date);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + (sprintData.sprint_length_weeks * 7) - 1);
+
+    return {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0]
+    };
+  },
+
+  /**
+   * Calculate actual sprint hours for team members
+   */
+  async calculateSprintActualHours(memberIds: number[], startDate: string, endDate: string): Promise<number> {
+    if (memberIds.length === 0) return 0;
+
+    try {
+      const { data: entries, error } = await supabase
+        .from('schedule_entries')
+        .select('value, date')
+        .in('member_id', memberIds)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      if (error) {
+        console.error('Error fetching sprint schedule entries:', error);
+        return 0;
+      }
+
+      // Calculate total hours
+      let totalHours = 0;
+      entries?.forEach(entry => {
+        if (entry.value === '1') totalHours += 7;
+        else if (entry.value === '0.5') totalHours += 3.5;
+      });
+
+      return totalHours;
+    } catch (error) {
+      console.error('Error calculating sprint actual hours:', error);
+      return 0;
+    }
+  },
+
   // COO Dashboard Functions
   async getCompanyCapacityMetrics(): Promise<CompanyCapacityMetrics | null> {
     if (!isSupabaseConfigured()) {
@@ -948,77 +1425,57 @@ export const DatabaseService = {
     }
     
     try {
-      // Get current week range
-      const now = new Date()
-      const startOfWeek = new Date(now)
-      startOfWeek.setDate(now.getDate() - now.getDay())
-      const endOfWeek = new Date(startOfWeek)
-      endOfWeek.setDate(startOfWeek.getDate() + 4) // Sun-Thu
-      
-      const startDateStr = startOfWeek.toISOString().split('T')[0]
-      const endDateStr = endOfWeek.toISOString().split('T')[0]
-      
-      // Get all teams and members
-      const teams = await this.getTeams()
-      const allMembers = await this.getTeamMembers()
-      
-      // Get current week schedule data for all teams
-      const scheduleData = await this.getScheduleEntries(startDateStr, endDateStr)
-      
-      // Get current sprint information
+      // Get current sprint information first
       const currentSprint = await this.getCurrentGlobalSprint()
       
-      // Calculate potential hours for each team
+      // Get sprint date range (falls back to 2-week period if no sprint data)
+      const sprintDateRange = this.getSprintDateRange(currentSprint)
+      const startDateStr = sprintDateRange.startDate
+      const endDateStr = sprintDateRange.endDate
+      
+      console.log(`📅 Using sprint-based calculations: ${startDateStr} to ${endDateStr}`)
+      if (currentSprint) {
+        console.log(`🏃‍♂️ Sprint ${currentSprint.current_sprint_number} (${currentSprint.sprint_length_weeks} weeks)`)
+      }
+      
+      // Get operational teams only (excludes Management Team) and all members
+      const teams = await this.getOperationalTeams()
+      const allMembers = await this.getTeamMembers()
+      
+      // Note: Individual schedule data retrieval now handled by calculateSprintActualHours helper
+      // const scheduleData = await this.getScheduleEntries(startDateStr, endDateStr) // Removed - no longer used
+      
+      // Calculate sprint-based potential hours for each team
       const teamCapacityData: TeamCapacityStatus[] = []
       let totalPotentialHours = 0
       let totalActualHours = 0
       
+      // Use sprint length (default to 2 weeks if no sprint data)
+      const sprintWeeks = currentSprint?.sprint_length_weeks || 2
+      
       for (const team of teams) {
         const teamMembers = allMembers.filter(m => m.team_id === team.id)
         const memberCount = teamMembers.length
-        const weeklyPotential = memberCount * 35 // 35 hours per member per week
         
-        // Calculate actual hours for this team
-        let teamActualHours = 0
-        const weekdays: string[] = []
-        const current = new Date(startOfWeek)
+        // Calculate sprint potential using helper function
+        const sprintPotential = this.calculateSprintPotential(memberCount, sprintWeeks)
         
-        for (let i = 0; i < 5; i++) {
-          weekdays.push(current.toISOString().split('T')[0])
-          current.setDate(current.getDate() + 1)
-        }
+        // Calculate actual hours for this team during sprint period
+        const memberIds = teamMembers.map(m => m.id)
+        const teamActualHours = await this.calculateSprintActualHours(memberIds, startDateStr, endDateStr)
         
-        teamMembers.forEach(member => {
-          const memberSchedule = scheduleData[member.id]
-          if (!memberSchedule) return
-          
-          weekdays.forEach(day => {
-            const entry = memberSchedule[day]
-            if (!entry) return
-            
-            switch (entry.value) {
-              case '1':
-                teamActualHours += 7
-                break
-              case '0.5':
-                teamActualHours += 3.5
-                break
-              case 'X':
-                teamActualHours += 0
-                break
-            }
-          })
-        })
+        console.log(`📊 Team ${team.name}: ${memberCount} members, ${sprintPotential}h potential (${sprintWeeks} weeks), ${teamActualHours}h actual`)
         
-        const utilization = weeklyPotential > 0 ? Math.round((teamActualHours / weeklyPotential) * 100) : 0
-        const capacityGap = weeklyPotential - teamActualHours
+        // Calculate sprint-based utilization and capacity status
+        const utilization = sprintPotential > 0 ? Math.round((teamActualHours / sprintPotential) * 100) : 0
+        const capacityGap = sprintPotential - teamActualHours
         const capacityStatus = utilization > 100 ? 'over' : utilization < 80 ? 'under' : 'optimal'
         
         teamCapacityData.push({
           teamId: team.id,
           teamName: team.name,
           memberCount,
-          weeklyPotential,
+          weeklyPotential: sprintPotential, // Note: keeping field name for compatibility but now contains sprint potential
           actualHours: teamActualHours,
           utilization,
           capacityGap,
@@ -1026,7 +1483,7 @@ export const DatabaseService = {
           color: team.color
         })
         
-        totalPotentialHours += weeklyPotential
+        totalPotentialHours += sprintPotential
         totalActualHours += teamActualHours
       }
       
@@ -1445,5 +1902,689 @@ export const DatabaseService = {
       month: 'short', 
       day: 'numeric' 
     })
+  },
+
+  // Sprint History Management
+  async getSprintHistory(): Promise<SprintHistoryEntry[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('sprint_history')
+        .select('*')
+        .order('sprint_start_date', { ascending: false })
+      
+      if (error) {
+        console.error('Error fetching sprint history:', error)
+        return []
+      }
+      
+      // Calculate progress and days remaining manually since we don't have the view
+      const enrichedData = (data || []).map(sprint => {
+        const today = new Date()
+        const startDate = new Date(sprint.sprint_start_date)
+        const endDate = new Date(sprint.sprint_end_date)
+        
+        let progress_percentage = 0
+        let days_remaining = 0
+        let status = sprint.status
+        
+        // Auto-calculate status based on dates
+        if (startDate > today) {
+          status = 'upcoming'
+        } else if (endDate < today) {
+          status = 'completed'
+          progress_percentage = 100
+        } else {
+          status = 'active'
+          const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+          const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+          progress_percentage = Math.round((daysPassed / totalDays) * 100)
+          days_remaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+        }
+        
+        const total_days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        
+        return {
+          ...sprint,
+          status,
+          progress_percentage,
+          days_remaining,
+          total_days
+        }
+      })
+      
+      return enrichedData
+    } catch (error) {
+      console.error('Error in getSprintHistory:', error)
+      return []
+    }
+  },
+
+  async createSprint(sprintData: CreateSprintRequest): Promise<SprintHistoryEntry | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      // Get next sprint number
+      const { data: maxSprintData } = await supabase
+        .from('sprint_history')
+        .select('sprint_number')
+        .order('sprint_number', { ascending: false })
+        .limit(1)
+      
+      const nextSprintNumber = (maxSprintData?.[0]?.sprint_number || 0) + 1
+      
+      const { data, error } = await supabase
+        .from('sprint_history')
+        .insert([{
+          sprint_number: nextSprintNumber,
+          sprint_name: sprintData.sprint_name,
+          sprint_start_date: sprintData.sprint_start_date,
+          sprint_end_date: sprintData.sprint_end_date,
+          sprint_length_weeks: sprintData.sprint_length_weeks,
+          description: sprintData.description,
+          created_by: sprintData.created_by || 'System'
+        }])
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('Error creating sprint:', error)
+        return null
+      }
+      
+      // Return the enriched sprint data
+      const enrichedSprint = await this.enrichSprintData(data)
+      return enrichedSprint
+    } catch (error) {
+      console.error('Error in createSprint:', error)
+      return null
+    }
+  },
+
+  async updateSprint(sprintId: number, updates: Partial<CreateSprintRequest>): Promise<SprintHistoryEntry | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('sprint_history')
+        .update({
+          ...updates,
+          updated_by: updates.created_by || 'System',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sprintId)
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('Error updating sprint:', error)
+        return null
+      }
+      
+      // Return the enriched updated sprint data
+      const enrichedSprint = await this.enrichSprintData(data)
+      return enrichedSprint
+    } catch (error) {
+      console.error('Error in updateSprint:', error)
+      return null
+    }
+  },
+
+  async deleteSprint(sprintId: number): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('sprint_history')
+        .delete()
+        .eq('id', sprintId)
+      
+      if (error) {
+        console.error('Error deleting sprint:', error)
+        return false
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Error in deleteSprint:', error)
+      return false
+    }
+  },
+
+  async getSprintsByDateRange(startDate: string, endDate: string): Promise<SprintHistoryEntry[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('sprint_history')
+        .select('*')
+        .or(`and(sprint_start_date.lte.${endDate},sprint_end_date.gte.${startDate})`)
+        .order('sprint_start_date', { ascending: true })
+      
+      if (error) {
+        console.error('Error fetching sprints by date range:', error)
+        return []
+      }
+      
+      // Enrich all sprint data
+      const enrichedData = await Promise.all(
+        (data || []).map(sprint => this.enrichSprintData(sprint))
+      )
+      
+      return enrichedData
+    } catch (error) {
+      console.error('Error in getSprintsByDateRange:', error)
+      return []
+    }
+  },
+
+  async getSprintById(sprintId: number): Promise<SprintHistoryEntry | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('sprint_history')
+        .select('*')
+        .eq('id', sprintId)
+        .single()
+      
+      if (error) {
+        console.error('Error fetching sprint by ID:', error)
+        return null
+      }
+      
+      if (!data) return null
+      
+      // Enrich the sprint data
+      const enrichedSprint = await this.enrichSprintData(data)
+      return enrichedSprint
+    } catch (error) {
+      console.error('Error in getSprintById:', error)
+      return null
+    }
+  },
+
+  async getSprintsByStatus(status: 'upcoming' | 'active' | 'completed'): Promise<SprintHistoryEntry[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('sprint_history')
+        .select('*')
+        .eq('status', status)
+        .order('sprint_start_date', { ascending: status === 'upcoming' })
+      
+      if (error) {
+        console.error('Error fetching sprints by status:', error)
+        return []
+      }
+      
+      // Enrich all sprint data
+      const enrichedData = await Promise.all(
+        (data || []).map(sprint => this.enrichSprintData(sprint))
+      )
+      
+      return enrichedData
+    } catch (error) {
+      console.error('Error in getSprintsByStatus:', error)
+      return []
+    }
+  },
+
+  async getActiveSprintCount(): Promise<number> {
+    if (!isSupabaseConfigured()) {
+      return 0
+    }
+    
+    try {
+      const { count, error } = await supabase
+        .from('sprint_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active')
+      
+      if (error) {
+        console.error('Error getting active sprint count:', error)
+        return 0
+      }
+      
+      return count || 0
+    } catch (error) {
+      console.error('Error in getActiveSprintCount:', error)
+      return 0
+    }
+  },
+
+  async validateSprintDateRange(startDate: string, endDate: string, excludeSprintId?: number): Promise<{ isValid: boolean; conflicts: SprintHistoryEntry[] }> {
+    if (!isSupabaseConfigured()) {
+      return { isValid: true, conflicts: [] }
+    }
+    
+    try {
+      let query = supabase
+        .from('sprint_history')
+        .select('*')
+        .or(`and(sprint_start_date.lte.${endDate},sprint_end_date.gte.${startDate})`)
+      
+      if (excludeSprintId) {
+        query = query.neq('id', excludeSprintId)
+      }
+      
+      const { data, error } = await query
+      
+      if (error) {
+        console.error('Error validating sprint date range:', error)
+        return { isValid: false, conflicts: [] }
+      }
+      
+      // Enrich the conflict data
+      const enrichedConflicts = await Promise.all(
+        (data || []).map(sprint => this.enrichSprintData(sprint))
+      )
+      
+      return { isValid: enrichedConflicts.length === 0, conflicts: enrichedConflicts }
+    } catch (error) {
+      console.error('Error in validateSprintDateRange:', error)
+      return { isValid: false, conflicts: [] }
+    }
+  },
+
+  // Helper function to enrich sprint data with calculated fields
+  async enrichSprintData(sprint: Partial<SprintHistoryEntry>): Promise<SprintHistoryEntry> {
+    const today = new Date()
+    const startDate = new Date(sprint.sprint_start_date!)
+    const endDate = new Date(sprint.sprint_end_date!)
+    
+    let progress_percentage = 0
+    let days_remaining = 0
+    let status = sprint.status
+    
+    // Auto-calculate status based on dates
+    if (startDate > today) {
+      status = 'upcoming'
+    } else if (endDate < today) {
+      status = 'completed'
+      progress_percentage = 100
+    } else {
+      status = 'active'
+      const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      const daysPassed = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+      progress_percentage = Math.round((daysPassed / totalDays) * 100)
+      days_remaining = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+    }
+    
+    const total_days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    
+    return {
+      ...sprint,
+      status,
+      progress_percentage,
+      days_remaining,
+      total_days
+    } as SprintHistoryEntry
+  },
+
+  /**
+   * Calculate sprint status based on dates
+   */
+  calculateSprintStatus(startDate: string, endDate: string): 'upcoming' | 'active' | 'completed' {
+    const today = new Date()
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    if (start > today) return 'upcoming'
+    if (end < today) return 'completed'
+    return 'active'
+  },
+
+  /**
+   * Calculate sprint progress percentage
+   */
+  calculateSprintProgress(startDate: string, endDate: string): number {
+    const today = new Date()
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    if (today < start) return 0
+    if (today > end) return 100
+    
+    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const daysPassed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    
+    return Math.round((daysPassed / totalDays) * 100)
+  },
+
+  /**
+   * Calculate days remaining in sprint
+   */
+  calculateDaysRemaining(endDate: string): number {
+    const today = new Date()
+    const end = new Date(endDate)
+    
+    if (today > end) return 0
+    
+    return Math.max(0, Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+  },
+
+  /**
+   * Calculate total sprint duration in days
+   */
+  calculateSprintDuration(startDate: string, endDate: string): number {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  },
+
+  /**
+   * Get sprint summary statistics
+   */
+  async getSprintSummary(): Promise<{
+    totalSprints: number;
+    activeSprints: number;
+    upcomingSprints: number;
+    completedSprints: number;
+    averageDuration: number;
+  }> {
+    if (!isSupabaseConfigured()) {
+      return {
+        totalSprints: 0,
+        activeSprints: 0,
+        upcomingSprints: 0,
+        completedSprints: 0,
+        averageDuration: 0
+      }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('sprint_history')
+        .select('status, sprint_length_weeks')
+
+      if (error) {
+        console.error('Error fetching sprint summary:', error)
+        return {
+          totalSprints: 0,
+          activeSprints: 0,
+          upcomingSprints: 0,
+          completedSprints: 0,
+          averageDuration: 0
+        }
+      }
+
+      const sprints = data || []
+      const totalSprints = sprints.length
+      const activeSprints = sprints.filter(s => s.status === 'active').length
+      const upcomingSprints = sprints.filter(s => s.status === 'upcoming').length
+      const completedSprints = sprints.filter(s => s.status === 'completed').length
+      
+      const averageDuration = totalSprints > 0 
+        ? Math.round(sprints.reduce((sum, s) => sum + (s.sprint_length_weeks || 2), 0) / totalSprints * 10) / 10
+        : 0
+
+      return {
+        totalSprints,
+        activeSprints,
+        upcomingSprints,
+        completedSprints,
+        averageDuration
+      }
+    } catch (error) {
+      console.error('Error in getSprintSummary:', error)
+      return {
+        totalSprints: 0,
+        activeSprints: 0,
+        upcomingSprints: 0,
+        completedSprints: 0,
+        averageDuration: 0
+      }
+    }
+  },
+
+  // Database Migration Functions
+  
+  /**
+   * Verify if sprint_history table exists and is accessible
+   */
+  async verifySprintTable(): Promise<{ exists: boolean; recordCount: number; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('sprint_history')
+        .select('id', { count: 'exact' })
+        .limit(1)
+
+      if (error) {
+        // Check specific error types
+        if (error.message.includes('does not exist') || error.code === '42P01') {
+          return { exists: false, recordCount: 0, error: 'Table does not exist' }
+        }
+        if (error.message.includes('permission denied') || error.code === '42501') {
+          return { exists: true, recordCount: 0, error: 'Permission denied - table exists but not accessible' }
+        }
+        return { exists: false, recordCount: 0, error: error.message }
+      }
+
+      // Get actual count
+      const { count, error: countError } = await supabase
+        .from('sprint_history')
+        .select('*', { count: 'exact', head: true })
+
+      return { 
+        exists: true, 
+        recordCount: count || 0, 
+        error: countError?.message 
+      }
+    } catch (error) {
+      return { 
+        exists: false, 
+        recordCount: 0, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }
+    }
+  },
+
+  /**
+   * Handle table permission issues
+   */
+  async handleTablePermissionIssues(): Promise<{ success: boolean; message: string; requiresManualSetup?: boolean }> {
+    return {
+      success: false,
+      message: 'Sprint table exists but is not accessible - check RLS policies and permissions',
+      requiresManualSetup: true
+    }
+  },
+
+  /**
+   * Provide manual setup instructions
+   */
+  getManualSetupInstructions(): string {
+    return `
+🔧 MANUAL SETUP REQUIRED:
+
+1. Go to Supabase Dashboard → SQL Editor
+2. Run the sprint_history table creation script located at:
+   sql/create-sprint-history-complete.sql
+3. Verify table creation and permissions
+4. Refresh the application
+
+The table creation script includes:
+- Complete table schema with constraints
+- Indexes for performance
+- Sample sprint data
+- Proper permissions for authenticated users
+    `.trim()
+  },
+
+  async initializeSprintDatabase(): Promise<{ success: boolean; message: string; requiresManualSetup?: boolean }> {
+    if (!isSupabaseConfigured()) {
+      return { 
+        success: false, 
+        message: 'Supabase not configured - check environment variables',
+        requiresManualSetup: false 
+      }
+    }
+
+    try {
+      console.log('🚀 Initializing sprint planning database...')
+      
+      // First, try to verify if table exists by attempting a simple query
+      const tableVerification = await this.verifySprintTable()
+      
+      if (tableVerification.exists && !tableVerification.error) {
+        console.log('✅ Sprint database already initialized')
+        return { 
+          success: true, 
+          message: `Sprint database ready - ${tableVerification.recordCount} sprints available`,
+          requiresManualSetup: false 
+        }
+      }
+
+      if (tableVerification.exists && tableVerification.error) {
+        console.warn('⚠️ Sprint table exists but has issues:', tableVerification.error)
+        return await this.handleTablePermissionIssues()
+      }
+
+      // Table doesn't exist - try to detect it through information_schema  
+      console.log('🔍 Table not accessible via direct query, checking database schema...')
+      const { data: tables, error: tablesError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .eq('table_name', 'sprint_history')
+
+      if (tablesError) {
+        console.warn('⚠️ Could not check information_schema:', tablesError.message)
+        // Continue with table creation attempt
+      } else if (tables && tables.length > 0) {
+        console.log('📋 Table exists in schema but not accessible - likely a permission issue')
+        return await this.handleTablePermissionIssues()
+      }
+
+      // Table truly doesn't exist - attempt creation or provide manual setup instructions
+      console.log('❌ Sprint table does not exist - manual creation required')
+      console.log('📋 Manual setup instructions:')
+      console.log(this.getManualSetupInstructions())
+      
+      return {
+        success: false,
+        message: 'Sprint history table missing - manual setup required in Supabase Dashboard. Check console for detailed instructions.',
+        requiresManualSetup: true
+      }
+
+    } catch (error) {
+      console.error('❌ Error initializing sprint database:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      
+      return { 
+        success: false, 
+        message: `Failed to initialize sprint database: ${errorMessage}`,
+        requiresManualSetup: errorMessage.includes('does not exist') || errorMessage.includes('42P01')
+      }
+    }
+  },
+
+  async createSprintTablesManually(): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('🔧 Creating sprint tables manually using Supabase client...')
+      
+      // Since we can't execute raw SQL easily, let's try to create a minimal version
+      // by inserting a test record and letting Supabase create the table structure
+      
+      // First, try to create a very basic sprint record to let Supabase auto-create table
+      const testSprint = {
+        sprint_number: 999,
+        sprint_name: 'Test Sprint - Will be deleted',
+        sprint_start_date: '2025-01-01',
+        sprint_end_date: '2025-01-14',
+        sprint_length_weeks: 2,
+        description: 'Test sprint for table creation',
+        status: 'upcoming',
+        created_by: 'System'
+      }
+
+      // Try to insert test data which should create the table
+      const { error: insertError } = await supabase
+        .from('sprint_history')
+        .insert([testSprint])
+
+      if (insertError) {
+        console.error('Error creating table via insert:', insertError)
+        return { success: false, message: `Table creation failed: ${insertError.message}` }
+      }
+
+      // Clean up test record
+      await supabase
+        .from('sprint_history')
+        .delete()
+        .eq('sprint_number', 999)
+
+      console.log('✅ Sprint table created via insert method')
+      return { success: true, message: 'Sprint table created successfully' }
+
+    } catch (error) {
+      console.error('Error in createSprintTablesManually:', error)
+      return { success: false, message: `Manual table creation failed: ${error}` }
+    }
+  },
+
+
+  async addSampleSprintData(): Promise<void> {
+    try {
+      const sampleSprints = [
+        {
+          sprint_number: 1,
+          sprint_name: 'Q3 Foundation Sprint',
+          sprint_start_date: '2024-07-07',
+          sprint_end_date: '2024-07-20',
+          sprint_length_weeks: 2,
+          description: 'Foundation setup and initial features',
+          created_by: 'System'
+        },
+        {
+          sprint_number: 2,
+          sprint_name: 'Q3 Development Sprint',
+          sprint_start_date: '2024-07-21',
+          sprint_end_date: '2024-08-03',
+          sprint_length_weeks: 2,
+          description: 'Core functionality development',
+          created_by: 'System'
+        },
+        {
+          sprint_number: 3,
+          sprint_name: 'Q4 Enhancement Sprint',
+          sprint_start_date: '2025-07-28',
+          sprint_end_date: '2025-08-10',
+          sprint_length_weeks: 2,
+          description: 'Feature enhancements and improvements',
+          created_by: 'System'
+        }
+      ]
+
+      const { error } = await supabase
+        .from('sprint_history')
+        .upsert(sampleSprints, { onConflict: 'sprint_number' })
+
+      if (error) {
+        console.error('Error adding sample sprint data:', error)
+      } else {
+        console.log('✅ Sample sprint data added')
+      }
+    } catch (error) {
+      console.error('Error adding sample sprint data:', error)
+    }
   }
 }
