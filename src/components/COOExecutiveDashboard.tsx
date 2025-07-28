@@ -16,7 +16,10 @@ import {
   Award,
   Activity,
   ArrowLeft,
-  CalendarDays
+  CalendarDays,
+  PieChart,
+  LineChart,
+  AreaChart
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
 import { COODashboardData, COOUser, Team, TeamMember, HoursViewType } from '@/types';
@@ -28,6 +31,22 @@ import SprintPlanningCalendar from './SprintPlanningCalendar';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { formatHours, formatPercentage, getUtilizationStatusColor } from '@/lib/calculationService';
+import {
+  ChartContainer,
+  ChartGridLayout,
+  ChartFilterControls,
+  SprintCapacityBarChart,
+  TeamUtilizationPieChart,
+  SprintProgressLineChart,
+  CapacityTrendAreaChart,
+  TeamComparisonBarChart,
+  transformSprintCapacityData,
+  transformUtilizationDistributionData,
+  transformSprintProgressData,
+  transformCapacityTrendData,
+  transformTeamComparisonData,
+  ChartFilters
+} from '@/components/charts';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -42,7 +61,13 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [hoursView, setHoursView] = useState<HoursViewType>('weekly');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'sprint-planning'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'charts' | 'sprint-planning'>('dashboard');
+  const [chartFilters, setChartFilters] = useState<ChartFilters>({
+    timeframe: 'current-week',
+    teams: [],
+    utilizationRange: [0, 200],
+    showProjections: true
+  });
   const isMobile = useMobileDetection();
   
   // Get global sprint data for hours status
@@ -88,6 +113,12 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
           return { ...team, team_members: members };
         })
       );
+      
+      // Initialize chart filters with all teams selected
+      setChartFilters(prev => ({
+        ...prev,
+        teams: teams.map(team => team.id)
+      }));
       
       setDashboardData(data);
       setAllTeams(teamsWithMembers);
@@ -251,6 +282,19 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 <span>Dashboard</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('charts')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'charts'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <PieChart className="w-4 h-4" />
+                <span>Charts & Analytics</span>
               </div>
             </button>
             <button
@@ -570,6 +614,150 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
       </div>
 
         </>
+      )}
+
+      {/* Charts & Analytics Tab */}
+      {activeTab === 'charts' && (
+        <div className="space-y-6">
+          {/* Chart Filters */}
+          <ChartFilterControls
+            filters={chartFilters}
+            onFiltersChange={(newFilters) => setChartFilters(prev => ({ ...prev, ...newFilters }))}
+            availableTeams={allTeams.map(team => ({ id: team.id, name: team.name }))}
+          />
+
+          {/* Charts Grid */}
+          <ChartGridLayout columns={2} gap={6}>
+            {/* Sprint Capacity Bar Chart */}
+            <ChartContainer
+              title="Sprint Capacity Analysis"
+              description="Team capacity vs actual hours comparison"
+              loading={isLoading}
+              error={error}
+            >
+              <SprintCapacityBarChart
+                data={transformSprintCapacityData(
+                  dashboardData?.teamComparison.filter(team => 
+                    chartFilters.teams.includes(team.teamId)
+                  ) || []
+                ).data}
+                showPercentages={true}
+                height={350}
+              />
+            </ChartContainer>
+
+            {/* Team Utilization Pie Chart */}
+            <ChartContainer
+              title="Team Utilization Distribution"
+              description="Distribution of team utilization levels"
+              loading={isLoading}
+              error={error}
+            >
+              <TeamUtilizationPieChart
+                data={transformUtilizationDistributionData(
+                  dashboardData?.teamComparison.filter(team => 
+                    chartFilters.teams.includes(team.teamId)
+                  ) || []
+                ).data}
+                totalTeams={chartFilters.teams.length}
+                showLegend={true}
+                height={350}
+              />
+            </ChartContainer>
+
+            {/* Sprint Progress Line Chart */}
+            <ChartContainer
+              title="Sprint Progress Tracking"
+              description="Planned vs actual progress over sprint timeline"
+              loading={isLoading}
+              error={error}
+            >
+              <SprintProgressLineChart
+                data={transformSprintProgressData(
+                  dashboardData?.sprintAnalytics || {
+                    currentSprintNumber: 1,
+                    sprintWeeks: 2,
+                    sprintPotential: 0,
+                    sprintActual: 0,
+                    sprintUtilization: 0,
+                    weeklyBreakdown: []
+                  },
+                  currentSprint || {
+                    id: 1,
+                    sprint_length_weeks: 2,
+                    current_sprint_number: 1,
+                    sprint_start_date: new Date().toISOString(),
+                    sprint_end_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+                    days_remaining: 14,
+                    progress_percentage: 0,
+                    is_active: true,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    updated_by: 'system'
+                  }
+                ).data}
+                sprintInfo={currentSprint || {
+                  id: 1,
+                  sprint_length_weeks: 2,
+                  current_sprint_number: 1,
+                  sprint_start_date: new Date().toISOString(),
+                  sprint_end_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+                  days_remaining: 14,
+                  progress_percentage: 0,
+                  is_active: true,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  updated_by: 'system'
+                }}
+                showProjection={chartFilters.showProjections}
+                height={350}
+              />
+            </ChartContainer>
+
+            {/* Team Comparison Horizontal Bar Chart */}
+            <ChartContainer
+              title="Team Performance Comparison"
+              description="Cross-team utilization and capacity ranking"
+              loading={isLoading}
+              error={error}
+            >
+              <TeamComparisonBarChart
+                data={transformTeamComparisonData(
+                  dashboardData?.teamComparison.filter(team => 
+                    chartFilters.teams.includes(team.teamId)
+                  ) || []
+                ).data}
+                sortBy="utilization"
+                showRanking={true}
+                height={450}
+              />
+            </ChartContainer>
+          </ChartGridLayout>
+
+          {/* Full-width Capacity Trend Chart */}
+          <ChartContainer
+            title="Historical Capacity Trends"
+            description="Long-term capacity and utilization patterns"
+            loading={isLoading}
+            error={error}
+          >
+            <CapacityTrendAreaChart
+              data={transformCapacityTrendData(
+                dashboardData?.capacityForecast?.quarterlyOutlook?.capacityTrends?.map(trend => ({
+                  period: trend.period,
+                  date: trend.period,
+                  utilization: trend.value,
+                  potential: 100,
+                  actual: trend.value,
+                  teamCount: dashboardData.companyOverview.totalTeams
+                })) || []
+              ).data}
+              timeframe="weekly"
+              showAverage={true}
+              height={400}
+            />
+          </ChartContainer>
+        </div>
       )}
 
       {/* Sprint Planning Tab */}
