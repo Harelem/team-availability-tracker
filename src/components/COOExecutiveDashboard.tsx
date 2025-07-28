@@ -27,6 +27,7 @@ import COOHoursViewToggle from './COOHoursViewToggle';
 import SprintPlanningCalendar from './SprintPlanningCalendar';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
+import { formatHours, formatPercentage, getUtilizationStatusColor } from '@/lib/calculationService';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -109,15 +110,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
     setRefreshKey(prev => prev + 1);
   };
 
-  const formatHours = (hours: number) => `${Math.round(hours)}h`;
-  const formatPercentage = (percentage: number) => `${Math.round(percentage)}%`;
-
-  const getUtilizationColor = (percentage: number) => {
-    if (percentage >= 100) return 'text-red-600 bg-red-100';
-    if (percentage >= 90) return 'text-green-600 bg-green-100';
-    if (percentage >= 80) return 'text-yellow-600 bg-yellow-100';
-    return 'text-gray-600 bg-gray-100';
-  };
+  // Using standardized calculation service functions
 
   const getCapacityStatusIcon = (status: 'optimal' | 'under' | 'over') => {
     switch (status) {
@@ -319,7 +312,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
           <div className="text-2xl font-bold text-purple-900">
             {formatPercentage(dashboardData.companyOverview.currentUtilization)}
           </div>
-          <div className={`text-xs px-2 py-1 rounded-full ${getUtilizationColor(dashboardData.companyOverview.currentUtilization)}`}>
+          <div className={`text-xs px-2 py-1 rounded-full ${getUtilizationStatusColor(dashboardData.companyOverview.currentUtilization)}`}>
             {dashboardData.companyOverview.currentUtilization >= 90 ? 'Optimal' : 
              dashboardData.companyOverview.currentUtilization >= 80 ? 'Good' : 'Below Target'}
           </div>

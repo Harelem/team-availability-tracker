@@ -384,7 +384,8 @@ export class CalculationService {
     
     while (current <= endDate) {
       // Check if it's a working day (Sunday = 0 through Thursday = 4)
-      if (CALCULATION_CONSTANTS.WORKING_DAYS.includes(current.getDay())) {
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek >= 0 && dayOfWeek <= 4) {
         days.push(new Date(current));
       }
       current.setDate(current.getDate() + 1);
@@ -433,7 +434,8 @@ export function calculateWorkingDaysBetween(startDate: Date, endDate: Date): num
   const current = new Date(startDate);
   
   while (current <= endDate) {
-    if (CALCULATION_CONSTANTS.WORKING_DAYS.includes(current.getDay())) {
+    const dayOfWeek = current.getDay();
+    if (dayOfWeek >= 0 && dayOfWeek <= 4) {
       workingDays++;
     }
     current.setDate(current.getDate() + 1);
