@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { COOUser, COODashboardData } from '@/types';
 import COOExportButton from './COOExportButton';
+import { formatHours, formatPercentage, getUtilizationStatusColor } from '@/lib/calculationService';
 
 interface MobileCOODashboardProps {
   currentUser?: COOUser;
@@ -33,15 +34,7 @@ export default function MobileCOODashboard({
   error
 }: MobileCOODashboardProps) {
   
-  const formatHours = (hours: number) => `${Math.round(hours)}h`;
-  const formatPercentage = (percentage: number) => `${Math.round(percentage)}%`;
-
-  const getUtilizationColor = (percentage: number) => {
-    if (percentage >= 100) return 'text-red-600 bg-red-100';
-    if (percentage >= 90) return 'text-green-600 bg-green-100';
-    if (percentage >= 80) return 'text-yellow-600 bg-yellow-100';
-    return 'text-gray-600 bg-gray-100';
-  };
+  // Using standardized calculation service functions
 
   if (isLoading) {
     return (
@@ -186,7 +179,7 @@ export default function MobileCOODashboard({
                   <div className="text-xl font-bold text-purple-900">
                     {formatPercentage(dashboardData.companyOverview.currentUtilization)}
                   </div>
-                  <div className={`text-xs px-2 py-1 rounded-full ${getUtilizationColor(dashboardData.companyOverview.currentUtilization)}`}>
+                  <div className={`text-xs px-2 py-1 rounded-full ${getUtilizationStatusColor(dashboardData.companyOverview.currentUtilization)}`}>
                     {dashboardData.companyOverview.currentUtilization >= 90 ? 'Optimal' : 
                      dashboardData.companyOverview.currentUtilization >= 80 ? 'Good' : 'Below Target'}
                   </div>
@@ -226,7 +219,7 @@ export default function MobileCOODashboard({
               <div key={team.teamId} className="bg-white p-4 rounded-lg shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-medium text-gray-900">{team.teamName}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs ${getUtilizationColor(team.utilization)}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs ${getUtilizationStatusColor(team.utilization)}`}>
                     {formatPercentage(team.utilization)}
                   </span>
                 </div>

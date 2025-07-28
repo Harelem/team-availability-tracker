@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Building2, TrendingUp, Calendar, Users, AlertTriangle } from 'lucide-react';
 import { Team, TeamMember, CurrentGlobalSprint } from '@/types';
 import { DatabaseService } from '@/lib/database';
-import { calculateSprintPeriod, calculateWorkingDaysInPeriod, getSprintDescription, formatSprintDateRange } from '@/utils/sprintCalculations';
+import { calculateSprintPeriod, getSprintDescription, formatSprintDateRange } from '@/utils/sprintCalculations';
+import { calculateWorkingDaysBetween } from '@/lib/calculationService';
 
 interface TeamSprintStatus {
   teamName: string;
@@ -101,7 +102,7 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
     teamMembers: TeamMember[],
     sprintPeriod: { start: string; end: string }
   ) => {
-    const workingDays = calculateWorkingDaysInPeriod(sprintPeriod.start, sprintPeriod.end);
+    const workingDays = calculateWorkingDaysBetween(new Date(sprintPeriod.start), new Date(sprintPeriod.end));
     
     // Get all schedule entries for team members in this period
     const scheduleData = await DatabaseService.getScheduleEntries(
