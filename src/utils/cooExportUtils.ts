@@ -5,6 +5,7 @@
 
 import * as XLSX from 'xlsx';
 import { COOExportData, TeamCapacityStatus } from '@/types';
+import { CALCULATION_CONSTANTS } from '@/lib/calculationService';
 
 /**
  * Generate comprehensive COO executive Excel workbook with multiple sheets
@@ -425,8 +426,8 @@ const applyCOOSheetFormatting = (ws: XLSX.WorkSheet, data: unknown[][]): void =>
  */
 const getUtilizationStatus = (utilization: number): string => {
   if (utilization >= 100) return 'Over-capacity';
-  if (utilization >= 85) return 'Optimal';
-  if (utilization >= 70) return 'Good';
+  if (utilization >= CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MAX) return 'Optimal';
+  if (utilization >= CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MIN) return 'Good';
   return 'Under-utilized';
 };
 
@@ -441,16 +442,16 @@ const getCapacityStatusText = (status: 'optimal' | 'under' | 'over'): string => 
 
 const getTeamRiskLevel = (team: TeamCapacityStatus): string => {
   if (team.utilization > 100) return 'High';
-  if (team.utilization < 70) return 'Medium';
+  if (team.utilization < CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MIN) return 'Medium';
   return 'Low';
 };
 
 const getHighPerformingTeams = (teams: TeamCapacityStatus[]): TeamCapacityStatus[] => {
-  return teams.filter(team => team.utilization >= 85 && team.utilization <= 100);
+  return teams.filter(team => team.utilization >= CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MIN && team.utilization <= 100);
 };
 
 const getUnderperformingTeams = (teams: TeamCapacityStatus[]): TeamCapacityStatus[] => {
-  return teams.filter(team => team.utilization < 85);
+  return teams.filter(team => team.utilization < CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MIN);
 };
 
 const getOverCapacityTeams = (teams: TeamCapacityStatus[]): TeamCapacityStatus[] => {

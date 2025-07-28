@@ -5,6 +5,7 @@
 import * as XLSX from 'xlsx';
 import { ExportData, TeamMember, WeekData, WorkOption } from '@/types';
 import { formatDate, getWeekDays } from './dateUtils';
+import { CalculationService } from '@/lib/calculationService';
 
 const workOptions: WorkOption[] = [
   { value: '1', label: '1', hours: 7, description: 'Full day (7 hours)', color: 'bg-green-100 text-green-800 border-green-300' },
@@ -15,26 +16,26 @@ const workOptions: WorkOption[] = [
 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 
 /**
- * Calculate weekly hours for a team member
+ * Calculate weekly hours for a team member using standardized calculation service
  */
 export const calculateMemberHours = (
   memberId: number,
   scheduleData: WeekData,
   weekDays: Date[]
 ): number => {
-  let totalHours = 0;
-  const memberData = scheduleData[memberId] || {};
-
-  weekDays.forEach(date => {
-    const dateKey = date.toISOString().split('T')[0];
-    const value = memberData[dateKey];
-    const option = workOptions.find(opt => opt.value === value?.value);
-    if (option) {
-      totalHours += option.hours;
-    }
-  });
+  const memberScheduleEntries = scheduleData[memberId] || {};
   
-  return totalHours;
+  try {
+    const result = CalculationService.calculateWeeklyHours({
+      scheduleEntries: memberScheduleEntries,
+      weekStartDate: weekDays[0] || new Date(),
+    });
+    
+    return result.totalHours;
+  } catch (error) {
+    console.error(`Error calculating hours for member ${memberId}:`, error);
+    return 0;
+  }
 };
 
 /**
