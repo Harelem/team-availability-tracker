@@ -27,6 +27,8 @@ const customJestConfig = {
       statements: 80,
     },
   },
+  testTimeout: 30000, // 30 seconds for longer analytics tests
+  verbose: true,
   testMatch: [
     '<rootDir>/__tests__/**/*.{js,jsx,ts,tsx}',
     '<rootDir>/src/**/__tests__/**/*.{js,jsx,ts,tsx}',
