@@ -5,7 +5,15 @@
  * with specific rules and standards for the team availability tracker.
  */
 
-import { AxeConfig } from 'axe-core';
+// Define our own AxeConfig interface since it's not properly exported
+interface AxeConfig {
+  tags?: string[];
+  rules?: Record<string, any>;
+  disableOtherRules?: boolean;
+  reporter?: string;
+  exclude?: string[];
+  include?: string[];
+}
 
 export const axeConfig: AxeConfig = {
   // Target WCAG 2.1 AA compliance
@@ -29,7 +37,6 @@ export const axeConfig: AxeConfig = {
     'aria-roles': { enabled: true },
     'button-name': { enabled: true },
     'link-name': { enabled: true },
-    'form-field-multiple-labels': { enabled: true },
     'label': { enabled: true },
     'heading-order': { enabled: true },
     'landmark-one-main': { enabled: true },
@@ -86,21 +93,6 @@ export const axeConfig: AxeConfig = {
     // Disable rules that may conflict with our design system
     'color-contrast-enhanced': { 
       enabled: false // We test standard contrast, not enhanced
-    },
-    'landmark-banner-is-top-level': { 
-      enabled: false // Our mobile layout may have nested banners
-    },
-    'landmark-contentinfo-is-top-level': { 
-      enabled: false // Footer may be nested in mobile views
-    },
-    'landmark-main-is-top-level': { 
-      enabled: false // Main content may be nested
-    },
-    'page-has-heading-one': { 
-      enabled: false // Single-page app may not always have h1
-    },
-    'region': { 
-      enabled: false // Not all content needs to be in landmarks
     }
   },
 

@@ -79,3 +79,42 @@ global.indexedDB = {
   deleteDatabase: jest.fn(),
   cmp: jest.fn(),
 };
+
+// Mock Supabase
+jest.mock('@supabase/supabase-js', () => ({
+  createClient: jest.fn(() => ({
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          single: jest.fn(() => Promise.resolve({ data: null, error: new Error('Mocked error') })),
+          limit: jest.fn(() => Promise.resolve({ data: [], error: null })),
+        })),
+        order: jest.fn(() => Promise.resolve({ data: [], error: null })),
+        limit: jest.fn(() => Promise.resolve({ data: [], error: null })),
+      })),
+      insert: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      update: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      delete: jest.fn(() => Promise.resolve({ data: null, error: null })),
+    })),
+    auth: {
+      getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
+      signInWithPassword: jest.fn(() => Promise.resolve({ data: null, error: null })),
+      signOut: jest.fn(() => Promise.resolve({ error: null })),
+    },
+    realtime: {
+      channel: jest.fn(() => ({
+        on: jest.fn(() => ({ subscribe: jest.fn() })),
+        unsubscribe: jest.fn(),
+      })),
+    },
+  })),
+}));
+
+// Mock fetch for PWA tests
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+    text: () => Promise.resolve(''),
+  })
+);

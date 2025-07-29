@@ -416,3 +416,14 @@ export default {
   mockPerformanceAPI,
   mockAnimationFrame,
 };
+
+// Add a test to satisfy Jest's requirement
+describe('Mobile Test Utils', () => {
+  test('should export all utility functions', () => {
+    expect(resizeWindow).toBeDefined();
+    expect(createMockTouchEvent).toBeDefined();
+    expect(createMockSwipeGesture).toBeDefined();
+    expect(mockMediaQuery).toBeDefined();
+    expect(viewportSizes).toBeDefined();
+  });
+});

@@ -5,6 +5,8 @@
  * and provides performance insights for optimization.
  */
 
+import React from 'react';
+
 // Core Web Vitals interfaces
 interface PerformanceMetric {
   name: string;
