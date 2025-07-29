@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry } from '@/types'
+import { calculateSprintCapacityFromSettings } from './calculationService'
 
 // Sprint History interfaces
 export interface SprintHistoryEntry {
@@ -1499,7 +1500,8 @@ export const DatabaseService = {
       let sprintUtilizationTrend: number[] = []
       
       if (currentSprint) {
-        sprintPotential = totalPotentialHours * currentSprint.sprint_length_weeks
+        // Use real sprint capacity calculation based on working days
+        sprintPotential = calculateSprintCapacityFromSettings(allMembers, currentSprint)
         // This would need more complex calculation with historical data
         sprintActual = totalActualHours * (currentSprint.current_sprint_number || 1)
         sprintUtilizationTrend = [90, 85, 88] // Mock data - would come from historical calculation

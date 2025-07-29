@@ -111,6 +111,49 @@ export const CALCULATION_CONSTANTS = {
 } as const;
 
 /**
+ * Calculate real sprint capacity using actual sprint duration and working days
+ */
+export function calculateRealSprintCapacity(
+  teamMembers: TeamMember[],
+  sprintStartDate: Date,
+  sprintEndDate: Date,
+  hoursPerDay: number = CALCULATION_CONSTANTS.HOURS_PER_DAY
+): number {
+  // Get all working days between sprint dates
+  const workingDays = CalculationService.getWorkingDaysInPeriod(sprintStartDate, sprintEndDate);
+  const sprintWorkingDays = workingDays.length;
+  
+  // Calculate total capacity
+  const teamSize = teamMembers.length;
+  const totalCapacity = teamSize * sprintWorkingDays * hoursPerDay;
+  
+  return totalCapacity;
+}
+
+/**
+ * Calculate real sprint capacity using sprint settings
+ */
+export function calculateSprintCapacityFromSettings(
+  teamMembers: TeamMember[],
+  currentSprint: CurrentGlobalSprint,
+  hoursPerDay: number = CALCULATION_CONSTANTS.HOURS_PER_DAY
+): number {
+  if (!currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+    // Fall back to weeks-based calculation if dates not available
+    const workingDaysPerWeek = CALCULATION_CONSTANTS.WORK_DAYS_PER_WEEK;
+    const totalWorkingDays = currentSprint.sprint_length_weeks * workingDaysPerWeek;
+    return teamMembers.length * totalWorkingDays * hoursPerDay;
+  }
+  
+  return calculateRealSprintCapacity(
+    teamMembers,
+    new Date(currentSprint.sprint_start_date),
+    new Date(currentSprint.sprint_end_date),
+    hoursPerDay
+  );
+}
+
+/**
  * Centralized Calculation Service
  */
 export class CalculationService {
@@ -378,7 +421,7 @@ export class CalculationService {
   /**
    * Get all working days in a date period
    */
-  private static getWorkingDaysInPeriod(startDate: Date, endDate: Date): Date[] {
+  static getWorkingDaysInPeriod(startDate: Date, endDate: Date): Date[] {
     const days: Date[] = [];
     const current = new Date(startDate);
     
