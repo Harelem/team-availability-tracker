@@ -5,7 +5,7 @@ import { UseTeamActionsReturn, ExportResult, ReminderResult, NavigationResult } 
 
 /**
  * Custom hook for team-related actions in the modal
- * Handles exports, reminders, navigation, and meeting scheduling
+ * Handles exports and navigation
  */
 export function useTeamActions(teamId: number): UseTeamActionsReturn {
   const [loading, setLoading] = useState(false);
@@ -52,57 +52,6 @@ export function useTeamActions(teamId: number): UseTeamActionsReturn {
     }
   }, [teamId]);
 
-  // Send reminder notifications to team members
-  const sendReminders = useCallback(async (memberIds: number[]): Promise<ReminderResult> => {
-    if (memberIds.length === 0) {
-      const errorMessage = 'No team members selected for reminders';
-      setError(errorMessage);
-      return {
-        success: false,
-        sentCount: 0,
-        failedCount: 0,
-        error: errorMessage
-      };
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      console.log(`Sending reminders to ${memberIds.length} team members...`);
-
-      // Simulate some failures for realistic testing
-      const successRate = 0.85; // 85% success rate
-      const sentCount = Math.floor(memberIds.length * successRate);
-      const failedCount = memberIds.length - sentCount;
-
-      if (sentCount === 0) {
-        throw new Error('Failed to send any reminders');
-      }
-
-      return {
-        success: true,
-        sentCount,
-        failedCount,
-        error: failedCount > 0 ? `${failedCount} reminders failed to send` : undefined
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to send reminders';
-      setError(errorMessage);
-      
-      return {
-        success: false,
-        sentCount: 0,
-        failedCount: memberIds.length,
-        error: errorMessage
-      };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   // Navigate to team dashboard
   const navigateToTeamDashboard = useCallback(async (): Promise<NavigationResult> => {
@@ -140,57 +89,10 @@ export function useTeamActions(teamId: number): UseTeamActionsReturn {
     }
   }, [teamId]);
 
-  // Schedule meeting with team members
-  const scheduleMeeting = useCallback(async (memberIds: number[]): Promise<NavigationResult> => {
-    if (memberIds.length === 0) {
-      const errorMessage = 'No team members selected for meeting';
-      setError(errorMessage);
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Generate meeting invitation URL with member IDs
-      const memberParams = memberIds.map(id => `member=${id}`).join('&');
-      const redirectUrl = `/calendar/schedule?team=${teamId}&${memberParams}`;
-      
-      console.log(`Scheduling meeting with team ${teamId} members: ${memberIds.join(', ')}`);
-
-      // In a real implementation, this would integrate with calendar service
-      if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', redirectUrl);
-      }
-
-      return {
-        success: true,
-        redirectUrl
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to schedule meeting';
-      setError(errorMessage);
-      
-      return {
-        success: false,
-        error: errorMessage
-      };
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId]);
 
   return {
     exportTeamData,
-    sendReminders,
     navigateToTeamDashboard,
-    scheduleMeeting,
     loading,
     error
   };

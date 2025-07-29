@@ -125,12 +125,6 @@ export interface ExportResult {
   error?: string;
 }
 
-export interface ReminderResult {
-  success: boolean;
-  sentCount: number;
-  failedCount: number;
-  error?: string;
-}
 
 export interface NavigationResult {
   success: boolean;
@@ -149,9 +143,7 @@ export interface UseTeamDetailReturn {
 
 export interface UseTeamActionsReturn {
   exportTeamData: (format: 'csv' | 'excel') => Promise<ExportResult>;
-  sendReminders: (memberIds: number[]) => Promise<ReminderResult>;
   navigateToTeamDashboard: () => Promise<NavigationResult>;
-  scheduleMeeting: (memberIds: number[]) => Promise<NavigationResult>;
   loading: boolean;
   error: string | null;
 }
@@ -195,9 +187,7 @@ export interface ActionPanelProps {
   teamName: string;
   memberIds: number[];
   onExport: (format: 'csv' | 'excel') => void;
-  onSendReminders: () => void;
   onNavigateToDashboard: () => void;
-  onScheduleMeeting: () => void;
   onClose: () => void;
   loading?: boolean;
   className?: string;

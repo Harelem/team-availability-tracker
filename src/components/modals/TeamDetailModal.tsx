@@ -10,9 +10,7 @@ import {
   TrendingDown,
   Activity,
   Download,
-  Bell,
   ExternalLink,
-  Video,
   CheckCircle,
   AlertCircle,
   XCircle,
@@ -43,7 +41,7 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
 
   const isMobile = useMobileDetection();
   const { data, loading, error, refetch } = useTeamDetail(teamId);
-  const { exportTeamData, sendReminders, navigateToTeamDashboard, scheduleMeeting, loading: actionsLoading } = useTeamActions(teamId);
+  const { exportTeamData, navigateToTeamDashboard, loading: actionsLoading } = useTeamActions(teamId);
   const { downloadFile } = useFileDownload();
   const { showSuccessNotification, showErrorNotification } = useNotificationActions();
   
@@ -157,22 +155,6 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
     }
   };
 
-  const handleSendReminders = async () => {
-    if (selectedMembers.length === 0) {
-      showErrorNotification('Please select team members to send reminders to');
-      return;
-    }
-
-    const result = await sendReminders(selectedMembers);
-    if (result.success) {
-      showSuccessNotification(`Reminders sent to ${result.sentCount} team members`);
-      if (result.failedCount > 0) {
-        showErrorNotification(`${result.failedCount} reminders failed to send`);
-      }
-    } else {
-      showErrorNotification(result.error || 'Failed to send reminders');
-    }
-  };
 
   const handleNavigateToDashboard = async () => {
     const result = await navigateToTeamDashboard();
@@ -183,20 +165,6 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
     }
   };
 
-  const handleScheduleMeeting = async () => {
-    if (selectedMembers.length === 0) {
-      showErrorNotification('Please select team members for the meeting');
-      return;
-    }
-
-    const result = await scheduleMeeting(selectedMembers);
-    if (result.success) {
-      showSuccessNotification('Meeting scheduled successfully');
-      onClose();
-    } else {
-      showErrorNotification(result.error || 'Failed to schedule meeting');
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -590,7 +558,7 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
               <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                     onClick={handleNavigateToDashboard}
                     disabled={actionsLoading}
@@ -600,43 +568,16 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
                     View Dashboard
                   </button>
 
-                  <div className="relative">
-                    <button
-                      onClick={() => handleExport('excel')}
-                      disabled={actionsLoading}
-                      className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Export Excel
-                    </button>
-                  </div>
-
                   <button
-                    onClick={handleSendReminders}
-                    disabled={actionsLoading || selectedMembers.length === 0}
-                    className="flex items-center justify-center px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+                    onClick={() => handleExport('excel')}
+                    disabled={actionsLoading}
+                    className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                   >
-                    <Bell className="w-4 h-4 mr-2" />
-                    Send Reminders
-                  </button>
-
-                  <button
-                    onClick={handleScheduleMeeting}
-                    disabled={actionsLoading || selectedMembers.length === 0}
-                    className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                  >
-                    <Video className="w-4 h-4 mr-2" />
-                    Schedule Meeting
+                    <Download className="w-4 h-4 mr-2" />
+                    Export Excel
                   </button>
                 </div>
 
-                {selectedMembers.length > 0 && (
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      {selectedMembers.length} team member{selectedMembers.length !== 1 ? 's' : ''} selected for actions
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </>
