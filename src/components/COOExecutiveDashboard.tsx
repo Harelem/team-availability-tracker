@@ -16,8 +16,7 @@ import {
   Award,
   Activity,
   ArrowLeft,
-  CalendarDays,
-  PieChart
+  CalendarDays
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
 import { COODashboardData, COOUser, Team, TeamMember } from '@/types';
@@ -27,11 +26,10 @@ import MobileCOODashboard from './MobileCOODashboard';
 import SprintPlanningCalendar from './SprintPlanningCalendar';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
-import { formatHours, formatPercentage, getUtilizationStatusColor } from '@/lib/calculationService';
+import { formatHours, formatPercentage } from '@/lib/calculationService';
 import ConsolidatedAnalytics from './analytics/ConsolidatedAnalytics';
 import TeamDetailModal from '@/components/modals/TeamDetailModal';
 import { COOCard, COOMetricCard, COOStatCard } from '@/components/ui/COOCard';
-import designSystem from '@/lib/cooDesignSystem';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -132,18 +130,6 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
     }
   };
 
-  const getCapacityStatusColor = (status: 'optimal' | 'under' | 'over') => {
-    switch (status) {
-      case 'optimal':
-        return 'text-green-600 bg-green-100';
-      case 'under':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'over':
-        return 'text-red-600 bg-red-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
 
   // Mobile view
   if (isMobile && dashboardData) {
