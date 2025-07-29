@@ -602,12 +602,12 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
 
                   <div className="relative">
                     <button
-                      onClick={() => handleExport('csv')}
+                      onClick={() => handleExport('excel')}
                       disabled={actionsLoading}
                       className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Export CSV
+                      Export Excel
                     </button>
                   </div>
 

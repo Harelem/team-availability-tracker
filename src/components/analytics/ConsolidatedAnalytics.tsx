@@ -38,8 +38,9 @@ import {
 import ExecutiveSummaryDashboard from './ExecutiveSummaryDashboard';
 import { useCompanyAnalytics, useAlerts } from '@/hooks/useAnalytics';
 
-// Import types
+// Import types and services
 import { COOUser, Team, TeamMember, CurrentGlobalSprint, COODashboardData } from '@/types';
+import { exportAnalyticsToExcel } from '@/lib/exportService';
 
 interface ConsolidatedAnalyticsProps {
   currentUser?: COOUser;
@@ -98,30 +99,16 @@ export default function ConsolidatedAnalytics({
 
   const exportAnalyticsReport = async () => {
     try {
-      const reportData = {
-        generatedBy: currentUser?.name || 'COO Dashboard',
-        generatedAt: new Date().toISOString(),
-        companyMetrics: companyAnalytics,
-        teamComparison: dashboardData.teamComparison,
-        sprintAnalytics: dashboardData.sprintAnalytics,
-        capacityForecast: dashboardData.capacityForecast,
-        alerts: alerts || []
-      };
-
-      // For now, generate JSON - will be updated to Excel in next task
-      const blob = new Blob([JSON.stringify(reportData, null, 2)], { 
-        type: 'application/json' 
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `consolidated-analytics-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      await exportAnalyticsToExcel(
+        dashboardData,
+        companyAnalytics,
+        alerts,
+        currentUser?.name || 'COO Dashboard'
+      );
     } catch (error) {
       console.error('Error exporting analytics report:', error);
+      // Show user-friendly error message
+      alert('Failed to export analytics report. Please try again.');
     }
   };
 
