@@ -2,7 +2,7 @@
 // If you delete this file, remove `setupFilesAfterEnv` from `jest.config.js`
 
 // Add custom jest matchers from jest-dom
-// import '@testing-library/jest-dom'
+import '@testing-library/jest-dom';
 
 // Mock environment variables for testing
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
@@ -22,3 +22,60 @@ global.console = {
   info: jest.fn(),
   debug: jest.fn(),
 }
+
+// Mock ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+  constructor(cb) {
+    this.cb = cb;
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+// Mock IntersectionObserver
+global.IntersectionObserver = class IntersectionObserver {
+  constructor(cb) {
+    this.cb = cb;
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+// Mock matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
+// Mock navigator APIs
+Object.defineProperty(navigator, 'vibrate', {
+  writable: true,
+  value: jest.fn(),
+});
+
+// Mock localStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+global.localStorage = localStorageMock;
+
+// Mock IndexedDB
+global.indexedDB = {
+  open: jest.fn(),
+  deleteDatabase: jest.fn(),
+  cmp: jest.fn(),
+};
