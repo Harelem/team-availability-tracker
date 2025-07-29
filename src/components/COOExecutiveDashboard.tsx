@@ -30,6 +30,8 @@ import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { formatHours, formatPercentage, getUtilizationStatusColor } from '@/lib/calculationService';
 import ConsolidatedAnalytics from './analytics/ConsolidatedAnalytics';
 import TeamDetailModal from '@/components/modals/TeamDetailModal';
+import { COOCard, COOMetricCard, COOStatCard } from '@/components/ui/COOCard';
+import designSystem from '@/lib/cooDesignSystem';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -292,63 +294,51 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
       {activeTab === 'dashboard' && (
         <>
           {/* Company Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-blue-700">Total Workforce</span>
-          </div>
-          <div className="text-2xl font-bold text-blue-900">
-            {dashboardData.companyOverview.totalMembers}
-          </div>
-          <div className="text-xs text-blue-600">
-            {dashboardData.companyOverview.totalTeams} teams
-          </div>
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <COOMetricCard
+              title="Total Workforce"
+              value={dashboardData.companyOverview.totalMembers}
+              unit="members"
+              trend={`${dashboardData.companyOverview.totalTeams} teams`}
+              icon={Users}
+              variant="primary"
+              status="good"
+            />
 
-        <div className="bg-green-50 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-5 h-5 text-green-600" />
-            <span className="text-sm font-medium text-green-700">Sprint Potential</span>
-          </div>
-          <div className="text-2xl font-bold text-green-900">
-            {formatHours(dashboardData.companyOverview.weeklyPotential)}
-          </div>
-          <div className="text-xs text-green-600">
-            {currentSprint ? 
-              `${currentSprint.sprint_length_weeks} weeks × ${formatHours(dashboardData.companyOverview.weeklyPotential / currentSprint.sprint_length_weeks / dashboardData.companyOverview.totalMembers)} per person` :
-              `${formatHours(dashboardData.companyOverview.weeklyPotential / dashboardData.companyOverview.totalMembers)} per person`
-            }
-          </div>
-        </div>
+            <COOMetricCard
+              title="Sprint Potential"
+              value={formatHours(dashboardData.companyOverview.weeklyPotential)}
+              trend={currentSprint ? 
+                `${currentSprint.sprint_length_weeks} weeks × ${formatHours(dashboardData.companyOverview.weeklyPotential / currentSprint.sprint_length_weeks / dashboardData.companyOverview.totalMembers)} per person` :
+                `${formatHours(dashboardData.companyOverview.weeklyPotential / dashboardData.companyOverview.totalMembers)} per person`
+              }
+              icon={Calendar}
+              variant="success"
+              status="excellent"
+            />
 
-        <div className="bg-purple-50 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-purple-600" />
-            <span className="text-sm font-medium text-purple-700">Current Utilization</span>
-          </div>
-          <div className="text-2xl font-bold text-purple-900">
-            {formatPercentage(dashboardData.companyOverview.currentUtilization)}
-          </div>
-          <div className={`text-xs px-2 py-1 rounded-full ${getUtilizationStatusColor(dashboardData.companyOverview.currentUtilization)}`}>
-            {dashboardData.companyOverview.currentUtilization >= 90 ? 'Optimal' : 
-             dashboardData.companyOverview.currentUtilization >= 80 ? 'Good' : 'Below Target'}
-          </div>
-        </div>
+            <COOMetricCard
+              title="Current Utilization"
+              value={formatPercentage(dashboardData.companyOverview.currentUtilization)}
+              trend={dashboardData.companyOverview.currentUtilization >= 90 ? 'Optimal' : 
+                     dashboardData.companyOverview.currentUtilization >= 80 ? 'Good' : 'Below Target'}
+              trendDirection={dashboardData.companyOverview.currentUtilization >= 80 ? 'up' : 'down'}
+              icon={TrendingUp}
+              variant="primary"
+              status={dashboardData.companyOverview.currentUtilization >= 90 ? 'excellent' :
+                     dashboardData.companyOverview.currentUtilization >= 80 ? 'good' : 'warning'}
+            />
 
-        <div className="bg-orange-50 p-4 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="w-5 h-5 text-orange-600" />
-            <span className="text-sm font-medium text-orange-700">Capacity Gap</span>
+            <COOMetricCard
+              title="Capacity Gap"
+              value={formatHours(Math.abs(dashboardData.companyOverview.capacityGap))}
+              trend={dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'}
+              trendDirection={dashboardData.companyOverview.capacityGap > 0 ? 'down' : 'up'}
+              icon={Zap}
+              variant="warning"
+              status={Math.abs(dashboardData.companyOverview.capacityGap) < 10 ? 'good' : 'warning'}
+            />
           </div>
-          <div className="text-2xl font-bold text-orange-900">
-            {formatHours(Math.abs(dashboardData.companyOverview.capacityGap))}
-          </div>
-          <div className="text-xs text-orange-600">
-            {dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'}
-          </div>
-        </div>
-      </div>
 
       {/* Mobile Export Button */}
       <div className="sm:hidden mb-6">
@@ -402,61 +392,67 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {dashboardData.teamComparison.map((team) => (
-            <div key={team.teamId} className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  {getCapacityStatusIcon(team.capacityStatus)}
-                  <button
-                    onClick={() => {
-                      setSelectedTeamId(team.teamId);
-                      setIsTeamModalOpen(true);
-                    }}
-                    className="font-medium text-gray-900 hover:text-blue-600 hover:underline transition-colors cursor-pointer"
-                  >
-                    {team.teamName}
-                  </button>
+            <COOCard
+              key={team.teamId}
+              title={team.teamName}
+              interactive
+              onClick={() => {
+                setSelectedTeamId(team.teamId);
+                setIsTeamModalOpen(true);
+              }}
+              status={team.utilization > 100 ? 'critical' :
+                     team.utilization >= 90 ? 'excellent' :
+                     team.utilization >= 80 ? 'good' : 'warning'}
+              badge={{
+                text: formatPercentage(team.utilization),
+                variant: team.utilization > 100 ? 'error' :
+                        team.utilization >= 90 ? 'success' :
+                        team.utilization >= 80 ? 'primary' : 'warning'
+              }}
+              headerAction={getCapacityStatusIcon(team.capacityStatus)}
+            >
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Potential:</span>
+                      <span className="font-medium">{formatHours(team.weeklyPotential)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Actual:</span>
+                      <span className="font-medium">{formatHours(team.actualHours)}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Gap:</span>
+                      <span className={`font-medium ${team.capacityGap > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+                        {team.capacityGap > 0 ? '+' : ''}{formatHours(team.capacityGap)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Team Size:</span>
+                      <span className="font-medium">{team.memberCount} members</span>
+                    </div>
+                  </div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs ${getCapacityStatusColor(team.capacityStatus)}`}>
-                  {formatPercentage(team.utilization)}
-                </span>
+                
+                {/* Utilization Bar */}
+                <div className="mt-3">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        team.utilization > 100 ? 'bg-red-500' :
+                        team.utilization >= 90 ? 'bg-green-500' :
+                        team.utilization >= 80 ? 'bg-yellow-500' :
+                        'bg-gray-400'
+                      }`}
+                      style={{ width: `${Math.min(100, team.utilization)}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Potential:</span>
-                  <span className="font-medium">{formatHours(team.weeklyPotential)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Actual:</span>
-                  <span className="font-medium">{formatHours(team.actualHours)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Gap:</span>
-                  <span className={`font-medium ${team.capacityGap > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
-                    {team.capacityGap > 0 ? '+' : ''}{formatHours(team.capacityGap)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Team Size:</span>
-                  <span className="font-medium">{team.memberCount} members</span>
-                </div>
-              </div>
-              
-              {/* Utilization Bar */}
-              <div className="mt-3">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      team.utilization > 100 ? 'bg-red-500' :
-                      team.utilization >= 90 ? 'bg-green-500' :
-                      team.utilization >= 80 ? 'bg-yellow-500' :
-                      'bg-gray-400'
-                    }`}
-                    style={{ width: `${Math.min(100, team.utilization)}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
+            </COOCard>
           ))}
         </div>
       </div>
@@ -468,30 +464,36 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
           Sprint Capacity Overview
         </h3>
         
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+        <COOCard
+          variant="primary"
+          gradient
+          size="lg"
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-900">
-                Sprint {dashboardData.sprintAnalytics.currentSprintNumber}
-              </div>
-              <div className="text-sm text-blue-600">
-                {dashboardData.sprintAnalytics.sprintWeeks} week{dashboardData.sprintAnalytics.sprintWeeks !== 1 ? 's' : ''}
-              </div>
-            </div>
+            <COOStatCard
+              label="Current Sprint"
+              value={`Sprint ${dashboardData.sprintAnalytics.currentSprintNumber}`}
+              description={`${dashboardData.sprintAnalytics.sprintWeeks} week${dashboardData.sprintAnalytics.sprintWeeks !== 1 ? 's' : ''}`}
+              status="good"
+              size="sm"
+            />
             
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-900">
-                {formatHours(dashboardData.sprintAnalytics.sprintPotential)}
-              </div>
-              <div className="text-sm text-purple-600">Sprint Potential</div>
-            </div>
+            <COOStatCard
+              label="Sprint Potential"
+              value={formatHours(dashboardData.sprintAnalytics.sprintPotential)}
+              description="Total capacity"
+              status="excellent"
+              size="sm"
+            />
             
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-900">
-                {formatPercentage(dashboardData.sprintAnalytics.sprintUtilization)}
-              </div>
-              <div className="text-sm text-green-600">Sprint Utilization</div>
-            </div>
+            <COOStatCard
+              label="Sprint Utilization"
+              value={formatPercentage(dashboardData.sprintAnalytics.sprintUtilization)}
+              description="Current progress"
+              status={dashboardData.sprintAnalytics.sprintUtilization >= 85 ? 'excellent' :
+                     dashboardData.sprintAnalytics.sprintUtilization >= 70 ? 'good' : 'warning'}
+              size="sm"
+            />
           </div>
           
           {/* Sprint Progress Bar */}
@@ -506,7 +508,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
             <span>Sprint Progress: {formatPercentage(dashboardData.sprintAnalytics.sprintUtilization)}</span>
             <span>Target: 85-95%</span>
           </div>
-        </div>
+        </COOCard>
       </div>
 
       {/* Optimization Recommendations */}
@@ -517,7 +519,10 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
             Optimization Recommendations
           </h3>
           
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <COOCard
+            variant="warning"
+            icon={AlertTriangle}
+          >
             <div className="space-y-3">
               {dashboardData.optimizationRecommendations.map((recommendation, index) => (
                 <div key={index} className="flex items-start gap-3">
@@ -528,7 +533,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
                 </div>
               ))}
             </div>
-          </div>
+          </COOCard>
         </div>
       )}
 
