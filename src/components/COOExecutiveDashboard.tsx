@@ -20,11 +20,10 @@ import {
   PieChart
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
-import { COODashboardData, COOUser, Team, TeamMember, HoursViewType } from '@/types';
+import { COODashboardData, COOUser, Team, TeamMember } from '@/types';
 import COOExportButton from './COOExportButton';
 import COOHoursStatusOverview from './COOHoursStatusOverview';
 import MobileCOODashboard from './MobileCOODashboard';
-import COOHoursViewToggle from './COOHoursViewToggle';
 import SprintPlanningCalendar from './SprintPlanningCalendar';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
@@ -44,7 +43,6 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [hoursView, setHoursView] = useState<HoursViewType>('weekly');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'sprint-planning'>('dashboard');
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -361,15 +359,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
         />
       </div>
 
-      {/* COO Hours View Toggle */}
-      {allTeams.length > 0 && (
-        <COOHoursViewToggle
-          currentView={hoursView}
-          onViewChange={setHoursView}
-          sprintData={currentSprint}
-          allTeams={allTeams}
-        />
-      )}
+      {/* Hours view control removed - integrated into specific components */}
 
       {/* Company-Wide Hours Status Overview */}
       {allTeams.length > 0 && currentSprint && (
