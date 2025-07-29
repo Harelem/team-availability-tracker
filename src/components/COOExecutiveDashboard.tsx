@@ -17,9 +17,7 @@ import {
   Activity,
   ArrowLeft,
   CalendarDays,
-  PieChart,
-  LineChart,
-  AreaChart
+  PieChart
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
 import { COODashboardData, COOUser, Team, TeamMember, HoursViewType } from '@/types';
@@ -31,6 +29,7 @@ import SprintPlanningCalendar from './SprintPlanningCalendar';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { formatHours, formatPercentage, getUtilizationStatusColor } from '@/lib/calculationService';
+import COOAnalyticsDashboard from './COOAnalyticsDashboard';
 import {
   ChartContainer,
   ChartGridLayout,
@@ -47,6 +46,7 @@ import {
   transformTeamComparisonData,
   ChartFilters
 } from '@/components/charts';
+import TeamDetailModal from '@/components/modals/TeamDetailModal';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -61,13 +61,15 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [hoursView, setHoursView] = useState<HoursViewType>('weekly');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'charts' | 'sprint-planning'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'charts' | 'sprint-planning' | 'analytics'>('dashboard');
   const [chartFilters, setChartFilters] = useState<ChartFilters>({
     timeframe: 'current-week',
     teams: [],
     utilizationRange: [0, 200],
     showProjections: true
   });
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const isMobile = useMobileDetection();
   
   // Get global sprint data for hours status
@@ -310,6 +312,19 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
                 <span>Sprint Planning</span>
               </div>
             </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'analytics'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                <span>Advanced Analytics</span>
+              </div>
+            </button>
           </nav>
         </div>
       </div>
@@ -440,7 +455,15 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {getCapacityStatusIcon(team.capacityStatus)}
-                  <span className="font-medium text-gray-900">{team.teamName}</span>
+                  <button
+                    onClick={() => {
+                      setSelectedTeamId(team.teamId);
+                      setIsTeamModalOpen(true);
+                    }}
+                    className="font-medium text-gray-900 hover:text-blue-600 hover:underline transition-colors cursor-pointer"
+                  >
+                    {team.teamName}
+                  </button>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs ${getCapacityStatusColor(team.capacityStatus)}`}>
                   {formatPercentage(team.utilization)}
@@ -765,6 +788,28 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
         <div className="mt-6">
           <SprintPlanningCalendar />
         </div>
+      )}
+      
+      {/* Advanced Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <div className="mt-6">
+          <COOAnalyticsDashboard 
+            currentUser={currentUser}
+            className="border-0 shadow-none p-0"
+          />
+        </div>
+      )}
+
+      {/* Team Detail Modal */}
+      {selectedTeamId && (
+        <TeamDetailModal
+          teamId={selectedTeamId}
+          isOpen={isTeamModalOpen}
+          onClose={() => {
+            setIsTeamModalOpen(false);
+            setSelectedTeamId(null);
+          }}
+        />
       )}
     </div>
   );

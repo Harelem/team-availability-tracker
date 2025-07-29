@@ -253,3 +253,325 @@ a:focus-visible {
     padding-right: env(safe-area-inset-right);
   }
 }
+
+/* =============================================================================
+   ACCESSIBILITY ENHANCEMENTS
+   ============================================================================= */
+
+/* CSS Custom Properties for Accessibility */
+:root {
+  --font-scale: 1;
+  --focus-color: #3b82f6;
+  --focus-width: 2px;
+  --color-red: #ef4444;
+  --color-green: #10b981;
+  --color-blue: #3b82f6;
+}
+
+/* Font Size Scaling */
+html[data-font-size="small"] {
+  font-size: calc(16px * 0.875);
+}
+
+html[data-font-size="medium"] {
+  font-size: 16px;
+}
+
+html[data-font-size="large"] {
+  font-size: calc(16px * 1.125);
+}
+
+html[data-font-size="extra-large"] {
+  font-size: calc(16px * 1.25);
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  --background: #ffffff;
+  --foreground: #000000;
+  --focus-color: #ff0000;
+}
+
+.high-contrast * {
+  border-color: #000000 !important;
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+.high-contrast button,
+.high-contrast input,
+.high-contrast select,
+.high-contrast textarea {
+  border: 2px solid #000000 !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.high-contrast button:hover,
+.high-contrast button:focus {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Focus Indicators */
+html[data-focus-mode="standard"] *:focus-visible {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+html[data-focus-mode="enhanced"] *:focus-visible {
+  outline: 3px solid var(--focus-color);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.3);
+}
+
+html[data-focus-mode="high-visibility"] *:focus-visible {
+  outline: 4px solid #ff0000;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 8px rgba(255, 0, 0, 0.3);
+  background-color: #ffff00 !important;
+  color: #000000 !important;
+}
+
+/* Reduced Motion */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Skip Links */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 1000;
+  border-radius: 0 0 4px 4px;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Screen Reader Only Content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Color Blind Support */
+html[data-colorblind-mode="protanopia"] {
+  --color-red: #D2691E;
+  --color-green: #228B22;
+  --color-blue: #4169E1;
+}
+
+html[data-colorblind-mode="deuteranopia"] {
+  --color-red: #DC143C;
+  --color-green: #B8860B;
+  --color-blue: #4169E1;
+}
+
+html[data-colorblind-mode="tritanopia"] {
+  --color-red: #DC143C;
+  --color-green: #228B22;
+  --color-blue: #8B008B;
+}
+
+html[data-colorblind-mode="monochrome"] {
+  --color-red: #666666;
+  --color-green: #999999;
+  --color-blue: #333333;
+}
+
+html[data-colorblind-mode="monochrome"] * {
+  filter: grayscale(100%);
+}
+
+/* Dark Mode */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+.dark body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Enhanced Touch Targets for Accessibility */
+@media (max-width: 768px) {
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"] {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+/* Improved Link Styles for Accessibility */
+a:not(.no-underline) {
+  text-decoration: underline;
+}
+
+a:focus {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+/* Better Table Accessibility */
+table {
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  font-weight: bold;
+}
+
+th, td {
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+}
+
+th:focus,
+td:focus {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: -2px;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* Form Accessibility Improvements */
+label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+input:invalid,
+select:invalid,
+textarea:invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-error {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 4px;
+}
+
+/* Modal and Dialog Accessibility */
+[role="dialog"] {
+  position: fixed;
+  z-index: 1000;
+}
+
+[role="dialog"]:focus {
+  outline: none;
+}
+
+/* Landmarks and Regions */
+main:focus {
+  outline: none;
+}
+
+[role="main"]:focus {
+  outline: none;
+}
+
+/* Loading States */
+[aria-busy="true"] {
+  cursor: wait;
+}
+
+[aria-busy="true"] * {
+  pointer-events: none;
+}
+
+/* Status and Alert Regions */
+[role="status"],
+[role="alert"] {
+  padding: 12px;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+[role="alert"] {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+[role="status"] {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: #0c4a6e;
+}
+
+/* Progress Indicators */
+[role="progressbar"] {
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+[role="progressbar"]:focus {
+  outline: var(--focus-width) solid var(--focus-color);
+}
+
+/* Tooltip Accessibility */
+[role="tooltip"] {
+  position: absolute;
+  z-index: 1000;
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  max-width: 200px;
+}
+
+/* Print Styles for Accessibility */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+  
+  abbr[title]:after {
+    content: " (" attr(title) ")";
+  }
+}
