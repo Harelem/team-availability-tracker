@@ -220,13 +220,16 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
               disabled={isLoading || error !== null}
               className="hidden sm:flex"
             />
-            <button
-              onClick={refreshDashboard}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-            >
-              <Activity className="w-4 h-4" />
-              Refresh Data
-            </button>
+            {/* Only show refresh button when not on analytics tab */}
+            {activeTab !== 'analytics' && (
+              <button
+                onClick={refreshDashboard}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <Activity className="w-4 h-4" />
+                Refresh Data
+              </button>
+            )}
           </div>
         </div>
 

@@ -52,6 +52,65 @@ interface ConsolidatedAnalyticsProps {
   className?: string;
 }
 
+// Analytics Actions Component
+interface AnalyticsActionsProps {
+  onRefresh: () => void;
+  onExport: () => void;
+  isLoading?: boolean;
+  alertCount?: number;
+}
+
+const AnalyticsActions: React.FC<AnalyticsActionsProps> = ({ 
+  onRefresh, 
+  onExport, 
+  isLoading = false,
+  alertCount = 0
+}) => {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <Brain className="w-6 h-6 text-blue-600" />
+          Analytics & Insights
+        </h2>
+        <p className="text-gray-600 mt-1">
+          Real-time team performance and capacity analytics
+        </p>
+      </div>
+      
+      <div className="flex items-center gap-3">
+        {/* Alert indicator */}
+        {alertCount > 0 && (
+          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-1 rounded-full">
+            <Bell className="w-4 h-4" />
+            {alertCount} alert{alertCount !== 1 ? 's' : ''}
+          </div>
+        )}
+        
+        <button
+          onClick={onRefresh}
+          disabled={isLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors text-sm"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <span className="font-medium">
+            {isLoading ? 'Refreshing...' : 'Refresh Data'}
+          </span>
+        </button>
+        
+        <button
+          onClick={onExport}
+          disabled={isLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm"
+        >
+          <Download className="w-4 h-4" />
+          <span className="font-medium">Export Report</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export default function ConsolidatedAnalytics({
   currentUser,
   dashboardData,
@@ -62,6 +121,7 @@ export default function ConsolidatedAnalytics({
   className = ''
 }: ConsolidatedAnalyticsProps) {
   const [activeSection, setActiveSection] = useState<'charts' | 'insights' | 'executive' | 'predictions'>('charts');
+  const [actionLoading, setActionLoading] = useState(false);
   const [chartFilters, setChartFilters] = useState<ChartFilters>({
     timeframe: 'current-week',
     teams: allTeams.map(team => team.id),
@@ -97,7 +157,21 @@ export default function ConsolidatedAnalytics({
     }));
   }, [allTeams]);
 
-  const exportAnalyticsReport = async () => {
+  // Unified action handlers
+  const handleRefresh = async () => {
+    setActionLoading(true);
+    try {
+      await refreshAnalytics();
+    } catch (error) {
+      console.error('Error refreshing analytics:', error);
+      alert('Failed to refresh analytics data. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setActionLoading(true);
     try {
       await exportAnalyticsToExcel(
         dashboardData,
@@ -107,8 +181,9 @@ export default function ConsolidatedAnalytics({
       );
     } catch (error) {
       console.error('Error exporting analytics report:', error);
-      // Show user-friendly error message
       alert('Failed to export analytics report. Please try again.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -142,52 +217,22 @@ export default function ConsolidatedAnalytics({
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-md p-4 sm:p-6 ${className}`}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Brain className="w-6 h-6 text-blue-600" />
-            Analytics & Insights
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Comprehensive analytics, charts, and predictive insights
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Alert indicator */}
-          {alerts && alerts.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-3 py-1 rounded-full">
-              <Bell className="w-4 h-4" />
-              {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
-            </div>
-          )}
-
-          <button
-            onClick={exportAnalyticsReport}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-          >
-            <Download className="w-4 h-4" />
-            Export Report
-          </button>
-
-          <button
-            onClick={refreshAnalytics}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
-        </div>
-      </div>
+    <div className={`space-y-6 ${className}`}>
+      {/* Single consolidated action bar */}
+      <AnalyticsActions 
+        onRefresh={handleRefresh}
+        onExport={handleExport}
+        isLoading={isLoading || analyticsLoading || actionLoading}
+        alertCount={alerts?.length || 0}
+      />
 
       {/* Section Navigation */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex space-x-6">
+      <div className="bg-white rounded-lg shadow-md">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-6 px-6">
           <button
             onClick={() => setActiveSection('charts')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeSection === 'charts'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -199,7 +244,7 @@ export default function ConsolidatedAnalytics({
 
           <button
             onClick={() => setActiveSection('insights')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeSection === 'insights'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -211,7 +256,7 @@ export default function ConsolidatedAnalytics({
 
           <button
             onClick={() => setActiveSection('executive')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeSection === 'executive'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -223,7 +268,7 @@ export default function ConsolidatedAnalytics({
 
           <button
             onClick={() => setActiveSection('predictions')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
               activeSection === 'predictions'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -232,12 +277,13 @@ export default function ConsolidatedAnalytics({
             <Eye className="w-4 h-4" />
             Predictive Analytics
           </button>
-        </nav>
-      </div>
+          </nav>
+        </div>
 
-      {/* Section Content */}
-      {activeSection === 'charts' && (
-        <div className="space-y-6">
+        {/* Section Content */}
+        <div className="p-6">
+          {activeSection === 'charts' && (
+            <div className="space-y-6">
           {/* Chart Filters */}
           <ChartFilterControls
             filters={chartFilters}
@@ -376,11 +422,11 @@ export default function ConsolidatedAnalytics({
               height={400}
             />
           </ChartContainer>
-        </div>
-      )}
+            </div>
+          )}
 
-      {activeSection === 'insights' && (
-        <div className="space-y-6">
+          {activeSection === 'insights' && (
+            <div className="space-y-6">
           {companyAnalytics && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Performance Distribution */}
@@ -479,19 +525,19 @@ export default function ConsolidatedAnalytics({
               </div>
             </div>
           )}
-        </div>
-      )}
+            </div>
+          )}
 
-      {activeSection === 'executive' && (
+          {activeSection === 'executive' && (
         <div>
           <ExecutiveSummaryDashboard 
             refreshInterval={300}
             className="border-0 shadow-none p-0"
           />
-        </div>
-      )}
+            </div>
+          )}
 
-      {activeSection === 'predictions' && (
+          {activeSection === 'predictions' && (
         <div className="text-center py-12">
           <Eye className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Predictive Analytics</h3>
@@ -504,8 +550,10 @@ export default function ConsolidatedAnalytics({
               and burnout risk assessment integrated throughout the dashboard.
             </p>
           </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

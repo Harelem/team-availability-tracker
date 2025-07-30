@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   TrendingUp, 
@@ -232,17 +231,6 @@ const ExecutiveSummaryDashboard: React.FC<ExecutiveDashboardProps> = ({
               <option value="quarter">This Quarter</option>
             </select>
           </div>
-
-          {/* Refresh Button */}
-          <Button
-            onClick={fetchDashboardData}
-            variant="outline"
-            size="sm"
-            className="flex items-center space-x-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span>Refresh</span>
-          </Button>
 
           {/* Last Updated */}
           <div className="text-sm text-gray-500">
