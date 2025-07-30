@@ -11,6 +11,8 @@ import EnhancedManagerExportButton from './EnhancedManagerExportButton';
 import TeamMemberManagement from './TeamMemberManagement';
 import TeamHoursStatus from './TeamHoursStatus';
 import TemplateManager from './TemplateManager';
+import RecognitionDashboard from './recognition/RecognitionDashboard';
+import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
 import { canManageSprints } from '@/utils/permissions';
 import { DatabaseService } from '@/lib/database';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
@@ -169,6 +171,14 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         
         return newPrev;
       });
+      
+      // Trigger achievement check for recognition system
+      try {
+        await DatabaseService.triggerAchievementCheck(memberId);
+      } catch (achievementError) {
+        console.error('Error checking achievements:', achievementError);
+        // Don't fail the main update if achievement check fails
+      }
     } catch (error) {
       console.error('Error updating schedule:', error);
     }
@@ -343,6 +353,24 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         currentUserId={currentUser.id}
         className="mb-6"
       />
+
+      {/* Recognition Dashboard */}
+      <RecognitionDashboard
+        userId={currentUser.id}
+        timeframe="week"
+        className="mb-6"
+      />
+
+      {/* Team Recognition Leaderboard - Managers Only */}
+      {currentUser.isManager && (
+        <TeamRecognitionLeaderboard
+          teamId={selectedTeam.id}
+          timeframe="week"
+          limit={5}
+          showTeamStats={true}
+          className="mb-6"
+        />
+      )}
 
       {/* Desktop Header */}
       <div className="hidden lg:block bg-white rounded-lg p-3 sm:p-4 shadow-sm">

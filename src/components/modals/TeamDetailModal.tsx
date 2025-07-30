@@ -21,6 +21,7 @@ import {
 
 import { TeamDetailModalProps, DetailedTeamMember, MemberFilterOptions } from '@/types/modalTypes';
 import { useTeamDetail } from '@/hooks/useTeamDetail';
+import { useTeamDetailData, convertToLegacyFormat } from '@/hooks/useTeamDetailData';
 import { useTeamActions, useFileDownload, useNotificationActions } from '@/hooks/useTeamActions';
 import { useModalKeyboard } from '@/hooks/useModalKeyboard';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
@@ -40,7 +41,16 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
   });
 
   const isMobile = useMobileDetection();
-  const { data, loading, error, refetch } = useTeamDetail(teamId);
+  
+  // Use accurate team data instead of mock data
+  const { teamData: accurateData, isLoading: accurateLoading, error: accurateError, refetch: accurateRefetch } = useTeamDetailData(teamId);
+  
+  // Convert accurate data to legacy format for compatibility
+  const data = accurateData ? convertToLegacyFormat(accurateData) : null;
+  const loading = accurateLoading;
+  const error = accurateError;
+  const refetch = accurateRefetch;
+  
   const { exportTeamData, navigateToTeamDashboard, loading: actionsLoading } = useTeamActions(teamId);
   const { downloadFile } = useFileDownload();
   const { showSuccessNotification, showErrorNotification } = useNotificationActions();
@@ -284,6 +294,11 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
                       <p><span className="font-medium">Potential:</span> {formatHours(data.currentSprint.potentialHours)}</p>
                       <p><span className="font-medium">Planned:</span> {formatHours(data.currentSprint.plannedHours)}</p>
                       <p><span className="font-medium">Completion:</span> {formatPercentage(data.currentSprint.completionPercentage)}</p>
+                      {accurateData && (
+                        <p className="text-xs text-gray-600">
+                          Calculation: {accurateData.teamInfo.totalMembers} members × {accurateData.currentSprint.durationDays} working days × 7h/day
+                        </p>
+                      )}
                       <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                         <div 
                           className="h-2 rounded-full transition-all duration-300"

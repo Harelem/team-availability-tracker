@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry } from '@/types'
 import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
+import { Achievement, RecognitionMetric, CreateAchievementRequest, UpdateMetricRequest, RecognitionQueryOptions, RecognitionQueryResult, LeaderboardEntry, LeaderboardTimeframe } from '@/types/recognitionTypes'
 import { calculateSprintCapacityFromSettings } from './calculationService'
 
 // Sprint History interfaces
@@ -1353,10 +1354,34 @@ export const DatabaseService = {
   // Sprint Calculation Helper Functions
   /**
    * Calculate sprint potential hours for a team
+   * Formula: team_size × working_days × 7_hours_per_day
    */
   calculateSprintPotential(memberCount: number, sprintWeeks: number): number {
-    const hoursPerPersonPerWeek = 35; // 7h × 5 days
-    return memberCount * hoursPerPersonPerWeek * sprintWeeks;
+    const workingDaysPerWeek = 5; // Monday to Friday
+    const hoursPerDay = 7; // Standard work day
+    const totalWorkingDays = sprintWeeks * workingDaysPerWeek;
+    return memberCount * totalWorkingDays * hoursPerDay;
+  },
+
+  /**
+   * Calculate working days in sprint (excludes weekends)
+   */
+  calculateWorkingDays(startDate: string, endDate: string): number {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    let workingDays = 0;
+    
+    const current = new Date(start);
+    while (current <= end) {
+      const dayOfWeek = current.getDay();
+      // Monday = 1, Friday = 5 (working days)
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        workingDays++;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return workingDays;
   },
 
   /**
@@ -2816,6 +2841,359 @@ The table creation script includes:
     } catch (error) {
       console.error('Error in getTemplateById:', error)
       return null
+    }
+  },
+
+  // ============================================================================
+  // RECOGNITION SYSTEM METHODS
+  // ============================================================================
+
+  // Get user achievements
+  async getUserAchievements(userId: number, options?: RecognitionQueryOptions): Promise<Achievement[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+
+    try {
+      let query = supabase
+        .from('user_achievements')
+        .select('*')
+        .eq('user_id', userId)
+
+      // Apply filters
+      if (options?.achievementTypes?.length) {
+        query = query.in('achievement_type', options.achievementTypes)
+      }
+
+      if (options?.startDate) {
+        query = query.gte('earned_at', options.startDate)
+      }
+
+      if (options?.endDate) {
+        query = query.lte('earned_at', options.endDate)
+      }
+
+      // Apply sorting
+      const sortBy = options?.sortBy || 'earned_at'
+      const sortOrder = options?.sortOrder || 'desc'
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' })
+
+      // Apply pagination
+      if (options?.limit) {
+        query = query.limit(options.limit)
+      }
+      if (options?.offset) {
+        query = query.range(options.offset, options.offset + (options.limit || 50) - 1)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching user achievements:', error)
+        return []
+      }
+
+      return (data || []).map(achievement => ({
+        id: achievement.id,
+        userId: achievement.user_id,
+        achievementType: achievement.achievement_type,
+        achievementData: achievement.achievement_data || {},
+        earnedAt: achievement.earned_at,
+        weekStart: achievement.week_start,
+        sprintId: achievement.sprint_id,
+        createdAt: achievement.created_at,
+        updatedAt: achievement.updated_at
+      }))
+    } catch (error) {
+      console.error('Error in getUserAchievements:', error)
+      return []
+    }
+  },
+
+  // Create new achievement
+  async createAchievement(request: CreateAchievementRequest): Promise<Achievement | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_achievements')
+        .insert([{
+          user_id: request.userId,
+          achievement_type: request.achievementType,
+          achievement_data: request.achievementData,
+          week_start: request.weekStart,
+          sprint_id: request.sprintId
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating achievement:', error)
+        return null
+      }
+
+      return {
+        id: data.id,
+        userId: data.user_id,
+        achievementType: data.achievement_type,
+        achievementData: data.achievement_data || {},
+        earnedAt: data.earned_at,
+        weekStart: data.week_start,
+        sprintId: data.sprint_id,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      }
+    } catch (error) {
+      console.error('Error in createAchievement:', error)
+      return null
+    }
+  },
+
+  // Get user recognition metrics
+  async getUserMetrics(userId: number, options?: RecognitionQueryOptions): Promise<RecognitionMetric[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+
+    try {
+      let query = supabase
+        .from('recognition_metrics')
+        .select('*')
+        .eq('user_id', userId)
+
+      // Apply date filters
+      if (options?.startDate) {
+        query = query.gte('period_start', options.startDate)
+      }
+
+      if (options?.endDate) {
+        query = query.lte('period_end', options.endDate)
+      }
+
+      // Apply sorting
+      query = query.order('period_start', { ascending: false })
+
+      // Apply pagination
+      if (options?.limit) {
+        query = query.limit(options.limit)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching user metrics:', error)
+        return []
+      }
+
+      return (data || []).map(metric => ({
+        id: metric.id,
+        userId: metric.user_id,
+        metricName: metric.metric_name,
+        metricValue: metric.metric_value,
+        periodStart: metric.period_start,
+        periodEnd: metric.period_end,
+        createdAt: metric.created_at,
+        updatedAt: metric.updated_at
+      }))
+    } catch (error) {
+      console.error('Error in getUserMetrics:', error)
+      return []
+    }
+  },
+
+  // Update or create recognition metric
+  async updateMetric(request: UpdateMetricRequest): Promise<RecognitionMetric | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('recognition_metrics')
+        .upsert({
+          user_id: request.userId,
+          metric_name: request.metricName,
+          metric_value: request.metricValue,
+          period_start: request.periodStart,
+          period_end: request.periodEnd
+        }, {
+          onConflict: 'user_id,metric_name,period_start,period_end'
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating metric:', error)
+        return null
+      }
+
+      return {
+        id: data.id,
+        userId: data.user_id,
+        metricName: data.metric_name,
+        metricValue: data.metric_value,
+        periodStart: data.period_start,
+        periodEnd: data.period_end,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      }
+    } catch (error) {
+      console.error('Error in updateMetric:', error)
+      return null
+    }
+  },
+
+  // Get team recognition leaderboard
+  async getRecognitionLeaderboard(timeframe: LeaderboardTimeframe = 'week', teamId?: number): Promise<LeaderboardEntry[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('get_team_recognition_leaderboard', {
+        timeframe_param: timeframe
+      })
+
+      if (error) {
+        console.error('Error fetching recognition leaderboard:', error)
+        return []
+      }
+
+      let leaderboardData = data || []
+
+      // Filter by team if specified
+      if (teamId) {
+        // We would need to join with team data, but for now let's use the existing data
+        // This could be enhanced to filter by team in the database function
+      }
+
+      return leaderboardData.map((entry: any, index: number) => ({
+        id: entry.id,
+        name: entry.name,
+        hebrew: entry.hebrew,
+        teamName: entry.team_name,
+        consistencyScore: entry.consistency_score || 0,
+        totalAchievements: entry.total_achievements || 0,
+        recentAchievements: entry.recent_achievements || [],
+        streakCount: entry.streak_count || 0,
+        rank: index + 1,
+        previousRank: undefined // Would need historical data to calculate
+      }))
+    } catch (error) {
+      console.error('Error in getRecognitionLeaderboard:', error)
+      return []
+    }
+  },
+
+  // Calculate recognition metrics for a user
+  async calculateRecognitionMetrics(): Promise<void> {
+    if (!isSupabaseConfigured()) {
+      return
+    }
+
+    try {
+      const { error } = await supabase.rpc('calculate_user_recognition_metrics')
+
+      if (error) {
+        console.error('Error calculating recognition metrics:', error)
+      }
+    } catch (error) {
+      console.error('Error in calculateRecognitionMetrics:', error)
+    }
+  },
+
+  // Check for new achievements for a user
+  async checkUserAchievements(userId: number): Promise<void> {
+    if (!isSupabaseConfigured()) {
+      return
+    }
+
+    try {
+      const { error } = await supabase.rpc('check_user_achievements', {
+        user_id_param: userId
+      })
+
+      if (error) {
+        console.error('Error checking user achievements:', error)
+      }
+    } catch (error) {
+      console.error('Error in checkUserAchievements:', error)
+    }
+  },
+
+  // Get recognition analytics for a user
+  async getUserRecognitionAnalytics(userId: number, periodDays: number = 30): Promise<any> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+
+    try {
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - periodDays)
+      
+      const [achievements, metrics] = await Promise.all([
+        this.getUserAchievements(userId, {
+          startDate: startDate.toISOString().split('T')[0],
+          limit: 50
+        }),
+        this.getUserMetrics(userId, {
+          startDate: startDate.toISOString().split('T')[0],
+          limit: 50
+        })
+      ])
+
+      // Calculate analytics
+      const totalAchievements = achievements.length
+      const weeklyMetrics = metrics.filter(m => m.metricName === 'weekly_completion_rate')
+      const averageCompletionRate = weeklyMetrics.length > 0 
+        ? weeklyMetrics.reduce((sum, m) => sum + m.metricValue, 0) / weeklyMetrics.length 
+        : 0
+
+      const streakMetrics = metrics.filter(m => m.metricName === 'consistency_streak')
+      const bestStreak = streakMetrics.length > 0 
+        ? Math.max(...streakMetrics.map(m => m.metricValue))
+        : 0
+
+      return {
+        userId,
+        period: {
+          start: startDate.toISOString().split('T')[0],
+          end: new Date().toISOString().split('T')[0]
+        },
+        summary: {
+          totalAchievements,
+          averageCompletionRate: Math.round(averageCompletionRate),
+          bestStreak,
+          improvementAreas: [] // Would require more complex analysis
+        },
+        trends: {
+          consistency: weeklyMetrics.map(m => ({
+            date: m.periodStart,
+            metricName: m.metricName,
+            value: m.metricValue
+          })),
+          engagement: [], // Would require additional metrics
+          teamCollaboration: [] // Would require additional metrics
+        }
+      }
+    } catch (error) {
+      console.error('Error in getUserRecognitionAnalytics:', error)
+      return null
+    }
+  },
+
+  // Trigger achievement check after schedule update
+  async triggerAchievementCheck(userId: number): Promise<void> {
+    try {
+      // First calculate current metrics
+      await this.calculateRecognitionMetrics()
+      
+      // Then check for new achievements
+      await this.checkUserAchievements(userId)
+    } catch (error) {
+      console.error('Error in triggerAchievementCheck:', error)
     }
   }
 }
