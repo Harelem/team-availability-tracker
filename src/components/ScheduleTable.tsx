@@ -10,9 +10,12 @@ import GlobalSprintSettings from './GlobalSprintSettings';
 import EnhancedManagerExportButton from './EnhancedManagerExportButton';
 import TeamMemberManagement from './TeamMemberManagement';
 import TeamHoursStatus from './TeamHoursStatus';
+import TemplateManager from './TemplateManager';
 import { canManageSprints } from '@/utils/permissions';
 import { DatabaseService } from '@/lib/database';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
+import { WeeklyPattern } from '@/types/templateTypes';
+import { extractPatternFromSchedule, convertPatternToScheduleFormat } from '@/hooks/useAvailabilityTemplates';
 
 interface ScheduleTableProps {
   currentUser: TeamMember;
@@ -245,6 +248,37 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
     setRefreshKey(prev => prev + 1);
   };
 
+  // Template-related functions
+  const getCurrentWeekPattern = (): WeeklyPattern | undefined => {
+    const memberData = scheduleData[currentUser.id];
+    if (!memberData) return undefined;
+    
+    return extractPatternFromSchedule(memberData, weekDays);
+  };
+
+  const handleApplyTemplate = async (pattern: WeeklyPattern) => {
+    try {
+      // Apply the template pattern to the current user's schedule
+      const scheduleFormat = convertPatternToScheduleFormat(pattern, currentUser.id, weekDays);
+      
+      // Update each day in the schedule
+      for (const [dateKey, entry] of Object.entries(scheduleFormat)) {
+        const date = new Date(dateKey);
+        await updateSchedule(currentUser.id, date, entry.value, entry.reason);
+      }
+      
+      // Clear any days not in the pattern (set to null)
+      for (const date of weekDays) {
+        const dateKey = date.toISOString().split('T')[0];
+        if (!scheduleFormat[dateKey]) {
+          await updateSchedule(currentUser.id, date, null);
+        }
+      }
+    } catch (error) {
+      console.error('Error applying template:', error);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -300,6 +334,15 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
           currentSprint={currentSprint}
         />
       )}
+
+      {/* Availability Templates */}
+      <TemplateManager
+        onApplyTemplate={handleApplyTemplate}
+        currentWeekPattern={getCurrentWeekPattern()}
+        teamId={selectedTeam.id}
+        currentUserId={currentUser.id}
+        className="mb-6"
+      />
 
       {/* Desktop Header */}
       <div className="hidden lg:block bg-white rounded-lg p-3 sm:p-4 shadow-sm">

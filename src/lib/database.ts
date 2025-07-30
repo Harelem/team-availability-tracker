@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry } from '@/types'
+import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
 import { calculateSprintCapacityFromSettings } from './calculationService'
 
 // Sprint History interfaces
@@ -2587,6 +2588,234 @@ The table creation script includes:
       }
     } catch (error) {
       console.error('Error adding sample sprint data:', error)
+    }
+  },
+
+  // Availability Templates
+  async getAvailabilityTemplates(options?: TemplateQueryOptions): Promise<TemplateSearchResult> {
+    if (!isSupabaseConfigured()) {
+      return { templates: [], totalCount: 0, hasMore: false }
+    }
+
+    try {
+      let query = supabase
+        .from('availability_templates')
+        .select('*', { count: 'exact' })
+
+      // Apply filters
+      if (options?.filters) {
+        const { teamId, createdBy, isPublic, searchQuery, sortBy, sortOrder } = options.filters
+
+        if (teamId !== undefined) {
+          query = query.eq('team_id', teamId)
+        }
+
+        if (createdBy !== undefined) {
+          query = query.eq('created_by', createdBy)
+        }
+
+        if (isPublic !== undefined) {
+          query = query.eq('is_public', isPublic)
+        }
+
+        if (searchQuery) {
+          query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        }
+
+        // Apply sorting
+        const sort = sortBy || 'usage_count'
+        const order = sortOrder || 'desc'
+        query = query.order(sort, { ascending: order === 'asc' })
+      } else {
+        // Default sorting by usage count
+        query = query.order('usage_count', { ascending: false })
+      }
+
+      // Apply pagination
+      if (options?.limit) {
+        query = query.limit(options.limit)
+      }
+      if (options?.offset) {
+        query = query.range(options.offset, options.offset + (options.limit || 50) - 1)
+      }
+
+      const { data, error, count } = await query
+
+      if (error) {
+        console.error('Error fetching availability templates:', error)
+        return { templates: [], totalCount: 0, hasMore: false }
+      }
+
+      const templates = (data || []).map(template => ({
+        ...template,
+        isPublic: template.is_public,
+        createdBy: template.created_by,
+        teamId: template.team_id,
+        usageCount: template.usage_count,
+        createdAt: template.created_at,
+        updatedAt: template.updated_at
+      }))
+
+      const totalCount = count || 0
+      const hasMore = options?.limit ? (options.offset || 0) + templates.length < totalCount : false
+
+      return { templates, totalCount, hasMore }
+    } catch (error) {
+      console.error('Error in getAvailabilityTemplates:', error)
+      return { templates: [], totalCount: 0, hasMore: false }
+    }
+  },
+
+  async createTemplate(template: CreateTemplateRequest): Promise<AvailabilityTemplate | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('availability_templates')
+        .insert([{
+          name: template.name,
+          description: template.description,
+          pattern: template.pattern,
+          is_public: template.isPublic || false,
+          team_id: template.teamId,
+          created_by: template.createdBy || 1 // Default to first user if not provided
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating template:', error)
+        return null
+      }
+
+      return {
+        ...data,
+        isPublic: data.is_public,
+        createdBy: data.created_by,
+        teamId: data.team_id,
+        usageCount: data.usage_count,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      }
+    } catch (error) {
+      console.error('Error in createTemplate:', error)
+      return null
+    }
+  },
+
+  async updateTemplate(update: UpdateTemplateRequest): Promise<AvailabilityTemplate | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+
+    try {
+      const updateData: any = {}
+      
+      if (update.name !== undefined) updateData.name = update.name
+      if (update.description !== undefined) updateData.description = update.description
+      if (update.pattern !== undefined) updateData.pattern = update.pattern
+      if (update.isPublic !== undefined) updateData.is_public = update.isPublic
+
+      const { data, error } = await supabase
+        .from('availability_templates')
+        .update(updateData)
+        .eq('id', update.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating template:', error)
+        return null
+      }
+
+      return {
+        ...data,
+        isPublic: data.is_public,
+        createdBy: data.created_by,
+        teamId: data.team_id,
+        usageCount: data.usage_count,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      }
+    } catch (error) {
+      console.error('Error in updateTemplate:', error)
+      return null
+    }
+  },
+
+  async deleteTemplate(templateId: string): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+
+    try {
+      const { error } = await supabase
+        .from('availability_templates')
+        .delete()
+        .eq('id', templateId)
+
+      if (error) {
+        console.error('Error deleting template:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error in deleteTemplate:', error)
+      return false
+    }
+  },
+
+  async incrementTemplateUsage(templateId: string): Promise<void> {
+    if (!isSupabaseConfigured()) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('availability_templates')
+        .update({ usage_count: supabase.sql`usage_count + 1` })
+        .eq('id', templateId)
+
+      if (error) {
+        console.error('Error incrementing template usage:', error)
+      }
+    } catch (error) {
+      console.error('Error in incrementTemplateUsage:', error)
+    }
+  },
+
+  async getTemplateById(templateId: string): Promise<AvailabilityTemplate | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('availability_templates')
+        .select('*')
+        .eq('id', templateId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching template by ID:', error)
+        return null
+      }
+
+      return {
+        ...data,
+        isPublic: data.is_public,
+        createdBy: data.created_by,
+        teamId: data.team_id,
+        usageCount: data.usage_count,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      }
+    } catch (error) {
+      console.error('Error in getTemplateById:', error)
+      return null
     }
   }
 }
