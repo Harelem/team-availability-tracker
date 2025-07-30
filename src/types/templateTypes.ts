@@ -22,13 +22,13 @@ export interface AvailabilityTemplate {
 }
 
 export interface WeeklyPattern {
+  sun: number;
   mon: number;
   tue: number;
   wed: number;
   thu: number;
   fri: number;
   sat: number;
-  sun: number;
   reason?: string; // Optional reason for the entire pattern
 }
 
@@ -217,13 +217,13 @@ export const HOURS_PER_DAY = {
 } as const;
 
 export const DAY_LABELS = {
-  mon: { full: 'Monday', short: 'Mon', abbr: 'M' },
-  tue: { full: 'Tuesday', short: 'Tue', abbr: 'T' },
-  wed: { full: 'Wednesday', short: 'Wed', abbr: 'W' },
-  thu: { full: 'Thursday', short: 'Thu', abbr: 'T' },
-  fri: { full: 'Friday', short: 'Fri', abbr: 'F' },
-  sat: { full: 'Saturday', short: 'Sat', abbr: 'S' },
-  sun: { full: 'Sunday', short: 'Sun', abbr: 'S' },
+  sun: { full: 'Sunday', short: 'Sun', abbr: 'S', hebrew: 'ראשון' },
+  mon: { full: 'Monday', short: 'Mon', abbr: 'M', hebrew: 'שני' },
+  tue: { full: 'Tuesday', short: 'Tue', abbr: 'T', hebrew: 'שלישי' },
+  wed: { full: 'Wednesday', short: 'Wed', abbr: 'W', hebrew: 'רביעי' },
+  thu: { full: 'Thursday', short: 'Thu', abbr: 'R', hebrew: 'חמישי' },
+  fri: { full: 'Friday', short: 'Fri', abbr: 'F', hebrew: 'שישי' },
+  sat: { full: 'Saturday', short: 'Sat', abbr: 'S', hebrew: 'שבת' },
 } as const;
 
 export const TEMPLATE_LIMITS = {
@@ -231,6 +231,14 @@ export const TEMPLATE_LIMITS = {
   MAX_DESCRIPTION_LENGTH: 500,
   MAX_TEMPLATES_PER_USER: 50,
   MAX_TEMPLATES_PER_TEAM: 100,
+} as const;
+
+// Israeli work week configuration
+export const ISRAELI_WORK_WEEK = {
+  WORKING_DAYS: ['sun', 'mon', 'tue', 'wed', 'thu'] as const,
+  WEEKEND_DAYS: ['fri', 'sat'] as const,
+  HOURS_PER_WORKING_DAY: 7,
+  WORKING_DAYS_PER_WEEK: 5
 } as const;
 
 // =============================================================================
@@ -245,7 +253,7 @@ export const isValidWeeklyPattern = (pattern: unknown): pattern is WeeklyPattern
   if (!pattern || typeof pattern !== 'object') return false;
   
   const p = pattern as Record<string, unknown>;
-  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
   
   return days.every(day => 
     day in p && isValidWorkValue(p[day])

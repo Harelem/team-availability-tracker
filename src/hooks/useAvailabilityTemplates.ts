@@ -249,7 +249,7 @@ export const convertPatternToScheduleFormat = (
 ): Record<string, { value: '1' | '0.5' | 'X'; reason?: string }> => {
   const scheduleData: Record<string, { value: '1' | '0.5' | 'X'; reason?: string }> = {};
   
-  const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu'] as const;
+  const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu'] as const; // Israeli work week
   
   weekDays.forEach((date, index) => {
     if (index < dayKeys.length) {
@@ -285,7 +285,7 @@ export const extractPatternFromSchedule = (
     sat: 0
   };
   
-  const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+  const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const; // Full week for pattern extraction
   
   weekDays.forEach((date, index) => {
     if (index < dayKeys.length) {

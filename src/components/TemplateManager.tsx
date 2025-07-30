@@ -9,7 +9,8 @@ import {
   WeeklyPattern,
   WORK_VALUES,
   HOURS_PER_DAY,
-  DAY_LABELS
+  DAY_LABELS,
+  ISRAELI_WORK_WEEK
 } from '@/types/templateTypes';
 import { useAvailabilityTemplates, extractPatternFromSchedule } from '@/hooks/useAvailabilityTemplates';
 
@@ -118,7 +119,7 @@ export default function TemplateManager({
                 className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 <Save className="w-4 h-4" />
-                Save Current
+                Save Current · שמור נוכחי
               </button>
             )}
             
@@ -127,7 +128,7 @@ export default function TemplateManager({
               className="flex items-center gap-1 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
             >
               <Plus className="w-4 h-4" />
-              New
+              New · חדש
             </button>
           </div>
         </div>
@@ -177,8 +178,8 @@ export default function TemplateManager({
               <p className="text-lg font-medium mb-1">No templates found</p>
               <p className="text-sm">
                 {searchQuery 
-                  ? 'Try adjusting your search or filters'
-                  : 'Create your first template to get started'
+                  ? 'Try adjusting your search or filters · נסה לשנות את החיפוש או הסינון'
+                  : 'Create your first template to get started · צור את התבנית הראשונה שלך'
                 }
               </p>
             </div>
@@ -303,7 +304,7 @@ function TemplateCard({
             onClick={onApply}
             className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            Apply
+            Apply · החל
           </button>
           
           {isOwner && onEdit && (
@@ -351,14 +352,14 @@ function TemplatePatternPreview({
     lg: 'h-10 text-base'
   };
 
-  const days = ['mon', 'tue', 'wed', 'thu', 'fri'] as const;
+  const days = ISRAELI_WORK_WEEK.WORKING_DAYS; // Sunday-Thursday working days
 
   return (
     <div className={`${className}`}>
       {showLabels && (
         <div className="grid grid-cols-5 gap-1 mb-1">
           {days.map(day => (
-            <div key={day} className="text-center text-xs text-gray-500">
+            <div key={day} className="text-center text-xs text-gray-500" title={DAY_LABELS[day].hebrew}>
               {DAY_LABELS[day].abbr}
             </div>
           ))}
@@ -418,7 +419,7 @@ function CreateTemplateModal({
   const [isPublic, setIsPublic] = useState(existingTemplate?.isPublic || false);
   const [pattern, setPattern] = useState<WeeklyPattern>(
     existingTemplate?.pattern || initialPattern || {
-      mon: 1, tue: 1, wed: 1, thu: 1, fri: 1, sat: 0, sun: 0
+      sun: 1, mon: 1, tue: 1, wed: 1, thu: 1, fri: 0, sat: 0
     }
   );
 

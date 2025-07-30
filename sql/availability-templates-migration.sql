@@ -65,49 +65,56 @@ CREATE TRIGGER update_availability_templates_updated_at
 INSERT INTO availability_templates (name, description, pattern, is_public, created_by) VALUES
 (
   'Full Week', 
-  'Standard full-time schedule - all working days',
-  '{"mon": 1, "tue": 1, "wed": 1, "thu": 1, "fri": 1, "sat": 0, "sun": 0}', 
+  'Standard full-time schedule - all working days (Sun-Thu)',
+  '{"sun": 1, "mon": 1, "tue": 1, "wed": 1, "thu": 1, "fri": 0, "sat": 0}', 
   true, 
   NULL
 ),
 (
   'Half Days Only', 
   'All half days for transition periods or part-time work',
-  '{"mon": 0.5, "tue": 0.5, "wed": 0.5, "thu": 0.5, "fri": 0.5, "sat": 0, "sun": 0}', 
+  '{"sun": 0.5, "mon": 0.5, "tue": 0.5, "wed": 0.5, "thu": 0.5, "fri": 0, "sat": 0}', 
   true, 
   NULL
 ),
 (
   'Three Day Week', 
-  'Monday, Wednesday, Friday schedule for flexible work',
-  '{"mon": 1, "tue": 0, "wed": 1, "thu": 0, "fri": 1, "sat": 0, "sun": 0}', 
+  'Sunday, Tuesday, Thursday schedule for flexible work',
+  '{"sun": 1, "mon": 0, "tue": 1, "wed": 0, "thu": 1, "fri": 0, "sat": 0}', 
   true, 
   NULL
 ),
 (
   'Front-loaded Week',
-  'Work early in the week - Monday through Wednesday',
-  '{"mon": 1, "tue": 1, "wed": 1, "thu": 0, "fri": 0, "sat": 0, "sun": 0}',
+  'Work early in the week - Sunday through Tuesday',
+  '{"sun": 1, "mon": 1, "tue": 1, "wed": 0, "thu": 0, "fri": 0, "sat": 0}',
   true,
   NULL
 ),
 (
   'Back-loaded Week',
-  'Work later in the week - Wednesday through Friday', 
-  '{"mon": 0, "tue": 0, "wed": 1, "thu": 1, "fri": 1, "sat": 0, "sun": 0}',
+  'Work later in the week - Tuesday through Thursday', 
+  '{"sun": 0, "mon": 0, "tue": 1, "wed": 1, "thu": 1, "fri": 0, "sat": 0}',
   true,
   NULL
 ),
 (
   'Alternate Days',
   'Every other day schedule for maximum flexibility',
-  '{"mon": 1, "tue": 0, "wed": 1, "thu": 0, "fri": 1, "sat": 0, "sun": 0}',
+  '{"sun": 1, "mon": 0, "tue": 1, "wed": 0, "thu": 1, "fri": 0, "sat": 0}',
+  true,
+  NULL
+),
+(
+  'Medical Appointments',
+  'Half day Wednesdays for regular medical appointments',
+  '{"sun": 1, "mon": 1, "tue": 1, "wed": 0.5, "thu": 1, "fri": 0, "sat": 0}',
   true,
   NULL
 );
 
 -- Add comments for documentation
 COMMENT ON TABLE availability_templates IS 'Stores reusable availability patterns for quick schedule setup';
-COMMENT ON COLUMN availability_templates.pattern IS 'JSONB object storing weekly pattern with day keys (mon, tue, wed, thu, fri, sat, sun) and availability values (0, 0.5, 1)';
+COMMENT ON COLUMN availability_templates.pattern IS 'JSONB object storing weekly pattern with day keys (sun, mon, tue, wed, thu, fri, sat) and availability values (0, 0.5, 1) - Israeli work week: Sun-Thu working, Fri-Sat weekend';
 COMMENT ON COLUMN availability_templates.is_public IS 'Whether this template can be used by all users (true) or only by creator and team members (false)';
 COMMENT ON COLUMN availability_templates.usage_count IS 'Number of times this template has been applied, used for popularity sorting';
