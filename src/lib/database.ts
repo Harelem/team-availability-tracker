@@ -3215,8 +3215,8 @@ The table creation script includes:
         .from('team_members')
         .select(`
           id,
-          name_hebrew,
-          name_english,
+          name,
+          hebrew,
           team_id,
           role,
           is_manager,
@@ -3241,7 +3241,7 @@ The table creation script includes:
 
         return {
           id: member.id,
-          name: member.name_hebrew || member.name_english,
+          name: member.name || member.hebrew,
           teamId: member.team_id,
           teamName: team?.name || 'Unknown Team',
           role: member.role,
@@ -3267,7 +3267,7 @@ The table creation script includes:
         return {
           id: team.id,
           name: team.name,
-          manager: manager?.name_hebrew || manager?.name_english || 'Unknown',
+          manager: manager?.name || manager?.hebrew || 'Unknown',
           total: teamMembers.length,
           available: teamMembers.filter(m => m.hours === 1).length,
           halfDay: teamMembers.filter(m => m.hours === 0.5).length,
@@ -3306,8 +3306,8 @@ The table creation script includes:
           hours,
           reason,
           team_members (
-            name_hebrew,
-            name_english,
+            name,
+            hebrew,
             team_id,
             is_critical,
             teams (name)
@@ -3321,7 +3321,7 @@ The table creation script includes:
 
       return data.map((entry: any) => ({
         id: entry.team_member_id,
-        name: entry.team_members.name_hebrew || entry.team_members.name_english,
+        name: entry.team_members.name || entry.team_members.hebrew,
         teamId: entry.team_members.team_id,
         teamName: entry.team_members.teams?.name || 'Unknown Team',
         hours: entry.hours,
@@ -3350,8 +3350,8 @@ The table creation script includes:
           hours,
           reason,
           team_members (
-            name_hebrew,
-            name_english,
+            name,
+            hebrew,
             team_id,
             teams (name)
           )
@@ -3363,7 +3363,7 @@ The table creation script includes:
 
       return data.map((entry: any) => ({
         id: entry.team_member_id,
-        name: entry.team_members.name_hebrew || entry.team_members.name_english,
+        name: entry.team_members.name || entry.team_members.hebrew,
         teamId: entry.team_members.team_id,
         teamName: entry.team_members.teams?.name || 'Unknown Team',
         hours: entry.hours,
