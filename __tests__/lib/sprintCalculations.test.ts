@@ -1,12 +1,17 @@
-import { SprintCalculations, SPRINT_CALCULATION_EXAMPLES } from '../../src/lib/sprintCalculations';
+import { 
+  SprintCalculations, 
+  SprintCalculationValidator,
+  SPRINT_CALCULATION_CONSTANTS,
+  SPRINT_CALCULATION_EXAMPLES 
+} from '../../src/lib/sprintCalculations';
 
 describe('SprintCalculations', () => {
   describe('calculateSprintPotential', () => {
     it('should calculate correctly: 5 people × 10 working days × 7 hours = 350 hours', () => {
       const result = SprintCalculations.calculateSprintPotential(
         5, // team members
-        '2024-01-01', // Monday
-        '2024-01-12'  // Friday (2 weeks)
+        '2024-01-07', // Sunday (start of Israeli work week)
+        '2024-01-18'  // Thursday (end of 2-week sprint)
       );
       expect(result).toBe(350); // 5 × 10 × 7 = 350
     });
@@ -15,8 +20,8 @@ describe('SprintCalculations', () => {
       const example = SPRINT_CALCULATION_EXAMPLES.productTeam;
       const result = SprintCalculations.calculateSprintPotential(
         example.members,
-        '2024-01-01', // Monday
-        '2024-01-12'  // Friday (2 weeks = 10 working days)
+        '2024-01-07', // Sunday (start of Israeli work week)
+        '2024-01-18'  // Thursday (2 weeks = 10 working days)
       );
       expect(result).toBe(example.expectedPotential); // 8 × 10 × 7 = 560
     });
@@ -25,8 +30,8 @@ describe('SprintCalculations', () => {
       const example = SPRINT_CALCULATION_EXAMPLES.devTeamTal;
       const result = SprintCalculations.calculateSprintPotential(
         example.members,
-        '2024-01-01', // Monday
-        '2024-01-12'  // Friday (2 weeks = 10 working days)
+        '2024-01-07', // Sunday (start of Israeli work week)
+        '2024-01-18'  // Thursday (2 weeks = 10 working days)
       );
       expect(result).toBe(example.expectedPotential); // 4 × 10 × 7 = 280
     });
@@ -35,50 +40,50 @@ describe('SprintCalculations', () => {
       const example = SPRINT_CALCULATION_EXAMPLES.infraTeam;
       const result = SprintCalculations.calculateSprintPotential(
         example.members,
-        '2024-01-01', // Monday
-        '2024-01-19'  // Friday (3 weeks = 15 working days)
+        '2024-01-07', // Sunday (start of Israeli work week)
+        '2024-01-25'  // Thursday (3 weeks = 15 working days)
       );
       expect(result).toBe(example.expectedPotential); // 6 × 15 × 7 = 630
     });
   });
 
   describe('calculateWorkingDays', () => {
-    it('should exclude weekends from working days calculation', () => {
+    it('should count Sunday through Thursday as working days (Israeli work week)', () => {
       const workingDays = SprintCalculations.calculateWorkingDays(
-        '2024-01-01', // Monday  
-        '2024-01-07'  // Sunday
+        '2024-01-07', // Sunday (start of work week)
+        '2024-01-11'  // Thursday (end of work week)
       );
-      expect(workingDays).toBe(5); // Mon, Tue, Wed, Thu, Fri only
+      expect(workingDays).toBe(5); // Sun, Mon, Tue, Wed, Thu
     });
 
     it('should handle cross-month sprints correctly', () => {
       const workingDays = SprintCalculations.calculateWorkingDays(
-        '2024-01-29', // Monday
-        '2024-02-09'  // Friday
+        '2024-01-28', // Sunday (start of work week)
+        '2024-02-08'  // Thursday (end of 2 weeks)
       );
       expect(workingDays).toBe(10); // 2 weeks = 10 working days
     });
 
     it('should handle single day correctly', () => {
       const workingDays = SprintCalculations.calculateWorkingDays(
-        '2024-01-01', // Monday
-        '2024-01-01'  // Same Monday
+        '2024-01-07', // Sunday (working day)
+        '2024-01-07'  // Same Sunday
       );
       expect(workingDays).toBe(1);
     });
 
-    it('should handle weekend-only period correctly', () => {
+    it('should handle weekend-only period correctly (Friday-Saturday)', () => {
       const workingDays = SprintCalculations.calculateWorkingDays(
-        '2024-01-06', // Saturday
-        '2024-01-07'  // Sunday
+        '2024-01-12', // Friday (weekend in Israeli calendar)
+        '2024-01-13'  // Saturday (weekend in Israeli calendar)
       );
       expect(workingDays).toBe(0); // No working days
     });
 
     it('should handle 3-week sprint correctly', () => {
       const workingDays = SprintCalculations.calculateWorkingDays(
-        '2024-01-01', // Monday
-        '2024-01-19'  // Friday (3 weeks)
+        '2024-01-07', // Sunday (start of work week)
+        '2024-01-25'  // Thursday (end of 3 weeks)
       );
       expect(workingDays).toBe(15); // 3 weeks × 5 days = 15 working days
     });
@@ -245,8 +250,8 @@ describe('SprintCalculations', () => {
       
       const result = SprintCalculations.calculateSprintMetrics(
         5, // team members
-        '2024-01-01', // Monday
-        '2024-01-12', // Friday (2 weeks)
+        '2024-01-07', // Sunday (start of Israeli work week)
+        '2024-01-18', // Thursday (end of 2 weeks)
         scheduleEntries
       );
       
@@ -298,8 +303,8 @@ describe('SprintCalculations', () => {
       // Product Team: 8 members, 2-week sprint
       const potentialHours = SprintCalculations.calculateSprintPotential(
         8,
-        '2024-01-01', // Monday
-        '2024-01-12'  // Friday
+        '2024-01-07', // Sunday (start of Israeli work week)
+        '2024-01-18'  // Thursday (end of 2 weeks)
       );
       
       // Mock realistic schedule data (80% planned)
@@ -323,13 +328,102 @@ describe('SprintCalculations', () => {
         { hours: 7 }, { hours: 7 }, { hours: 7 }, { hours: 0 }, { hours: 0 }
       ];
       
-      const potentialHours = SprintCalculations.calculateSprintPotential(3, '2024-01-01', '2024-01-05');
+      const potentialHours = SprintCalculations.calculateSprintPotential(3, '2024-01-07', '2024-01-11'); // Sunday to Thursday
       const actualHours = SprintCalculations.calculateActualPlannedHours(scheduleEntries);
       const completion = SprintCalculations.calculateCompletionPercentage(actualHours, potentialHours);
       
       expect(potentialHours).toBe(105); // 3 × 5 × 7 = 105h
       expect(actualHours).toBe(73.5); // 35 + 17.5 + 21 = 73.5h
       expect(completion).toBe(70); // 73.5/105 = 70%
+    });
+  });
+
+  describe('SprintCalculationValidator', () => {
+    describe('validateHoursPerWeek', () => {
+      it('should validate correct 35-hour calculation', () => {
+        const result = SprintCalculationValidator.validateHoursPerWeek(8, 2, 560);
+        expect(result.isValid).toBe(true);
+        expect(result.expectedHours).toBe(560);
+        expect(result.message).toContain('✓ Calculation correct');
+      });
+
+      it('should detect incorrect hour calculation', () => {
+        const result = SprintCalculationValidator.validateHoursPerWeek(8, 2, 512);
+        expect(result.isValid).toBe(false);
+        expect(result.expectedHours).toBe(560);
+        expect(result.message).toContain('❌ Calculation error');
+      });
+    });
+
+    describe('validateWorkingDays', () => {
+      it('should validate correct working days calculation', () => {
+        const result = SprintCalculationValidator.validateWorkingDays(
+          '2024-01-07', '2024-01-11', 5
+        );
+        expect(result.isValid).toBe(true);
+        expect(result.expectedDays).toBe(5);
+        expect(result.message).toContain('✓ Working days correct');
+      });
+
+      it('should detect incorrect working days calculation', () => {
+        const result = SprintCalculationValidator.validateWorkingDays(
+          '2024-01-07', '2024-01-11', 7
+        );
+        expect(result.isValid).toBe(false);
+        expect(result.expectedDays).toBe(5);
+        expect(result.message).toContain('❌ Working days error');
+      });
+    });
+
+    describe('validateSprintCalculation', () => {
+      it('should validate comprehensive sprint calculation', () => {
+        const result = SprintCalculationValidator.validateSprintCalculation(
+          8, '2024-01-07', '2024-01-18', 560
+        );
+        
+        expect(result.isValid).toBe(true);
+        expect(result.errors).toHaveLength(0);
+        expect(result.details.teamSize).toBe(8);
+        expect(result.details.workingDays).toBe(10);
+        expect(result.details.expectedPotential).toBe(560);
+        expect(result.details.hoursPerWeek).toBe(SPRINT_CALCULATION_CONSTANTS.HOURS_PER_PERSON_PER_WEEK);
+      });
+
+      it('should detect sprint calculation errors', () => {
+        const result = SprintCalculationValidator.validateSprintCalculation(
+          8, '2024-01-07', '2024-01-18', 512 // Wrong calculation
+        );
+        
+        expect(result.isValid).toBe(false);
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors[0]).toContain('Sprint potential mismatch');
+      });
+
+      it('should warn about edge cases', () => {
+        const result = SprintCalculationValidator.validateSprintCalculation(
+          15, '2024-01-07', '2024-01-09', 210 // Large team, short sprint
+        );
+        
+        expect(result.warnings.length).toBeGreaterThan(0);
+        expect(result.warnings.some(w => w.includes('Large team size'))).toBe(true);
+        expect(result.warnings.some(w => w.includes('less than 1 week'))).toBe(true);
+      });
+    });
+  });
+
+  describe('SPRINT_CALCULATION_CONSTANTS', () => {
+    it('should have correct constant values for 35-hour week', () => {
+      expect(SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY).toBe(7);
+      expect(SPRINT_CALCULATION_CONSTANTS.WORKING_DAYS_PER_WEEK).toBe(5);
+      expect(SPRINT_CALCULATION_CONSTANTS.HOURS_PER_PERSON_PER_WEEK).toBe(35);
+      expect(SPRINT_CALCULATION_CONSTANTS.WORKING_DAYS).toEqual([0, 1, 2, 3, 4]);
+      expect(SPRINT_CALCULATION_CONSTANTS.WEEKEND_DAYS).toEqual([5, 6]);
+    });
+
+    it('should maintain consistency: 5 days × 7 hours = 35 hours', () => {
+      const calculatedWeeklyHours = SPRINT_CALCULATION_CONSTANTS.WORKING_DAYS_PER_WEEK * 
+                                   SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY;
+      expect(calculatedWeeklyHours).toBe(SPRINT_CALCULATION_CONSTANTS.HOURS_PER_PERSON_PER_WEEK);
     });
   });
 });

@@ -1374,8 +1374,8 @@ export const DatabaseService = {
     const current = new Date(start);
     while (current <= end) {
       const dayOfWeek = current.getDay();
-      // Monday = 1, Friday = 5 (working days)
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      // Sunday = 0, Thursday = 4 (Israeli working days)
+      if (dayOfWeek >= 0 && dayOfWeek <= 4) {
         workingDays++;
       }
       current.setDate(current.getDate() + 1);

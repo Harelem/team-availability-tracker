@@ -721,10 +721,11 @@ export class PredictiveAnalyticsEngine {
   // Additional methods for team size optimization and delivery prediction
   private getIndustryBenchmarks(complexity: string): any {
     // Industry benchmarks for different project complexities
+    // All complexities use 35 hours per person per week (5 working days × 7 hours)
     const benchmarks = {
       low: { avgTeamSize: 3, hoursPerMember: 35, velocityMultiplier: 1.2 },
-      medium: { avgTeamSize: 5, hoursPerMember: 32, velocityMultiplier: 1.0 },
-      high: { avgTeamSize: 8, hoursPerMember: 28, velocityMultiplier: 0.8 }
+      medium: { avgTeamSize: 5, hoursPerMember: 35, velocityMultiplier: 1.0 },
+      high: { avgTeamSize: 8, hoursPerMember: 35, velocityMultiplier: 0.8 }
     };
     
     return benchmarks[complexity as keyof typeof benchmarks] || benchmarks.medium;

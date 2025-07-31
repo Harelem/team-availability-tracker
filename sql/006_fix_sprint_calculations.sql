@@ -14,8 +14,8 @@ DECLARE
   current_date DATE := start_date;
 BEGIN
   WHILE current_date <= end_date LOOP
-    -- Only count Monday(1) through Friday(5)
-    IF EXTRACT(DOW FROM current_date) BETWEEN 1 AND 5 THEN
+    -- Only count Sunday(0) through Thursday(4) - Israeli work week
+    IF EXTRACT(DOW FROM current_date) BETWEEN 0 AND 4 THEN
       working_days := working_days + 1;
     END IF;
     current_date := current_date + INTERVAL '1 day';
@@ -39,7 +39,7 @@ DECLARE
   sprint_potential INTEGER;
   hours_per_day INTEGER := 7;
 BEGIN
-  -- Calculate working days (Monday-Friday only)
+  -- Calculate working days (Sunday-Thursday only - Israeli work week)
   SELECT calculate_working_days(sprint_start_date, sprint_end_date) INTO working_days;
 
   -- Calculate sprint potential: team_members × working_days × 7_hours_per_day

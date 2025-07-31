@@ -17,8 +17,17 @@ export interface SprintProgress {
   isOnTrack: boolean;
 }
 
+// Sprint Calculation Constants - Central source of truth for all sprint calculations
+export const SPRINT_CALCULATION_CONSTANTS = {
+  HOURS_PER_DAY: 7,
+  WORKING_DAYS_PER_WEEK: 5,
+  HOURS_PER_PERSON_PER_WEEK: 35, // 5 days × 7 hours = 35 hours
+  WORKING_DAYS: [0, 1, 2, 3, 4], // Sunday through Thursday (Israeli work week)
+  WEEKEND_DAYS: [5, 6], // Friday and Saturday
+} as const;
+
 export class SprintCalculations {
-  private static readonly HOURS_PER_DAY = 7;
+  private static readonly HOURS_PER_DAY = SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY;
   
   /**
    * Calculate sprint potential hours correctly
@@ -34,7 +43,7 @@ export class SprintCalculations {
   }
 
   /**
-   * Calculate only working days (Monday-Friday) in sprint
+   * Calculate only working days (Sunday-Thursday) in sprint - Israeli work week
    */
   static calculateWorkingDays(startDate: string, endDate: string): number {
     const start = new Date(startDate);
@@ -44,8 +53,8 @@ export class SprintCalculations {
     const current = new Date(start);
     while (current <= end) {
       const dayOfWeek = current.getDay();
-      // 1 = Monday, 5 = Friday (working days)
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      // Use central constants for working days (Sunday through Thursday)
+      if (SPRINT_CALCULATION_CONSTANTS.WORKING_DAYS.includes(dayOfWeek as 0 | 1 | 2 | 3 | 4)) {
         workingDays++;
       }
       current.setDate(current.getDate() + 1);
@@ -109,7 +118,8 @@ export class SprintCalculations {
     while (current < end) {
       current.setDate(current.getDate() + 1);
       const dayOfWeek = current.getDay();
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      // Use central constants for working days (Sunday through Thursday)
+      if (SPRINT_CALCULATION_CONSTANTS.WORKING_DAYS.includes(dayOfWeek as 0 | 1 | 2 | 3 | 4)) {
         remainingDays++;
       }
     }
@@ -219,6 +229,109 @@ export function formatPercentage(percentage: number): string {
 }
 
 /**
+ * Validation utility functions for sprint calculations
+ */
+export class SprintCalculationValidator {
+  /**
+   * Validate that calculated hours match expected 35 hours per person per week
+   */
+  static validateHoursPerWeek(
+    teamSize: number,
+    sprintWeeks: number,
+    calculatedHours: number
+  ): { isValid: boolean; expectedHours: number; message: string } {
+    const expectedHours = teamSize * sprintWeeks * SPRINT_CALCULATION_CONSTANTS.HOURS_PER_PERSON_PER_WEEK;
+    const isValid = calculatedHours === expectedHours;
+    
+    return {
+      isValid,
+      expectedHours,
+      message: isValid 
+        ? `✓ Calculation correct: ${teamSize} people × ${sprintWeeks} weeks × 35h/week = ${expectedHours}h`
+        : `❌ Calculation error: Expected ${expectedHours}h but got ${calculatedHours}h`
+    };
+  }
+
+  /**
+   * Validate working days calculation for a date range
+   */
+  static validateWorkingDays(
+    startDate: string,
+    endDate: string,
+    calculatedDays: number
+  ): { isValid: boolean; expectedDays: number; message: string } {
+    const expectedDays = SprintCalculations.calculateWorkingDays(startDate, endDate);
+    const isValid = calculatedDays === expectedDays;
+    
+    return {
+      isValid,
+      expectedDays,
+      message: isValid
+        ? `✓ Working days correct: ${expectedDays} days (Sunday-Thursday)`
+        : `❌ Working days error: Expected ${expectedDays} but got ${calculatedDays}`
+    };
+  }
+
+  /**
+   * Comprehensive sprint calculation validation
+   */
+  static validateSprintCalculation(
+    teamSize: number,
+    startDate: string,
+    endDate: string,
+    calculatedPotential: number
+  ): { isValid: boolean; errors: string[]; warnings: string[]; details: any } {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    
+    // Calculate expected values
+    const workingDays = SprintCalculations.calculateWorkingDays(startDate, endDate);
+    const expectedPotential = teamSize * workingDays * SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY;
+    const sprintWeeks = Math.ceil(workingDays / SPRINT_CALCULATION_CONSTANTS.WORKING_DAYS_PER_WEEK);
+    
+    // Validate potential hours
+    if (calculatedPotential !== expectedPotential) {
+      errors.push(`Sprint potential mismatch: Expected ${expectedPotential}h, got ${calculatedPotential}h`);
+    }
+    
+    // Validate hours per week consistency
+    const hoursPerWeek = calculatedPotential / teamSize / sprintWeeks;
+    if (Math.abs(hoursPerWeek - SPRINT_CALCULATION_CONSTANTS.HOURS_PER_PERSON_PER_WEEK) > 0.1) {
+      errors.push(`Hours per week inconsistent: Expected 35h/person/week, calculated ${hoursPerWeek.toFixed(1)}h`);
+    }
+    
+    // Warnings for edge cases
+    if (workingDays < 5) {
+      warnings.push('Sprint duration less than 1 week may lead to inaccurate capacity planning');
+    }
+    
+    if (teamSize > 12) {
+      warnings.push('Large team size (>12) may have coordination overhead affecting actual capacity');
+    }
+    
+    if (workingDays > 60) {
+      warnings.push('Long sprint duration (>12 weeks) increases uncertainty in capacity planning');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+      details: {
+        teamSize,
+        workingDays,
+        sprintWeeks,
+        expectedPotential,
+        calculatedPotential,
+        hoursPerDay: SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY,
+        hoursPerWeek: SPRINT_CALCULATION_CONSTANTS.HOURS_PER_PERSON_PER_WEEK,
+        breakdown: `${teamSize} people × ${workingDays} working days × ${SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY}h/day = ${expectedPotential}h`
+      }
+    };
+  }
+}
+
+/**
  * Example usage and validation
  */
 export const SPRINT_CALCULATION_EXAMPLES = {
@@ -226,20 +339,20 @@ export const SPRINT_CALCULATION_EXAMPLES = {
   productTeam: {
     members: 8,
     workingDays: 10,
-    expectedPotential: 8 * 10 * 7, // 560 hours
+    expectedPotential: 8 * 10 * SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY, // 560 hours
   },
   
   // Dev Team Tal: 4 members, 2 weeks (10 working days)  
   devTeamTal: {
     members: 4,
     workingDays: 10,
-    expectedPotential: 4 * 10 * 7, // 280 hours
+    expectedPotential: 4 * 10 * SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY, // 280 hours
   },
   
   // Infrastructure Team: 6 members, 3 weeks (15 working days)
   infraTeam: {
     members: 6,
     workingDays: 15,
-    expectedPotential: 6 * 15 * 7, // 630 hours
+    expectedPotential: 6 * 15 * SPRINT_CALCULATION_CONSTANTS.HOURS_PER_DAY, // 630 hours
   }
 };
