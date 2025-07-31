@@ -33,6 +33,7 @@ import TeamDetailModal from '@/components/modals/TeamDetailModal';
 import { COOCard, COOMetricCard, COOStatCard } from '@/components/ui/COOCard';
 import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
 import DailyCompanyStatus from './coo/DailyCompanyStatus';
+import UnifiedSprintProgress from './UnifiedSprintProgress';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -368,6 +369,11 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
       </div>
 
       {/* Hours view control removed - integrated into specific components */}
+
+      {/* Unified Sprint Progress - Single Source of Truth */}
+      <div className="mb-6">
+        <UnifiedSprintProgress variant="full" showDetailed={true} />
+      </div>
 
       {/* Company-Wide Hours Status Overview */}
       {allTeams.length > 0 && currentSprint && (

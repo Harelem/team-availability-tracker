@@ -6,6 +6,7 @@ import { TeamMember, Team } from '@/types';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { canManageSprints } from '@/utils/permissions';
 import EnhancedManagerExportButton from './EnhancedManagerExportButton';
+import UnifiedSprintProgress from './UnifiedSprintProgress';
 
 interface CompactHeaderBarProps {
   currentUser: TeamMember;
@@ -101,23 +102,9 @@ export default function CompactHeaderBar({
           <div className="hidden lg:flex items-center gap-3">
             {currentSprint && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50">
-                <div className="text-sm">
-                  <span className="font-medium text-gray-900">Sprint Progress:</span>
-                  <span className={`ml-2 font-bold ${
-                    sprintStatus === 'excellent' ? 'text-green-600' :
-                    sprintStatus === 'good' ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
-                    {sprintCompletion}%
-                  </span>
-                </div>
-                <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-300 ${
-                      sprintStatus === 'excellent' ? 'bg-green-500' :
-                      sprintStatus === 'good' ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${sprintCompletion}%` }}
-                  />
+                <UnifiedSprintProgress variant="minimal" />
+                <div className="text-xs text-gray-500 ml-2">
+                  Time Progress • Team Completion: {sprintCompletion}%
                 </div>
               </div>
             )}

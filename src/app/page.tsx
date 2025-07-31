@@ -6,7 +6,7 @@ import ScheduleTable from '@/components/ScheduleTable';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
-import GlobalSprintDashboard from '@/components/GlobalSprintDashboard';
+import UnifiedSprintProgress from '@/components/UnifiedSprintProgress';
 import COOExecutiveDashboard from '@/components/COOExecutiveDashboard';
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
 import { canViewSprints, getUserRole } from '@/utils/permissions';
@@ -317,7 +317,7 @@ function HomeContent() {
         {canViewSprints(selectedUser) && selectedTeam && selectedUser && (
           <GlobalSprintProvider teamId={selectedTeam.id}>
             <div className="mb-4 sm:mb-6">
-              <GlobalSprintDashboard team={selectedTeam} />
+              <UnifiedSprintProgress variant="full" showDetailed={true} />
             </div>
             <ScheduleTable 
               currentUser={selectedUser} 
