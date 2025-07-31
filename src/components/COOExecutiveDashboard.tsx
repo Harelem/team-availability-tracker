@@ -16,7 +16,8 @@ import {
   Award,
   Activity,
   ArrowLeft,
-  CalendarDays
+  CalendarDays,
+  ClipboardList
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
 import { COODashboardData, COOUser, Team, TeamMember } from '@/types';
@@ -31,6 +32,7 @@ import ConsolidatedAnalytics from './analytics/ConsolidatedAnalytics';
 import TeamDetailModal from '@/components/modals/TeamDetailModal';
 import { COOCard, COOMetricCard, COOStatCard } from '@/components/ui/COOCard';
 import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
+import DailyCompanyStatus from './coo/DailyCompanyStatus';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -44,7 +46,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'recognition' | 'sprint-planning'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'daily-status' | 'analytics' | 'recognition' | 'sprint-planning'>('dashboard');
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const isMobile = useMobileDetection();
@@ -221,8 +223,8 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
               disabled={isLoading || error !== null}
               className="hidden sm:flex"
             />
-            {/* Only show refresh button when not on analytics tab */}
-            {activeTab !== 'analytics' && (
+            {/* Only show refresh button when not on analytics or daily-status tabs */}
+            {activeTab !== 'analytics' && activeTab !== 'daily-status' && (
               <button
                 onClick={refreshDashboard}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -248,6 +250,19 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
                 <span>Dashboard Overview</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('daily-status')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'daily-status'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-4 h-4" />
+                <span>Daily Status</span>
               </div>
             </button>
             <button
@@ -644,6 +659,13 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Daily Status Tab */}
+      {activeTab === 'daily-status' && (
+        <div className="mt-6">
+          <DailyCompanyStatus />
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry } from '@/types'
+import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, TeamDailyStatus, DailyStatusSummary } from '@/types'
 import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
 import { Achievement, RecognitionMetric, CreateAchievementRequest, UpdateMetricRequest, RecognitionQueryOptions, RecognitionQueryResult, LeaderboardEntry, LeaderboardTimeframe } from '@/types/recognitionTypes'
 import { calculateSprintCapacityFromSettings } from './calculationService'
@@ -3194,6 +3194,251 @@ The table creation script includes:
       await this.checkUserAchievements(userId)
     } catch (error) {
       console.error('Error in triggerAchievementCheck:', error)
+    }
+  },
+
+  // Daily Company Status Methods
+  async getDailyCompanyStatus(selectedDate: Date): Promise<DailyCompanyStatusData | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0]
+      console.log('🏢 Loading daily company status for:', dateStr)
+
+      // Get all teams
+      const teams = await this.getTeams()
+      
+      // Get all team members with additional fields
+      const { data: allMembers, error: membersError } = await supabase
+        .from('team_members')
+        .select(`
+          id,
+          name_hebrew,
+          name_english,
+          team_id,
+          role,
+          is_manager,
+          is_critical
+        `)
+        .is('inactive_date', null)
+
+      if (membersError) throw membersError
+
+      // Get schedule entries for the date
+      const { data: scheduleData, error: scheduleError } = await supabase
+        .from('schedule_entries')
+        .select('team_member_id, hours, reason')
+        .eq('date', dateStr)
+
+      if (scheduleError) throw scheduleError
+
+      // Process the data
+      const members: DailyMemberStatus[] = allMembers.map(member => {
+        const schedule = scheduleData?.find(s => s.team_member_id === member.id)
+        const team = teams.find(t => t.id === member.team_id)
+
+        return {
+          id: member.id,
+          name: member.name_hebrew || member.name_english,
+          teamId: member.team_id,
+          teamName: team?.name || 'Unknown Team',
+          role: member.role,
+          hours: schedule?.hours || 1, // Default to full day if no entry
+          reason: schedule?.reason,
+          isCritical: member.is_critical || false
+        }
+      })
+
+      // Calculate summary
+      const summary: DailyStatusSummary = {
+        available: members.filter(m => m.hours === 1).length,
+        halfDay: members.filter(m => m.hours === 0.5).length,
+        unavailable: members.filter(m => m.hours === 0 && m.reason !== 'שמירה').length,
+        reserve: members.filter(m => m.reason === 'שמירה').length
+      }
+
+      // Group by teams
+      const teamStatuses: TeamDailyStatus[] = teams.map(team => {
+        const teamMembers = members.filter(m => m.teamId === team.id)
+        const manager = allMembers.find(m => m.team_id === team.id && m.is_manager)
+
+        return {
+          id: team.id,
+          name: team.name,
+          manager: manager?.name_hebrew || manager?.name_english || 'Unknown',
+          total: teamMembers.length,
+          available: teamMembers.filter(m => m.hours === 1).length,
+          halfDay: teamMembers.filter(m => m.hours === 0.5).length,
+          unavailable: teamMembers.filter(m => m.hours === 0 && m.reason !== 'שמירה').length,
+          reserveDuty: teamMembers.filter(m => m.reason === 'שמירה'),
+          criticalAbsences: teamMembers.filter(m => m.hours === 0 && m.isCritical)
+        }
+      })
+
+      return {
+        summary,
+        total: members.length,
+        members,
+        teams: teamStatuses,
+        selectedDate
+      }
+
+    } catch (error) {
+      console.error('Error getting daily company status:', error)
+      return null
+    }
+  },
+
+  async getCriticalAbsences(selectedDate: Date): Promise<DailyMemberStatus[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0]
+
+      const { data, error } = await supabase
+        .from('schedule_entries')
+        .select(`
+          team_member_id,
+          hours,
+          reason,
+          team_members (
+            name_hebrew,
+            name_english,
+            team_id,
+            is_critical,
+            teams (name)
+          )
+        `)
+        .eq('date', dateStr)
+        .eq('hours', 0)
+        .eq('team_members.is_critical', true)
+
+      if (error) throw error
+
+      return data.map((entry: any) => ({
+        id: entry.team_member_id,
+        name: entry.team_members.name_hebrew || entry.team_members.name_english,
+        teamId: entry.team_members.team_id,
+        teamName: entry.team_members.teams?.name || 'Unknown Team',
+        hours: entry.hours,
+        reason: entry.reason,
+        isCritical: true
+      }))
+
+    } catch (error) {
+      console.error('Error getting critical absences:', error)
+      return []
+    }
+  },
+
+  async getReserveDutyMembers(selectedDate: Date): Promise<DailyMemberStatus[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0]
+
+      const { data, error } = await supabase
+        .from('schedule_entries')
+        .select(`
+          team_member_id,
+          hours,
+          reason,
+          team_members (
+            name_hebrew,
+            name_english,
+            team_id,
+            teams (name)
+          )
+        `)
+        .eq('date', dateStr)
+        .eq('reason', 'שמירה')
+
+      if (error) throw error
+
+      return data.map((entry: any) => ({
+        id: entry.team_member_id,
+        name: entry.team_members.name_hebrew || entry.team_members.name_english,
+        teamId: entry.team_members.team_id,
+        teamName: entry.team_members.teams?.name || 'Unknown Team',
+        hours: entry.hours,
+        reason: entry.reason,
+        isCritical: false
+      }))
+
+    } catch (error) {
+      console.error('Error getting reserve duty members:', error)
+      return []
+    }
+  },
+
+  async getTeamCapacityForDate(selectedDate: Date, teamId?: number): Promise<any[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0]
+      
+      let query = supabase
+        .from('schedule_entries')
+        .select(`
+          team_member_id,
+          hours,
+          team_members (
+            team_id,
+            teams (
+              name,
+              id
+            )
+          )
+        `)
+        .eq('date', dateStr)
+
+      if (teamId) {
+        query = query.eq('team_members.team_id', teamId)
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      // Group by team and calculate capacity
+      const teamCapacities = new Map()
+      
+      data.forEach((entry: any) => {
+        const teamId = entry.team_members.team_id
+        const teamName = entry.team_members.teams.name
+        
+        if (!teamCapacities.has(teamId)) {
+          teamCapacities.set(teamId, {
+            teamId,
+            teamName,
+            totalMembers: 0,
+            availableHours: 0,
+            potentialHours: 0
+          })
+        }
+        
+        const capacity = teamCapacities.get(teamId)
+        capacity.totalMembers += 1
+        capacity.availableHours += entry.hours || 7 // Default to full day
+        capacity.potentialHours += 7 // Full day potential
+      })
+
+      return Array.from(teamCapacities.values()).map(capacity => ({
+        ...capacity,
+        capacityPercentage: Math.round((capacity.availableHours / capacity.potentialHours) * 100)
+      }))
+
+    } catch (error) {
+      console.error('Error getting team capacity for date:', error)
+      return []
     }
   }
 }

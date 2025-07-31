@@ -86,6 +86,45 @@ export interface TeamContextType {
 // Access mode for the application
 export type AccessMode = 'coo' | 'team' | null;
 
+// Daily Company Status Types
+export interface DailyMemberStatus {
+  id: number;
+  name: string;
+  teamId: number;
+  teamName: string;
+  role?: string;
+  hours: number; // 0, 0.5, or 1
+  reason?: string;
+  isCritical: boolean;
+}
+
+export interface TeamDailyStatus {
+  id: number;
+  name: string;
+  manager: string;
+  total: number;
+  available: number;
+  halfDay: number;
+  unavailable: number;
+  reserveDuty: DailyMemberStatus[];
+  criticalAbsences: DailyMemberStatus[];
+}
+
+export interface DailyStatusSummary {
+  available: number;
+  halfDay: number;
+  unavailable: number;
+  reserve: number;
+}
+
+export interface DailyCompanyStatusData {
+  summary: DailyStatusSummary;
+  total: number;
+  members: DailyMemberStatus[];
+  teams: TeamDailyStatus[];
+  selectedDate: Date;
+}
+
 // Team selection screen props
 export interface TeamSelectionScreenProps {
   teams: Team[];
