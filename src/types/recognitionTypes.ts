@@ -1,8 +1,12 @@
 /**
- * TypeScript interfaces for Recognition System
+ * TypeScript interfaces for Recognition System - TEMPORARILY DISABLED FOR PRODUCTION
  * 
  * Defines types for achievements, metrics, leaderboards, and recognition UI components
+ * 
+ * TO RE-ENABLE: Remove the comment block wrapping the entire file content
  */
+
+/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
 
 // =============================================================================
 // CORE RECOGNITION INTERFACES
@@ -579,3 +583,5 @@ export const isRecognitionMetric = (obj: unknown): obj is RecognitionMetric => {
     typeof metric.periodEnd === 'string'
   );
 };
+
+*/

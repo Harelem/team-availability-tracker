@@ -58,7 +58,8 @@ const generateExecutiveSummarySheet = (
   data.push(['Metric', 'Value', 'Status']);
   data.push(['Total Teams', companyData.companyOverview.totalTeams, '']);
   data.push(['Total Members', companyData.companyOverview.totalMembers, '']);
-  data.push(['Weekly Potential', `${companyData.companyOverview.weeklyPotential}h`, '']);
+  data.push(['Sprint Max', `${companyData.companyOverview.sprintMax}h`, 'Theoretical Maximum']);
+  data.push(['Sprint Potential', `${companyData.companyOverview.sprintPotential}h`, 'After Absences']);
   data.push(['Current Utilization', `${companyData.companyOverview.currentUtilization}%`, 
     getUtilizationStatus(companyData.companyOverview.currentUtilization)]);
   data.push(['Capacity Gap', `${companyData.companyOverview.capacityGap}h`, 

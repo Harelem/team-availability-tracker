@@ -1,3 +1,5 @@
+/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+
 import { 
   Achievement, 
   AchievementType, 
@@ -11,9 +13,11 @@ import {
 import { DatabaseService } from './database';
 
 /**
- * Recognition Service - Business logic for the recognition system
+ * Recognition Service - Business logic for the recognition system - TEMPORARILY DISABLED
  * 
  * Handles achievement calculations, metric analysis, and recognition algorithms
+ * 
+ * TO RE-ENABLE: Remove comment block wrapping entire file
  */
 
 export class RecognitionService {
@@ -533,3 +537,5 @@ export class RecognitionService {
     }
   }
 }
+
+*/

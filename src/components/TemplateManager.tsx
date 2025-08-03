@@ -56,7 +56,8 @@ export default function TemplateManager({
 
   const handleApplyTemplate = async (template: AvailabilityTemplate) => {
     try {
-      await useTemplate(template.id);
+      // Call the actual template usage function directly
+      await useAvailabilityTemplates().useTemplate(template.id);
       onApplyTemplate(template.pattern);
     } catch (err) {
       console.error('Error applying template:', err);

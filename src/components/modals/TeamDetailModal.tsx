@@ -16,7 +16,8 @@ import {
   XCircle,
   User,
   Mail,
-  Phone
+  Phone,
+  ChevronDown
 } from 'lucide-react';
 
 import { TeamDetailModalProps, DetailedTeamMember, MemberFilterOptions } from '@/types/modalTypes';
@@ -62,6 +63,8 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
     restoreFocus: true
   });
 
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
@@ -72,6 +75,7 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
         sortBy: 'name',
         sortOrder: 'asc'
       });
+      setShowExportDropdown(false);
     }
   }, [isOpen]);
 
@@ -177,14 +181,16 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
 
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center sm:p-4">
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className={`bg-white rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto ${
-          isMobile ? 'max-w-sm' : 'max-w-6xl'
+        className={`bg-white shadow-xl w-full overflow-y-auto ${
+          isMobile 
+            ? 'h-full max-h-full rounded-none' // Mobile: Full screen
+            : 'max-w-6xl max-h-[90vh] rounded-lg' // Desktop: Modal
         }`}
       >
         {/* Loading State */}
@@ -221,29 +227,84 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
         {/* Main Content */}
         {data && !loading && (
           <>
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div>
-                <h2 id="modal-title" className="text-2xl font-bold text-gray-900">
-                  {data.teamInfo.name}
-                </h2>
-                <p className="text-gray-600 mt-1">
-                  Team Details & Current Sprint Status
-                </p>
+            {/* Header - Mobile optimized */}
+            <div className={`sticky top-0 bg-white z-10 border-b border-gray-200 ${
+              isMobile ? 'px-4 py-3' : 'p-6'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <h2 id="modal-title" className={`font-bold text-gray-900 ${
+                    isMobile ? 'text-lg' : 'text-2xl'
+                  }`}>
+                    {data.teamInfo.name}
+                  </h2>
+                  <p className={`text-gray-600 mt-1 ${
+                    isMobile ? 'text-sm' : 'text-base'
+                  }`}>
+                    Team Details & Current Sprint Status
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                  {/* Compact Export Dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowExportDropdown(!showExportDropdown)}
+                      disabled={actionsLoading}
+                      className={`flex items-center gap-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 touch-manipulation ${
+                        isMobile ? 'p-2 min-h-[44px] min-w-[44px]' : 'px-3 py-2'
+                      }`}
+                      aria-label="Export options"
+                    >
+                      <Download className="w-4 h-4" />
+                      {!isMobile && <ChevronDown className="w-3 h-3" />}
+                    </button>
+
+                  {showExportDropdown && (
+                    <>
+                      {/* Backdrop */}
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowExportDropdown(false)}
+                      />
+                      
+                      {/* Dropdown Menu */}
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                        <button
+                          onClick={() => {
+                            handleExport('excel');
+                            setShowExportDropdown(false);
+                          }}
+                          disabled={actionsLoading}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        >
+                          <Download className="w-4 h-4 text-green-600" />
+                          <span className="text-gray-900">Export Excel</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                <button
+                  onClick={onClose}
+                  className={`hover:bg-gray-100 rounded-lg transition-colors touch-manipulation ${
+                    isMobile ? 'p-3 min-h-[44px] min-w-[44px]' : 'p-2'
+                  }`}
+                  aria-label="Close modal"
+                >
+                  <X className={`text-gray-500 ${isMobile ? 'w-5 h-5' : 'w-6 h-6'}`} />
+                </button>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Close modal"
-              >
-                <X className="w-6 h-6 text-gray-500" />
-              </button>
             </div>
 
-            <div className="p-6 space-y-8">
+            <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-6 space-y-8'}`}>
               {/* Section 1: Team Header */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className={`bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg ${
+                isMobile ? 'p-4' : 'p-6'
+              }`}>
+                <div className={`grid grid-cols-1 gap-4 ${
+                  isMobile ? 'space-y-4' : 'md:grid-cols-3 gap-6'
+                }`}>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
                       <Users className="w-5 h-5 mr-2 text-blue-600" />
@@ -573,23 +634,14 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
               <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex justify-center">
                   <button
                     onClick={handleNavigateToDashboard}
                     disabled={actionsLoading}
-                    className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     View Dashboard
-                  </button>
-
-                  <button
-                    onClick={() => handleExport('excel')}
-                    disabled={actionsLoading}
-                    className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export Excel
                   </button>
                 </div>
 

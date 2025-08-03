@@ -1,3 +1,5 @@
+/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+
 'use client';
 
 import { useState } from 'react';
@@ -121,6 +123,8 @@ export default function RecognitionBadge({
   );
 }
 
+*/
+
 // Achievement Badge Grid - for displaying multiple badges
 interface AchievementBadgeGridProps {
   achievements: Achievement[];
@@ -185,6 +189,8 @@ export function AchievementBadgeGrid({
     </div>
   );
 }
+
+*/
 
 // Recent Achievement Notification - for showing new achievements
 interface RecentAchievementNotificationProps {
@@ -263,6 +269,8 @@ export function RecentAchievementNotification({
   );
 }
 
+*/
+
 // Achievement Summary - compact view for dashboard cards
 interface AchievementSummaryProps {
   achievements: Achievement[];
@@ -335,3 +343,5 @@ export function AchievementSummary({
     </div>
   );
 }
+
+*/

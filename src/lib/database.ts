@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
 import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, TeamDailyStatus, DailyStatusSummary } from '@/types'
 import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
-import { Achievement, RecognitionMetric, CreateAchievementRequest, UpdateMetricRequest, RecognitionQueryOptions, RecognitionQueryResult, LeaderboardEntry, LeaderboardTimeframe } from '@/types/recognitionTypes'
+// RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+// import { Achievement, RecognitionMetric, CreateAchievementRequest, UpdateMetricRequest, RecognitionQueryOptions, RecognitionQueryResult, LeaderboardEntry, LeaderboardTimeframe } from '@/types/recognitionTypes'
 import { calculateSprintCapacityFromSettings } from './calculationService'
 
 // Sprint History interfaces
@@ -442,18 +443,51 @@ export const DatabaseService = {
     console.log('🔧 Fixing Nir Shilo data issue...');
     
     try {
-      // Step 1: Create Management Team
-      const { data: managementTeam, error: teamError } = await supabase
-        .from('teams')
-        .upsert([{
-          name: 'Management Team',
-          description: 'Executive management and leadership team'
-        }])
-        .select()
-        .single();
+      // Step 1: Get or create Management Team safely
+      let managementTeam;
       
-      if (teamError && teamError.code !== '23505') { // Ignore duplicate key error
-        throw teamError;
+      // First, try to get existing Management Team
+      const { data: existingTeam, error: queryError } = await supabase
+        .from('teams')
+        .select('id, name, description')
+        .eq('name', 'Management Team')
+        .maybeSingle();
+      
+      if (queryError) {
+        throw queryError;
+      }
+      
+      if (existingTeam) {
+        managementTeam = existingTeam;
+        console.log('✅ Management team already exists');
+      } else {
+        // Only create if it doesn't exist
+        const { data: newTeam, error: insertError } = await supabase
+          .from('teams')
+          .insert([{
+            name: 'Management Team',
+            description: 'Executive management and leadership team'
+          }])
+          .select()
+          .single();
+        
+        if (insertError) {
+          // If it's a duplicate key error, try to get the existing team
+          if (insertError.code === '23505') {
+            const { data: retryTeam } = await supabase
+              .from('teams')
+              .select('id, name, description')
+              .eq('name', 'Management Team')
+              .single();
+            managementTeam = retryTeam;
+            console.log('✅ Management team exists (created by concurrent operation)');
+          } else {
+            throw insertError;
+          }
+        } else {
+          managementTeam = newTeam;
+          console.log('✅ Management team created successfully');
+        }
       }
       
       console.log('✅ Management team created/verified');
@@ -1353,14 +1387,83 @@ export const DatabaseService = {
 
   // Sprint Calculation Helper Functions
   /**
-   * Calculate sprint potential hours for a team
-   * Formula: team_size × working_days × 7_hours_per_day
+   * Calculate sprint maximum hours for a team using actual working days in sprint period
+   * Formula: team_size × actual_working_days × 7_hours_per_day
+   * Uses Israeli work week (Sunday-Thursday) and actual sprint dates when available
+   */
+  calculateSprintMax(memberCount: number, sprintWeeks: number, startDate?: string, endDate?: string): number {
+    const hoursPerDay = 7; // Standard work day
+    
+    if (startDate && endDate) {
+      // Use actual working days calculation for precision
+      const actualWorkingDays = this.calculateWorkingDays(startDate, endDate);
+      return memberCount * actualWorkingDays * hoursPerDay;
+    } else {
+      // Fallback to weeks-based calculation
+      const workingDaysPerWeek = 5; // Sunday to Thursday
+      const totalWorkingDays = sprintWeeks * workingDaysPerWeek;
+      return memberCount * totalWorkingDays * hoursPerDay;
+    }
+  },
+
+  /**
+   * Calculate theoretical maximum capacity for a team using actual working days
+   * Formula: team_size × actual_working_days × 7_hours_per_day
+   * Note: Uses precise working days calculation for Israeli work week
+   */
+  calculateMaxCapacity(memberCount: number, sprintWeeks: number, startDate?: string, endDate?: string): number {
+    // Delegate to calculateSprintMax for consistency
+    return this.calculateSprintMax(memberCount, sprintWeeks, startDate, endDate);
+  },
+
+  /**
+   * Calculate sprint potential hours for a team (after deducting absences/reasons)
+   * This is an enhanced version that factors in actual absence data
+   */
+  async calculateSprintPotentialWithAbsences(
+    memberIds: number[], 
+    sprintWeeks: number, 
+    startDate: string, 
+    endDate: string
+  ): Promise<number> {
+    const memberCount = memberIds.length;
+    const maxCapacity = this.calculateMaxCapacity(memberCount, sprintWeeks, startDate, endDate);
+    
+    // Get schedule entries to calculate absence deductions
+    const scheduleEntries = await this.getScheduleEntries(startDate, endDate);
+    let totalAbsenceHours = 0;
+    
+    // Calculate total hours lost due to absences ('X' = 7h lost, '0.5' = 3.5h lost)
+    for (const memberId of memberIds) {
+      const memberSchedule = scheduleEntries[memberId];
+      if (memberSchedule) {
+        for (const entry of Object.values(memberSchedule)) {
+          if (entry.value === 'X') {
+            totalAbsenceHours += 7; // Full day absence
+          } else if (entry.value === '0.5') {
+            totalAbsenceHours += 3.5; // Half day absence
+          }
+          // '1' = no absence, so no deduction
+        }
+      }
+    }
+    
+    // Potential = Max capacity minus hours lost to absences
+    const potential = Math.max(0, maxCapacity - totalAbsenceHours);
+    
+    console.log(`🧮 Potential calculation: ${maxCapacity}h max - ${totalAbsenceHours}h absences = ${potential}h potential`);
+    
+    return potential;
+  },
+
+  /**
+   * Calculate sprint potential hours for a team (simplified version for backwards compatibility)
+   * This will be the same as max capacity for now, but could be enhanced to factor in known absences
    */
   calculateSprintPotential(memberCount: number, sprintWeeks: number): number {
-    const workingDaysPerWeek = 5; // Monday to Friday
-    const hoursPerDay = 7; // Standard work day
-    const totalWorkingDays = sprintWeeks * workingDaysPerWeek;
-    return memberCount * totalWorkingDays * hoursPerDay;
+    // For now, return the same as max capacity
+    // Use the enhanced method when member IDs and date range are available
+    return this.calculateMaxCapacity(memberCount, sprintWeeks);
   },
 
   /**
@@ -1484,16 +1587,17 @@ export const DatabaseService = {
         const teamMembers = allMembers.filter(m => m.team_id === team.id)
         const memberCount = teamMembers.length
         
-        // Calculate sprint potential using helper function
-        const sprintPotential = this.calculateSprintPotential(memberCount, sprintWeeks)
+        // Calculate theoretical max capacity and current potential (accounting for absences)
+        const maxCapacity = this.calculateMaxCapacity(memberCount, sprintWeeks, startDateStr, endDateStr)
+        const memberIds = teamMembers.map(m => m.id)
+        const sprintPotential = await this.calculateSprintPotentialWithAbsences(memberIds, sprintWeeks, startDateStr, endDateStr)
         
         // Calculate actual hours for this team during sprint period
-        const memberIds = teamMembers.map(m => m.id)
         const teamActualHours = await this.calculateSprintActualHours(memberIds, startDateStr, endDateStr)
         
-        console.log(`📊 Team ${team.name}: ${memberCount} members, ${sprintPotential}h potential (${sprintWeeks} weeks), ${teamActualHours}h actual`)
+        console.log(`📊 Team ${team.name}: ${memberCount} members, ${maxCapacity}h max, ${sprintPotential}h potential (${sprintWeeks} weeks), ${teamActualHours}h actual`)
         
-        // Calculate sprint-based utilization and capacity status
+        // Calculate sprint-based utilization and capacity status (based on potential, not max)
         const utilization = sprintPotential > 0 ? Math.round((teamActualHours / sprintPotential) * 100) : 0
         const capacityGap = sprintPotential - teamActualHours
         const capacityStatus = utilization > 100 ? 'over' : utilization < 80 ? 'under' : 'optimal'
@@ -1502,7 +1606,8 @@ export const DatabaseService = {
           teamId: team.id,
           teamName: team.name,
           memberCount,
-          weeklyPotential: sprintPotential, // Note: keeping field name for compatibility but now contains sprint potential
+          maxCapacity, // New field: theoretical maximum
+          weeklyPotential: sprintPotential, // Now represents potential (max minus absences/reasons)
           actualHours: teamActualHours,
           utilization,
           capacityGap,
@@ -1642,13 +1747,44 @@ export const DatabaseService = {
         optimizationRecommendations.push('Overall utilization is low - consider increasing sprint commitments')
       }
       
+      // Calculate Sprint Max (theoretical maximum for all employees)
+      const sprintWeeks = currentSprint?.sprint_length_weeks || 2
+      const sprintDateRange = this.getSprintDateRange(currentSprint)
+      const sprintMax = this.calculateSprintMax(allMembers.length, sprintWeeks, sprintDateRange.startDate, sprintDateRange.endDate)
+      
+      // Calculate corrected utilization (potential vs max capacity)
+      const correctedUtilization = sprintMax > 0 ? Math.round((companyMetrics.currentWeek.potentialHours / sprintMax) * 100) : 0
+      const capacityGap = sprintMax - companyMetrics.currentWeek.potentialHours
+      
+      // Validation logging for COO dashboard calculations
+      console.log('🧮 COO Dashboard Calculation Summary:')
+      console.log(`📊 Total Members: ${allMembers.length}`)
+      console.log(`📅 Sprint Period: ${sprintDateRange.startDate} to ${sprintDateRange.endDate} (${sprintWeeks} weeks)`)
+      console.log(`⚡ Sprint Max: ${sprintMax}h (${allMembers.length} members × working days × 7h)`)
+      console.log(`🎯 Sprint Potential: ${companyMetrics.currentWeek.potentialHours}h (after absences)`)
+      console.log(`📈 Current Utilization: ${correctedUtilization}% (potential ÷ max)`)
+      console.log(`💪 Capacity Gap: ${capacityGap}h (hours lost to absences/reasons)`)
+      console.log(`⏰ Actual Hours: ${companyMetrics.currentWeek.actualHours}h`)
+      
+      // Validation checks
+      if (sprintMax < companyMetrics.currentWeek.potentialHours) {
+        console.warn('⚠️ Warning: Sprint Potential exceeds Sprint Max - possible calculation error')
+      }
+      if (correctedUtilization > 100) {
+        console.warn('⚠️ Warning: Utilization exceeds 100% - possible data issue')
+      }
+      if (capacityGap < 0) {
+        console.warn('⚠️ Warning: Negative capacity gap - potential exceeds max capacity')
+      }
+      
       return {
         companyOverview: {
           totalTeams: teams.length,
           totalMembers: allMembers.length,
-          weeklyPotential: companyMetrics.currentWeek.potentialHours,
-          currentUtilization: companyMetrics.currentWeek.utilizationPercent,
-          capacityGap: companyMetrics.currentWeek.capacityGap
+          sprintMax: sprintMax,
+          sprintPotential: companyMetrics.currentWeek.potentialHours,
+          currentUtilization: correctedUtilization,
+          capacityGap: capacityGap
         },
         teamComparison: companyMetrics.currentWeek.allTeamsCapacity,
         sprintAnalytics: {
@@ -2845,8 +2981,14 @@ The table creation script includes:
   },
 
   // ============================================================================
-  // RECOGNITION SYSTEM METHODS
+  // RECOGNITION SYSTEM METHODS - TEMPORARILY DISABLED FOR PRODUCTION
   // ============================================================================
+  
+  /* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+  // To re-enable: 
+  // 1. Uncomment all methods in this section
+  // 2. Restore recognition types import at top of file
+  // 3. Restore UI components that use these methods
 
   // Get user achievements
   async getUserAchievements(userId: number, options?: RecognitionQueryOptions): Promise<Achievement[]> {
@@ -2889,7 +3031,29 @@ The table creation script includes:
       const { data, error } = await query
 
       if (error) {
-        console.error('Error fetching user achievements:', error)
+        console.error('Error fetching user achievements:', {
+          error: error,
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          userId: userId
+        })
+        
+        // Check if it's a missing table error
+        if (error.message && (
+          error.message.includes('relation "user_achievements" does not exist') ||
+          error.message.includes('relation "public.user_achievements" does not exist') ||
+          error.message.includes('table "user_achievements" does not exist') ||
+          error.code === 'PGRST106' ||
+          error.code === '42P01'
+        )) {
+          console.error('🔥 MISSING TABLE: user_achievements table does not exist in database!')
+          console.error('📋 To fix: 1) Execute sql/fix_all_uuid_casting_errors.sql FIRST')
+          console.error('📋       2) Then execute sql/004_recognition_system_fixed.sql')
+          console.error('🔗 Supabase SQL Editor: https://app.supabase.com/project/YOUR_PROJECT/sql')
+        }
+        
         return []
       }
 
@@ -2905,7 +3069,18 @@ The table creation script includes:
         updatedAt: achievement.updated_at
       }))
     } catch (error) {
-      console.error('Error in getUserAchievements:', error)
+      console.error('Error in getUserAchievements:', {
+        error: error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        userId: userId,
+        stack: error instanceof Error ? error.stack : undefined
+      })
+      
+      // Enhanced error context
+      if (error instanceof Error && error.message.includes('fetch')) {
+        console.error('🌐 Network error: Check your internet connection and Supabase URL')
+      }
+      
       return []
     }
   },
@@ -2983,7 +3158,29 @@ The table creation script includes:
       const { data, error } = await query
 
       if (error) {
-        console.error('Error fetching user metrics:', error)
+        console.error('Error fetching user metrics:', {
+          error: error,
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          userId: userId
+        })
+        
+        // Check if it's a missing table error
+        if (error.message && (
+          error.message.includes('relation "recognition_metrics" does not exist') ||
+          error.message.includes('relation "public.recognition_metrics" does not exist') ||
+          error.message.includes('table "recognition_metrics" does not exist') ||
+          error.code === 'PGRST106' ||
+          error.code === '42P01'
+        )) {
+          console.error('🔥 MISSING TABLE: recognition_metrics table does not exist in database!')
+          console.error('📋 To fix: 1) Execute sql/fix_all_uuid_casting_errors.sql FIRST')
+          console.error('📋       2) Then execute sql/004_recognition_system_fixed.sql')
+          console.error('🔗 Supabase SQL Editor: https://app.supabase.com/project/YOUR_PROJECT/sql')
+        }
+        
         return []
       }
 
@@ -2998,7 +3195,18 @@ The table creation script includes:
         updatedAt: metric.updated_at
       }))
     } catch (error) {
-      console.error('Error in getUserMetrics:', error)
+      console.error('Error in getUserMetrics:', {
+        error: error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        userId: userId,
+        stack: error instanceof Error ? error.stack : undefined
+      })
+      
+      // Enhanced error context
+      if (error instanceof Error && error.message.includes('fetch')) {
+        console.error('🌐 Network error: Check your internet connection and Supabase URL')
+      }
+      
       return []
     }
   },
@@ -3061,7 +3269,7 @@ The table creation script includes:
         return []
       }
 
-      let leaderboardData = data || []
+      const leaderboardData = data || []
 
       // Filter by team if specified
       if (teamId) {
@@ -3196,6 +3404,7 @@ The table creation script includes:
       console.error('Error in triggerAchievementCheck:', error)
     }
   },
+  */
 
   // Daily Company Status Methods
   async getDailyCompanyStatus(selectedDate: Date): Promise<DailyCompanyStatusData | null> {
@@ -3210,44 +3419,57 @@ The table creation script includes:
       // Get all teams
       const teams = await this.getTeams()
       
-      // Get all team members with additional fields
+      // Get all team members - only selecting existing columns
       const { data: allMembers, error: membersError } = await supabase
         .from('team_members')
         .select(`
           id,
           name,
           hebrew,
-          team_id,
-          role,
-          is_manager,
-          is_critical
+          is_manager
         `)
-        .is('inactive_date', null)
 
-      if (membersError) throw membersError
+      if (membersError) {
+        console.error('Error fetching team members:', membersError)
+        throw new Error(`Failed to fetch team members: ${membersError.message}`)
+      }
 
-      // Get schedule entries for the date
+      // Get schedule entries for the date - using correct column name 'member_id'
       const { data: scheduleData, error: scheduleError } = await supabase
         .from('schedule_entries')
-        .select('team_member_id, hours, reason')
+        .select('member_id, value, reason')
         .eq('date', dateStr)
 
-      if (scheduleError) throw scheduleError
+      if (scheduleError) {
+        console.error('Error fetching schedule data:', scheduleError)
+        throw new Error(`Failed to fetch schedule data: ${scheduleError.message}`)
+      }
+
+      // Helper function to convert value to hours
+      const valueToHours = (value: string | null): number => {
+        if (!value) return 1 // Default to full day
+        switch (value) {
+          case '1': return 1
+          case '0.5': return 0.5
+          case 'X': return 0
+          default: return 1
+        }
+      }
 
       // Process the data
       const members: DailyMemberStatus[] = allMembers.map(member => {
-        const schedule = scheduleData?.find(s => s.team_member_id === member.id)
-        const team = teams.find(t => t.id === member.team_id)
+        const schedule = scheduleData?.find(s => s.member_id === member.id)
+        const hours = valueToHours(schedule?.value)
 
         return {
           id: member.id,
           name: member.name || member.hebrew,
-          teamId: member.team_id,
-          teamName: team?.name || 'Unknown Team',
-          role: member.role,
-          hours: schedule?.hours || 1, // Default to full day if no entry
+          teamId: null, // No team_id column currently
+          teamName: 'All Team', // Default team name
+          role: member.is_manager ? 'Manager' : 'Team Member',
+          hours: hours,
           reason: schedule?.reason,
-          isCritical: member.is_critical || false
+          isCritical: false // No is_critical column currently
         }
       })
 
@@ -3259,23 +3481,19 @@ The table creation script includes:
         reserve: members.filter(m => m.reason === 'שמירה').length
       }
 
-      // Group by teams
-      const teamStatuses: TeamDailyStatus[] = teams.map(team => {
-        const teamMembers = members.filter(m => m.teamId === team.id)
-        const manager = allMembers.find(m => m.team_id === team.id && m.is_manager)
-
-        return {
-          id: team.id,
-          name: team.name,
-          manager: manager?.name || manager?.hebrew || 'Unknown',
-          total: teamMembers.length,
-          available: teamMembers.filter(m => m.hours === 1).length,
-          halfDay: teamMembers.filter(m => m.hours === 0.5).length,
-          unavailable: teamMembers.filter(m => m.hours === 0 && m.reason !== 'שמירה').length,
-          reserveDuty: teamMembers.filter(m => m.reason === 'שמירה'),
-          criticalAbsences: teamMembers.filter(m => m.hours === 0 && m.isCritical)
-        }
-      })
+      // Group by teams - create a single team for all members since we don't have team_id
+      const managers = allMembers.filter(m => m.is_manager)
+      const teamStatuses: TeamDailyStatus[] = [{
+        id: 1,
+        name: 'All Team',
+        manager: managers.map(m => m.name || m.hebrew).join(', ') || 'No Manager',
+        total: members.length,
+        available: members.filter(m => m.hours === 1).length,
+        halfDay: members.filter(m => m.hours === 0.5).length,
+        unavailable: members.filter(m => m.hours === 0 && m.reason !== 'שמירה').length,
+        reserveDuty: members.filter(m => m.reason === 'שמירה'),
+        criticalAbsences: members.filter(m => m.hours === 0 && m.isCritical)
+      }]
 
       return {
         summary,
@@ -3286,8 +3504,19 @@ The table creation script includes:
       }
 
     } catch (error) {
-      console.error('Error getting daily company status:', error)
-      return null
+      console.error('Error getting daily company status:', {
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : error,
+        errorString: String(error),
+        date: selectedDate.toISOString().split('T')[0],
+        timestamp: new Date().toISOString()
+      })
+      
+      // Re-throw with more context for debugging
+      throw new Error(`Daily company status failed for ${selectedDate.toISOString().split('T')[0]}: ${error instanceof Error ? error.message : String(error)}`)
     }
   },
 
@@ -3302,8 +3531,8 @@ The table creation script includes:
       const { data, error } = await supabase
         .from('schedule_entries')
         .select(`
-          team_member_id,
-          hours,
+          member_id,
+          value,
           reason,
           team_members (
             name,
@@ -3314,17 +3543,17 @@ The table creation script includes:
           )
         `)
         .eq('date', dateStr)
-        .eq('hours', 0)
+        .eq('value', 'X')
         .eq('team_members.is_critical', true)
 
       if (error) throw error
 
       return data.map((entry: any) => ({
-        id: entry.team_member_id,
+        id: entry.member_id,
         name: entry.team_members.name || entry.team_members.hebrew,
         teamId: entry.team_members.team_id,
         teamName: entry.team_members.teams?.name || 'Unknown Team',
-        hours: entry.hours,
+        hours: 0, // 'X' value means 0 hours
         reason: entry.reason,
         isCritical: true
       }))
@@ -3346,8 +3575,8 @@ The table creation script includes:
       const { data, error } = await supabase
         .from('schedule_entries')
         .select(`
-          team_member_id,
-          hours,
+          member_id,
+          value,
           reason,
           team_members (
             name,
@@ -3361,12 +3590,23 @@ The table creation script includes:
 
       if (error) throw error
 
+      // Helper function to convert value to hours
+      const valueToHours = (value: string | null): number => {
+        if (!value) return 1
+        switch (value) {
+          case '1': return 1
+          case '0.5': return 0.5
+          case 'X': return 0
+          default: return 1
+        }
+      }
+
       return data.map((entry: any) => ({
-        id: entry.team_member_id,
+        id: entry.member_id,
         name: entry.team_members.name || entry.team_members.hebrew,
         teamId: entry.team_members.team_id,
         teamName: entry.team_members.teams?.name || 'Unknown Team',
-        hours: entry.hours,
+        hours: valueToHours(entry.value),
         reason: entry.reason,
         isCritical: false
       }))
@@ -3439,6 +3679,172 @@ The table creation script includes:
     } catch (error) {
       console.error('Error getting team capacity for date:', error)
       return []
+    }
+  },
+
+  // Sprint Notes Management
+  async getSprintNotes(sprintNumber: number, sprintStartDate?: string): Promise<any> {
+    if (!isSupabaseConfigured()) {
+      return { sprint_number: sprintNumber, notes: '', sprint_start_date: null, sprint_end_date: null }
+    }
+
+    try {
+      let query = supabase
+        .from('sprint_notes')
+        .select('*')
+        .eq('sprint_number', sprintNumber)
+
+      if (sprintStartDate) {
+        query = query.eq('sprint_start_date', sprintStartDate)
+      }
+
+      const { data, error } = await query.single()
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        throw error
+      }
+
+      return data || { 
+        sprint_number: sprintNumber, 
+        notes: '', 
+        sprint_start_date: sprintStartDate || null, 
+        sprint_end_date: null 
+      }
+    } catch (error) {
+      console.error('Error fetching sprint notes:', error)
+      return { sprint_number: sprintNumber, notes: '', sprint_start_date: null, sprint_end_date: null }
+    }
+  },
+
+  async createOrUpdateSprintNotes(
+    sprintNumber: number, 
+    sprintStartDate: string, 
+    sprintEndDate: string, 
+    notes: string, 
+    updatedBy: string = 'user'
+  ): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('sprint_notes')
+        .upsert({
+          sprint_number: sprintNumber,
+          sprint_start_date: sprintStartDate,
+          sprint_end_date: sprintEndDate,
+          notes: notes,
+          updated_by: updatedBy,
+          created_by: updatedBy
+        }, {
+          onConflict: 'sprint_number,sprint_start_date'
+        })
+
+      if (error) {
+        console.error('Error saving sprint notes:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error saving sprint notes:', error)
+      return false
+    }
+  },
+
+  async getSprintHistory(): Promise<any[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+
+    try {
+      // Get current sprint settings to generate history
+      const currentSprint = await this.getCurrentGlobalSprint()
+      if (!currentSprint) {
+        return []
+      }
+
+      const currentSprintNumber = currentSprint.current_sprint_number
+      const sprintLengthWeeks = currentSprint.sprint_length_weeks
+      const currentStartDate = new Date(currentSprint.sprint_start_date)
+
+      // Generate sprint history (±10 sprints from current)
+      const sprints = []
+      const sprintRange = 10
+
+      for (let i = -sprintRange; i <= sprintRange; i++) {
+        const sprintNum = currentSprintNumber + i
+        if (sprintNum <= 0) continue
+
+        const startDate = new Date(currentStartDate)
+        startDate.setDate(startDate.getDate() + (i * sprintLengthWeeks * 7))
+        
+        const endDate = new Date(startDate)
+        endDate.setDate(endDate.getDate() + (sprintLengthWeeks * 7) - 1)
+
+        const isCurrent = sprintNum === currentSprintNumber
+        const isPast = sprintNum < currentSprintNumber
+        const isFuture = sprintNum > currentSprintNumber
+
+        sprints.push({
+          sprint_number: sprintNum,
+          sprint_start_date: startDate.toISOString().split('T')[0],
+          sprint_end_date: endDate.toISOString().split('T')[0],
+          sprint_length_weeks: sprintLengthWeeks,
+          is_current: isCurrent,
+          is_past: isPast,
+          is_future: isFuture,
+          status: isCurrent ? 'current' : isPast ? 'completed' : 'planned'
+        })
+      }
+
+      // Sort by sprint number
+      sprints.sort((a, b) => a.sprint_number - b.sprint_number)
+      return sprints
+    } catch (error) {
+      console.error('Error fetching sprint history:', error)
+      return []
+    }
+  },
+
+  async getSprintWithNavigation(sprintNumber?: number): Promise<any> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+
+    try {
+      const sprints = await this.getSprintHistory()
+      if (sprints.length === 0) {
+        return null
+      }
+
+      // Find target sprint (current if not specified)
+      const targetSprintNum = sprintNumber || sprints.find(s => s.is_current)?.sprint_number
+      if (!targetSprintNum) {
+        return null
+      }
+
+      const targetIndex = sprints.findIndex(s => s.sprint_number === targetSprintNum)
+      if (targetIndex === -1) {
+        return null
+      }
+
+      const targetSprint = sprints[targetIndex]
+      
+      return {
+        sprint: targetSprint,
+        previous: targetIndex > 0 ? sprints[targetIndex - 1] : null,
+        next: targetIndex < sprints.length - 1 ? sprints[targetIndex + 1] : null,
+        position: {
+          current: targetSprintNum,
+          total: sprints.length,
+          index: targetIndex + 1
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sprint with navigation:', error)
+      return null
     }
   }
 }

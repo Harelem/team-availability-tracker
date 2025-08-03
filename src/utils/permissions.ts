@@ -57,8 +57,25 @@ export const getUserRole = (user: TeamMember | null): string => {
   if (!user) return 'User';
   if (user.name === COO_NAME) return 'COO';
   if (user.name === SPRINT_ADMIN_NAME) return 'Admin';
+  if (user.id === -1) return 'COO'; // Virtual COO user
   if (user.isManager) return 'Manager';
   return 'Member';
+};
+
+/**
+ * Check if user is COO (including virtual COO users)
+ */
+export const isCOOUser = (user: TeamMember | null): boolean => {
+  if (!user) return false;
+  return user.name === COO_NAME || user.id === -1; // Virtual COO user has ID -1
+};
+
+/**
+ * Check if user has manager-level permissions (including COO)
+ */
+export const hasManagerPermissions = (user: TeamMember | null): boolean => {
+  if (!user) return false;
+  return user.isManager || isCOOUser(user);
 };
 
 /**

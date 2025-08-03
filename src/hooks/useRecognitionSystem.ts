@@ -1,3 +1,5 @@
+/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+
 import { useState, useEffect, useCallback } from 'react';
 import { 
   Achievement, 
@@ -452,3 +454,5 @@ export const useRecognitionLeaderboard = (timeframe: LeaderboardTimeframe = 'wee
     refetch: loadLeaderboard
   };
 };
+
+*/

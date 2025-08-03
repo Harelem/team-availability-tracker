@@ -1,20 +1,54 @@
 'use client';
 
-import { Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Target } from 'lucide-react';
-import { useUnifiedSprintData } from '@/hooks/useUnifiedSprintData';
+import React, { useState } from 'react';
+import { Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Target, ChevronLeft, ChevronRight, Edit3, Save, X } from 'lucide-react';
+import { useEnhancedSprintData } from '@/hooks/useUnifiedSprintData';
 
 interface UnifiedSprintProgressProps {
   showDetailed?: boolean;
   className?: string;
   variant?: 'full' | 'compact' | 'minimal';
+  showNavigation?: boolean;
+  showNotes?: boolean;
 }
 
 export const UnifiedSprintProgress: React.FC<UnifiedSprintProgressProps> = ({ 
   showDetailed = true,
   className = '',
-  variant = 'full'
+  variant = 'full',
+  showNavigation = true,
+  showNotes = true
 }) => {
-  const { sprintData, isLoading, error } = useUnifiedSprintData();
+  const { 
+    sprintData, 
+    isLoading, 
+    error, 
+    isSavingNotes,
+    navigateToPrevious, 
+    navigateToNext,
+    saveNotes 
+  } = useEnhancedSprintData();
+
+  // Notes editing state
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState('');
+
+  // Notes management functions
+  const handleEditNotes = () => {
+    setNotesValue(sprintData?.notes || '');
+    setIsEditingNotes(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (await saveNotes(notesValue)) {
+      setIsEditingNotes(false);
+    }
+  };
+
+  const handleCancelNotes = () => {
+    setNotesValue(sprintData?.notes || '');
+    setIsEditingNotes(false);
+  };
 
   if (isLoading) {
     return (
@@ -109,15 +143,63 @@ export const UnifiedSprintProgress: React.FC<UnifiedSprintProgressProps> = ({
   // Full variant - complete sprint information
   return (
     <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
+      {/* Sprint Header with Navigation */}
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-            <BarChart3 className="w-5 h-5 text-blue-600" />
-            <span>ספרינט נוכחי - {sprintData.name}</span>
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {formatDate(sprintData.startDate)} - {formatDate(sprintData.endDate)} • {sprintData.sprintWeeks} שבועות
-          </p>
+        <div className="flex items-center space-x-4">
+          {/* Navigation Controls */}
+          {showNavigation && sprintData?.navigation && (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={navigateToPrevious}
+                disabled={!sprintData.navigation.hasPrevious}
+                className={`p-2 rounded-lg transition-colors ${
+                  sprintData.navigation.hasPrevious
+                    ? 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                    : 'text-gray-300 cursor-not-allowed'
+                }`}
+                title="Previous Sprint"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              
+              <div className="flex flex-col items-center px-3">
+                <div className="text-sm font-medium text-gray-900">
+                  Sprint {sprintData.sprintNumber}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {sprintData.navigation.position.index} of {sprintData.navigation.position.total}
+                </div>
+              </div>
+              
+              <button
+                onClick={navigateToNext}
+                disabled={!sprintData.navigation.hasNext}
+                className={`p-2 rounded-lg transition-colors ${
+                  sprintData.navigation.hasNext
+                    ? 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                    : 'text-gray-300 cursor-not-allowed'
+                }`}
+                title="Next Sprint"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+          
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+              <span>{sprintData.name}</span>
+              {sprintData?.navigation?.current && (
+                <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                  Current
+                </span>
+              )}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {formatDate(sprintData.startDate)} - {formatDate(sprintData.endDate)} • {sprintData.sprintWeeks} שבועות
+            </p>
+          </div>
         </div>
         
         <div className="text-right">
@@ -186,6 +268,71 @@ export const UnifiedSprintProgress: React.FC<UnifiedSprintProgressProps> = ({
             </div>
             <div className="text-sm text-gray-500">אורך ספרינט</div>
           </div>
+        </div>
+      )}
+
+      {/* Sprint Notes Section */}
+      {showNotes && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-md font-medium text-gray-900 flex items-center gap-2">
+              <Edit3 className="w-4 h-4 text-gray-600" />
+              Sprint Notes
+            </h3>
+            {!isEditingNotes && (
+              <button
+                onClick={handleEditNotes}
+                className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <Edit3 className="w-3 h-3" />
+                Edit
+              </button>
+            )}
+          </div>
+
+          {isEditingNotes ? (
+            <div className="space-y-3">
+              <textarea
+                value={notesValue}
+                onChange={(e) => setNotesValue(e.target.value)}
+                placeholder="Add notes about this sprint (e.g., '2 new developers joined team', '5 developers sent to other base', 'completed experiment')..."
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows={4}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={handleCancelNotes}
+                  disabled={isSavingNotes}
+                  className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveNotes}
+                  disabled={isSavingNotes}
+                  className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <Save className="w-3 h-3" />
+                  {isSavingNotes ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="min-h-[60px]">
+              {sprintData.notes ? (
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{sprintData.notes}</p>
+                </div>
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 border-dashed">
+                  <p className="text-sm text-gray-500 italic">
+                    No notes added for this sprint. Click Edit to add notes about team changes, experiments, or important events.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

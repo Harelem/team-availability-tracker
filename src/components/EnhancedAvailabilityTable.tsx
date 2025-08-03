@@ -12,6 +12,7 @@ interface EnhancedAvailabilityTableProps {
   weekDays: Date[];
   onWorkOptionClick: (memberId: number, date: Date, value: string) => void;
   onReasonRequired: (memberId: number, date: Date, value: '0.5' | 'X') => void;
+  onQuickReasonSelect?: (memberId: number, date: Date, value: '0.5' | 'X', reason: string) => void;
   onFullWeekSet: (memberId: number) => void;
   calculateWeeklyHours: (memberId: number) => number;
   getTeamTotalHours: () => number;
@@ -30,6 +31,7 @@ export default function EnhancedAvailabilityTable({
   weekDays,
   onWorkOptionClick,
   onReasonRequired,
+  onQuickReasonSelect,
   onFullWeekSet,
   calculateWeeklyHours,
   getTeamTotalHours,
@@ -92,15 +94,178 @@ export default function EnhancedAvailabilityTable({
                 </span>
               )}
             </div>
-            <div className="text-blue-600 text-xs">
+            <div className="text-blue-600 text-xs hidden sm:block">
               Hover over 💬 icons to see reason details
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Table */}
-      <div className="overflow-x-auto scrollbar-hide">
+      {/* Mobile Card View (hidden on larger screens) */}
+      <div className="block md:hidden">
+        <div className="p-4 space-y-4">
+          {teamMembers.map((member) => {
+            const canEdit = currentUser.isManager || member.id === currentUser.id;
+            const isCurrentUserRow = member.id === currentUser.id;
+            
+            return (
+              <div key={member.id} className={`bg-white rounded-xl border-2 shadow-sm transition-all ${
+                isCurrentUserRow ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
+              }`}>
+                {/* Member Header */}
+                <div className="p-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        isCurrentUserRow ? 'bg-blue-100' : 'bg-gray-100'
+                      }`}>
+                        <span className={`font-bold text-lg ${
+                          isCurrentUserRow ? 'text-blue-600' : 'text-gray-600'
+                        }`}>
+                          {member.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{member.name}</h3>
+                        <p className="text-gray-500">{member.hebrew}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {member.isManager && (
+                            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                              Manager
+                            </span>
+                          )}
+                          {isCurrentUserRow && (
+                            <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                              You
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4 text-gray-500" />
+                        <span className="font-bold text-lg">{calculateWeeklyHours(member.id)}h</span>
+                      </div>
+                      <div className="text-xs text-gray-500">this week</div>
+                    </div>
+                  </div>
+                  
+                  {/* Full Week Button */}
+                  {canEdit && (
+                    <div className="mt-4">
+                      <button
+                        onClick={() => onFullWeekSet(member.id)}
+                        className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-lg py-3 px-4 font-medium hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all touch-manipulation min-h-[48px]"
+                      >
+                        Set Full Working Week
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Days */}
+                <div className="p-4 space-y-3">
+                  {weekDays.map((date, index) => {
+                    const dateKey = date.toISOString().split('T')[0];
+                    const currentValue = scheduleData[member.id]?.[dateKey];
+                    const today = isToday(date);
+                    const past = isPastDate(date);
+
+                    return (
+                      <div key={dateKey} className={`rounded-lg p-3 border-2 ${
+                        today ? 'bg-blue-50 border-blue-200' : 
+                        past ? 'bg-gray-50 border-gray-200' : 
+                        'bg-white border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-semibold ${
+                              today ? 'text-blue-700' : 'text-gray-700'
+                            }`}>
+                              {dayNames[index]}
+                            </span>
+                            <span className={`text-sm ${
+                              today ? 'text-blue-600' : 'text-gray-500'
+                            }`}>
+                              {formatDate(date)}
+                            </span>
+                            {today && (
+                              <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                Today
+                              </span>
+                            )}
+                          </div>
+                          {currentValue?.reason && (
+                            <span className="text-xs text-gray-500 italic max-w-[120px] truncate">
+                              {currentValue.reason}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Work Options */}
+                        <div className="flex gap-2">
+                          {workOptions.map(option => {
+                            const isSelected = currentValue?.value === option.value;
+                            return (
+                              <button
+                                key={option.value}
+                                onClick={() => {
+                                  if (canEdit) {
+                                    if (option.value === '0.5' || option.value === 'X') {
+                                      onReasonRequired(member.id, date, option.value);
+                                    } else {
+                                      onWorkOptionClick(member.id, date, option.value);
+                                    }
+                                  }
+                                }}
+                                disabled={!canEdit}
+                                className={`flex-1 py-3 px-2 rounded-lg border-2 font-bold text-sm transition-all touch-manipulation min-h-[48px] ${
+                                  canEdit ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-60'
+                                } ${
+                                  isSelected 
+                                    ? option.color + ' ring-2 ring-blue-500 ring-offset-1 shadow-md' 
+                                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                                }`}
+                                title={canEdit ? option.description : 'You can only edit your own schedule'}
+                              >
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="text-lg">{option.label}</span>
+                                  <span className="text-xs opacity-80">{option.hours}h</span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          
+          {/* Mobile Team Summary */}
+          <div className="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-3">Team Summary</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {weekDays.map((date, index) => (
+                <div key={date.toISOString().split('T')[0]} className="text-center p-2 bg-white rounded-lg">
+                  <div className="font-medium text-gray-700">{dayNames[index].slice(0, 3)}</div>
+                  <div className="text-lg font-bold text-gray-900">{getDayTotal(date)}h</div>
+                </div>
+              ))}
+              <div className="col-span-2 text-center p-3 bg-blue-100 rounded-lg">
+                <div className="text-blue-700 font-medium">Week Total</div>
+                <div className="text-2xl font-bold text-blue-900">{getTeamTotalHours()}h</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Table View (hidden on mobile) */}
+      <div className="hidden md:block overflow-x-auto scrollbar-hide">
         <table className="w-full min-w-[640px]">
           {/* Table Header */}
           <thead className="bg-gray-50 sticky top-0 z-10">
@@ -202,6 +367,7 @@ export default function EnhancedAvailabilityTable({
                         isPast={isPastDate(date)}
                         onWorkOptionClick={onWorkOptionClick}
                         onReasonRequired={onReasonRequired}
+                        onQuickReasonSelect={onQuickReasonSelect}
                       />
                     );
                   })}
@@ -238,22 +404,25 @@ export default function EnhancedAvailabilityTable({
         </table>
       </div>
 
-      {/* Legend */}
+      {/* Legend - Mobile and Desktop */}
       <div className="border-t border-gray-200 p-3 sm:p-4 bg-gray-50">
-        <h3 className="font-semibold mb-2 text-sm sm:text-base">Work Options:</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+        <h3 className="font-semibold mb-3 text-sm sm:text-base">Work Options:</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {workOptions.map(option => (
-            <div key={option.value} className="flex items-center gap-2 p-2 sm:p-0 bg-white sm:bg-transparent rounded-lg">
-              <span className={`px-2 sm:px-3 py-1 rounded-md border font-medium text-xs sm:text-sm min-w-[32px] text-center ${option.color}`}>
+            <div key={option.value} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 sm:border-0 sm:bg-transparent sm:p-0">
+              <span className={`px-3 py-2 rounded-lg border-2 font-bold text-center min-w-[44px] min-h-[44px] flex items-center justify-center ${option.color}`}>
                 {option.label}
               </span>
-              <span className="text-xs sm:text-sm text-gray-600 flex-1">{option.description}</span>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-900">{option.description}</div>
+                <div className="text-xs text-gray-500">{option.hours} hours</div>
+              </div>
             </div>
           ))}
         </div>
         
         {/* Hebrew Legend */}
-        <div className="mt-3 pt-3 border-t border-gray-300">
+        <div className="mt-4 pt-3 border-t border-gray-300">
           <p className="text-xs text-gray-600">
             <strong>Quick Hebrew Reasons:</strong> 🛡️ שמירה (Reserve), 🤒 מחלה (Sick), 🏖️ חופשה (Vacation), 
             🩺 רופא (Doctor), 👨‍👩‍👧‍👦 משפחה (Family), 📋 אישי (Personal)

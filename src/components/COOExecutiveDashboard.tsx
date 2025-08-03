@@ -30,24 +30,26 @@ import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { formatHours, formatPercentage } from '@/lib/calculationService';
 import ConsolidatedAnalytics from './analytics/ConsolidatedAnalytics';
 import TeamDetailModal from '@/components/modals/TeamDetailModal';
-import { COOCard, COOMetricCard, COOStatCard } from '@/components/ui/COOCard';
-import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
+import { COOCard, COOMetricCard } from '@/components/ui/COOCard';
+// RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+// import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
 import DailyCompanyStatus from './coo/DailyCompanyStatus';
-import UnifiedSprintProgress from './UnifiedSprintProgress';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
   onBack?: () => void;
+  onTeamNavigate?: (team: { id: number; name: string }) => void;
   className?: string;
 }
 
-export default function COOExecutiveDashboard({ currentUser, onBack, className = '' }: COOExecutiveDashboardProps) {
+export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavigate, className = '' }: COOExecutiveDashboardProps) {
   const [dashboardData, setDashboardData] = useState<COODashboardData | null>(null);
   const [allTeams, setAllTeams] = useState<(Team & { team_members?: TeamMember[] })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'daily-status' | 'analytics' | 'recognition' | 'sprint-planning'>('dashboard');
+  // RECOGNITION TAB TEMPORARILY DISABLED FOR PRODUCTION
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'daily-status' | 'analytics' | 'sprint-planning'>('dashboard');
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const isMobile = useMobileDetection();
@@ -61,17 +63,6 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
       setError(null);
       
       console.log('🔍 COO Dashboard: Starting data load...');
-      
-      // EMERGENCY: Clean up 26 duplicate Management Teams
-      const emergencyCleanupResult = await DatabaseService.emergencyCleanupDuplicateManagementTeams();
-      if (!emergencyCleanupResult.success) {
-        console.error('🚨 EMERGENCY CLEANUP FAILED:', emergencyCleanupResult.message);
-      } else {
-        console.log('✅ EMERGENCY CLEANUP SUCCESS:', emergencyCleanupResult.message);
-        if (emergencyCleanupResult.teamsRemoved > 0) {
-          console.log(`🗑️ Removed ${emergencyCleanupResult.teamsRemoved} duplicate Management Teams`);
-        }
-      }
       
       // Load dashboard data and operational teams only
       const [data, teams] = await Promise.all([
@@ -279,6 +270,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
                 <span>Analytics & Insights</span>
               </div>
             </button>
+            {/* RECOGNITION TAB TEMPORARILY DISABLED FOR PRODUCTION
             <button
               onClick={() => setActiveTab('recognition')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -292,6 +284,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
                 <span>Recognition</span>
               </div>
             </button>
+            */}
             <button
               onClick={() => setActiveTab('sprint-planning')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -313,7 +306,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
       {activeTab === 'dashboard' && (
         <>
           {/* Company Overview Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <COOMetricCard
               title="Total Workforce"
               value={dashboardData.companyOverview.totalMembers}
@@ -325,13 +318,22 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
             />
 
             <COOMetricCard
-              title="Sprint Potential"
-              value={formatHours(dashboardData.companyOverview.weeklyPotential)}
+              title="Sprint Max"
+              value={formatHours(dashboardData.companyOverview.sprintMax)}
               trend={currentSprint ? 
-                `${currentSprint.sprint_length_weeks} weeks × ${formatHours(dashboardData.companyOverview.weeklyPotential / currentSprint.sprint_length_weeks / dashboardData.companyOverview.totalMembers)} per person` :
-                `${formatHours(dashboardData.companyOverview.weeklyPotential / dashboardData.companyOverview.totalMembers)} per person`
+                `${currentSprint.sprint_length_weeks} weeks × ${dashboardData.companyOverview.totalMembers} × 7h` :
+                `${dashboardData.companyOverview.totalMembers} × 2 weeks × 7h`
               }
               icon={Calendar}
+              variant="info"
+              status="excellent"
+            />
+
+            <COOMetricCard
+              title="Sprint Potential"
+              value={formatHours(dashboardData.companyOverview.sprintPotential)}
+              trend={`After deducting absences/reasons`}
+              icon={CheckCircle}
               variant="success"
               status="excellent"
             />
@@ -369,11 +371,6 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
       </div>
 
       {/* Hours view control removed - integrated into specific components */}
-
-      {/* Unified Sprint Progress - Single Source of Truth */}
-      <div className="mb-6">
-        <UnifiedSprintProgress variant="full" showDetailed={true} />
-      </div>
 
       {/* Company-Wide Hours Status Overview */}
       {allTeams.length > 0 && currentSprint && (
@@ -421,8 +418,12 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
               title={team.teamName}
               interactive
               onClick={() => {
-                setSelectedTeamId(team.teamId);
-                setIsTeamModalOpen(true);
+                if (onTeamNavigate) {
+                  onTeamNavigate({ id: team.teamId, name: team.teamName });
+                } else {
+                  setSelectedTeamId(team.teamId);
+                  setIsTeamModalOpen(true);
+                }
               }}
               status={team.utilization > 100 ? 'critical' :
                      team.utilization >= 90 ? 'excellent' :
@@ -439,12 +440,12 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Potential:</span>
-                      <span className="font-medium">{formatHours(team.weeklyPotential)}</span>
+                      <span className="text-gray-600">Max:</span>
+                      <span className="font-medium">{formatHours(team.maxCapacity)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Actual:</span>
-                      <span className="font-medium">{formatHours(team.actualHours)}</span>
+                      <span className="text-gray-600">Potential:</span>
+                      <span className="font-medium">{formatHours(team.weeklyPotential)}</span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -481,59 +482,6 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
         </div>
       </div>
 
-      {/* Sprint Analytics */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-gray-600" />
-          Sprint Capacity Overview
-        </h3>
-        
-        <COOCard
-          variant="primary"
-          gradient
-          size="lg"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <COOStatCard
-              label="Current Sprint"
-              value={`Sprint ${dashboardData.sprintAnalytics.currentSprintNumber}`}
-              description={`${dashboardData.sprintAnalytics.sprintWeeks} week${dashboardData.sprintAnalytics.sprintWeeks !== 1 ? 's' : ''}`}
-              status="good"
-              size="sm"
-            />
-            
-            <COOStatCard
-              label="Sprint Potential"
-              value={formatHours(dashboardData.sprintAnalytics.sprintPotential)}
-              description="Total capacity"
-              status="excellent"
-              size="sm"
-            />
-            
-            <COOStatCard
-              label="Sprint Utilization"
-              value={formatPercentage(dashboardData.sprintAnalytics.sprintUtilization)}
-              description="Current progress"
-              status={dashboardData.sprintAnalytics.sprintUtilization >= 85 ? 'excellent' :
-                     dashboardData.sprintAnalytics.sprintUtilization >= 70 ? 'good' : 'warning'}
-              size="sm"
-            />
-          </div>
-          
-          {/* Sprint Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-            <div 
-              className="h-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-              style={{ width: `${Math.min(100, dashboardData.sprintAnalytics.sprintUtilization)}%` }}
-            ></div>
-          </div>
-          
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>Sprint Progress: {formatPercentage(dashboardData.sprintAnalytics.sprintUtilization)}</span>
-            <span>Target: 85-95%</span>
-          </div>
-        </COOCard>
-      </div>
 
       {/* Optimization Recommendations */}
       {dashboardData.optimizationRecommendations.length > 0 && (
@@ -619,54 +567,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, className =
         </>
       )}
 
-      {/* Recognition Tab */}
-      {activeTab === 'recognition' && (
-        <div className="mt-6 space-y-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-2">
-                <Award className="h-6 w-6 text-yellow-600" />
-                <h2 className="text-xl font-semibold text-gray-900">Company Recognition Overview</h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Company-wide Leaderboard */}
-              <div>
-                <TeamRecognitionLeaderboard
-                  timeframe="month"
-                  limit={10}
-                  showTeamStats={true}
-                  className="h-full"
-                />
-              </div>
-              
-              {/* Individual Team Leaderboards */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Team Recognition Leaders</h3>
-                {allTeams.slice(0, 3).map((team) => (
-                  <div key={team.id} className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3 flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: team.color || '#3B82F6' }}
-                      ></div>
-                      <span>{team.name}</span>
-                    </h4>
-                    <TeamRecognitionLeaderboard
-                      teamId={team.id}
-                      timeframe="week"
-                      limit={3}
-                      showTeamStats={false}
-                      className="border-0 p-0 bg-transparent"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* RECOGNITION TAB TEMPORARILY DISABLED FOR PRODUCTION */}
 
       {/* Daily Status Tab */}
       {activeTab === 'daily-status' && (

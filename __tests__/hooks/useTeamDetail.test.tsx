@@ -68,7 +68,7 @@ describe('useTeamDetail', () => {
   };
 
   const mockTeamStats = {
-    total_capacity_hours: 280,
+    potential_hours: 280,
     sprint_hours: 250,
     current_week_hours: 180,
     capacity_utilization: 85

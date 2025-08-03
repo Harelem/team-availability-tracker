@@ -60,29 +60,30 @@ export default function MobileScheduleCard({
     <div className={`bg-white rounded-lg shadow-sm border-2 mb-4 overflow-hidden transition-all duration-200 ${
       isCurrentUser ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
     }`}>
-      {/* Card Header */}
+      {/* Card Header - Enhanced touch interaction */}
       <div 
-        className="p-4 cursor-pointer"
+        className="p-4 cursor-pointer touch-manipulation min-h-[44px] active:bg-gray-50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
+        onTouchStart={() => {}} // Enable better touch response
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
               isCurrentUser ? 'bg-blue-100' : 'bg-gray-100'
             }`}>
-              <User className={`w-5 h-5 ${isCurrentUser ? 'text-blue-600' : 'text-gray-600'}`} />
+              <User className={`w-6 h-6 ${isCurrentUser ? 'text-blue-600' : 'text-gray-600'}`} />
             </div>
             <div>
               <h3 className="font-medium text-gray-900 text-base">{member.name}</h3>
-              <p className="text-sm text-gray-500">{member.hebrew}</p>
+              <p className="text-gray-500">{member.hebrew}</p>
               <div className="flex items-center gap-2 mt-1">
                 {member.isManager && (
-                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                  <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">
                     Manager
                   </span>
                 )}
                 {isCurrentUser && (
-                  <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
+                  <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
                     You
                   </span>
                 )}
@@ -90,18 +91,18 @@ export default function MobileScheduleCard({
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4 text-gray-500" />
-                <span className="font-medium text-gray-900">{calculateWeeklyHours()}h</span>
+                <span className="font-semibold text-gray-900 text-lg">{calculateWeeklyHours()}h</span>
               </div>
               <div className="text-xs text-gray-500">this week</div>
             </div>
-            <div className={`w-6 h-6 rounded-full transition-transform ${
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
               isExpanded ? 'rotate-180' : ''
             }`}>
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
@@ -112,16 +113,16 @@ export default function MobileScheduleCard({
       {/* Expanded Card Content */}
       {isExpanded && (
         <div className="border-t border-gray-200 p-4">
-          {/* Full Week Button */}
+          {/* Full Week Button - Enhanced mobile design */}
           {canEdit && (
-            <div className="mb-4">
+            <div className="mb-6">
               <button
                 onClick={onFullWeekSet}
-                className="w-full bg-green-50 text-green-700 border border-green-200 rounded-lg py-3 px-4 font-medium text-sm hover:bg-green-100 active:bg-green-200 transition-colors touch-manipulation"
+                className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-xl py-4 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all touch-manipulation min-h-[56px] shadow-sm"
               >
-                <div className="flex items-center justify-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Set Full Working Week
+                <div className="flex items-center justify-center gap-3">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-base">Set Full Working Week</span>
                 </div>
               </button>
             </div>
@@ -168,7 +169,7 @@ export default function MobileScheduleCard({
                     )}
                   </div>
                   
-                  {/* Work Options */}
+                  {/* Work Options - Enhanced mobile touch */}
                   <div className="flex gap-2">
                     {workOptions.map(option => {
                       const isSelected = currentValue?.value === option.value;
@@ -177,18 +178,18 @@ export default function MobileScheduleCard({
                           key={option.value}
                           onClick={() => canEdit && onWorkOptionClick(date, option.value)}
                           disabled={!canEdit}
-                          className={`flex-1 py-3 px-4 rounded-md border font-medium text-sm transition-all touch-manipulation min-h-[44px] ${
+                          className={`flex-1 py-4 px-3 rounded-lg border-2 font-semibold text-sm transition-all touch-manipulation min-h-[52px] shadow-sm ${
                             canEdit ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-60'
                           } ${
                             isSelected 
-                              ? option.color + ' ring-2 ring-blue-500 ring-offset-1' 
-                              : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                              ? option.color + ' ring-2 ring-blue-500 ring-offset-1 shadow-md' 
+                              : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
                           }`}
                           title={canEdit ? option.description : 'You can only edit your own schedule'}
                         >
                           <div className="flex flex-col items-center gap-1">
-                            <span className="text-lg font-bold">{option.label}</span>
-                            <span className="text-xs">{option.hours}h</span>
+                            <span className="text-xl font-bold">{option.label}</span>
+                            <span className="text-xs font-medium opacity-80">{option.hours}h</span>
                           </div>
                         </button>
                       );

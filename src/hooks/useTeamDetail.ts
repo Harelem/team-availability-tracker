@@ -116,7 +116,7 @@ export function useTeamDetail(teamId: number | null): UseTeamDetailReturn {
         startDate: currentSprint.sprint_start_date,
         endDate: currentSprint.sprint_end_date,
         lengthWeeks: currentSprint.sprint_length_weeks,
-        potentialHours: teamStats?.total_capacity_hours || 0,
+        potentialHours: teamStats?.potential_hours || 0,
         plannedHours: teamStats?.sprint_hours || 0,
         completedHours: teamStats?.current_week_hours || 0,
         completionPercentage: teamStats ? (teamStats.current_week_hours / teamStats.sprint_hours) * 100 : 0,

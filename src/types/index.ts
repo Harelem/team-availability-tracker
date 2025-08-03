@@ -139,6 +139,7 @@ export interface GlobalSprintSettings {
   sprint_length_weeks: number;
   current_sprint_number: number;
   sprint_start_date: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
   updated_by: string;
@@ -173,7 +174,7 @@ export interface TeamSprintStats {
   is_active: boolean;
   sprint_hours: number;
   current_week_hours: number;
-  total_capacity_hours: number;
+  potential_hours: number;
   capacity_utilization: number;
 }
 
@@ -302,7 +303,8 @@ export interface TeamCapacityStatus {
   teamId: number;
   teamName: string;
   memberCount: number;
-  weeklyPotential: number;
+  weeklyPotential: number; // Keep for backwards compatibility - now represents "Potential" (Max minus absences)
+  maxCapacity: number; // New field: team size × work days × 7 hours (theoretical maximum)
   actualHours: number;
   utilization: number;
   capacityGap: number;
@@ -356,7 +358,8 @@ export interface COODashboardData {
   companyOverview: {
     totalTeams: number;
     totalMembers: number;
-    weeklyPotential: number;
+    sprintMax: number;
+    sprintPotential: number;
     currentUtilization: number;
     capacityGap: number;
   };
@@ -549,4 +552,71 @@ export interface EnhancedExportData {
   userRole: 'coo' | 'manager';
   generatedBy: string;
   generatedAt: Date;
+}
+
+// Sprint Notes and Navigation Types
+export interface SprintNotes {
+  id: number;
+  sprint_number: number;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface SprintNavigationData {
+  sprint_number: number;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  sprint_length_weeks: number;
+  is_current: boolean;
+  is_past: boolean;
+  is_future: boolean;
+  status: 'current' | 'completed' | 'planned';
+}
+
+export interface SprintHistoryContext {
+  current: SprintNavigationData;
+  previous: SprintNavigationData | null;
+  next: SprintNavigationData | null;
+  position: {
+    current: number;
+    total: number;
+    index: number;
+  };
+}
+
+export interface EnhancedUnifiedSprintData {
+  // Core sprint data
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  timeProgress: number;
+  totalDays: number;
+  daysElapsed: number;
+  daysRemaining: number;
+  workingDaysRemaining: number;
+  isOnTrack: boolean;
+  settingsId: number;
+  lastUpdated: string;
+  sprintNumber: number;
+  sprintWeeks: number;
+  
+  // Enhanced features
+  notes: string;
+  navigation: {
+    hasPrevious: boolean;
+    hasNext: boolean;
+    previousSprint: SprintNavigationData | null;
+    nextSprint: SprintNavigationData | null;
+    position: {
+      current: number;
+      total: number;
+      index: number;
+    };
+  };
 }

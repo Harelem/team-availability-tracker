@@ -1,3 +1,5 @@
+/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+
 'use client';
 
 import { useState } from 'react';
@@ -361,3 +363,5 @@ function ProgressCard({ progress }: ProgressCardProps) {
     </div>
   );
 }
+
+*/

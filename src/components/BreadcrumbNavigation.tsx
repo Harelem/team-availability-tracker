@@ -15,17 +15,19 @@ interface BreadcrumbNavigationProps {
   selectedUser: TeamMember | null;
   onNavigateToTeamSelection: () => void;
   onNavigateToMemberSelection: () => void;
+  cooNavigationSource?: 'dashboard' | 'team' | null;
 }
 
 export default function BreadcrumbNavigation({
   selectedTeam,
   selectedUser,
   onNavigateToTeamSelection,
-  onNavigateToMemberSelection
+  onNavigateToMemberSelection,
+  cooNavigationSource
 }: BreadcrumbNavigationProps) {
   const breadcrumbs: BreadcrumbItem[] = [
     {
-      label: 'Team Selection',
+      label: cooNavigationSource === 'team' ? 'COO Dashboard' : 'Team Selection',
       icon: <Home className="w-4 h-4" />,
       onClick: onNavigateToTeamSelection,
       isActive: !selectedTeam

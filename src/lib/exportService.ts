@@ -91,8 +91,12 @@ export const exportAnalyticsToExcel = async (
       'Value': dashboardData.companyOverview.totalTeams,
       'Unit': 'teams'
     }, {
-      'Metric': 'Weekly Potential',
-      'Value': dashboardData.companyOverview.weeklyPotential,
+      'Metric': 'Sprint Max',
+      'Value': dashboardData.companyOverview.sprintMax,
+      'Unit': 'hours'
+    }, {
+      'Metric': 'Sprint Potential',
+      'Value': dashboardData.companyOverview.sprintPotential,
       'Unit': 'hours'
     }, {
       'Metric': 'Current Utilization',

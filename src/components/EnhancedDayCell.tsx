@@ -14,6 +14,7 @@ interface EnhancedDayCellProps {
   isPast: boolean;
   onWorkOptionClick: (memberId: number, date: Date, value: string) => void;
   onReasonRequired: (memberId: number, date: Date, value: '0.5' | 'X') => void;
+  onQuickReasonSelect?: (memberId: number, date: Date, value: '0.5' | 'X', reason: string) => void;
 }
 
 // Hebrew quick reason options
@@ -45,7 +46,8 @@ export default function EnhancedDayCell({
   isToday,
   isPast,
   onWorkOptionClick,
-  onReasonRequired
+  onReasonRequired,
+  onQuickReasonSelect
 }: EnhancedDayCellProps) {
   const [showQuickReasons, setShowQuickReasons] = useState(false);
   const [pendingValue, setPendingValue] = useState<'0.5' | 'X' | null>(null);
@@ -74,12 +76,15 @@ export default function EnhancedDayCell({
     }
   };
 
-  const handleQuickReasonSelect = (_reason: string) => {
+  const handleQuickReasonSelect = (reason: string) => {
     if (pendingValue) {
-      // Simulate the reason dialog behavior
-      onReasonRequired(member.id, date, pendingValue);
-      // For now, we'll still need to trigger the existing reason dialog
-      // The actual reason will be handled by the parent component
+      // Use the new callback if available, otherwise fall back to old behavior
+      if (onQuickReasonSelect) {
+        onQuickReasonSelect(member.id, date, pendingValue, reason);
+      } else {
+        // Fallback to the old reason dialog system
+        onReasonRequired(member.id, date, pendingValue);
+      }
     }
     setShowQuickReasons(false);
     setPendingValue(null);

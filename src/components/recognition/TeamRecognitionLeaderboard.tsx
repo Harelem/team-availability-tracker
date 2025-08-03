@@ -1,3 +1,5 @@
+/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -231,6 +233,8 @@ export default function TeamRecognitionLeaderboard({
   );
 }
 
+*/
+
 // Leaderboard Row Component
 interface LeaderboardRowProps {
   member: LeaderboardEntry;
@@ -339,6 +343,8 @@ function LeaderboardRow({ member, rank, onClick, timeframe }: LeaderboardRowProp
   );
 }
 
+*/
+
 // Stat Card Component
 interface StatCardProps {
   icon: React.ComponentType<any>;
@@ -369,6 +375,8 @@ function StatCard({ icon: Icon, title, value, subtitle, color }: StatCardProps) 
     </div>
   );
 }
+
+*/
 
 // Compact version for sidebar or smaller spaces
 interface CompactLeaderboardProps {
@@ -438,3 +446,5 @@ export function CompactLeaderboard({
     </div>
   );
 }
+
+*/

@@ -6,11 +6,10 @@ import ScheduleTable from '@/components/ScheduleTable';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
-import COOExecutiveDashboard from '@/components/COOExecutiveDashboard';
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
 import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
-import { TeamMember, COOUser, AccessMode, Team } from '@/types';
+import { TeamMember, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import { verifyEnvironmentConfiguration } from '@/utils/deploymentSafety';
 import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPreservation';
@@ -21,13 +20,9 @@ function HomeContent() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // New access mode state
-  const [accessMode, setAccessMode] = useState<AccessMode>(null);
-  const [cooUser, setCooUser] = useState<COOUser | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [cooUsers, setCooUsers] = useState<COOUser[]>([]);
 
-  // Load initial data (teams and COO users)
+  // Load initial data (teams only)
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -82,20 +77,14 @@ function HomeContent() {
           console.log('🆕 Members initialized:', membersResult.message);
         }
         
-        // Load teams and COO users in parallel
-        const [teamsData, cooUsersData] = await Promise.all([
-          DatabaseService.getTeams(),
-          DatabaseService.getCOOUsers()
-        ]);
-        
+        // Load teams data
+        const teamsData = await DatabaseService.getTeams();
         setTeams(teamsData);
-        setCooUsers(cooUsersData);
         
         console.log(`✅ Application initialized successfully with ${teamsData.length} teams`);
       } catch (error) {
         console.error('❌ Error loading initial data:', error);
         setTeams([]);
-        setCooUsers([]);
       } finally {
         setLoading(false);
       }
@@ -107,7 +96,7 @@ function HomeContent() {
   // Load team members when a team is selected
   useEffect(() => {
     const loadTeamMembers = async () => {
-      if (!selectedTeam || accessMode !== 'team') return;
+      if (!selectedTeam) return;
       
       try {
         setLoading(true);
@@ -122,59 +111,35 @@ function HomeContent() {
     };
 
     loadTeamMembers();
-  }, [selectedTeam, accessMode]);
+  }, [selectedTeam]);
 
-  // Reset states when access mode changes
+  // Reset selected user when team changes
   useEffect(() => {
     setSelectedUser(null);
-  }, [selectedTeam, accessMode]);
+  }, [selectedTeam]);
 
-  // Handler functions for the new flow
+  // Handler functions for team flow
   const handleTeamSelect = (team: Team) => {
     setSelectedTeam(team);
-    setAccessMode('team');
-  };
-
-  const handleCOOAccess = (user: COOUser) => {
-    setCooUser(user);
-    setAccessMode('coo');
   };
 
   const handleBackToSelection = () => {
-    setAccessMode(null);
     setSelectedTeam(null);
     setSelectedUser(null);
-    setCooUser(null);
   };
 
-  // Routing logic based on access mode
-  if (!accessMode) {
+  // Show team selection if no team selected
+  if (!selectedTeam) {
     return (
       <TeamSelectionScreen 
         teams={teams}
-        cooUsers={cooUsers}
         onTeamSelect={handleTeamSelect}
-        onCOOAccess={handleCOOAccess}
       />
     );
   }
 
-  // COO Dashboard Access
-  if (accessMode === 'coo' && cooUser) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <GlobalSprintProvider>
-          <COOExecutiveDashboard 
-            currentUser={cooUser}
-            onBack={handleBackToSelection}
-          />
-        </GlobalSprintProvider>
-      </div>
-    );
-  }
-
-  // Team access mode - user selection
-  if (accessMode === 'team' && selectedTeam && loading) {
+  // Team loading state
+  if (selectedTeam && loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
@@ -192,8 +157,8 @@ function HomeContent() {
     );
   }
 
-  // Team access mode - show user selection
-  if (accessMode === 'team' && selectedTeam && !selectedUser) {
+  // Show user selection for selected team
+  if (selectedTeam && !selectedUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-md w-full">
@@ -223,6 +188,7 @@ function HomeContent() {
               selectedUser={selectedUser}
               onNavigateToTeamSelection={handleBackToSelection}
               onNavigateToMemberSelection={() => setSelectedUser(null)}
+              cooNavigationSource={cooNavigationSource}
             />
           </div>
           
@@ -267,6 +233,7 @@ function HomeContent() {
               selectedUser={selectedUser}
               onNavigateToTeamSelection={handleBackToSelection}
               onNavigateToMemberSelection={() => setSelectedUser(null)}
+              cooNavigationSource={cooNavigationSource}
             />
             
             {/* Desktop Breadcrumb */}
@@ -276,6 +243,7 @@ function HomeContent() {
                 selectedUser={selectedUser}
                 onNavigateToTeamSelection={handleBackToSelection}
                 onNavigateToMemberSelection={() => setSelectedUser(null)}
+                cooNavigationSource={cooNavigationSource}
               />
             </div>
             

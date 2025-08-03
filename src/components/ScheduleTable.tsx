@@ -11,8 +11,9 @@ import GlobalSprintSettings from './GlobalSprintSettings';
 import TeamMemberManagement from './TeamMemberManagement';
 import TeamHoursStatus from './TeamHoursStatus';
 import TemplateManager from './TemplateManager';
-import RecognitionDashboard from './recognition/RecognitionDashboard';
-import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
+// RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+// import RecognitionDashboard from './recognition/RecognitionDashboard';
+// import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
 import CompactHeaderBar from './CompactHeaderBar';
 import QuickActionsBar from './QuickActionsBar';
 import EnhancedAvailabilityTable from './EnhancedAvailabilityTable';
@@ -228,6 +229,11 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
     });
   };
 
+  const handleQuickReasonSelect = (memberId: number, date: Date, value: '0.5' | 'X', reason: string) => {
+    // Directly update the schedule with the quick reason, bypassing the dialog
+    updateSchedule(memberId, date, value, reason);
+  };
+
   const handleFullWeekSet = async (memberId: number) => {
     const confirmMessage = currentUser.isManager && memberId !== currentUser.id 
       ? `Set full week (all working days) for ${teamMembers.find(m => m.id === memberId)?.name}?`
@@ -379,6 +385,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
           weekDays={weekDays}
           onWorkOptionClick={handleWorkOptionClick}
           onReasonRequired={handleReasonRequired}
+          onQuickReasonSelect={handleQuickReasonSelect}
           onFullWeekSet={handleFullWeekSet}
           calculateWeeklyHours={calculateWeeklyHours}
           getTeamTotalHours={getTeamTotalHours}
@@ -432,6 +439,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
           />
         </div>
 
+        {/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
         {/* Recognition Dashboard */}
         <div className="bg-white rounded-lg border border-gray-200">
           <RecognitionDashboard
@@ -453,6 +461,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
             />
           </div>
         )}
+        */}
 
         {/* Team Hours Status - Collapsed */}
         {currentSprint && (

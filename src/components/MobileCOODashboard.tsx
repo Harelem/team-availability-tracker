@@ -20,6 +20,7 @@ interface MobileCOODashboardProps {
   currentUser?: COOUser;
   dashboardData: COODashboardData;
   onBack?: () => void;
+  onTeamNavigate?: (team: { id: number; name: string }) => void;
   onRefresh: () => void;
   isLoading: boolean;
   error: string | null;
@@ -29,6 +30,7 @@ export default function MobileCOODashboard({
   currentUser,
   dashboardData,
   onBack,
+  onTeamNavigate,
   onRefresh,
   isLoading,
   error
@@ -216,7 +218,11 @@ export default function MobileCOODashboard({
           
           <div className="space-y-2">
             {dashboardData.teamComparison.map((team) => (
-              <div key={team.teamId} className="bg-white p-4 rounded-lg shadow-sm">
+              <div 
+                key={team.teamId} 
+                className="bg-white p-4 rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => onTeamNavigate && onTeamNavigate({ id: team.teamId, name: team.teamName })}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-medium text-gray-900">{team.teamName}</h3>
                   <span className={`px-2 py-1 rounded-full text-xs ${getUtilizationStatusColor(team.utilization)}`}>
@@ -230,12 +236,12 @@ export default function MobileCOODashboard({
                     <span className="font-medium ml-1">{team.memberCount}</span>
                   </div>
                   <div>
-                    <span className="text-gray-600">Potential:</span>
-                    <span className="font-medium ml-1">{formatHours(team.weeklyPotential)}</span>
+                    <span className="text-gray-600">Max:</span>
+                    <span className="font-medium ml-1">{formatHours(team.maxCapacity)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-600">Actual:</span>
-                    <span className="font-medium ml-1">{formatHours(team.actualHours)}</span>
+                    <span className="text-gray-600">Potential:</span>
+                    <span className="font-medium ml-1">{formatHours(team.weeklyPotential)}</span>
                   </div>
                   <div>
                     <span className="text-gray-600">Gap:</span>
@@ -264,55 +270,6 @@ export default function MobileCOODashboard({
           </div>
         </div>
 
-        {/* Sprint Analytics - Mobile */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-gray-600" />
-            Sprint Overview
-          </h2>
-          
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="text-center">
-                <div className="text-xl font-bold text-blue-900">
-                  Sprint {dashboardData.sprintAnalytics.currentSprintNumber}
-                </div>
-                <div className="text-sm text-blue-600">
-                  {dashboardData.sprintAnalytics.sprintWeeks} week{dashboardData.sprintAnalytics.sprintWeeks !== 1 ? 's' : ''}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div className="text-lg font-bold text-purple-900">
-                    {formatHours(dashboardData.sprintAnalytics.sprintPotential)}
-                  </div>
-                  <div className="text-xs text-purple-600">Sprint Potential</div>
-                </div>
-                
-                <div>
-                  <div className="text-lg font-bold text-green-900">
-                    {formatPercentage(dashboardData.sprintAnalytics.sprintUtilization)}
-                  </div>
-                  <div className="text-xs text-green-600">Sprint Utilization</div>
-                </div>
-              </div>
-              
-              {/* Mobile Sprint Progress Bar */}
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className="h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-                  style={{ width: `${Math.min(100, dashboardData.sprintAnalytics.sprintUtilization)}%` }}
-                ></div>
-              </div>
-              
-              <div className="flex justify-between text-xs text-gray-600">
-                <span>Progress: {formatPercentage(dashboardData.sprintAnalytics.sprintUtilization)}</span>
-                <span>Target: 85-95%</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Recommendations - Mobile */}
         {dashboardData.optimizationRecommendations.length > 0 && (

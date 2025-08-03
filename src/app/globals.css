@@ -78,9 +78,31 @@ body {
     min-width: 44px !important;
   }
   
-  button {
+  button, .btn, [role="button"] {
     min-height: 44px !important;
+    min-width: 44px !important;
     touch-action: manipulation;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem; /* 14px minimum for mobile readability */
+  }
+  
+  /* Interactive elements need proper touch targets */
+  a, .clickable, .interactive {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+  }
+  
+  /* Mobile-optimized text sizes */
+  .text-xs {
+    font-size: 0.875rem !important; /* Upgrade from 12px to 14px */
+  }
+  
+  .text-sm {
+    font-size: 1rem !important; /* Upgrade from 14px to 16px */
   }
 }
 
