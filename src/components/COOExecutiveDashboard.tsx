@@ -352,8 +352,16 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
 
             <COOMetricCard
               title="Capacity Gap"
-              value={formatHours(Math.abs(dashboardData.companyOverview.capacityGap))}
-              trend={dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'}
+              value={
+                Math.abs(dashboardData.companyOverview.capacityGap) < 10
+                  ? `${dashboardData.companyOverview.capacityGapPercentage}%`
+                  : formatHours(Math.abs(dashboardData.companyOverview.capacityGap))
+              }
+              trend={
+                Math.abs(dashboardData.companyOverview.capacityGap) < 10
+                  ? `${formatHours(Math.abs(dashboardData.companyOverview.capacityGap))} (${dashboardData.companyOverview.capacityGapPercentage}% of capacity)`
+                  : dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'
+              }
               trendDirection={dashboardData.companyOverview.capacityGap > 0 ? 'down' : 'up'}
               icon={Zap}
               variant="warning"

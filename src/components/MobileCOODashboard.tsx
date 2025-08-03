@@ -198,10 +198,16 @@ export default function MobileCOODashboard({
                 </div>
                 <div className="text-right">
                   <div className="text-xl font-bold text-orange-900">
-                    {formatHours(Math.abs(dashboardData.companyOverview.capacityGap))}
+                    {Math.abs(dashboardData.companyOverview.capacityGap) < 10
+                      ? `${dashboardData.companyOverview.capacityGapPercentage}%`
+                      : formatHours(Math.abs(dashboardData.companyOverview.capacityGap))
+                    }
                   </div>
                   <div className="text-xs text-orange-600">
-                    {dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'}
+                    {Math.abs(dashboardData.companyOverview.capacityGap) < 10
+                      ? `${formatHours(Math.abs(dashboardData.companyOverview.capacityGap))} capacity lost`
+                      : dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'
+                    }
                   </div>
                 </div>
               </div>
