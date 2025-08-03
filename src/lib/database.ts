@@ -383,20 +383,33 @@ export const DatabaseService = {
         
         for (const member of members) {
           try {
-            // Check if member already exists in this team
+            // Check if member already exists by name
             const { data: existing } = await supabase
               .from('team_members')
-              .select('id')
+              .select('id, team_id')
               .eq('name', member.name)
-              .eq('team_id', team.id)
               .single();
 
             if (existing) {
-              console.log(`✅ Member already exists: ${member.name} in ${team.name}`);
+              // If member exists but doesn't have team_id, update it
+              if (!existing.team_id) {
+                const { error: updateError } = await supabase
+                  .from('team_members')
+                  .update({ team_id: team.id })
+                  .eq('id', existing.id);
+
+                if (updateError) {
+                  console.error(`❌ Error updating team_id for ${member.name}:`, updateError);
+                } else {
+                  console.log(`🔧 Updated team assignment: ${member.name} → ${team.name}`);
+                }
+              } else {
+                console.log(`✅ Member already assigned: ${member.name} in team ${existing.team_id}`);
+              }
               continue;
             }
 
-            // Safe insert
+            // Safe insert for new members
             const { error } = await supabase
               .from('team_members')
               .insert([{
@@ -1599,18 +1612,22 @@ export const DatabaseService = {
         
         // Calculate sprint-based utilization and capacity status (based on potential, not max)
         const utilization = sprintPotential > 0 ? Math.round((teamActualHours / sprintPotential) * 100) : 0
-        const capacityGap = sprintPotential - teamActualHours
+        
+        // FIXED: Gap should represent hours lost to absences/reasons (max vs potential)
+        // Previous (wrong): sprintPotential - teamActualHours (potential vs actual)
+        // Correct: maxCapacity - sprintPotential (hours lost to absences)
+        const capacityGap = maxCapacity - sprintPotential
         const capacityStatus = utilization > 100 ? 'over' : utilization < 80 ? 'under' : 'optimal'
         
         teamCapacityData.push({
           teamId: team.id,
           teamName: team.name,
           memberCount,
-          maxCapacity, // New field: theoretical maximum
-          weeklyPotential: sprintPotential, // Now represents potential (max minus absences/reasons)
+          maxCapacity, // Theoretical maximum (team size × working days × 7h)
+          weeklyPotential: sprintPotential, // Available hours after absences/reasons
           actualHours: teamActualHours,
           utilization,
-          capacityGap,
+          capacityGap, // FIXED: Now shows hours lost to absences (maxCapacity - sprintPotential)
           capacityStatus,
           color: team.color
         })
@@ -1754,27 +1771,58 @@ export const DatabaseService = {
       
       // Calculate corrected utilization (potential vs max capacity)
       const correctedUtilization = sprintMax > 0 ? Math.round((companyMetrics.currentWeek.potentialHours / sprintMax) * 100) : 0
+      
+      // Fix: Calculate meaningful capacity gap
+      // Gap represents hours lost due to absences/reasons vs theoretical maximum
       const capacityGap = sprintMax - companyMetrics.currentWeek.potentialHours
       
-      // Validation logging for COO dashboard calculations
+      // Alternative: Show gap as percentage for better visibility when absolute difference is small
+      const capacityGapPercentage = sprintMax > 0 ? Math.round(((sprintMax - companyMetrics.currentWeek.potentialHours) / sprintMax) * 100) : 0
+      
+      // Enhanced validation logging for COO dashboard calculations
       console.log('🧮 COO Dashboard Calculation Summary:')
       console.log(`📊 Total Members: ${allMembers.length}`)
       console.log(`📅 Sprint Period: ${sprintDateRange.startDate} to ${sprintDateRange.endDate} (${sprintWeeks} weeks)`)
       console.log(`⚡ Sprint Max: ${sprintMax}h (${allMembers.length} members × working days × 7h)`)
       console.log(`🎯 Sprint Potential: ${companyMetrics.currentWeek.potentialHours}h (after absences)`)
       console.log(`📈 Current Utilization: ${correctedUtilization}% (potential ÷ max)`)
-      console.log(`💪 Capacity Gap: ${capacityGap}h (hours lost to absences/reasons)`)
+      console.log(`💪 Capacity Gap: ${capacityGap}h (${capacityGapPercentage}% of max capacity lost to absences/reasons)`)
       console.log(`⏰ Actual Hours: ${companyMetrics.currentWeek.actualHours}h`)
+      console.log(`🔍 Gap Analysis: ${sprintMax}h - ${companyMetrics.currentWeek.potentialHours}h = ${capacityGap}h gap`)
       
-      // Validation checks
+      // Additional debugging for gap calculation
+      if (capacityGap === 0) {
+        console.log('⚠️ Zero gap detected - this may indicate:')
+        console.log('   • No absences recorded for this sprint period')
+        console.log('   • Sprint max and potential are identical')
+        console.log('   • Possible data issue or calculation problem')
+      } else if (Math.abs(capacityGap) < 10) {
+        console.log(`ℹ️ Small gap (${capacityGap}h) detected - consider showing percentage gap for better visibility`)
+      }
+      
+      // Enhanced validation checks with proper error handling
       if (sprintMax < companyMetrics.currentWeek.potentialHours) {
         console.warn('⚠️ Warning: Sprint Potential exceeds Sprint Max - possible calculation error')
+        console.warn(`   Sprint Max: ${sprintMax}h, Potential: ${companyMetrics.currentWeek.potentialHours}h`)
       }
       if (correctedUtilization > 100) {
         console.warn('⚠️ Warning: Utilization exceeds 100% - possible data issue')
+        console.warn(`   Utilization: ${correctedUtilization}%`)
       }
       if (capacityGap < 0) {
         console.warn('⚠️ Warning: Negative capacity gap - potential exceeds max capacity')
+        console.warn(`   This suggests calculation error or data inconsistency`)
+      }
+      
+      // Validate input data quality
+      if (sprintMax === 0) {
+        console.error('❌ Critical: Sprint Max is 0 - check member count and working days calculation')
+      }
+      if (allMembers.length === 0) {
+        console.error('❌ Critical: No team members found - check data source')
+      }
+      if (isNaN(capacityGap) || !isFinite(capacityGap)) {
+        console.error('❌ Critical: Invalid capacity gap calculation - check input data types')
       }
       
       return {
@@ -1784,7 +1832,8 @@ export const DatabaseService = {
           sprintMax: sprintMax,
           sprintPotential: companyMetrics.currentWeek.potentialHours,
           currentUtilization: correctedUtilization,
-          capacityGap: capacityGap
+          capacityGap: capacityGap,
+          capacityGapPercentage: capacityGapPercentage // Add percentage for better display options
         },
         teamComparison: companyMetrics.currentWeek.allTeamsCapacity,
         sprintAnalytics: {
@@ -3416,17 +3465,19 @@ The table creation script includes:
       const dateStr = selectedDate.toISOString().split('T')[0]
       console.log('🏢 Loading daily company status for:', dateStr)
 
-      // Get all teams
-      const teams = await this.getTeams()
+      // Get all operational teams (excludes Management Team)
+      const teams = await this.getOperationalTeams()
+      console.log(`📊 Found ${teams.length} operational teams`)
       
-      // Get all team members - only selecting existing columns
+      // Get all team members with team_id - updated to include team_id column
       const { data: allMembers, error: membersError } = await supabase
         .from('team_members')
         .select(`
           id,
           name,
           hebrew,
-          is_manager
+          is_manager,
+          team_id
         `)
 
       if (membersError) {
@@ -3434,7 +3485,9 @@ The table creation script includes:
         throw new Error(`Failed to fetch team members: ${membersError.message}`)
       }
 
-      // Get schedule entries for the date - using correct column name 'member_id'
+      console.log(`👥 Found ${allMembers?.length || 0} total team members`)
+
+      // Get schedule entries for the date
       const { data: scheduleData, error: scheduleError } = await supabase
         .from('schedule_entries')
         .select('member_id, value, reason')
@@ -3444,6 +3497,8 @@ The table creation script includes:
         console.error('Error fetching schedule data:', scheduleError)
         throw new Error(`Failed to fetch schedule data: ${scheduleError.message}`)
       }
+
+      console.log(`📅 Found ${scheduleData?.length || 0} schedule entries for ${dateStr}`)
 
       // Helper function to convert value to hours
       const valueToHours = (value: string | null): number => {
@@ -3456,24 +3511,25 @@ The table creation script includes:
         }
       }
 
-      // Process the data
+      // Process the data with proper team relationships
       const members: DailyMemberStatus[] = allMembers.map(member => {
         const schedule = scheduleData?.find(s => s.member_id === member.id)
         const hours = valueToHours(schedule?.value)
+        const team = teams.find(t => t.id === member.team_id)
 
         return {
           id: member.id,
           name: member.name || member.hebrew,
-          teamId: null, // No team_id column currently
-          teamName: 'All Team', // Default team name
+          teamId: member.team_id,
+          teamName: team?.name || 'Unassigned Team',
           role: member.is_manager ? 'Manager' : 'Team Member',
           hours: hours,
           reason: schedule?.reason,
-          isCritical: false // No is_critical column currently
+          isCritical: false // Can be extended later
         }
       })
 
-      // Calculate summary
+      // Calculate company-wide summary
       const summary: DailyStatusSummary = {
         available: members.filter(m => m.hours === 1).length,
         halfDay: members.filter(m => m.hours === 0.5).length,
@@ -3481,19 +3537,28 @@ The table creation script includes:
         reserve: members.filter(m => m.reason === 'שמירה').length
       }
 
-      // Group by teams - create a single team for all members since we don't have team_id
-      const managers = allMembers.filter(m => m.is_manager)
-      const teamStatuses: TeamDailyStatus[] = [{
-        id: 1,
-        name: 'All Team',
-        manager: managers.map(m => m.name || m.hebrew).join(', ') || 'No Manager',
-        total: members.length,
-        available: members.filter(m => m.hours === 1).length,
-        halfDay: members.filter(m => m.hours === 0.5).length,
-        unavailable: members.filter(m => m.hours === 0 && m.reason !== 'שמירה').length,
-        reserveDuty: members.filter(m => m.reason === 'שמירה'),
-        criticalAbsences: members.filter(m => m.hours === 0 && m.isCritical)
-      }]
+      // Group by teams - ALL teams should be displayed, even if empty
+      const teamStatuses: TeamDailyStatus[] = teams.map(team => {
+        const teamMembers = members.filter(m => m.teamId === team.id)
+        const teamManagers = teamMembers.filter(m => m.role === 'Manager')
+
+        return {
+          id: team.id,
+          name: team.name,
+          manager: teamManagers.map(m => m.name).join(', ') || 'No Manager',
+          total: teamMembers.length,
+          available: teamMembers.filter(m => m.hours === 1).length,
+          halfDay: teamMembers.filter(m => m.hours === 0.5).length,
+          unavailable: teamMembers.filter(m => m.hours === 0 && m.reason !== 'שמירה').length,
+          reserveDuty: teamMembers.filter(m => m.reason === 'שמירה'),
+          criticalAbsences: teamMembers.filter(m => m.hours === 0 && m.isCritical)
+        }
+      })
+
+      console.log(`✅ Generated status for ${teamStatuses.length} teams:`)
+      teamStatuses.forEach(team => {
+        console.log(`  - ${team.name}: ${team.total} members (${team.available} available)`)
+      })
 
       return {
         summary,
