@@ -213,7 +213,9 @@ export function useAccessibilityPreferences() {
   useEffect(() => {
     const manager = AccessibilityManager.getInstance();
     const unsubscribe = manager.subscribe(setPreferences);
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const updatePreference = useCallback(<K extends keyof AccessibilityPreferences>(

@@ -94,7 +94,9 @@ export function useScreenReaderAnnouncements() {
   useEffect(() => {
     const unsubscribe = manager.current.subscribe(setAnnouncements);
     setAnnouncements(manager.current.getAnnouncements());
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const announce = (message: string, priority: 'polite' | 'assertive' = 'polite') => {
