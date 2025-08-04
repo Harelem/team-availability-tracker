@@ -4,25 +4,33 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import ScheduleTable from '@/components/ScheduleTable';
+import MobileTeamDashboard from '@/components/MobileTeamDashboard';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
 import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
-import { TeamMember, Team } from '@/types';
+import { TeamMember, Team, WeekData } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import { verifyEnvironmentConfiguration } from '@/utils/deploymentSafety';
 import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPreservation';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
+  const { isMobile, isLoading: mobileLoading } = useIsMobile();
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
   
   const [teams, setTeams] = useState<Team[]>([]);
+  
+  // Mobile-specific state
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+  const [scheduleData, setScheduleData] = useState<WeekData>({});
+  const [weekDays, setWeekDays] = useState<Date[]>([]);
 
   // Load initial data (teams only)
   useEffect(() => {
