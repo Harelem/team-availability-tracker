@@ -213,7 +213,7 @@ const generateTeamBreakdownSheet = (
   data.push(['COMPANY SUMMARY']);
   data.push(['Total Members:', detailedScheduleData.companyTotals.totalMembers]);
   data.push(['Total Actual Hours:', `${detailedScheduleData.companyTotals.totalActualHours}h`]);
-  data.push(['Total Potential Hours:', `${detailedScheduleData.companyTotals.totalPotentialHours}h`]);
+  data.push(['Total Max Capacity Hours:', `${detailedScheduleData.companyTotals.totalPotentialHours}h`]);
   data.push(['Overall Utilization:', `${detailedScheduleData.companyTotals.overallUtilization}%`]);
   
   const ws = XLSX.utils.aoa_to_sheet(data);
@@ -234,7 +234,7 @@ const generateSummaryTeamBreakdownSheet = (
   // Header
   data.push(['TEAM CAPACITY SUMMARY']);
   data.push(['']);
-  data.push(['Team Name', 'Members', 'Weekly Potential', 'Actual Hours', 'Utilization %', 'Capacity Gap', 'Status', 'Risk Level']);
+  data.push(['Team Name', 'Members', 'Weekly Max Capacity', 'Actual Hours', 'Utilization %', 'Capacity Gap', 'Status', 'Risk Level']);
   
   // Team data
   companyData.teamComparison.forEach(team => {
@@ -282,7 +282,7 @@ const generateSprintAnalyticsSheet = (
   
   // Weekly Breakdown
   data.push(['WEEKLY BREAKDOWN']);
-  data.push(['Week', 'Potential Hours', 'Actual Hours', 'Utilization %', 'Efficiency']);
+  data.push(['Week', 'Max Capacity Hours', 'Actual Hours', 'Utilization %', 'Efficiency']);
   companyData.sprintAnalytics.weeklyBreakdown.forEach(week => {
     data.push([
       `Week ${week.week}`,
@@ -295,7 +295,7 @@ const generateSprintAnalyticsSheet = (
   
   data.push(['']);
   data.push(['CAPACITY FORECAST']);
-  data.push(['Period', 'Projected Potential', 'Projected Actual', 'Expected Utilization', 'Confidence']);
+  data.push(['Period', 'Projected Max Capacity', 'Projected Actual', 'Expected Utilization', 'Confidence']);
   data.push(['Next Week', 
     `${companyData.capacityForecast.nextWeekProjection.potentialHours}h`,
     `${companyData.capacityForecast.nextWeekProjection.projectedActual}h`,

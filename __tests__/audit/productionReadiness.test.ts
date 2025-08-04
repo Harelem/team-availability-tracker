@@ -578,7 +578,7 @@ describe('Production Readiness Validation', () => {
         expect(doc.exists).toBe(true);
         const lastUpdated = new Date(doc.lastUpdated);
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        expect(lastUpdated).toBeGreaterThan(thirtyDaysAgo);
+        expect(lastUpdated.getTime()).toBeGreaterThan(thirtyDaysAgo.getTime());
       });
     });
 

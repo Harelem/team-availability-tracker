@@ -121,21 +121,74 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//fonts.gstatic.com" />
         
-        {/* Service Worker registration script */}
+        {/* Aggressive Cache Control Meta Tags for Mobile */}
+        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta httpEquiv="Pragma" content="no-cache" />
+        <meta httpEquiv="Expires" content="0" />
+        
+        {/* Service Worker registration script with aggressive cache invalidation */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                    })
-                    .catch(function(registrationError) {
-                      console.log('SW registration failed: ', registrationError);
+                  // Force unregister existing service workers first
+                  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    registrations.forEach(function(registration) {
+                      registration.unregister();
                     });
+                  }).then(function() {
+                    // Register new service worker with cache-busting parameter
+                    const swUrl = '/sw.js?v=' + Date.now();
+                    navigator.serviceWorker.register(swUrl)
+                      .then(function(registration) {
+                        console.log('SW registered with cache-bust: ', registration);
+                        
+                        // Listen for service worker updates
+                        registration.addEventListener('updatefound', function() {
+                          const newWorker = registration.installing;
+                          newWorker.addEventListener('statechange', function() {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                              console.log('New SW version available, updating...');
+                              newWorker.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                          });
+                        });
+                        
+                        // Listen for messages from service worker
+                        navigator.serviceWorker.addEventListener('message', function(event) {
+                          if (event.data.type === 'CACHE_UPDATED') {
+                            console.log('Cache updated, forcing page refresh...');
+                            window.location.reload(true);
+                          }
+                        });
+                        
+                        // Force refresh on mobile devices
+                        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+                        if (isMobile && registration.active) {
+                          registration.active.postMessage({ 
+                            type: 'CACHE_CLEAR',
+                            payload: { forceMobileRefresh: true }
+                          });
+                        }
+                      })
+                      .catch(function(registrationError) {
+                        console.log('SW registration failed: ', registrationError);
+                      });
+                  });
                 });
               }
+              
+              // Force page refresh on browser back/forward for mobile cache issues
+              window.addEventListener('pageshow', function(event) {
+                if (event.persisted) {
+                  console.log('Page loaded from cache, forcing refresh on mobile...');
+                  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+                  if (isMobile) {
+                    window.location.reload(true);
+                  }
+                }
+              });
             `,
           }}
         />

@@ -57,13 +57,19 @@ export default function MobileScheduleCard({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border-2 mb-4 overflow-hidden transition-all duration-200 ${
+    <div className={`bg-white rounded-lg shadow-sm border-2 mb-4 overflow-hidden transition-all duration-200 active:scale-[0.995] ${
       isCurrentUser ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
     }`}>
       {/* Card Header - Enhanced touch interaction */}
       <div 
-        className="p-4 cursor-pointer touch-manipulation min-h-[44px] active:bg-gray-50 transition-colors"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className="p-4 cursor-pointer touch-manipulation min-h-[56px] active:bg-gray-100 transition-all duration-150 active:scale-[0.99]"
+        onClick={() => {
+          // Add haptic feedback if supported
+          if ('vibrate' in navigator) {
+            navigator.vibrate(25);
+          }
+          setIsExpanded(!isExpanded);
+        }}
         onTouchStart={() => {}} // Enable better touch response
       >
         <div className="flex items-center justify-between">
@@ -117,12 +123,21 @@ export default function MobileScheduleCard({
           {canEdit && (
             <div className="mb-6">
               <button
-                onClick={onFullWeekSet}
-                className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-xl py-4 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all touch-manipulation min-h-[56px] shadow-sm"
+                onClick={() => {
+                  // Add haptic feedback
+                  if ('vibrate' in navigator) {
+                    navigator.vibrate(50);
+                  }
+                  onFullWeekSet();
+                }}
+                className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-xl py-5 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all duration-200 touch-manipulation min-h-[60px] shadow-md hover:shadow-lg transform hover:scale-[1.02]"
               >
                 <div className="flex items-center justify-center gap-3">
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="text-base">Set Full Working Week</span>
+                  <CheckCircle className="w-6 h-6" />
+                  <span className="text-lg">Set Full Working Week</span>
+                </div>
+                <div className="text-xs text-green-600 mt-1 opacity-75">
+                  Sets all weekdays to 7 hours each
                 </div>
               </button>
             </div>
@@ -170,20 +185,27 @@ export default function MobileScheduleCard({
                   </div>
                   
                   {/* Work Options - Enhanced mobile touch */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     {workOptions.map(option => {
                       const isSelected = currentValue?.value === option.value;
                       return (
                         <button
                           key={option.value}
-                          onClick={() => canEdit && onWorkOptionClick(date, option.value)}
+                          onClick={() => {
+                            if (!canEdit) return;
+                            // Add haptic feedback
+                            if ('vibrate' in navigator) {
+                              navigator.vibrate(isSelected ? 25 : 50);
+                            }
+                            onWorkOptionClick(date, option.value);
+                          }}
                           disabled={!canEdit}
-                          className={`flex-1 py-4 px-3 rounded-lg border-2 font-semibold text-sm transition-all touch-manipulation min-h-[52px] shadow-sm ${
-                            canEdit ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-60'
+                          className={`flex-1 py-4 px-3 rounded-xl border-2 font-semibold text-sm transition-all duration-200 touch-manipulation min-h-[56px] shadow-sm transform ${
+                            canEdit ? 'active:scale-95 cursor-pointer hover:scale-105' : 'cursor-not-allowed opacity-60'
                           } ${
                             isSelected 
-                              ? option.color + ' ring-2 ring-blue-500 ring-offset-1 shadow-md' 
-                              : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                              ? option.color + ' ring-2 ring-blue-500 ring-offset-2 shadow-lg scale-105' 
+                              : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300 hover:shadow-md'
                           }`}
                           title={canEdit ? option.description : 'You can only edit your own schedule'}
                         >

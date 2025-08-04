@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Eye, RefreshCw } from 'lucide-react';
 import MobileScheduleCard from './MobileScheduleCard';
 import EnhancedManagerExportButton from './EnhancedManagerExportButton';
@@ -44,6 +44,16 @@ export default function MobileScheduleView({
   getTeamTotalHours
 }: MobileScheduleViewProps) {
   const [refreshing, setRefreshing] = useState(false);
+  const [isSwipeEnabled, setIsSwipeEnabled] = useState(true);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+  const isSwiping = useRef<boolean>(false);
+  const isPulling = useRef<boolean>(false);
+  const pullStartY = useRef<number>(0);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -51,6 +61,111 @@ export default function MobileScheduleView({
     await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
+
+  const handlePullRefresh = async () => {
+    setIsPullRefreshing(true);
+    try {
+      // Add haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(100);
+      }
+      await handleRefresh();
+    } finally {
+      setIsPullRefreshing(false);
+      setPullDistance(0);
+    }
+  };
+
+  // Swipe and pull-to-refresh gesture handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isSwipeEnabled) return;
+    
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    pullStartY.current = e.touches[0].clientY;
+    isSwiping.current = false;
+    isPulling.current = false;
+    
+    // Check if we're at the top of the scroll container for pull-to-refresh
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer && scrollContainer.scrollTop === 0) {
+      isPulling.current = true;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isSwipeEnabled) return;
+    
+    const touchCurrentX = e.touches[0].clientX;
+    const touchCurrentY = e.touches[0].clientY;
+    const diffX = Math.abs(touchCurrentX - touchStartX.current);
+    const diffY = Math.abs(touchCurrentY - touchStartY.current);
+    const pullDiff = touchCurrentY - pullStartY.current;
+    
+    // Handle pull-to-refresh
+    if (isPulling.current && pullDiff > 0 && diffY > diffX) {
+      const distance = Math.min(pullDiff * 0.5, 120); // Max pull distance of 120px
+      setPullDistance(distance);
+      e.preventDefault();
+      return;
+    }
+    
+    // Only consider horizontal swipes (more horizontal than vertical)
+    if (diffX > diffY && diffX > 20) {
+      isSwiping.current = true;
+      isPulling.current = false;
+      setPullDistance(0);
+      // Prevent default scrolling during swipe
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isSwipeEnabled) return;
+    
+    // Handle pull-to-refresh release
+    if (isPulling.current && pullDistance > 60) {
+      handlePullRefresh();
+    } else {
+      setPullDistance(0);
+    }
+    
+    // Handle horizontal swipe
+    if (isSwiping.current) {
+      const touchEndX = e.changedTouches[0].clientX;
+      const diffX = touchStartX.current - touchEndX;
+      const minSwipeDistance = 50;
+      
+      // Add haptic feedback if supported
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+      
+      if (Math.abs(diffX) > minSwipeDistance) {
+        if (diffX > 0) {
+          // Swipe left - next week
+          onWeekChange(currentWeekOffset + 1);
+        } else {
+          // Swipe right - previous week
+          onWeekChange(currentWeekOffset - 1);
+        }
+      }
+    }
+    
+    // Reset states
+    isSwiping.current = false;
+    isPulling.current = false;
+  };
+
+  // Disable swipe during interactions with cards or buttons
+  const handleInteractionStart = () => setIsSwipeEnabled(false);
+  const handleInteractionEnd = () => setIsSwipeEnabled(true);
+
+  useEffect(() => {
+    // Re-enable swipe after interactions end
+    const timer = setTimeout(() => setIsSwipeEnabled(true), 300);
+    return () => clearTimeout(timer);
+  }, [isSwipeEnabled]);
 
   if (loading) {
     return (
@@ -76,7 +191,41 @@ export default function MobileScheduleView({
   }
 
   return (
-    <div className="lg:hidden">
+    <div 
+      className="lg:hidden touch-manipulation relative overflow-hidden"
+      ref={containerRef}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 0 || isPullRefreshing) && (
+        <div 
+          className="absolute top-0 left-0 right-0 flex items-center justify-center bg-blue-50 border-b border-blue-200 transition-all duration-200 z-10"
+          style={{ 
+            height: isPullRefreshing ? '60px' : `${Math.min(pullDistance, 60)}px`,
+            transform: `translateY(${isPullRefreshing ? 0 : pullDistance - 60}px)`
+          }}
+        >
+          <div className="flex items-center gap-2 text-blue-600">
+            <RefreshCw 
+              className={`w-5 h-5 ${isPullRefreshing ? 'animate-spin' : ''} ${pullDistance > 60 ? 'rotate-180' : ''} transition-transform`} 
+            />
+            <span className="text-sm font-medium">
+              {isPullRefreshing ? 'Refreshing...' : pullDistance > 60 ? 'Release to refresh' : 'Pull to refresh'}
+            </span>
+          </div>
+        </div>
+      )}
+      
+      <div
+        ref={scrollContainerRef}
+        className="mobile-scroll-container"
+        style={{ 
+          transform: `translateY(${pullDistance}px)`,
+          transition: pullDistance === 0 ? 'transform 0.2s ease-out' : 'none'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
       {/* Mobile Header */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
         {/* Week Navigation */}
@@ -122,8 +271,17 @@ export default function MobileScheduleView({
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
             Week of {getCurrentWeekString()}
           </h2>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 mb-2">
             {selectedTeam.name} • {getTeamTotalHours()}h total
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-1">
+              <span>←</span>
+              <span>Swipe to navigate</span>
+              <span>→</span>
+            </div>
+            <span>•</span>
+            <span>החלק לניווט</span>
           </div>
         </div>
 
@@ -174,19 +332,24 @@ export default function MobileScheduleView({
           const isCurrentUserCard = member.id === currentUser.id;
           
           return (
-            <MobileScheduleCard
+            <div
               key={member.id}
-              member={member}
-              weekDays={weekDays}
-              scheduleData={scheduleData[member.id] || {}}
-              workOptions={workOptions}
-              canEdit={canEdit}
-              isCurrentUser={isCurrentUserCard}
-              onWorkOptionClick={(date, value) => onWorkOptionClick(member.id, date, value)}
-              onFullWeekSet={() => onFullWeekSet(member.id)}
-              isToday={isToday}
-              isPastDate={isPastDate}
-            />
+              onTouchStart={handleInteractionStart}
+              onTouchEnd={handleInteractionEnd}
+            >
+              <MobileScheduleCard
+                member={member}
+                weekDays={weekDays}
+                scheduleData={scheduleData[member.id] || {}}
+                workOptions={workOptions}
+                canEdit={canEdit}
+                isCurrentUser={isCurrentUserCard}
+                onWorkOptionClick={(date, value) => onWorkOptionClick(member.id, date, value)}
+                onFullWeekSet={() => onFullWeekSet(member.id)}
+                isToday={isToday}
+                isPastDate={isPastDate}
+              />
+            </div>
           );
         })}
       </div>
@@ -195,6 +358,8 @@ export default function MobileScheduleView({
       <div className="bg-blue-50 rounded-lg border border-blue-200 p-4 mt-4">
         <h3 className="font-medium text-blue-900 mb-2 text-sm">Quick Guide:</h3>
         <ul className="text-xs text-blue-800 space-y-1">
+          <li>• <strong>Swipe left/right</strong> to navigate between weeks</li>
+          <li>• <strong>Pull down</strong> to refresh schedule data</li>
           <li>• <strong>Tap member names</strong> to expand/collapse their schedule</li>
           <li>• <strong>Your schedule</strong> is highlighted and expanded by default</li>
           <li>• <strong>Tap work options</strong> to set your availability</li>
@@ -202,6 +367,7 @@ export default function MobileScheduleView({
           {currentUser.isManager && <li>• <strong>As a manager</strong> you can edit anyone&apos;s schedule</li>}
           <li>• <strong>Today&apos;s column</strong> is highlighted in blue</li>
         </ul>
+      </div>
       </div>
     </div>
   );

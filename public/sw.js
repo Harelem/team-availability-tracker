@@ -5,10 +5,12 @@
  * and push notification handling for enhanced mobile experience.
  */
 
-const CACHE_NAME = 'team-tracker-v1.0.0';
-const STATIC_CACHE = 'team-tracker-static-v1.0.0';
-const DYNAMIC_CACHE = 'team-tracker-dynamic-v1.0.0';
-const API_CACHE = 'team-tracker-api-v1.0.0';
+// Generate timestamp-based cache versions for immediate invalidation
+const CACHE_VERSION = '2025-08-03-15-30-00'; // Update timestamp for force invalidation
+const CACHE_NAME = `team-tracker-v${CACHE_VERSION}`;
+const STATIC_CACHE = `team-tracker-static-v${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `team-tracker-dynamic-v${CACHE_VERSION}`;
+const API_CACHE = `team-tracker-api-v${CACHE_VERSION}`;
 
 // Resources to cache immediately on install
 const STATIC_ASSETS = [
@@ -39,52 +41,122 @@ const NO_CACHE_PATTERNS = [
   '/api/notifications/send'
 ];
 
-// Maximum age for cached items (in milliseconds)
+// Maximum age for cached items (in milliseconds) - AGGRESSIVE for mobile cache busting
 const CACHE_EXPIRATION = {
-  static: 30 * 24 * 60 * 60 * 1000, // 30 days
-  dynamic: 7 * 24 * 60 * 60 * 1000,  // 7 days
-  api: 1 * 60 * 60 * 1000             // 1 hour
+  static: 1 * 60 * 60 * 1000,     // 1 hour (reduced from 30 days)
+  dynamic: 30 * 60 * 1000,        // 30 minutes (reduced from 7 days)  
+  api: 5 * 60 * 1000              // 5 minutes (reduced from 1 hour)
 };
 
+// Force cache invalidation detection for mobile browsers
+const FORCE_REFRESH_PARAMS = ['force-refresh', 'cache-bust', 'v', 'timestamp'];
+
+// Mobile browser detection patterns
+const MOBILE_PATTERNS = [
+  /Android/i,
+  /webOS/i,
+  /iPhone/i,
+  /iPad/i,
+  /iPod/i,
+  /BlackBerry/i,
+  /Windows Phone/i,
+  /Mobile/i
+];
+
 /**
- * Service Worker Installation
+ * Detect if this is a mobile browser that needs aggressive cache busting
+ */
+function isMobileBrowser() {
+  if (typeof navigator === 'undefined') return false;
+  return MOBILE_PATTERNS.some(pattern => pattern.test(navigator.userAgent));
+}
+
+/**
+ * Check if request URL contains force refresh parameters
+ */
+function hasForceRefreshParam(url) {
+  const urlObj = new URL(url);
+  return FORCE_REFRESH_PARAMS.some(param => urlObj.searchParams.has(param));
+}
+
+/**
+ * Add cache-busting parameters to URLs for mobile browsers
+ */
+function addCacheBustParam(url) {
+  const urlObj = new URL(url);
+  urlObj.searchParams.set('cb', Date.now().toString());
+  return urlObj.toString();
+}
+
+/**
+ * Service Worker Installation - AGGRESSIVE MOBILE CACHE INVALIDATION
  */
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing...');
+  console.log('Service Worker: Installing with aggressive cache invalidation...');
   
   event.waitUntil(
     Promise.all([
-      // Cache static assets
-      caches.open(STATIC_CACHE).then((cache) => {
-        console.log('Service Worker: Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
+      // Clear ALL existing caches first for mobile browsers
+      clearAllCaches().then(() => {
+        console.log('Service Worker: Cleared all existing caches for fresh start');
       }),
       
-      // Skip waiting to activate immediately
+      // Cache static assets with cache-busting for mobile
+      caches.open(STATIC_CACHE).then((cache) => {
+        console.log('Service Worker: Caching static assets with cache-busting');
+        const cacheBustedAssets = STATIC_ASSETS.map(url => {
+          // Add cache-busting parameter to each asset for mobile browsers
+          return addCacheBustParam(url.startsWith('http') ? url : `${self.location.origin}${url}`);
+        });
+        return cache.addAll(cacheBustedAssets);
+      }),
+      
+      // Force immediate activation - skip waiting
       self.skipWaiting()
     ])
   );
 });
 
 /**
- * Service Worker Activation
+ * Service Worker Activation - FORCE CLIENT UPDATES
  */
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activating...');
+  console.log('Service Worker: Activating with forced client updates...');
   
   event.waitUntil(
     Promise.all([
-      // Clean up old caches
+      // Clean up ALL old caches aggressively
       cleanupOldCaches(),
       
-      // Claim all clients immediately
-      self.clients.claim()
+      // Force claim all clients immediately
+      self.clients.claim(),
+      
+      // Notify all clients to refresh for cache updates
+      notifyClientsToRefresh()
     ])
   );
 });
 
 /**
- * Fetch Event Handler - Main caching logic
+ * Notify all clients to refresh due to cache updates
+ */
+async function notifyClientsToRefresh() {
+  const clients = await self.clients.matchAll({ type: 'window' });
+  clients.forEach(client => {
+    client.postMessage({
+      type: 'CACHE_UPDATED',
+      payload: {
+        version: CACHE_VERSION,
+        forceRefresh: true,
+        message: 'New version available - refreshing...'
+      }
+    });
+  });
+  console.log('Service Worker: Notified', clients.length, 'clients to refresh');
+}
+
+/**
+ * Fetch Event Handler - AGGRESSIVE MOBILE CACHE INVALIDATION
  */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -97,6 +169,13 @@ self.addEventListener('fetch', (event) => {
   
   // Skip caching for certain patterns
   if (shouldSkipCache(url.pathname)) {
+    return;
+  }
+  
+  // Force fresh fetch if force refresh parameter detected
+  if (hasForceRefreshParam(request.url)) {
+    console.log('Service Worker: Force refresh detected, bypassing cache for:', request.url);
+    event.respondWith(fetch(request));
     return;
   }
   
@@ -320,17 +399,32 @@ async function handleApiRequest(request) {
 }
 
 /**
- * Static Asset Handler - Cache first with network fallback
+ * Static Asset Handler - AGGRESSIVE MOBILE CACHE INVALIDATION
  */
 async function handleStaticAsset(request) {
   const cachedResponse = await caches.match(request);
+  const isMobile = isMobileBrowser();
   
   if (cachedResponse) {
-    // Check if cache is expired
+    // Check if cache is expired - more aggressive for mobile
     const cacheDate = cachedResponse.headers.get('sw-cached-date');
-    if (cacheDate && Date.now() - parseInt(cacheDate) > CACHE_EXPIRATION.static) {
-      // Cache expired, try to update in background
-      updateCacheInBackground(request);
+    const maxAge = isMobile ? CACHE_EXPIRATION.static / 2 : CACHE_EXPIRATION.static; // Half time for mobile
+    
+    if (cacheDate && Date.now() - parseInt(cacheDate) > maxAge) {
+      console.log('Service Worker: Cache expired for mobile browser, fetching fresh:', request.url);
+      // Cache expired, fetch fresh immediately for mobile
+      try {
+        const networkResponse = await fetch(request);
+        if (networkResponse.ok) {
+          const cache = await caches.open(STATIC_CACHE);
+          const responseToCache = networkResponse.clone();
+          responseToCache.headers.set('sw-cached-date', Date.now().toString());
+          cache.put(request, responseToCache);
+          return networkResponse;
+        }
+      } catch (error) {
+        console.log('Service Worker: Network failed, using stale cache');
+      }
     }
     return cachedResponse;
   }
@@ -343,6 +437,7 @@ async function handleStaticAsset(request) {
       const cache = await caches.open(STATIC_CACHE);
       const responseToCache = networkResponse.clone();
       responseToCache.headers.set('sw-cached-date', Date.now().toString());
+      responseToCache.headers.set('sw-mobile-cached', isMobile.toString());
       cache.put(request, responseToCache);
     }
     

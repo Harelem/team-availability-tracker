@@ -94,7 +94,7 @@ export default function MemberFormModal({
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="text-gray-400 hover:text-gray-600 p-1 disabled:opacity-50"
+            className="text-gray-400 hover:text-gray-600 p-1 disabled:opacity-50 touch-target icon-button"
           >
             <X className="w-5 h-5" />
           </button>
@@ -114,7 +114,7 @@ export default function MemberFormModal({
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 ${
+              className={`mobile-input w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 ${
                 errors.name ? 'border-red-300' : 'border-gray-300'
               }`}
               placeholder="Enter member name"
@@ -141,7 +141,7 @@ export default function MemberFormModal({
               onKeyDown={handleKeyDown}
               disabled={isLoading}
               dir="rtl"
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 ${
+              className={`mobile-input w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:bg-gray-50 ${
                 errors.hebrew ? 'border-red-300' : 'border-gray-300'
               }`}
               placeholder="הכנס שם בעברית"
@@ -171,14 +171,14 @@ export default function MemberFormModal({
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 disabled:opacity-50 transition-colors"
+            className="mobile-button-sm px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 disabled:opacity-50 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={isLoading || !name.trim() || !hebrew.trim()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="mobile-button flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? (
               <>

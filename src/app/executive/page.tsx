@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import COOExecutiveDashboard from '@/components/COOExecutiveDashboard';
 import ExecutiveLoginScreen from '@/components/ExecutiveLoginScreen';
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
-import { COOUser, Team } from '@/types';
+import { COOUser } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import { validateCOOPermissions } from '@/utils/permissions';
 import { verifyEnvironmentConfiguration } from '@/utils/deploymentSafety';
@@ -14,7 +14,6 @@ export default function ExecutivePage() {
   const router = useRouter();
   const [cooUser, setCooUser] = useState<COOUser | null>(null);
   const [cooUsers, setCooUsers] = useState<COOUser[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Load initial data for executive dashboard
@@ -34,20 +33,14 @@ export default function ExecutivePage() {
           });
         }
         
-        // Load COO users and teams in parallel
-        const [cooUsersData, teamsData] = await Promise.all([
-          DatabaseService.getCOOUsers(),
-          DatabaseService.getTeams()
-        ]);
-        
+        // Load COO users for executive access
+        const cooUsersData = await DatabaseService.getCOOUsers();
         setCooUsers(cooUsersData);
-        setTeams(teamsData);
         
-        console.log(`✅ Executive data loaded: ${cooUsersData.length} COO users, ${teamsData.length} teams`);
+        console.log(`✅ Executive data loaded: ${cooUsersData.length} COO users`);
       } catch (error) {
         console.error('❌ Error loading executive data:', error);
         setCooUsers([]);
-        setTeams([]);
       } finally {
         setLoading(false);
       }

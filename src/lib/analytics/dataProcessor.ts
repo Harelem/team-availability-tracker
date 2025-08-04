@@ -518,7 +518,7 @@ export class DataProcessor {
     // Mock implementation - would query actual schedule data
     const scheduleData: { [dateKey: string]: ScheduleEntry } = {};
     
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
       const dateKey = currentDate.toISOString().split('T')[0];
       
@@ -546,7 +546,7 @@ export class DataProcessor {
     let plannedHours = 0;
     let actualHours = 0;
     
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
       const dateKey = currentDate.toISOString().split('T')[0];
       const dayOfWeek = currentDate.getDay();

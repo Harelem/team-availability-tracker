@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, TeamDailyStatus, DailyStatusSummary } from '@/types'
+import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, TeamDailyStatus, DailyStatusSummary, TeamDashboardData } from '@/types'
 import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
 // RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
 // import { Achievement, RecognitionMetric, CreateAchievementRequest, UpdateMetricRequest, RecognitionQueryOptions, RecognitionQueryResult, LeaderboardEntry, LeaderboardTimeframe } from '@/types/recognitionTypes'
@@ -3911,5 +3911,96 @@ The table creation script includes:
       console.error('Error fetching sprint with navigation:', error)
       return null
     }
+  },
+
+  // Team Dashboard Methods
+  async getTeamById(teamId: number): Promise<Team | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', teamId)
+        .single()
+      
+      if (error) {
+        console.error('Error fetching team by ID:', error)
+        return null
+      }
+      
+      return {
+        id: data.id,
+        name: data.name,
+        description: data.description || undefined,
+        color: data.color || '#3b82f6',
+        sprint_length_weeks: data.sprint_length_weeks || 1,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      }
+    } catch (error) {
+      console.error('Error fetching team by ID:', error)
+      return null
+    }
+  },
+
+  async getTeamDashboardData(teamId: number): Promise<TeamDashboardData | null> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      console.log(`🔍 Loading team dashboard data for team ${teamId}...`)
+      
+      // Get team members
+      const teamMembers = await this.getTeamMembers(teamId)
+      console.log(`👥 Team members loaded: ${teamMembers.length}`)
+      
+      // Get current sprint
+      const currentSprint = await this.getCurrentGlobalSprint()
+      console.log(`🚀 Current sprint:`, currentSprint ? `Sprint ${currentSprint.current_sprint_number}` : 'None')
+      
+      // Get current week schedule data for the team
+      const currentWeekDates = this.getCurrentWeekDates()
+      const startDate = currentWeekDates[0].toISOString().split('T')[0]
+      const endDate = currentWeekDates[4].toISOString().split('T')[0]
+      
+      const scheduleData = await this.getScheduleEntries(startDate, endDate, teamId)
+      console.log(`📅 Schedule data loaded for ${Object.keys(scheduleData).length} members`)
+      
+      // Use the team calculation service to compute metrics
+      const { TeamCalculationService } = await import('./teamCalculationService')
+      const teamMetrics = await TeamCalculationService.calculateTeamMetrics({
+        teamId,
+        teamMembers,
+        currentSprint,
+        scheduleData
+      })
+      
+      console.log(`✅ Team dashboard data calculated successfully`)
+      return teamMetrics
+      
+    } catch (error) {
+      console.error('❌ Error loading team dashboard data:', error)
+      return null
+    }
+  },
+
+  // Helper method to get current week working days
+  getCurrentWeekDates(): Date[] {
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay()) // Go to Sunday
+    
+    const weekDays: Date[] = []
+    for (let i = 0; i < 5; i++) { // Sunday to Thursday
+      const date = new Date(startOfWeek)
+      date.setDate(startOfWeek.getDate() + i)
+      weekDays.push(date)
+    }
+    
+    return weekDays
   }
 }

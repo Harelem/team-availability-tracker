@@ -148,40 +148,37 @@ export const UnifiedSprintProgress: React.FC<UnifiedSprintProgressProps> = ({
         <div className="flex items-center space-x-4">
           {/* Navigation Controls */}
           {showNavigation && sprintData?.navigation && (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={navigateToPrevious}
                 disabled={!sprintData.navigation.hasPrevious}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   sprintData.navigation.hasPrevious
                     ? 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
                     : 'text-gray-300 cursor-not-allowed'
                 }`}
                 title="Previous Sprint"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="h-4 w-4" />
+                Previous Sprint
               </button>
               
-              <div className="flex flex-col items-center px-3">
-                <div className="text-sm font-medium text-gray-900">
-                  Sprint {sprintData.sprintNumber}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {sprintData.navigation.position.index} of {sprintData.navigation.position.total}
-                </div>
-              </div>
+              <span className="px-3 py-2 text-sm font-medium text-gray-900">
+                Sprint {sprintData.navigation.position.current} of {sprintData.navigation.position.total}
+              </span>
               
               <button
                 onClick={navigateToNext}
                 disabled={!sprintData.navigation.hasNext}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   sprintData.navigation.hasNext
                     ? 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
                     : 'text-gray-300 cursor-not-allowed'
                 }`}
                 title="Next Sprint"
               >
-                <ChevronRight className="w-5 h-5" />
+                Next Sprint
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           )}
@@ -275,10 +272,7 @@ export const UnifiedSprintProgress: React.FC<UnifiedSprintProgressProps> = ({
       {showNotes && (
         <div className="mt-6 pt-4 border-t border-gray-200">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-md font-medium text-gray-900 flex items-center gap-2">
-              <Edit3 className="w-4 h-4 text-gray-600" />
-              Sprint Notes
-            </h3>
+            <label className="block text-sm font-medium text-gray-900">Sprint Notes</label>
             {!isEditingNotes && (
               <button
                 onClick={handleEditNotes}
@@ -295,8 +289,8 @@ export const UnifiedSprintProgress: React.FC<UnifiedSprintProgressProps> = ({
               <textarea
                 value={notesValue}
                 onChange={(e) => setNotesValue(e.target.value)}
-                placeholder="Add notes about this sprint (e.g., '2 new developers joined team', '5 developers sent to other base', 'completed experiment')..."
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Add notes: 2 new developers joined team, 5 developers sent to other base, completed experiment, etc."
+                className="w-full p-3 border rounded-lg min-h-[100px] resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                 rows={4}
               />
               <div className="flex justify-end gap-2">
@@ -311,10 +305,10 @@ export const UnifiedSprintProgress: React.FC<UnifiedSprintProgressProps> = ({
                 <button
                   onClick={handleSaveNotes}
                   disabled={isSavingNotes}
-                  className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <Save className="w-3 h-3" />
-                  {isSavingNotes ? 'Saving...' : 'Save'}
+                  {isSavingNotes ? 'Saving Notes...' : 'Save Notes'}
                 </button>
               </div>
             </div>

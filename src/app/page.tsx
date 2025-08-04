@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import ScheduleTable from '@/components/ScheduleTable';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
@@ -19,6 +20,7 @@ function HomeContent() {
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
   
   const [teams, setTeams] = useState<Team[]>([]);
 
@@ -118,12 +120,43 @@ function HomeContent() {
     setSelectedUser(null);
   }, [selectedTeam]);
 
+  // Handle URL parameters for team navigation from COO dashboard
+  useEffect(() => {
+    const teamParam = searchParams.get('team');
+    const executiveParam = searchParams.get('executive');
+    
+    if (teamParam && teams.length > 0 && !selectedTeam) {
+      const teamId = parseInt(teamParam);
+      const targetTeam = teams.find(team => team.id === teamId);
+      
+      if (targetTeam) {
+        console.log(`🔗 Auto-selecting team from URL: ${targetTeam.name} (ID: ${teamId})`);
+        if (executiveParam === 'true') {
+          console.log('🏢 Executive context maintained');
+        }
+        setSelectedTeam(targetTeam);
+      } else {
+        console.warn(`⚠️ Team with ID ${teamId} not found in available teams`);
+      }
+    }
+  }, [searchParams, teams, selectedTeam, setSelectedTeam]);
+
   // Handler functions for team flow
   const handleTeamSelect = (team: Team) => {
     setSelectedTeam(team);
   };
 
   const handleBackToSelection = () => {
+    const executiveParam = searchParams.get('executive');
+    
+    // If coming from executive context, return to COO dashboard
+    if (executiveParam === 'true') {
+      console.log('🏢 Returning to COO Executive Dashboard');
+      window.location.href = '/executive';
+      return;
+    }
+    
+    // Otherwise, return to team selection
     setSelectedTeam(null);
     setSelectedUser(null);
   };
@@ -188,7 +221,6 @@ function HomeContent() {
               selectedUser={selectedUser}
               onNavigateToTeamSelection={handleBackToSelection}
               onNavigateToMemberSelection={() => setSelectedUser(null)}
-              cooNavigationSource={cooNavigationSource}
             />
           </div>
           
@@ -204,7 +236,7 @@ function HomeContent() {
               <button
                 key={member.id}
                 onClick={() => setSelectedUser(member)}
-                className="w-full flex items-center gap-3 p-3 sm:p-4 text-left bg-gray-50 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-colors min-h-[60px] touch-manipulation"
+                className="w-full flex items-center gap-3 p-3 sm:p-4 text-left bg-gray-50 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-colors min-h-[60px] touch-target-xl"
               >
                 <User className="text-gray-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -233,7 +265,6 @@ function HomeContent() {
               selectedUser={selectedUser}
               onNavigateToTeamSelection={handleBackToSelection}
               onNavigateToMemberSelection={() => setSelectedUser(null)}
-              cooNavigationSource={cooNavigationSource}
             />
             
             {/* Desktop Breadcrumb */}
@@ -243,7 +274,6 @@ function HomeContent() {
                 selectedUser={selectedUser}
                 onNavigateToTeamSelection={handleBackToSelection}
                 onNavigateToMemberSelection={() => setSelectedUser(null)}
-                cooNavigationSource={cooNavigationSource}
               />
             </div>
             
@@ -264,13 +294,13 @@ function HomeContent() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedUser(null)}
-                    className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
+                    className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition-colors text-sm sm:text-base touch-target shrink-0"
                   >
                     Switch User
                   </button>
                   <button
                     onClick={handleBackToSelection}
-                    className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-xs sm:text-base min-h-[40px] touch-manipulation shrink-0"
+                    className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm sm:text-base touch-target shrink-0"
                   >
                     Change Access
                   </button>
@@ -308,7 +338,22 @@ function HomeContent() {
 export default function Home() {
   return (
     <TeamProvider>
-      <HomeContent />
+      <Suspense fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }>
+        <HomeContent />
+      </Suspense>
     </TeamProvider>
   );
 }

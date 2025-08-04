@@ -56,8 +56,9 @@ export default function TemplateManager({
 
   const handleApplyTemplate = async (template: AvailabilityTemplate) => {
     try {
-      // Call the actual template usage function directly
-      await useAvailabilityTemplates().useTemplate(template.id);
+      // Use the already instantiated hook's useTemplate function
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      await useTemplate(template.id);
       onApplyTemplate(template.pattern);
     } catch (err) {
       console.error('Error applying template:', err);

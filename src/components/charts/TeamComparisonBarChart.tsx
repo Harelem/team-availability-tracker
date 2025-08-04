@@ -78,7 +78,7 @@ export function TeamComparisonBarChart({
           <p className="font-semibold text-gray-900 mb-2">{label}</p>
           <div className="space-y-1">
             <p className="text-sm">
-              <span className="text-blue-600">●</span> Potential: {formatChartTooltip(teamData.potential, 'hours')}
+              <span className="text-blue-600">●</span> Max Capacity: {formatChartTooltip(teamData.potential, 'hours')}
             </p>
             <p className="text-sm">
               <span className="text-green-600">●</span> Actual: {formatChartTooltip(teamData.actual, 'hours')}
@@ -126,7 +126,7 @@ export function TeamComparisonBarChart({
       case 'actual':
         return 'Team Actual Hours Comparison';
       case 'potential':
-        return 'Team Potential Hours Comparison';
+        return 'Team Max Capacity Hours Comparison';
       default:
         return 'Team Performance Comparison';
     }
@@ -237,7 +237,7 @@ export function TeamComparisonBarChart({
                   <th className="text-left py-2 px-3 font-medium text-gray-900">Rank</th>
                   <th className="text-left py-2 px-3 font-medium text-gray-900">Team</th>
                   <th className="text-right py-2 px-3 font-medium text-gray-900">Members</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-900">Potential</th>
+                  <th className="text-right py-2 px-3 font-medium text-gray-900">Max Capacity</th>
                   <th className="text-right py-2 px-3 font-medium text-gray-900">Actual</th>
                   <th className="text-right py-2 px-3 font-medium text-gray-900">Utilization</th>
                   <th className="text-center py-2 px-3 font-medium text-gray-900">Status</th>
@@ -326,7 +326,7 @@ export function TeamComparisonBarChart({
           <h5 className="text-sm font-medium text-blue-900 mb-2">Company Totals</h5>
           <div className="space-y-1 text-xs">
             <div className="flex justify-between">
-              <span className="text-blue-700">Total Potential:</span>
+              <span className="text-blue-700">Total Max Capacity:</span>
               <span className="font-medium text-blue-900">
                 {formatChartTooltip(stats.totalPotential, 'hours')}
               </span>

@@ -2,7 +2,7 @@
   "name": "Team Availability Tracker",
   "short_name": "TeamTracker",
   "description": "Track team availability, manage schedules, and analyze performance across your organization",
-  "start_url": "/",
+  "start_url": "/?v=2025-08-03-15-30-00",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
@@ -11,6 +11,8 @@
   "lang": "en-US",
   "dir": "ltr",
   "categories": ["productivity", "business", "utilities"],
+  "version": "2025-08-03-15-30-00",
+  "cache_bust": "2025-08-03-15-30-00",
   "screenshots": [
     {
       "src": "/images/screenshot-mobile-1.png",

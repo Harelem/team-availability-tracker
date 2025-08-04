@@ -102,3 +102,58 @@ export const validateCOOPermissions = (cooUser: COOUser | null, action: 'export'
       return false;
   }
 };
+
+/**
+ * URL-based permission validation for route access
+ */
+export const validateRouteAccess = (route: string, user?: TeamMember | COOUser | null): boolean => {
+  switch (route) {
+    case '/executive':
+      // Only COO users can access executive dashboard
+      if (!user) return false;
+      return 'title' in user || // COOUser has title property
+             user.name === COO_NAME || 
+             user.name === SPRINT_ADMIN_NAME;
+    
+    case '/':
+      // Team routes are open to all authenticated users
+      return true;
+    
+    default:
+      // Allow access to other routes by default
+      return true;
+  }
+};
+
+/**
+ * Redirect logic for unauthorized route access
+ */
+export const getRedirectForUnauthorizedAccess = (
+  attemptedRoute: string, 
+  user?: TeamMember | COOUser | null
+): string | null => {
+  if (!validateRouteAccess(attemptedRoute, user)) {
+    switch (attemptedRoute) {
+      case '/executive':
+        // Redirect to team selection if trying to access executive without permission
+        return '/';
+      default:
+        return null;
+    }
+  }
+  return null;
+};
+
+/**
+ * Check if current user should be redirected based on their role and current route
+ */
+export const shouldRedirectBasedOnRole = (
+  currentRoute: string,
+  user: TeamMember | COOUser | null
+): string | null => {
+  if (!user) return null;
+  
+  // No automatic redirects - let users choose their preferred access
+  // This allows COO users to access both team and executive dashboards
+  return null;
+};

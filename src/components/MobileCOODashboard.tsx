@@ -157,7 +157,7 @@ export default function MobileCOODashboard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Target className="w-5 h-5 text-green-600" />
-                  <span className="text-sm font-medium text-green-700">Weekly Potential</span>
+                  <span className="text-sm font-medium text-green-700">Weekly Max Capacity</span>
                 </div>
                 <div className="text-right">
                   <div className="text-xl font-bold text-green-900">
@@ -246,7 +246,7 @@ export default function MobileCOODashboard({
                     <span className="font-medium ml-1">{formatHours(team.maxCapacity)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-600">Potential:</span>
+                    <span className="text-gray-600">Max Capacity:</span>
                     <span className="font-medium ml-1">{formatHours(team.weeklyPotential)}</span>
                   </div>
                   <div>

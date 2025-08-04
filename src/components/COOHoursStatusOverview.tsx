@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Building2, TrendingUp, Calendar, Users, AlertTriangle } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, Users, AlertTriangle, Info } from 'lucide-react';
 import { Team, TeamMember, CurrentGlobalSprint } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import { calculateSprintPeriod, getSprintDescription, formatSprintDateRange } from '@/utils/sprintCalculations';
 import { calculateWorkingDaysBetween } from '@/lib/calculationService';
+import { MissingMembersService } from '@/lib/missingMembersService';
+import { MissingMemberData } from '@/types/tooltipTypes';
+import TeamMembersTooltip from '@/components/ui/TeamMembersTooltip';
 
 interface TeamSprintStatus {
   teamName: string;
@@ -34,12 +37,78 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Tooltip state
+  const [tooltipData, setTooltipData] = useState<Record<string, MissingMemberData>>({});
+  const [tooltipLoading, setTooltipLoading] = useState<Record<string, boolean>>({});
+  const [activeTooltipTeam, setActiveTooltipTeam] = useState<string | null>(null);
 
   useEffect(() => {
     if (allTeams && currentSprint) {
       loadCompanyHoursStatus();
     }
   }, [allTeams, currentSprint]);
+
+  // Keyboard support for accessibility
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeTooltipTeam) {
+        closeTooltip();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [activeTooltipTeam]);
+
+  // Tooltip handler functions for click-based interaction
+  const toggleTooltip = async (teamKey: string) => {
+    // If clicking the same tooltip, close it
+    if (activeTooltipTeam === teamKey) {
+      setActiveTooltipTeam(null);
+      return;
+    }
+
+    // If tooltip data already exists, show it immediately
+    if (tooltipData[teamKey]) {
+      setActiveTooltipTeam(teamKey);
+      return;
+    }
+
+    // Otherwise, load the data
+    const [teamIdStr, sprintType] = teamKey.split('-');
+    const teamId = parseInt(teamIdStr);
+    const team = allTeams.find(t => t.id === teamId);
+    
+    if (!team) return;
+
+    setTooltipLoading(prev => ({ ...prev, [teamKey]: true }));
+    
+    try {
+      const sprintPeriod = sprintType === 'current' 
+        ? calculateSprintPeriod(currentSprint, 0)
+        : calculateSprintPeriod(currentSprint, 1);
+      
+      const missingData = await MissingMembersService.getMissingMembers(
+        teamId,
+        team.name,
+        sprintPeriod
+      );
+      
+      setTooltipData(prev => ({ ...prev, [teamKey]: missingData }));
+      setActiveTooltipTeam(teamKey);
+      
+    } catch (error) {
+      console.error('Error loading missing members:', error);
+    } finally {
+      setTooltipLoading(prev => ({ ...prev, [teamKey]: false }));
+    }
+  };
+
+  const closeTooltip = () => {
+    setActiveTooltipTeam(null);
+  };
+
 
   const loadCompanyHoursStatus = async () => {
     setIsLoading(true);
@@ -248,8 +317,13 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
           ) : (
             <>
               <div className="space-y-3 mb-6">
-                {companyStatus.currentSprint.map(team => (
-                  <div key={team.teamId} className="bg-white p-4 rounded-lg shadow-sm">
+                {companyStatus.currentSprint.map(team => {
+                  const teamKey = `${team.teamId}-current`;
+                  return (
+                  <div 
+                    key={team.teamId} 
+                    className="bg-white p-4 rounded-lg shadow-sm hover:bg-gray-50 transition-colors relative"
+                  >
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-medium text-gray-900">{team.teamName}</span>
                       <div className="flex items-center gap-3">
@@ -260,6 +334,20 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
                           {Math.round(team.teamCompletionRate)}%
                         </span>
                         <TeamStatusBadge status={team.status} />
+                        {/* Info icon trigger */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleTooltip(teamKey);
+                          }}
+                          className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                          title="הצג חברי צוות חסרים"
+                          aria-label={`Show missing members for ${team.teamName}`}
+                          aria-expanded={activeTooltipTeam === teamKey}
+                          aria-haspopup="dialog"
+                        >
+                          <Info className="h-4 w-4 text-gray-500 hover:text-blue-600" />
+                        </button>
                       </div>
                     </div>
                     
@@ -270,7 +358,8 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
                       />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               
               <CompanyCompletionSummary sprintData={companyStatus.currentSprint} />
@@ -298,8 +387,13 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
           ) : (
             <>
               <div className="space-y-3 mb-6">
-                {companyStatus.nextSprint.map(team => (
-                  <div key={team.teamId} className="bg-white p-4 rounded-lg shadow-sm">
+                {companyStatus.nextSprint.map(team => {
+                  const teamKey = `${team.teamId}-next`;
+                  return (
+                  <div 
+                    key={team.teamId} 
+                    className="bg-white p-4 rounded-lg shadow-sm hover:bg-gray-50 transition-colors relative"
+                  >
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-medium text-gray-900">{team.teamName}</span>
                       <div className="flex items-center gap-3">
@@ -310,6 +404,20 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
                           {Math.round(team.teamCompletionRate)}%
                         </span>
                         <TeamStatusBadge status={team.status} />
+                        {/* Info icon trigger */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleTooltip(teamKey);
+                          }}
+                          className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                          title="הצג חברי צוות חסרים"
+                          aria-label={`Show missing members for ${team.teamName}`}
+                          aria-expanded={activeTooltipTeam === teamKey}
+                          aria-haspopup="dialog"
+                        >
+                          <Info className="h-4 w-4 text-gray-500 hover:text-blue-600" />
+                        </button>
                       </div>
                     </div>
                     
@@ -320,7 +428,8 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
                       />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               
               <CompanyCompletionSummary sprintData={companyStatus.nextSprint} />
@@ -353,6 +462,16 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
           </div>
         </div>
       </div>
+      
+      {/* Team Members Modal */}
+      {activeTooltipTeam && (
+        <TeamMembersTooltip
+          data={tooltipData[activeTooltipTeam]}
+          isLoading={tooltipLoading[activeTooltipTeam] || false}
+          isVisible={true}
+          onClose={closeTooltip}
+        />
+      )}
     </div>
   );
 }

@@ -128,9 +128,7 @@ export interface DailyCompanyStatusData {
 // Team selection screen props
 export interface TeamSelectionScreenProps {
   teams: Team[];
-  cooUsers: COOUser[];
   onTeamSelect: (team: Team) => void;
-  onCOOAccess: (cooUser: COOUser) => void;
 }
 
 // Global Sprint System Types
@@ -362,6 +360,7 @@ export interface COODashboardData {
     sprintPotential: number;
     currentUtilization: number;
     capacityGap: number;
+    capacityGapPercentage: number;
   };
   teamComparison: TeamCapacityStatus[];
   sprintAnalytics: {
@@ -619,4 +618,46 @@ export interface EnhancedUnifiedSprintData {
       index: number;
     };
   };
+}
+
+// Team Dashboard Types (similar to COO but for single team)
+export interface TeamDashboardData {
+  teamOverview: {
+    teamId: number;
+    teamName: string;
+    memberCount: number;
+    managerCount: number;
+    maxCapacity: number;
+    sprintPotential: number;
+    currentUtilization: number;
+    capacityGap: number;
+    capacityGapPercentage: number;
+  };
+  memberBreakdown: TeamMemberCapacityStatus[];
+  currentWeekMetrics: {
+    potentialHours: number;
+    actualHours: number;
+    utilization: number;
+    absentMembers: number;
+    halfDayMembers: number;
+  };
+  sprintProgress?: {
+    sprintNumber: number;
+    sprintWeeks: number;
+    sprintPotential: number;
+    sprintActual: number;
+    sprintUtilization: number;
+    daysRemaining: number;
+  };
+}
+
+export interface TeamMemberCapacityStatus {
+  memberId: number;
+  memberName: string;
+  isManager: boolean;
+  weeklyPotential: number;
+  actualHours: number;
+  utilization: number;
+  status: 'available' | 'half-day' | 'unavailable';
+  reason?: string;
 }

@@ -77,7 +77,7 @@ export default function QuickActionsBar({
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsTemplateDropdownOpen(!isTemplateDropdownOpen)}
-              className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm min-h-[40px] border border-blue-200"
+              className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors text-sm touch-target border border-blue-200"
             >
               <Star className="w-4 h-4" />
               <span>Templates • תבניות</span>
@@ -175,7 +175,7 @@ export default function QuickActionsBar({
           {/* Quick Actions */}
           <button
             onClick={() => onFullWeekSet(currentUser.id)}
-            className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm min-h-[40px] border border-green-200"
+            className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm touch-target border border-green-200"
           >
             <Zap className="w-4 h-4" />
             <span>Full Week • שבוע מלא</span>

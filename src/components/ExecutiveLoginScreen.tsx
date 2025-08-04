@@ -86,7 +86,7 @@ export default function ExecutiveLoginScreen({
             </p>
             <button
               onClick={handleBackToTeams}
-              className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg transition-colors"
+              className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg transition-colors touch-target"
             >
               Back to Team Access
             </button>
@@ -102,7 +102,7 @@ export default function ExecutiveLoginScreen({
                   onClick={() => handleCOOAccess(cooUser)}
                   disabled={isSelected}
                   className={`
-                    w-full group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 text-left transition-all duration-200 hover:bg-white/20 hover:scale-[1.02] active:scale-95 touch-manipulation
+                    w-full group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6 text-left transition-all duration-200 hover:bg-white/20 hover:scale-[1.02] active:scale-95 touch-target-xl
                     ${isSelected ? 'bg-white/20 scale-95' : ''}
                   `}
                 >

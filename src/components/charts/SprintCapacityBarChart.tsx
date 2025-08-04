@@ -77,7 +77,7 @@ export function SprintCapacityBarChart({
           <p className="font-semibold text-gray-900 mb-2">{label}</p>
           <div className="space-y-1">
             <p className="text-sm">
-              <span className="text-blue-600">●</span> Potential: {formatChartTooltip(data.potential, 'hours')}
+              <span className="text-blue-600">●</span> Max Capacity: {formatChartTooltip(data.potential, 'hours')}
             </p>
             <p className="text-sm">
               <span className="text-green-600">●</span> Actual: {formatChartTooltip(data.actual, 'hours')}
@@ -145,7 +145,7 @@ export function SprintCapacityBarChart({
           {/* Potential hours bar */}
           <Bar 
             dataKey="potential" 
-            name="Potential Hours"
+            name="Max Capacity Hours"
             fill="#3b82f6"
             opacity={0.7}
             onClick={handleBarClick}

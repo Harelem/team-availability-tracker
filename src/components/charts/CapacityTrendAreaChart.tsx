@@ -84,7 +84,7 @@ export function CapacityTrendAreaChart({
           <p className="font-semibold text-gray-900 mb-2">{formatPeriodLabel(label, timeframe)}</p>
           <div className="space-y-1">
             <p className="text-sm">
-              <span className="text-blue-600">●</span> Potential: {formatChartTooltip(data.potential, 'hours')}
+              <span className="text-blue-600">●</span> Max Capacity: {formatChartTooltip(data.potential, 'hours')}
             </p>
             <p className="text-sm">
               <span className="text-green-600">●</span> Actual: {formatChartTooltip(data.actual, 'hours')}
@@ -131,7 +131,7 @@ export function CapacityTrendAreaChart({
           <div className="font-semibold text-blue-900">
             {formatChartTooltip(averages.potential, 'hours')}
           </div>
-          <div className="text-xs text-blue-700 mt-1">Avg Potential</div>
+          <div className="text-xs text-blue-700 mt-1">Avg Max Capacity</div>
         </div>
         
         <div className="text-center bg-green-50 rounded-lg p-3">
@@ -202,7 +202,7 @@ export function CapacityTrendAreaChart({
                 y={averages.potential} 
                 stroke="#3b82f6" 
                 strokeDasharray="5 5" 
-                label={{ value: "Avg Potential", position: "topRight" }}
+                label={{ value: "Avg Max Capacity", position: "topRight" }}
                 opacity={0.7}
               />
               <ReferenceLine 
@@ -223,7 +223,7 @@ export function CapacityTrendAreaChart({
             stroke="#3b82f6"
             fill={`url(#${getGradientId('potential')})`}
             strokeWidth={2}
-            name="Potential Hours"
+            name="Max Capacity Hours"
           />
           
           {/* Actual hours area */}

@@ -17,6 +17,9 @@ import TemplateManager from './TemplateManager';
 import CompactHeaderBar from './CompactHeaderBar';
 import QuickActionsBar from './QuickActionsBar';
 import EnhancedAvailabilityTable from './EnhancedAvailabilityTable';
+import TeamSummaryOverview from './TeamSummaryOverview';
+import TeamDailySummary from './TeamDailySummary';
+import ClientOnly from './ClientOnly';
 // import { canManageSprints } from '@/utils/permissions'; // Used in CompactHeaderBar
 import { DatabaseService } from '@/lib/database';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
@@ -325,6 +328,41 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
 
   return (
     <div className="space-y-0">
+      {/* Mobile Team Summary - Only for Managers */}
+      {currentUser.isManager && (
+        <div className="lg:hidden">
+          <TeamSummaryOverview
+            team={selectedTeam}
+            currentSprint={currentSprint}
+            className="mb-4"
+          />
+        </div>
+      )}
+
+      {/* Mobile Team Daily Summary - For all users */}
+      <div className="lg:hidden">
+        <ClientOnly fallback={
+          <div className="bg-white rounded-lg p-4 mb-4">
+            <div className="animate-pulse">
+              <div className="h-6 bg-gray-200 rounded mb-3"></div>
+              <div className="grid grid-cols-7 gap-1">
+                {[1,2,3,4,5,6,7].map(i => (
+                  <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        }>
+          <TeamDailySummary
+            team={selectedTeam}
+            teamMembers={teamMembers}
+            currentWeekOffset={currentWeekOffset}
+            currentUser={currentUser}
+            className="mb-4"
+          />
+        </ClientOnly>
+      </div>
+
       {/* Mobile View - Keep existing mobile implementation */}
       <MobileScheduleView
         currentUser={currentUser}
@@ -361,6 +399,37 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
           getCurrentWeekString={getCurrentWeekString}
           getTeamTotalHours={getTeamTotalHours}
         />
+
+        {/* Team Summary Overview - Only for Managers */}
+        {currentUser.isManager && (
+          <TeamSummaryOverview
+            team={selectedTeam}
+            currentSprint={currentSprint}
+            className="mt-0"
+          />
+        )}
+
+        {/* Team Daily Summary - For all users */}
+        <ClientOnly fallback={
+          <div className="bg-white rounded-lg p-4 mt-0">
+            <div className="animate-pulse">
+              <div className="h-6 bg-gray-200 rounded mb-3"></div>
+              <div className="grid grid-cols-7 gap-2">
+                {[1,2,3,4,5,6,7].map(i => (
+                  <div key={i} className="h-20 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        }>
+          <TeamDailySummary
+            team={selectedTeam}
+            teamMembers={teamMembers}
+            currentWeekOffset={currentWeekOffset}
+            currentUser={currentUser}
+            className="mt-0"
+          />
+        </ClientOnly>
 
         {/* Quick Actions Bar - Template dropdown and quick actions */}
         <QuickActionsBar
@@ -440,7 +509,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
         </div>
 
         {/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
-        {/* Recognition Dashboard */}
+        Recognition Dashboard
         <div className="bg-white rounded-lg border border-gray-200">
           <RecognitionDashboard
             userId={currentUser.id}
@@ -448,8 +517,10 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam }
             className=""
           />
         </div>
+        */}
 
-        {/* Team Recognition Leaderboard - Managers Only */}
+        {/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+        Team Recognition Leaderboard - Managers Only
         {currentUser.isManager && (
           <div className="bg-white rounded-lg border border-gray-200">
             <TeamRecognitionLeaderboard

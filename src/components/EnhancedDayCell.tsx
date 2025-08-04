@@ -149,69 +149,90 @@ export default function EnhancedDayCell({
         })}
       </div>
 
-      {/* Quick Reasons Modal */}
+      {/* Quick Reasons Modal - Enhanced for mobile */}
       {showQuickReasons && pendingValue && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto shadow-xl">
-            <div className="p-4 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 lg:p-4">
+          <div className="bg-white w-full h-full flex flex-col lg:rounded-lg lg:max-w-md lg:w-auto lg:h-auto lg:max-h-[80vh] lg:shadow-xl">
+            {/* Header - Enhanced for mobile */}
+            <div className="p-4 bg-gray-50 border-b border-gray-200 lg:bg-white lg:border-b lg:border-gray-200">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {pendingValue === '0.5' ? 'Half Day Reason • סיבה לחצי יום' : 'Absence Reason • סיבת היעדרות'}
-                </h3>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 lg:text-lg">
+                    {pendingValue === '0.5' ? 'Half Day Reason' : 'Absence Reason'}
+                  </h3>
+                  <p className="text-lg text-gray-600 lg:text-sm">
+                    {pendingValue === '0.5' ? 'סיבה לחצי יום' : 'סיבת היעדרות'}
+                  </p>
+                </div>
                 <button
                   onClick={() => setShowQuickReasons(false)}
-                  className="text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 flex items-center justify-center"
+                  className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation rounded-full hover:bg-gray-100"
                 >
-                  ×
+                  <span className="text-2xl">×</span>
                 </button>
               </div>
-              <p className="text-sm text-gray-600 mt-2">
-                {member.name} • {date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-              </p>
+              <div className="mt-3 p-3 bg-blue-50 rounded-lg lg:mt-2 lg:p-2">
+                <p className="text-base text-gray-700 lg:text-sm">
+                  <strong>{member.name}</strong> • {date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                </p>
+              </div>
             </div>
 
-            <div className="p-4">
-              <div className="space-y-3">
-                <h4 className="font-medium text-gray-900 text-sm">
+            {/* Content - Enhanced mobile layout */}
+            <div className="flex-1 p-4 overflow-y-auto">
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900 text-base lg:text-sm">
                   Quick Reasons • סיבות מהירות:
                 </h4>
                 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-2">
                   {HEBREW_QUICK_REASONS[pendingValue].map((reason, index) => (
                     <button
                       key={index}
-                      onClick={() => handleQuickReasonSelect(reason.value)}
-                      className="flex items-center gap-2 p-3 text-left bg-gray-50 hover:bg-blue-50 rounded-lg transition-colors border border-gray-200 hover:border-blue-300 min-h-[44px]"
+                      onClick={() => {
+                        // Add haptic feedback
+                        if ('vibrate' in navigator) {
+                          navigator.vibrate(50);
+                        }
+                        handleQuickReasonSelect(reason.value);
+                      }}
+                      className="flex items-center gap-3 p-4 text-left bg-gray-50 hover:bg-blue-50 active:bg-blue-100 rounded-xl transition-all duration-200 border border-gray-200 hover:border-blue-300 active:border-blue-400 min-h-[60px] lg:min-h-[44px] lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
                     >
-                      <span className="text-lg">{reason.emoji}</span>
-                      <span className="text-sm font-medium text-gray-900 flex-1">
+                      <span className="text-2xl lg:text-lg">{reason.emoji}</span>
+                      <span className="text-base lg:text-sm font-medium text-gray-900 flex-1">
                         {reason.text}
                       </span>
+                      <span className="text-gray-400">→</span>
                     </button>
                   ))}
                 </div>
 
-                <div className="border-t border-gray-200 pt-3 mt-4">
+                <div className="border-t border-gray-200 pt-4 mt-6 lg:pt-3 lg:mt-4">
                   <button
-                    onClick={handleCustomReason}
-                    className="w-full flex items-center justify-center gap-2 p-3 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-medium text-gray-700 min-h-[44px]"
+                    onClick={() => {
+                      // Add haptic feedback
+                      if ('vibrate' in navigator) {
+                        navigator.vibrate(25);
+                      }
+                      handleCustomReason();
+                    }}
+                    className="w-full flex items-center justify-center gap-3 p-4 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl transition-all duration-200 text-base lg:text-sm font-medium text-gray-700 min-h-[56px] lg:min-h-[44px] shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
                   >
-                    <MessageSquare className="w-4 h-4" />
-                    Custom Reason • סיבה מותאמת אישית
+                    <MessageSquare className="w-5 h-5 lg:w-4 lg:h-4" />
+                    <span>Custom Reason • סיבה מותאמת אישית</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowQuickReasons(false)}
-                  className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium min-h-[44px]"
-                >
-                  Cancel • ביטול
-                </button>
-              </div>
+            {/* Footer - Enhanced mobile buttons */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50 lg:bg-white">
+              <button
+                onClick={() => setShowQuickReasons(false)}
+                className="w-full px-6 py-4 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 text-base lg:text-sm font-medium min-h-[56px] lg:min-h-[44px] shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
+              >
+                Cancel • ביטול
+              </button>
             </div>
           </div>
         </div>

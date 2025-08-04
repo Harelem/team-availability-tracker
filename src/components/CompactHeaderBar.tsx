@@ -61,7 +61,7 @@ export default function CompactHeaderBar({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onWeekChange(currentWeekOffset - 1)}
-                className="flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm min-h-[40px]"
+                className="flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm touch-target"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Prev</span>
@@ -70,7 +70,7 @@ export default function CompactHeaderBar({
               {currentWeekOffset !== 0 && (
                 <button
                   onClick={() => onWeekChange(0)}
-                  className="flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm min-h-[40px]"
+                  className="flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm touch-target"
                 >
                   <Calendar className="w-4 h-4" />
                   <span className="hidden sm:inline">Current</span>
@@ -79,7 +79,7 @@ export default function CompactHeaderBar({
               
               <button
                 onClick={() => onWeekChange(currentWeekOffset + 1)}
-                className="flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm min-h-[40px]"
+                className="flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm touch-target"
               >
                 <span className="hidden sm:inline">Next</span>
                 <ChevronRight className="w-4 h-4" />
@@ -114,7 +114,7 @@ export default function CompactHeaderBar({
             {canManageSprints(currentUser) && (
               <button 
                 onClick={onSprintSettings}
-                className="flex items-center gap-1 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm min-h-[40px]"
+                className="flex items-center gap-1 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm touch-target"
               >
                 <Settings className="w-4 h-4" />
                 <span className="hidden sm:inline">Sprint</span>
@@ -126,7 +126,7 @@ export default function CompactHeaderBar({
               <>
                 <button 
                   onClick={onViewReasons}
-                  className="flex items-center gap-1 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm min-h-[40px]"
+                  className="flex items-center gap-1 bg-gray-600 text-white px-3 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm touch-target"
                 >
                   <Eye className="w-4 h-4" />
                   <span className="hidden sm:inline">Reasons</span>

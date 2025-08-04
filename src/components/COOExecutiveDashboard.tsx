@@ -133,6 +133,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
         currentUser={currentUser}
         dashboardData={dashboardData}
         onBack={onBack}
+        onTeamNavigate={onTeamNavigate}
         onRefresh={refreshDashboard}
         isLoading={isLoading}
         error={error}
@@ -318,7 +319,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
             />
 
             <COOMetricCard
-              title="Sprint Max"
+              title="Max Capacity"
               value={formatHours(dashboardData.companyOverview.sprintMax)}
               trend={currentSprint ? 
                 `${currentSprint.sprint_length_weeks} weeks × ${dashboardData.companyOverview.totalMembers} × 7h` :
@@ -330,7 +331,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
             />
 
             <COOMetricCard
-              title="Sprint Potential"
+              title="Sprint Max Capacity"
               value={formatHours(dashboardData.companyOverview.sprintPotential)}
               trend={`After deducting absences/reasons`}
               icon={CheckCircle}
@@ -452,7 +453,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
                       <span className="font-medium">{formatHours(team.maxCapacity)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Potential:</span>
+                      <span className="text-gray-600">Max Capacity:</span>
                       <span className="font-medium">{formatHours(team.weeklyPotential)}</span>
                     </div>
                   </div>
@@ -529,7 +530,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
             <h4 className="font-medium text-blue-900 mb-3">Next Week Projection</h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-blue-700">Potential:</span>
+                <span className="text-blue-700">Max Capacity:</span>
                 <span className="font-medium">{formatHours(dashboardData.capacityForecast.nextWeekProjection.potentialHours)}</span>
               </div>
               <div className="flex justify-between text-sm">
@@ -551,7 +552,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
             <h4 className="font-medium text-green-900 mb-3">Sprint Outlook</h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-green-700">Sprint Potential:</span>
+                <span className="text-green-700">Sprint Max Capacity:</span>
                 <span className="font-medium">{formatHours(dashboardData.capacityForecast.nextSprintProjection.sprintPotential)}</span>
               </div>
               <div className="flex justify-between text-sm">

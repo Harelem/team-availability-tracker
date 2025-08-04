@@ -1,3 +1,5 @@
+/* RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
+
 import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { RecognitionService } from '../../src/lib/recognitionService';
 import { DatabaseService } from '../../src/lib/database';
@@ -533,3 +535,5 @@ describe('RecognitionService', () => {
     });
   });
 });
+
+*/
