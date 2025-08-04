@@ -29,8 +29,13 @@ const nextConfig: NextConfig = {
   // Compression and optimization
   compress: true,
   poweredByHeader: false,
+
+  // CRITICAL: Force cache invalidation for mobile emergency fix
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
   
-  // Security and PWA headers
+  // Security and PWA headers with AGGRESSIVE CACHE INVALIDATION
   async headers() {
     return [
       {
@@ -51,6 +56,19 @@ const nextConfig: NextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
+          },
+          // CRITICAL: Force cache invalidation for mobile emergency
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
           },
         ],
       },

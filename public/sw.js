@@ -5,8 +5,8 @@
  * and push notification handling for enhanced mobile experience.
  */
 
-// Generate timestamp-based cache versions for immediate invalidation
-const CACHE_VERSION = '2025-08-03-15-30-00'; // Update timestamp for force invalidation
+// CRITICAL MOBILE EMERGENCY: Generate timestamp-based cache versions for immediate invalidation
+const CACHE_VERSION = '2025-08-04-11-15-00-emergency'; // UPDATED for mobile cache emergency fix
 const CACHE_NAME = `team-tracker-v${CACHE_VERSION}`;
 const STATIC_CACHE = `team-tracker-static-v${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `team-tracker-dynamic-v${CACHE_VERSION}`;
@@ -41,11 +41,11 @@ const NO_CACHE_PATTERNS = [
   '/api/notifications/send'
 ];
 
-// Maximum age for cached items (in milliseconds) - AGGRESSIVE for mobile cache busting
+// EMERGENCY MOBILE CACHE EXPIRATION - EXTREMELY AGGRESSIVE for cache busting
 const CACHE_EXPIRATION = {
-  static: 1 * 60 * 60 * 1000,     // 1 hour (reduced from 30 days)
-  dynamic: 30 * 60 * 1000,        // 30 minutes (reduced from 7 days)  
-  api: 5 * 60 * 1000              // 5 minutes (reduced from 1 hour)
+  static: 5 * 60 * 1000,          // 5 minutes (reduced from 1 hour) - EMERGENCY
+  dynamic: 2 * 60 * 1000,         // 2 minutes (reduced from 30 minutes) - EMERGENCY  
+  api: 1 * 60 * 1000              // 1 minute (reduced from 5 minutes) - EMERGENCY
 };
 
 // Force cache invalidation detection for mobile browsers

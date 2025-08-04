@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { GlobalLiveRegions } from "@/components/accessibility/ScreenReaderAnnouncements";
+import VersionDisplay from "@/components/VersionDisplay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -221,6 +222,9 @@ export default function RootLayout({
         
         {/* Global accessibility live regions */}
         <GlobalLiveRegions />
+        
+        {/* Version display for mobile emergency debugging */}
+        <VersionDisplay />
         
         {/* Performance monitoring initialization script */}
         <script
