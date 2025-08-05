@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Download, RefreshCw, Users, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Users, AlertTriangle } from 'lucide-react';
 import { TeamMember, Team } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTeamDailyStatus } from '@/hooks/useTeamDailyStatus';
@@ -72,7 +72,7 @@ const DailyStatusCard: React.FC<DailyStatusCardProps> = ({
 
   return (
     <div className={`
-      border rounded-lg p-2 sm:p-3 text-center transition-all duration-200
+      border rounded-lg p-3 sm:p-4 text-center transition-all duration-200 min-h-[140px] sm:min-h-[120px]
       ${isToday ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-white hover:bg-gray-50'}
       ${isWeekend ? 'bg-gray-100 opacity-75' : ''}
     `}>
@@ -97,9 +97,10 @@ const DailyStatusCard: React.FC<DailyStatusCardProps> = ({
             onClick={() => item.count > 0 && onStatusClick(item.statusType)}
             disabled={item.count === 0}
             className={`
-              flex items-center justify-center text-xs w-full rounded px-1 py-0.5 transition-colors
+              flex items-center justify-center text-xs sm:text-sm w-full rounded px-2 py-2 sm:py-1.5 transition-colors
+              min-h-[44px] sm:min-h-[32px]
               ${item.color}
-              ${item.count > 0 ? 'hover:bg-gray-100 cursor-pointer' : 'cursor-default'}
+              ${item.count > 0 ? 'hover:bg-gray-100 cursor-pointer active:bg-gray-200' : 'cursor-default'}
               ${item.count === 0 ? 'opacity-50' : ''}
             `}
             title={item.count > 0 ? `Click to see ${item.label.toLowerCase()} team members` : undefined}
@@ -152,13 +153,13 @@ const TeamMetricsRow: React.FC<{
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-4 border-t">
       {metrics.map((metric, index) => (
-        <div key={index} className="text-center">
-          <div className={`text-lg font-bold ${metric.color}`}>
+        <div key={index} className="text-center p-2">
+          <div className={`text-lg sm:text-xl font-bold ${metric.color}`}>
             {metric.value}
           </div>
-          <div className="text-sm text-gray-600">{metric.label}</div>
+          <div className="text-sm sm:text-base text-gray-600 mt-1">{metric.label}</div>
         </div>
       ))}
     </div>
@@ -221,38 +222,6 @@ export default function TeamDailySummary({
     });
   };
 
-  const exportTeamSummary = () => {
-    if (!data) return;
-    
-    // Create a simple export of team summary data
-    const exportData = {
-      teamName: data.teamName,
-      weekOffset: data.currentWeekOffset,
-      weekMetrics: data.weekMetrics,
-      dailyData: data.weekDays.map(day => ({
-        date: day.date,
-        totalHours: day.totalHours,
-        fullDay: day.fullDay,
-        halfDay: day.halfDay,
-        absent: day.absent,
-        notFilled: day.notFilled
-      })),
-      exportedAt: new Date().toISOString(),
-      exportedBy: currentUser.name
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-      type: 'application/json' 
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${team.name.replace(/\s+/g, '_')}_team_summary_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   if (isLoading) {
     return (
@@ -313,16 +282,6 @@ export default function TeamDailySummary({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500 font-normal">Current Week</span>
-            {isManager && (
-              <button
-                onClick={exportTeamSummary}
-                className="flex items-center gap-1 px-2 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-                title="Export team summary"
-              >
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Export</span>
-              </button>
-            )}
             <button
               onClick={refetch}
               className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
@@ -336,24 +295,31 @@ export default function TeamDailySummary({
       </CardHeader>
       
       <CardContent>
-        {/* Daily status grid */}
-        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-4">
-          {data.weekDays.map((dayStatus) => {
-            const date = new Date(dayStatus.date);
-            // Only calculate isToday on client side to avoid hydration issues
-            const isToday = isClient ? TeamDailyCalculationService.isToday(date) : false;
-            const isWeekend = TeamDailyCalculationService.isWeekend(date);
-            
-            return (
-              <DailyStatusCard
-                key={dayStatus.date}
-                dayStatus={dayStatus}
-                isToday={isToday}
-                isWeekend={isWeekend}
-                onStatusClick={(statusType) => handleStatusClick(dayStatus, statusType)}
-              />
-            );
-          })}
+        {/* Daily status grid - Weekdays only (Sunday-Thursday) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-4">
+          {data.weekDays
+            .filter((dayStatus) => {
+              const date = new Date(dayStatus.date);
+              const dayOfWeek = date.getDay();
+              // Exclude Friday (5) and Saturday (6)
+              return dayOfWeek >= 0 && dayOfWeek <= 4;
+            })
+            .map((dayStatus) => {
+              const date = new Date(dayStatus.date);
+              // Only calculate isToday on client side to avoid hydration issues
+              const isToday = isClient ? TeamDailyCalculationService.isToday(date) : false;
+              const isWeekend = TeamDailyCalculationService.isWeekend(date);
+              
+              return (
+                <DailyStatusCard
+                  key={dayStatus.date}
+                  dayStatus={dayStatus}
+                  isToday={isToday}
+                  isWeekend={isWeekend}
+                  onStatusClick={(statusType) => handleStatusClick(dayStatus, statusType)}
+                />
+              );
+            })}
         </div>
         
         {/* Team metrics */}

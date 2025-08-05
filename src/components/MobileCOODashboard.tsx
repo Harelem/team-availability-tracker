@@ -3,18 +3,15 @@
 import { 
   ArrowLeft,
   Users,
-  Target,
-  TrendingUp,
-  Zap,
   Building2,
   BarChart3,
-  Calendar,
   Activity,
   Award
 } from 'lucide-react';
 import { COOUser, COODashboardData } from '@/types';
 import COOExportButton from './COOExportButton';
 import { formatHours, formatPercentage, getUtilizationStatusColor } from '@/lib/calculationService';
+import SimplifiedMetricsCards from './SimplifiedMetricsCards';
 
 interface MobileCOODashboardProps {
   currentUser?: COOUser;
@@ -126,93 +123,18 @@ export default function MobileCOODashboard({
       {/* Mobile Content */}
       <div className="p-4 space-y-4">
         
-        {/* Company Overview - Mobile Cards */}
+        {/* Simplified Mobile Metrics Cards */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-gray-600" />
             Company Overview
           </h2>
           
-          <div className="grid grid-cols-1 gap-3">
-            {/* Total Workforce */}
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-700">Total Workforce</span>
-                </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold text-blue-900">
-                    {dashboardData.companyOverview.totalMembers}
-                  </div>
-                  <div className="text-xs text-blue-600">
-                    {dashboardData.companyOverview.totalTeams} teams
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Weekly Potential */}
-            <div className="bg-green-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-green-600" />
-                  <span className="text-sm font-medium text-green-700">Weekly Max Capacity</span>
-                </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold text-green-900">
-                    {formatHours(dashboardData.companyOverview.weeklyPotential)}
-                  </div>
-                  <div className="text-xs text-green-600">
-                    {formatHours(dashboardData.companyOverview.weeklyPotential / dashboardData.companyOverview.totalMembers)} per person
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Current Utilization */}
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-purple-600" />
-                  <span className="text-sm font-medium text-purple-700">Current Utilization</span>
-                </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold text-purple-900">
-                    {formatPercentage(dashboardData.companyOverview.currentUtilization)}
-                  </div>
-                  <div className={`text-xs px-2 py-1 rounded-full ${getUtilizationStatusColor(dashboardData.companyOverview.currentUtilization)}`}>
-                    {dashboardData.companyOverview.currentUtilization >= 90 ? 'Optimal' : 
-                     dashboardData.companyOverview.currentUtilization >= 80 ? 'Good' : 'Below Target'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Capacity Gap */}
-            <div className="bg-orange-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-orange-600" />
-                  <span className="text-sm font-medium text-orange-700">Capacity Gap</span>
-                </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold text-orange-900">
-                    {Math.abs(dashboardData.companyOverview.capacityGap) < 10
-                      ? `${dashboardData.companyOverview.capacityGapPercentage}%`
-                      : formatHours(Math.abs(dashboardData.companyOverview.capacityGap))
-                    }
-                  </div>
-                  <div className="text-xs text-orange-600">
-                    {Math.abs(dashboardData.companyOverview.capacityGap) < 10
-                      ? `${formatHours(Math.abs(dashboardData.companyOverview.capacityGap))} capacity lost`
-                      : dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'
-                    }
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <SimplifiedMetricsCards 
+            dashboardData={dashboardData}
+            selectedDate={new Date()}
+            className="grid-cols-1 sm:grid-cols-2"
+          />
         </div>
 
         {/* Team Capacity - Mobile List */}

@@ -3,12 +3,9 @@
 import { useState, useEffect } from 'react';
 import { 
   BarChart3, 
-  Users, 
   TrendingUp, 
   AlertTriangle, 
-  Calendar,
   Building2,
-  Zap,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -30,7 +27,8 @@ import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { formatHours, formatPercentage } from '@/lib/calculationService';
 import ConsolidatedAnalytics from './analytics/ConsolidatedAnalytics';
 import TeamDetailModal from '@/components/modals/TeamDetailModal';
-import { COOCard, COOMetricCard } from '@/components/ui/COOCard';
+import { COOCard } from '@/components/ui/COOCard';
+import SimplifiedMetricsCards from './SimplifiedMetricsCards';
 // RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
 // import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
 import DailyCompanyStatus from './coo/DailyCompanyStatus';
@@ -306,69 +304,12 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
       {/* Tab Content */}
       {activeTab === 'dashboard' && (
         <>
-          {/* Company Overview Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <COOMetricCard
-              title="Total Workforce"
-              value={dashboardData.companyOverview.totalMembers}
-              unit="members"
-              trend={`${dashboardData.companyOverview.totalTeams} teams`}
-              icon={Users}
-              variant="primary"
-              status="good"
-            />
-
-            <COOMetricCard
-              title="Max Capacity"
-              value={formatHours(dashboardData.companyOverview.sprintMax)}
-              trend={currentSprint ? 
-                `${currentSprint.sprint_length_weeks} weeks × ${dashboardData.companyOverview.totalMembers} × 7h` :
-                `${dashboardData.companyOverview.totalMembers} × 2 weeks × 7h`
-              }
-              icon={Calendar}
-              variant="info"
-              status="excellent"
-            />
-
-            <COOMetricCard
-              title="Sprint Max Capacity"
-              value={formatHours(dashboardData.companyOverview.sprintPotential)}
-              trend={`After deducting absences/reasons`}
-              icon={CheckCircle}
-              variant="success"
-              status="excellent"
-            />
-
-            <COOMetricCard
-              title="Current Utilization"
-              value={formatPercentage(dashboardData.companyOverview.currentUtilization)}
-              trend={dashboardData.companyOverview.currentUtilization >= 90 ? 'Optimal' : 
-                     dashboardData.companyOverview.currentUtilization >= 80 ? 'Good' : 'Below Target'}
-              trendDirection={dashboardData.companyOverview.currentUtilization >= 80 ? 'up' : 'down'}
-              icon={TrendingUp}
-              variant="primary"
-              status={dashboardData.companyOverview.currentUtilization >= 90 ? 'excellent' :
-                     dashboardData.companyOverview.currentUtilization >= 80 ? 'good' : 'warning'}
-            />
-
-            <COOMetricCard
-              title="Capacity Gap"
-              value={
-                Math.abs(dashboardData.companyOverview.capacityGap) < 10
-                  ? `${dashboardData.companyOverview.capacityGapPercentage}%`
-                  : formatHours(Math.abs(dashboardData.companyOverview.capacityGap))
-              }
-              trend={
-                Math.abs(dashboardData.companyOverview.capacityGap) < 10
-                  ? `${formatHours(Math.abs(dashboardData.companyOverview.capacityGap))} (${dashboardData.companyOverview.capacityGapPercentage}% of capacity)`
-                  : dashboardData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity'
-              }
-              trendDirection={dashboardData.companyOverview.capacityGap > 0 ? 'down' : 'up'}
-              icon={Zap}
-              variant="warning"
-              status={Math.abs(dashboardData.companyOverview.capacityGap) < 10 ? 'good' : 'warning'}
-            />
-          </div>
+          {/* Simplified Metrics Cards */}
+          <SimplifiedMetricsCards 
+            dashboardData={dashboardData}
+            selectedDate={new Date()}
+            className="mb-6"
+          />
 
       {/* Mobile Export Button */}
       <div className="sm:hidden mb-6">

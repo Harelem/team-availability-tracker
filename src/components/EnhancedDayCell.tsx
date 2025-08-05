@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MessageSquare, Info } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
 
 interface EnhancedDayCellProps {
@@ -20,20 +20,18 @@ interface EnhancedDayCellProps {
 // Hebrew quick reason options
 const HEBREW_QUICK_REASONS = {
   '0.5': [
+    { emoji: '👤', text: 'אישי', value: 'עניין אישי' },
+    { emoji: '🏖️', text: 'חופש', value: 'יום חופש' },
     { emoji: '🩺', text: 'רופא', value: 'רופא - תור רפואי' },
-    { emoji: '👨‍👩‍👧‍👦', text: 'משפחה', value: 'עניין משפחתי חשוב' },
-    { emoji: '📋', text: 'אישי', value: 'עניין אישי דחוף' },
-    { emoji: '🏢', text: 'רשמי', value: 'עניין רשמי/ביורוקרטי' },
-    { emoji: '🚗', text: 'נסיעה', value: 'נסיעה/תחבורה' },
-    { emoji: '📞', text: 'שיחה', value: 'שיחת עבודה חשובה' }
+    { emoji: '🛡️', text: 'שמירה', value: 'שמירה/מילואים' },
+    { emoji: '🤒', text: 'מחלה', value: 'מחלה/אי הרגשה טובה' }
   ],
   'X': [
-    { emoji: '🤒', text: 'מחלה', value: 'מחלה/אי הרגשה טובה' },
+    { emoji: '👤', text: 'אישי', value: 'עניין אישי' },
+    { emoji: '🏖️', text: 'חופש', value: 'יום חופש' },
+    { emoji: '🩺', text: 'רופא', value: 'רופא - תור רפואי' },
     { emoji: '🛡️', text: 'שמירה', value: 'שמירה/מילואים' },
-    { emoji: '🏖️', text: 'חופשה', value: 'יום חופשה' },
-    { emoji: '👨‍👩‍👧‍👦', text: 'משפחה', value: 'חירום משפחתי' },
-    { emoji: '📅', text: 'מתוכנן', value: 'יום חופש מתוכנן' },
-    { emoji: '🚫', text: 'אחר', value: 'סיבה אחרת' }
+    { emoji: '🤒', text: 'מחלה', value: 'מחלה/אי הרגשה טובה' }
   ]
 };
 
@@ -51,6 +49,8 @@ export default function EnhancedDayCell({
 }: EnhancedDayCellProps) {
   const [showQuickReasons, setShowQuickReasons] = useState(false);
   const [pendingValue, setPendingValue] = useState<'0.5' | 'X' | null>(null);
+  const [showReasonTooltip, setShowReasonTooltip] = useState(false);
+  const reasonTooltipRef = useRef<HTMLDivElement>(null);
 
   // const dateKey = date.toISOString().split('T')[0]; // Not used in this component
 
@@ -98,6 +98,34 @@ export default function EnhancedDayCell({
     setPendingValue(null);
   };
 
+  const handleReasonIconClick = () => {
+    setShowReasonTooltip(!showReasonTooltip);
+  };
+
+  const handleReasonIconKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleReasonIconClick();
+    }
+    if (e.key === 'Escape') {
+      setShowReasonTooltip(false);
+    }
+  };
+
+  // Handle click outside to close tooltip
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (reasonTooltipRef.current && !reasonTooltipRef.current.contains(event.target as Node)) {
+        setShowReasonTooltip(false);
+      }
+    };
+
+    if (showReasonTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showReasonTooltip]);
+
   const getCellBackgroundColor = () => {
     if (isToday) return 'bg-blue-50 border-blue-200';
     if (isPast) return 'bg-gray-25';
@@ -108,10 +136,26 @@ export default function EnhancedDayCell({
     if (!currentValue?.reason) return null;
     
     return (
-      <div className="absolute top-1 right-1 group">
-        <MessageSquare className="w-3 h-3 text-blue-500" />
-        <div className="absolute right-0 top-5 hidden group-hover:block bg-gray-900 text-white text-xs p-2 rounded shadow-lg z-50 w-48 break-words">
+      <div className="absolute top-1 right-1 group" ref={reasonTooltipRef}>
+        <button
+          onClick={handleReasonIconClick}
+          onKeyDown={handleReasonIconKeyDown}
+          onMouseEnter={() => setShowReasonTooltip(true)}
+          onMouseLeave={() => setShowReasonTooltip(false)}
+          className="min-h-[24px] min-w-[24px] flex items-center justify-center rounded-full hover:bg-blue-50 active:bg-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 touch-manipulation"
+          aria-label={`Reason: ${currentValue.reason}`}
+          tabIndex={0}
+          role="button"
+        >
+          <Info className="w-3 h-3 text-blue-500 hover:text-blue-600" />
+        </button>
+        
+        {/* Tooltip - shows on both hover and click */}
+        <div className={`absolute right-0 top-6 bg-gray-900 text-white text-xs p-2 rounded shadow-lg z-50 w-48 break-words transition-opacity duration-200 ${
+          showReasonTooltip ? 'opacity-100 visible' : 'opacity-0 invisible'
+        }`}>
           {currentValue.reason}
+          <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-900 rotate-45"></div>
         </div>
       </div>
     );

@@ -1,14 +1,50 @@
 /**
- * TypeScript interfaces for Team Detail Modal components
+ * TypeScript interfaces for Modal components
  */
 
-import { Team, TeamMember, CurrentGlobalSprint } from './index';
+import { Team, TeamMember, CurrentGlobalSprint, DailyCompanyStatusData } from './index';
 
 // Core Modal Props
 export interface TeamDetailModalProps {
   teamId: number;
   isOpen: boolean;
   onClose: () => void;
+}
+
+// Workforce Status Modal Props
+export interface WorkforceStatusModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedDate?: Date;
+}
+
+export interface WorkforceStatusContentProps {
+  dailyStatus: DailyCompanyStatusData | null;
+  isLoading: boolean;
+  selectedDate: Date;
+  isMobile?: boolean;
+}
+
+// Sprint Potential Modal Props
+export interface SprintPotentialModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  dashboardData: any; // COODashboardData type
+}
+
+export interface TeamCapacityBreakdown {
+  teamId: number;
+  teamName: string;
+  maxCapacity: number;
+  sprintPotential: number;
+  capacityGap: number;
+  capacityGapPercentage: number;
+  memberCount: number;
+  lostHoursReasons: {
+    absences: number;
+    partialDays: number;
+    otherReasons: number;
+  };
 }
 
 // Team Information Section

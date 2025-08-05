@@ -66,12 +66,12 @@ export default function TeamSummaryOverview({
 
   if (isLoading) {
     return (
-      <div className={`bg-white rounded-lg shadow-md p-6 mb-6 ${className}`}>
+      <div className={`bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 ${className}`}>
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-gray-200 rounded-lg h-24"></div>
+              <div key={i} className="bg-gray-200 rounded-lg h-28 sm:h-24"></div>
             ))}
           </div>
         </div>
@@ -81,15 +81,15 @@ export default function TeamSummaryOverview({
 
   if (error || !dashboardData) {
     return (
-      <div className={`bg-white rounded-lg shadow-md p-6 mb-6 border-l-4 border-red-500 ${className}`}>
-        <div className="flex items-center justify-between">
+      <div className={`bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 border-l-4 border-red-500 ${className}`}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-red-800">Team Summary Error</h3>
             <p className="text-sm text-red-600 mt-1">{error || 'Unable to load team summary'}</p>
           </div>
           <button
             onClick={refreshDashboard}
-            className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
+            className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm min-h-[44px] self-stretch sm:self-auto"
           >
             <RefreshCw className="w-4 h-4" />
             Retry
@@ -100,13 +100,13 @@ export default function TeamSummaryOverview({
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-md p-6 mb-6 ${className}`}>
+    <div className={`bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" />
-            <span>{team.name} Team Summary</span>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <span className="truncate">{team.name} Team Summary</span>
           </h3>
           <p className="text-sm text-gray-600 mt-1">
             Team capacity overview • {dashboardData.teamOverview.memberCount} members
@@ -118,10 +118,11 @@ export default function TeamSummaryOverview({
         
         <button
           onClick={refreshDashboard}
-          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+          className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm min-h-[44px] self-stretch sm:self-auto"
           title="Refresh team summary"
         >
           <Activity className="w-4 h-4" />
+          <span className="sm:hidden">Refresh</span>
           <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
@@ -132,7 +133,7 @@ export default function TeamSummaryOverview({
           <Calendar className="w-4 h-4 text-blue-600" />
           Sprint Overview - Full {currentSprint ? `${currentSprint.sprint_length_weeks}-week` : '2-week'} Period
         </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <COOMetricCard
             title="Max Capacity"
             value={formatHours(dashboardData.teamOverview.maxCapacity)}
@@ -193,8 +194,8 @@ export default function TeamSummaryOverview({
             Sprint Progress - Days Completed So Far
           </h4>
           <div className="bg-purple-50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-3">
+              <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-gray-900">
                   Sprint {dashboardData.sprintProgress.sprintNumber} Progress
                 </div>
@@ -202,7 +203,7 @@ export default function TeamSummaryOverview({
                   {dashboardData.sprintProgress.daysRemaining} days remaining of {dashboardData.sprintProgress.sprintWeeks}-week sprint
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <div className="text-lg font-semibold text-purple-900">
                   {formatPercentage(dashboardData.sprintProgress.sprintUtilization)}
                 </div>
@@ -250,33 +251,33 @@ export default function TeamSummaryOverview({
           Current Week Status - This Week Only
         </h4>
         <div className="bg-gray-50 rounded-lg p-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <div className="text-lg font-semibold text-gray-900">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-center">
+            <div className="p-2">
+              <div className="text-lg sm:text-xl font-semibold text-gray-900">
                 {formatHours(dashboardData.currentWeekMetrics.actualHours)}
               </div>
-              <div className="text-xs text-gray-500">Scheduled Hours</div>
+              <div className="text-xs sm:text-sm text-gray-500 mt-1">Scheduled Hours</div>
               <div className="text-xs text-gray-400">This week only</div>
             </div>
-            <div>
-              <div className="text-lg font-semibold text-gray-900">
+            <div className="p-2">
+              <div className="text-lg sm:text-xl font-semibold text-gray-900">
                 {formatPercentage(dashboardData.currentWeekMetrics.utilization)}
               </div>
-              <div className="text-xs text-gray-500">Week Utilization</div>
+              <div className="text-xs sm:text-sm text-gray-500 mt-1">Week Utilization</div>
               <div className="text-xs text-gray-400">Of {formatHours(dashboardData.currentWeekMetrics.potentialHours)} potential</div>
             </div>
-            <div>
-              <div className="text-lg font-semibold text-gray-900">
+            <div className="p-2">
+              <div className="text-lg sm:text-xl font-semibold text-gray-900">
                 {dashboardData.currentWeekMetrics.absentMembers}
               </div>
-              <div className="text-xs text-gray-500">Absent Members</div>
+              <div className="text-xs sm:text-sm text-gray-500 mt-1">Absent Members</div>
               <div className="text-xs text-gray-400">Sick/Out this week</div>
             </div>
-            <div>
-              <div className="text-lg font-semibold text-gray-900">
+            <div className="p-2">
+              <div className="text-lg sm:text-xl font-semibold text-gray-900">
                 {dashboardData.currentWeekMetrics.halfDayMembers}
               </div>
-              <div className="text-xs text-gray-500">Half-Day Members</div>
+              <div className="text-xs sm:text-sm text-gray-500 mt-1">Half-Day Members</div>
               <div className="text-xs text-gray-400">Partial availability</div>
             </div>
           </div>

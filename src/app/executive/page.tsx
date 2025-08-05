@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import COOExecutiveDashboard from '@/components/COOExecutiveDashboard';
 import ExecutiveLoginScreen from '@/components/ExecutiveLoginScreen';
@@ -66,35 +66,39 @@ export default function ExecutivePage() {
     };
 
     loadExecutiveData();
-  }, [isMobile, mobileLoading]);
+  }, [isMobile, mobileLoading, loadMobileData]);
 
   // Load mobile-specific data
-  const loadMobileData = async () => {
+  const loadMobileData = useCallback(async () => {
     try {
       const dailyStatus = await DatabaseService.getDailyCompanyStatus(selectedDate);
       setTeamsData(dailyStatus.teams || []);
       
-      // Calculate company metrics
-      const totalMembers = dailyStatus.teams.reduce((sum, team) => sum + team.total, 0);
-      const totalAvailable = dailyStatus.teams.reduce((sum, team) => sum + team.available, 0);
-      const totalCapacity = totalMembers * 9; // 9 hours per day
-      const availableCapacity = totalAvailable * 9 + dailyStatus.teams.reduce((sum, team) => sum + team.halfDay, 0) * 4.5;
-      const utilization = totalCapacity > 0 ? (availableCapacity / totalCapacity) * 100 : 0;
+      // Calculate company metrics using consistent formula with desktop
+      const totalMembers = dailyStatus.total; // Use the total from summary
+      const totalAvailable = dailyStatus.summary.available;
+      const totalHalfDay = dailyStatus.summary.halfDay;
+      
+      // Calculate capacity in hours
+      const maxDailyCapacity = totalMembers * 9; // 9 hours per person per day
+      const availableDailyCapacity = (totalAvailable * 9) + (totalHalfDay * 4.5);
+      const utilization = maxDailyCapacity > 0 ? (availableDailyCapacity / maxDailyCapacity) * 100 : 0;
       
       setCompanyMetrics({
-        totalCapacity,
-        availableCapacity,
+        totalCapacity: maxDailyCapacity,
+        availableCapacity: availableDailyCapacity,
         utilization,
         teamsCount: dailyStatus.teams.length,
         membersCount: totalMembers
       });
       
       console.log(`📱 Mobile data loaded: ${dailyStatus.teams.length} teams, ${totalMembers} members`);
+      console.log(`📊 Company metrics: ${utilization.toFixed(1)}% utilization (${availableDailyCapacity}h/${maxDailyCapacity}h)`);
     } catch (error) {
       console.error('❌ Error loading mobile data:', error);
       setTeamsData([]);
     }
-  };
+  }, [selectedDate]);
 
   const handleCOOAccess = (user: COOUser) => {
     // Validate COO permissions before granting access

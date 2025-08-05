@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Users, BarChart, Eye, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Users, TrendingUp, RefreshCw } from 'lucide-react';
 import { TeamMember, Team, WeekData } from '@/types';
 
 interface MobileTeamDashboardProps {
@@ -288,21 +288,33 @@ export default function MobileTeamDashboard({
       {/* Mobile Bottom Navigation */}
       <div className="mobile-nav">
         <div className="flex justify-around">
-          <a href="/" className="mobile-nav-item active">
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="mobile-nav-item active"
+          >
             <Calendar className="h-5 w-5 mobile-nav-item-icon" />
             <span className="mobile-nav-item-label">Schedule</span>
-          </a>
-          <a href="/teams" className="mobile-nav-item">
+          </button>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="mobile-nav-item"
+          >
             <Users className="h-5 w-5 mobile-nav-item-icon" />
             <span className="mobile-nav-item-label">Teams</span>
-          </a>
-          <a href="/executive" className="mobile-nav-item">
-            <BarChart className="h-5 w-5 mobile-nav-item-icon" />
-            <span className="mobile-nav-item-label">Reports</span>
-          </a>
-          <button className="mobile-nav-item">
-            <Eye className="h-5 w-5 mobile-nav-item-icon" />
-            <span className="mobile-nav-item-label">View</span>
+          </button>
+          <button 
+            onClick={() => window.location.href = '/executive'}
+            className="mobile-nav-item"
+          >
+            <TrendingUp className="h-5 w-5 mobile-nav-item-icon" />
+            <span className="mobile-nav-item-label">Executive</span>
+          </button>
+          <button 
+            onClick={handleRefresh}
+            className="mobile-nav-item"
+          >
+            <RefreshCw className={`h-5 w-5 mobile-nav-item-icon ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="mobile-nav-item-label">Refresh</span>
           </button>
         </div>
       </div>

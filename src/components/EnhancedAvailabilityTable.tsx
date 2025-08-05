@@ -95,7 +95,7 @@ export default function EnhancedAvailabilityTable({
               )}
             </div>
             <div className="text-blue-600 text-xs hidden sm:block">
-              Hover over 💬 icons to see reason details
+              Click or hover over ℹ️ icons to see reason details
             </div>
           </div>
         </div>
@@ -424,8 +424,8 @@ export default function EnhancedAvailabilityTable({
         {/* Hebrew Legend */}
         <div className="mt-4 pt-3 border-t border-gray-300">
           <p className="text-xs text-gray-600">
-            <strong>Quick Hebrew Reasons:</strong> 🛡️ שמירה (Reserve), 🤒 מחלה (Sick), 🏖️ חופשה (Vacation), 
-            🩺 רופא (Doctor), 👨‍👩‍👧‍👦 משפחה (Family), 📋 אישי (Personal)
+            <strong>Quick Hebrew Reasons:</strong> 👤 אישי (Personal), 🏖️ חופש (Vacation), 🩺 רופא (Doctor), 
+            🛡️ שמירה (Reserve), 🤒 מחלה (Sick)
           </p>
         </div>
       </div>

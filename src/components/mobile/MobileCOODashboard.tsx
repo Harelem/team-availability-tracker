@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, RefreshCw, Users, TrendingUp, Calendar, Download, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw, Users, TrendingUp, Eye } from 'lucide-react';
 import { TeamDailyStatus } from '@/types';
+import TeamDetailModal from '@/components/modals/TeamDetailModal';
 
 interface MobileCOODashboardProps {
   teams: TeamDailyStatus[];
@@ -26,6 +27,8 @@ export default function MobileCOODashboard({
   companyMetrics
 }: MobileCOODashboardProps) {
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -47,6 +50,16 @@ export default function MobileCOODashboard({
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + days);
     onDateChange(newDate);
+  };
+
+  const handleTeamDetailsClick = (teamId: number) => {
+    setSelectedTeamId(teamId);
+    setIsTeamModalOpen(true);
+  };
+
+  const handleCloseTeamModal = () => {
+    setIsTeamModalOpen(false);
+    setSelectedTeamId(null);
   };
 
   return (
@@ -101,46 +114,73 @@ export default function MobileCOODashboard({
         </div>
       </div>
 
-      {/* Company Metrics Overview */}
-      <div className="mobile-card">
+      {/* Simplified Mobile Metrics Cards */}
+      <div className="space-y-3">
         <div className="mobile-card-header">
           <h2 className="text-base font-semibold">סיכום כללי • Company Overview</h2>
         </div>
         
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="mobile-metric">
-            <div className="mobile-metric-value text-blue-600">{companyMetrics.totalCapacity}h</div>
-            <div className="mobile-metric-label">Sprint Max Capacity</div>
-          </div>
-          <div className="mobile-metric">
-            <div className="mobile-metric-value text-green-600">{companyMetrics.availableCapacity}h</div>
-            <div className="mobile-metric-label">Available Capacity</div>
-          </div>
-        </div>
-        
+        {/* Row 1: Total Workforce & Max Capacity */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="mobile-metric">
-            <div className="mobile-metric-value text-orange-600">{companyMetrics.utilization.toFixed(1)}%</div>
-            <div className="mobile-metric-label">Current Utilization</div>
+          <div className="mobile-card cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => {}}>
+            <div className="mobile-metric">
+              <div className="mobile-metric-value text-blue-600">{companyMetrics.membersCount}</div>
+              <div className="mobile-metric-label">Total Workforce</div>
+              <div className="text-xs text-gray-500 mt-1">{companyMetrics.teamsCount} teams</div>
+            </div>
           </div>
-          <div className="mobile-metric">
-            <div className="mobile-metric-value text-purple-600">{companyMetrics.teamsCount}</div>
-            <div className="mobile-metric-label">Active Teams</div>
+          <div className="mobile-card">
+            <div className="mobile-metric">
+              <div className="mobile-metric-value text-purple-600">{companyMetrics.totalCapacity}h</div>
+              <div className="mobile-metric-label">Max Capacity</div>
+              <div className="text-xs text-gray-500 mt-1">Weekly sprint max</div>
+            </div>
           </div>
         </div>
         
-        <div className="mt-3">
-          <div className="flex justify-between text-sm mb-1">
-            <span>Company Utilization</span>
-            <span className="font-medium">{companyMetrics.utilization.toFixed(1)}%</span>
+        {/* Row 2: Sprint's Potential & Capacity Gap */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="mobile-card">
+            <div className="mobile-metric">
+              <div className="mobile-metric-value text-green-600">{companyMetrics.availableCapacity}h</div>
+              <div className="mobile-metric-label">Sprint's Potential</div>
+              <div className="text-xs text-gray-500 mt-1">After deductions</div>
+            </div>
           </div>
-          <div className="mobile-status-bar">
-            <div 
-              className={`${companyMetrics.utilization > 85 ? 'bg-red-500' : 
-                          companyMetrics.utilization > 70 ? 'bg-orange-500' : 
-                          'mobile-status-available'}`}
-              style={{ width: `${Math.min(companyMetrics.utilization, 100)}%` }}
-            />
+          <div className="mobile-card">
+            <div className="mobile-metric">
+              <div className="mobile-metric-value text-orange-600">
+                {(companyMetrics.totalCapacity - companyMetrics.availableCapacity).toFixed(0)}h
+              </div>
+              <div className="mobile-metric-label">Capacity Gap</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {companyMetrics.totalCapacity > companyMetrics.availableCapacity ? 'Under-utilized' : 'Over-capacity'}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Row 3: Current Utilization (full width) */}
+        <div className="mobile-card">
+          <div className="mobile-metric text-center">
+            <div className="mobile-metric-value text-indigo-600">{companyMetrics.utilization.toFixed(1)}%</div>
+            <div className="mobile-metric-label">Current Utilization</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {companyMetrics.utilization >= 90 ? 'Optimal' : 
+               companyMetrics.utilization >= 80 ? 'Good' : 'Below Target'}
+            </div>
+          </div>
+          
+          {/* Utilization Progress Bar */}
+          <div className="mt-3">
+            <div className="mobile-status-bar">
+              <div 
+                className={`${companyMetrics.utilization > 85 ? 'bg-red-500' : 
+                            companyMetrics.utilization > 70 ? 'bg-orange-500' : 
+                            'mobile-status-available'}`}
+                style={{ width: `${Math.min(companyMetrics.utilization, 100)}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -248,13 +288,12 @@ export default function MobileCOODashboard({
 
                 {/* Quick Actions */}
                 <div className="flex gap-2">
-                  <button className="flex-1 flex items-center justify-center gap-1 py-2 px-3 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                  <button 
+                    onClick={() => handleTeamDetailsClick(team.id)}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 px-3 text-xs bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                  >
                     <Eye className="w-3 h-3" />
-                    <span>פרטים</span>
-                  </button>
-                  <button className="flex-1 flex items-center justify-center gap-1 py-2 px-3 text-xs bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors">
-                    <Download className="w-3 h-3" />
-                    <span>ייצוא</span>
+                    <span>פרטים • Details</span>
                   </button>
                 </div>
               </div>
@@ -266,24 +305,38 @@ export default function MobileCOODashboard({
       {/* Mobile Bottom Navigation */}
       <div className="mobile-nav">
         <div className="flex justify-around">
-          <a href="/" className="mobile-nav-item">
-            <Calendar className="h-5 w-5 mobile-nav-item-icon" />
-            <span className="mobile-nav-item-label">Schedule</span>
-          </a>
-          <a href="/teams" className="mobile-nav-item">
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="mobile-nav-item"
+          >
             <Users className="h-5 w-5 mobile-nav-item-icon" />
             <span className="mobile-nav-item-label">Teams</span>
-          </a>
-          <a href="/executive" className="mobile-nav-item active">
+          </button>
+          <button 
+            onClick={() => window.location.href = '/executive'}
+            className="mobile-nav-item active"
+          >
             <TrendingUp className="h-5 w-5 mobile-nav-item-icon" />
             <span className="mobile-nav-item-label">Executive</span>
-          </a>
-          <button className="mobile-nav-item">
-            <Download className="h-5 w-5 mobile-nav-item-icon" />
-            <span className="mobile-nav-item-label">Export</span>
+          </button>
+          <button 
+            onClick={handleRefresh}
+            className="mobile-nav-item"
+          >
+            <RefreshCw className={`h-5 w-5 mobile-nav-item-icon ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="mobile-nav-item-label">Refresh</span>
           </button>
         </div>
       </div>
+
+      {/* Team Detail Modal */}
+      {selectedTeamId && (
+        <TeamDetailModal
+          teamId={selectedTeamId}
+          isOpen={isTeamModalOpen}
+          onClose={handleCloseTeamModal}
+        />
+      )}
     </div>
   );
 }
