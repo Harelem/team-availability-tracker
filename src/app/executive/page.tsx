@@ -1,23 +1,27 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import COOExecutiveDashboard from '@/components/COOExecutiveDashboard';
 import ExecutiveLoginScreen from '@/components/ExecutiveLoginScreen';
 import MobileCOODashboard from '@/components/mobile/MobileCOODashboard';
-import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
+import MobileHeader from '@/components/navigation/MobileHeader';
 import { COOUser, TeamDailyStatus } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import { validateCOOPermissions } from '@/utils/permissions';
 import { verifyEnvironmentConfiguration } from '@/utils/deploymentSafety';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { validateRedirectUrl, validateTeamId } from '@/utils/validation';
+import { PageErrorBoundary } from '@/components/ErrorBoundary';
 
-export default function ExecutivePage() {
+// Safe wrapper component for executive dashboard content
+function ExecutiveDashboardContent() {
   const router = useRouter();
   const { isMobile, isLoading: mobileLoading } = useIsMobile();
   const [cooUser, setCooUser] = useState<COOUser | null>(null);
   const [cooUsers, setCooUsers] = useState<COOUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
   
   // Mobile-specific state
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -29,44 +33,6 @@ export default function ExecutivePage() {
     teamsCount: 0,
     membersCount: 0
   });
-
-  // Load initial data for executive dashboard
-  useEffect(() => {
-    const loadExecutiveData = async () => {
-      try {
-        setLoading(true);
-        
-        console.log('🏢 Loading Executive Dashboard data...');
-        
-        // Environment verification for executive access
-        const envVerification = verifyEnvironmentConfiguration();
-        if (!envVerification.isConfigValid) {
-          console.error('🚨 Environment configuration issues detected for executive access!');
-          envVerification.warnings.forEach(warning => {
-            console.warn(`⚠️ ${warning}`);
-          });
-        }
-        
-        // Load COO users for executive access
-        const cooUsersData = await DatabaseService.getCOOUsers();
-        setCooUsers(cooUsersData);
-        
-        // Load mobile-specific data if needed
-        if (isMobile && !mobileLoading) {
-          await loadMobileData();
-        }
-        
-        console.log(`✅ Executive data loaded: ${cooUsersData.length} COO users`);
-      } catch (error) {
-        console.error('❌ Error loading executive data:', error);
-        setCooUsers([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadExecutiveData();
-  }, [isMobile, mobileLoading, loadMobileData]);
 
   // Load mobile-specific data
   const loadMobileData = useCallback(async () => {
@@ -100,6 +66,50 @@ export default function ExecutivePage() {
     }
   }, [selectedDate]);
 
+  // Load initial data for executive dashboard
+  useEffect(() => {
+    const loadExecutiveData = async () => {
+      try {
+        setLoading(true);
+        setInitializationError(null);
+        
+        console.log('🏢 Loading Executive Dashboard data...');
+        
+        // Wait a brief moment to ensure provider is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Environment verification for executive access
+        const envVerification = verifyEnvironmentConfiguration();
+        if (!envVerification.isConfigValid) {
+          console.error('🚨 Environment configuration issues detected for executive access!');
+          envVerification.warnings.forEach(warning => {
+            console.warn(`⚠️ ${warning}`);
+          });
+        }
+        
+        // Load COO users for executive access
+        const cooUsersData = await DatabaseService.getCOOUsers();
+        setCooUsers(cooUsersData);
+        
+        // Load mobile-specific data if needed
+        if (isMobile && !mobileLoading) {
+          await loadMobileData();
+        }
+        
+        console.log(`✅ Executive data loaded: ${cooUsersData.length} COO users`);
+      } catch (error) {
+        console.error('❌ Error loading executive data:', error);
+        setInitializationError(error instanceof Error ? error.message : 'Failed to load executive data');
+        setCooUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadExecutiveData();
+  }, [isMobile, mobileLoading, loadMobileData]);
+
+
   const handleCOOAccess = (user: COOUser) => {
     // Validate COO permissions before granting access
     if (!validateCOOPermissions(user, 'dashboard')) {
@@ -116,10 +126,51 @@ export default function ExecutivePage() {
   };
 
   const handleTeamNavigateFromCOO = (team: { id: number; name: string }) => {
+    // Validate team ID to prevent injection
+    const teamIdResult = validateTeamId(team.id);
+    if (!teamIdResult.isValid) {
+      console.error('Invalid team ID provided:', team.id);
+      return;
+    }
+
+    // Build URL with validated parameters
+    const targetUrl = `/?team=${teamIdResult.sanitizedValue}&executive=true`;
+    
+    // Validate the constructed URL to prevent open redirects
+    if (!validateRedirectUrl(targetUrl)) {
+      console.error('Invalid redirect URL constructed:', targetUrl);
+      return;
+    }
+
     // Navigate to team dashboard while maintaining executive context
-    // This will redirect to the main app with team context
-    router.push(`/?team=${team.id}&executive=true`);
+    router.push(targetUrl);
   };
+
+  // Show initialization error if one occurred
+  if (initializationError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Executive Dashboard Error</h2>
+            <p className="text-gray-600 mb-4">
+              Failed to initialize the executive dashboard.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              {initializationError}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Show login screen if no COO user selected
   if (!cooUser) {
@@ -135,8 +186,26 @@ export default function ExecutivePage() {
   // Show COO Executive Dashboard (Mobile or Desktop)
   return (
     <div className="min-h-screen bg-gray-50">
-      <GlobalSprintProvider>
-        {!mobileLoading && isMobile ? (
+      {!mobileLoading && isMobile ? (
+        <div>
+          {/* Enhanced Mobile Header for Executive Dashboard */}
+          <MobileHeader
+            title="COO Executive Dashboard"
+            subtitle={`Welcome, ${cooUser.name}`}
+            showBack={true}
+            onBack={handleBackToSelection}
+            currentUser={{
+              id: cooUser.id.toString(),
+              name: cooUser.name,
+              hebrew: cooUser.hebrew || '',
+              role: 'executive' as const,
+              isManager: true,
+              isCOO: true
+            }}
+            showMenu={true}
+            showSearch={false}
+          />
+          
           <MobileCOODashboard
             teams={teamsData}
             selectedDate={selectedDate}
@@ -147,14 +216,35 @@ export default function ExecutivePage() {
             loading={loading}
             companyMetrics={companyMetrics}
           />
-        ) : (
-          <COOExecutiveDashboard 
-            currentUser={cooUser}
-            onBack={handleBackToSelection}
-            onTeamNavigate={handleTeamNavigateFromCOO}
-          />
-        )}
-      </GlobalSprintProvider>
+        </div>
+      ) : (
+        <COOExecutiveDashboard 
+          currentUser={cooUser}
+          onBack={handleBackToSelection}
+          onTeamNavigate={handleTeamNavigateFromCOO}
+        />
+      )}
     </div>
   );
 }
+
+// Main component with error boundary and context checking
+export default function ExecutivePage() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <React.Suspense fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading Executive Dashboard...</p>
+          </div>
+        </div>
+      }>
+        <PageErrorBoundary>
+          <ExecutiveDashboardContent />
+        </PageErrorBoundary>
+      </React.Suspense>
+    </div>
+  );
+}
+

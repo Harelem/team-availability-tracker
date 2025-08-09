@@ -9,7 +9,6 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  ChevronRight,
   Award,
   Activity,
   ArrowLeft,
@@ -29,8 +28,6 @@ import ConsolidatedAnalytics from './analytics/ConsolidatedAnalytics';
 import TeamDetailModal from '@/components/modals/TeamDetailModal';
 import { COOCard } from '@/components/ui/COOCard';
 import SimplifiedMetricsCards from './SimplifiedMetricsCards';
-// RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
-// import TeamRecognitionLeaderboard from './recognition/TeamRecognitionLeaderboard';
 import DailyCompanyStatus from './coo/DailyCompanyStatus';
 
 interface COOExecutiveDashboardProps {

@@ -5,9 +5,8 @@ import { Users, Calendar, CheckCircle, TrendingUp, Zap } from 'lucide-react';
 import { COODashboardData } from '@/types';
 import { COOMetricCard } from '@/components/ui/COOCard';
 import { formatHours, formatPercentage } from '@/lib/calculationService';
-import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import WorkforceStatusModal from '@/components/modals/WorkforceStatusModal';
-import SprintPotentialModal from '@/components/modals/SprintPotentialModal';
+import { DESIGN_SYSTEM, combineClasses } from '@/utils/designSystem';
 
 interface SimplifiedMetricsCardsProps {
   dashboardData: COODashboardData;
@@ -22,7 +21,6 @@ export default function SimplifiedMetricsCards({
   selectedDate = new Date(),
   className = ''
 }: SimplifiedMetricsCardsProps) {
-  const { currentSprint } = useGlobalSprint();
   const [isWorkforceModalOpen, setIsWorkforceModalOpen] = useState(false);
 
   const handleTotalWorkforceClick = () => {
@@ -36,7 +34,11 @@ export default function SimplifiedMetricsCards({
   };
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 ${className}`}>
+    <div className={combineClasses(
+      'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5',
+      DESIGN_SYSTEM.grids.gap.md,
+      className
+    )}>
       {/* 1. Total Workforce - Shows daily status with click functionality */}
       <COOMetricCard
         title="Total Workforce"
@@ -55,18 +57,15 @@ export default function SimplifiedMetricsCards({
       <COOMetricCard
         title="Max Capacity"
         value={formatHours(dashboardData.companyOverview.sprintMax)}
-        trend={currentSprint ? 
-          `${currentSprint.sprint_length_weeks} weeks × ${dashboardData.companyOverview.totalMembers} × 7h` :
-          `${dashboardData.companyOverview.totalMembers} × 2 weeks × 7h`
-        }
+        trend={`${dashboardData.companyOverview.totalMembers} × 2 weeks × 7h`}
         icon={Calendar}
         variant="info"
         status="excellent"
       />
 
-      {/* 3. Sprint's Potential - Team potential hours after deductions */}
+      {/* 3. Current Potential - Team potential hours after deductions */}
       <COOMetricCard
-        title="Sprint's Potential"
+        title="Current Potential"
         value={formatHours(dashboardData.companyOverview.sprintPotential)}
         trend="After deducting absences/reasons"
         icon={CheckCircle}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { 
   BarChart3, 
   PieChart,
@@ -36,7 +36,12 @@ import {
 
 // Import analytics components
 import ExecutiveSummaryDashboard from './ExecutiveSummaryDashboard';
+import GapDrillDownModal from './GapDrillDownModal';
 import { useCompanyAnalytics, useAlerts } from '@/hooks/useAnalytics';
+import { useMobileDetection } from '@/hooks/useMobileDetection';
+
+// Lazy load heavy components for better mobile performance
+const LazyExecutiveSummaryDashboard = lazy(() => import('./ExecutiveSummaryDashboard'));
 
 // Import types and services
 import { COOUser, Team, TeamMember, CurrentGlobalSprint, COODashboardData } from '@/types';
@@ -122,6 +127,15 @@ export default function ConsolidatedAnalytics({
 }: ConsolidatedAnalyticsProps) {
   const [activeSection, setActiveSection] = useState<'charts' | 'insights' | 'executive' | 'predictions'>('charts');
   const [actionLoading, setActionLoading] = useState(false);
+  const [drillDownModalOpen, setDrillDownModalOpen] = useState(false);
+  const [selectedDrillDownMetric, setSelectedDrillDownMetric] = useState<string>('');
+  
+  // Mobile detection
+  const isMobile = useMobileDetection();
+  
+  // Mobile performance optimizations
+  const [hasLoadedCharts, setHasLoadedCharts] = useState(!isMobile);
+  const [isChartIntersecting, setIsChartIntersecting] = useState(false);
   const [chartFilters, setChartFilters] = useState<ChartFilters>({
     timeframe: 'current-week',
     teams: allTeams.map(team => team.id),
@@ -156,6 +170,36 @@ export default function ConsolidatedAnalytics({
       teams: allTeams.map(team => team.id)
     }));
   }, [allTeams]);
+
+  // Mobile performance: Intersection observer for lazy chart loading
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !hasLoadedCharts) {
+            setHasLoadedCharts(true);
+            setIsChartIntersecting(true);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    const chartSection = document.getElementById('analytics-charts-section');
+    if (chartSection) {
+      observer.observe(chartSection);
+    }
+
+    return () => observer.disconnect();
+  }, [isMobile, hasLoadedCharts]);
+
+  // Handle metric drill-down
+  const handleMetricClick = (metric: string) => {
+    setSelectedDrillDownMetric(metric);
+    setDrillDownModalOpen(true);
+  };
 
   // Unified action handlers
   const handleRefresh = async () => {
@@ -529,31 +573,44 @@ export default function ConsolidatedAnalytics({
           )}
 
           {activeSection === 'executive' && (
-        <div>
-          <ExecutiveSummaryDashboard 
-            refreshInterval={300}
-            className="border-0 shadow-none p-0"
-          />
-            </div>
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-64">
+                <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                <span className="ml-2 text-gray-600">Loading executive dashboard...</span>
+              </div>
+            }>
+              <LazyExecutiveSummaryDashboard 
+                refreshInterval={300}
+                className="border-0 shadow-none p-0"
+              />
+            </Suspense>
           )}
 
           {activeSection === 'predictions' && (
-        <div className="text-center py-12">
-          <Eye className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Predictive Analytics</h3>
-          <p className="text-gray-600 mb-4">
-            Advanced forecasting and predictive insights based on historical team performance data
-          </p>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
-            <p className="text-sm text-blue-800">
-              Predictive models are being enhanced. Available features include capacity forecasting 
-              and burnout risk assessment integrated throughout the dashboard.
-            </p>
-          </div>
+            <div className="text-center py-12">
+              <Eye className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Predictive Analytics</h3>
+              <p className="text-gray-600 mb-4">
+                Advanced forecasting and predictive insights based on historical team performance data
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-sm text-blue-800">
+                  Predictive models are being enhanced. Available features include capacity forecasting 
+                  and burnout risk assessment integrated throughout the dashboard.
+                </p>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Gap Drill-Down Modal */}
+      <GapDrillDownModal
+        isOpen={drillDownModalOpen}
+        onClose={() => setDrillDownModalOpen(false)}
+        dashboardData={dashboardData}
+        selectedMetric={selectedDrillDownMetric}
+      />
     </div>
   );
 }
