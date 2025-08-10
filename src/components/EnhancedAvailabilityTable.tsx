@@ -3,6 +3,7 @@
 import { Clock, MessageSquare } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
 import EnhancedDayCell from './EnhancedDayCell';
+import { ComponentErrorBoundary } from './ErrorBoundary';
 
 interface EnhancedAvailabilityTableProps {
   currentUser: TeamMember;
@@ -40,32 +41,79 @@ export default function EnhancedAvailabilityTable({
   formatDate
 }: EnhancedAvailabilityTableProps) {
 
-  // Calculate daily totals for footer
+  // Defensive checks for required props
+  if (!currentUser || !Array.isArray(teamMembers) || !scheduleData || !Array.isArray(workOptions) || !Array.isArray(sprintDays)) {
+    console.warn('EnhancedAvailabilityTable: Missing required props', {
+      currentUser: !!currentUser,
+      teamMembers: Array.isArray(teamMembers),
+      scheduleData: !!scheduleData,
+      workOptions: Array.isArray(workOptions),
+      sprintDays: Array.isArray(sprintDays)
+    });
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <p className="text-gray-500">Unable to load availability table - missing data</p>
+      </div>
+    );
+  }
+
+  // Calculate daily totals for footer - DEFENSIVE PROGRAMMING
   const getDayTotal = (date: Date) => {
-    const dateKey = date.toISOString().split('T')[0];
-    return teamMembers.reduce((total, member) => {
-      const value = scheduleData[member.id]?.[dateKey];
-      const option = workOptions.find(opt => opt.value === value?.value);
-      return total + (option ? option.hours : 0);
-    }, 0);
+    if (!date || !Array.isArray(teamMembers) || !scheduleData || !Array.isArray(workOptions)) {
+      return 0;
+    }
+    
+    try {
+      const dateKey = date.toISOString().split('T')[0];
+      return teamMembers.reduce((total, member) => {
+        if (!member?.id || typeof member.id !== 'number') return total;
+        
+        const memberSchedule = scheduleData[member.id];
+        if (!memberSchedule || typeof memberSchedule !== 'object') return total;
+        
+        const value = memberSchedule[dateKey];
+        if (!value || typeof value !== 'object') return total;
+        
+        const option = workOptions.find(opt => opt?.value === value?.value);
+        const hours = option?.hours;
+        return total + (typeof hours === 'number' ? hours : 0);
+      }, 0);
+    } catch (error) {
+      console.warn('Error calculating day total:', error);
+      return 0;
+    }
   };
 
-  // Count reasons for the sprint
+  // Count reasons for the sprint - DEFENSIVE PROGRAMMING
   const getSprintReasonStats = () => {
     let totalReasons = 0;
     let halfDayReasons = 0;
     let absenceReasons = 0;
 
-    teamMembers.forEach(member => {
-      const memberData = scheduleData[member.id] || {};
-      Object.values(memberData).forEach((entry: any) => {
-        if (entry?.reason) {
-          totalReasons++;
-          if (entry.value === '0.5') halfDayReasons++;
-          if (entry.value === 'X') absenceReasons++;
-        }
+    try {
+      if (!Array.isArray(teamMembers) || !scheduleData || typeof scheduleData !== 'object') {
+        return { totalReasons, halfDayReasons, absenceReasons };
+      }
+
+      teamMembers.forEach(member => {
+        if (!member?.id || typeof member.id !== 'number') return;
+        
+        const memberData = scheduleData[member.id];
+        if (!memberData || typeof memberData !== 'object' || memberData === null) return;
+        
+        Object.values(memberData).forEach((entry: any) => {
+          if (!entry || typeof entry !== 'object') return;
+          
+          if (entry.reason && typeof entry.reason === 'string' && entry.reason.trim().length > 0) {
+            totalReasons++;
+            if (entry.value === '0.5') halfDayReasons++;
+            if (entry.value === 'X') absenceReasons++;
+          }
+        });
       });
-    });
+    } catch (error) {
+      console.warn('Error calculating sprint reason stats:', error);
+    }
 
     return { totalReasons, halfDayReasons, absenceReasons };
   };
@@ -73,7 +121,8 @@ export default function EnhancedAvailabilityTable({
   const reasonStats = getSprintReasonStats();
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+    <ComponentErrorBoundary>
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
       {/* Reason Summary Bar (if there are reasons) */}
       {reasonStats.totalReasons > 0 && (
         <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
@@ -167,10 +216,15 @@ export default function EnhancedAvailabilityTable({
                 {/* Days */}
                 <div className="p-4 space-y-3">
                   {sprintDays.map((date, index) => {
+                    if (!date || typeof date.toISOString !== 'function') {
+                      console.warn('Invalid date in sprintDays:', date, 'at index:', index);
+                      return null;
+                    }
+                    
                     const dateKey = date.toISOString().split('T')[0];
                     const currentValue = scheduleData[member.id]?.[dateKey];
-                    const today = isToday(date);
-                    const past = isPastDate(date);
+                    const today = typeof isToday === 'function' ? isToday(date) : false;
+                    const past = typeof isPastDate === 'function' ? isPastDate(date) : false;
 
                     return (
                       <div key={dateKey} className={`rounded-lg p-3 border-2 ${
@@ -183,12 +237,12 @@ export default function EnhancedAvailabilityTable({
                             <span className={`font-semibold ${
                               today ? 'text-blue-700' : 'text-gray-700'
                             }`}>
-                              {dayNames[index]}
+                              {Array.isArray(dayNames) && dayNames[index] ? dayNames[index] : `Day ${index + 1}`}
                             </span>
                             <span className={`text-sm ${
                               today ? 'text-blue-600' : 'text-gray-500'
                             }`}>
-                              {formatDate(date)}
+                              {typeof formatDate === 'function' ? formatDate(date) : date.toLocaleDateString()}
                             </span>
                             {today && (
                               <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-medium">
@@ -205,7 +259,8 @@ export default function EnhancedAvailabilityTable({
                         
                         {/* Work Options */}
                         <div className="flex gap-2">
-                          {workOptions.map(option => {
+                          {Array.isArray(workOptions) && workOptions.map(option => {
+                            if (!option || !option.value) return null;
                             const isSelected = currentValue?.value === option.value;
                             return (
                               <button
@@ -430,5 +485,6 @@ export default function EnhancedAvailabilityTable({
         </div>
       </div>
     </div>
+    </ComponentErrorBoundary>
   );
 }

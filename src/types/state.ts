@@ -394,7 +394,7 @@ export type AppAction =
   | { type: 'OPEN_MODAL'; payload: { modal: keyof ModalState; props?: any } }
   | { type: 'CLOSE_MODAL'; payload: { modal: keyof ModalState } }
   | { type: 'CLOSE_ALL_MODALS' }
-  | { type: 'ADD_NOTIFICATION'; payload: NotificationState['items'][0] }
+  | { type: 'ADD_NOTIFICATION'; payload: Omit<NotificationState['items'][0], 'id' | 'timestamp'> }
   | { type: 'REMOVE_NOTIFICATION'; payload: { id: string } }
   | { type: 'CLEAR_NOTIFICATIONS' }
   | { type: 'SET_NAVIGATION'; payload: Partial<NavigationState> }
@@ -453,7 +453,7 @@ export type AppAction =
 export interface AppSelectors {
   // UI Selectors
   isLoading: (key?: keyof LoadingState) => boolean;
-  getError: (key: keyof ErrorState) => string | null;
+  getError: (key: keyof ErrorState) => AppError | string | null;
   hasError: () => boolean;
   isModalOpen: (modal: keyof ModalState) => boolean;
   getModalProps: (modal: keyof ModalState) => any;

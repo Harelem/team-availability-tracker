@@ -50,6 +50,7 @@ import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPr
 import { validateDatabaseSchema, safeInitializeWithValidation } from '@/utils/schemaValidator';
 import { loadTeamsWithFallback, saveOfflineData, initializeOfflineMode, getErrorMessage } from '@/utils/errorRecovery';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import ClientOnly from '@/components/ClientOnly';
 
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
@@ -326,14 +327,16 @@ function HomeContent() {
   if (!selectedTeam) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Mobile Header for Team Selection */}
-        {isMobile && (
-          <MobileHeader
-            title="Select Team"
-            subtitle="Choose your team to continue"
-            showBack={false}
-          />
-        )}
+        {/* Mobile Header for Team Selection - Hydration Safe */}
+        <ClientOnly fallback={<div className="h-16 bg-white shadow-sm" />}>
+          {isMobile && (
+            <MobileHeader
+              title="Select Team"
+              subtitle="Choose your team to continue"
+              showBack={false}
+            />
+          )}
+        </ClientOnly>
         <TeamSelectionScreen 
           teams={teams}
           onTeamSelect={handleTeamSelect}
@@ -381,40 +384,46 @@ function HomeContent() {
   if (selectedTeam && !selectedUser) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Mobile Header for User Selection */}
-        {isMobile && (
-          <MobileHeader
-            title={selectedTeam.name}
-            subtitle="Select your name to continue"
-            showBack={true}
-            onBack={handleBackToSelection}
-          />
-        )}
+        {/* Mobile Header for User Selection - Hydration Safe */}
+        <ClientOnly fallback={<div className="h-16 bg-white shadow-sm" />}>
+          {isMobile && (
+            <MobileHeader
+              title={selectedTeam.name}
+              subtitle="Select your name to continue"
+              showBack={true}
+              onBack={handleBackToSelection}
+            />
+          )}
+        </ClientOnly>
         
-        <div className={`${isMobile ? 'p-4 pt-0' : 'flex items-center justify-center p-4'}`}>
+        <div className="flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-md w-full">
             {/* Desktop back button */}
-            {!isMobile && (
-              <div className="mb-4">
-                <button
-                  onClick={handleBackToSelection}
-                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span className="text-sm">Back to Selection</span>
-                </button>
-              </div>
-            )}
+            <ClientOnly>
+              {!isMobile && (
+                <div className="mb-4">
+                  <button
+                    onClick={handleBackToSelection}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="text-sm">Back to Selection</span>
+                  </button>
+                </div>
+              )}
+            </ClientOnly>
             
             {/* Mobile Breadcrumb - only show on mobile when not using header */}
-            {isMobile && (
-              <MobileBreadcrumb
-                selectedTeam={selectedTeam}
-                selectedUser={selectedUser}
-                onNavigateToTeamSelection={handleBackToSelection}
-                onNavigateToMemberSelection={() => setSelectedUser(null)}
-              />
-            )}
+            <ClientOnly>
+              {isMobile && (
+                <MobileBreadcrumb
+                  selectedTeam={selectedTeam}
+                  selectedUser={selectedUser}
+                  onNavigateToTeamSelection={handleBackToSelection}
+                  onNavigateToMemberSelection={() => setSelectedUser(null)}
+                />
+              )}
+            </ClientOnly>
             
             {/* Desktop Breadcrumb */}
             <div className="hidden lg:block">
@@ -427,20 +436,30 @@ function HomeContent() {
             </div>
             
             {/* Header content - adjust for mobile vs desktop */}
-            <div className={`text-center mb-6 ${isMobile ? 'pt-4' : ''}`}>
-              {!isMobile && (
-                <>
-                  <Calendar className="text-blue-600 w-12 h-12 mx-auto mb-3" />
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-                    {selectedTeam?.name}
-                  </h1>
-                  <p className="text-gray-600 text-sm sm:text-base">Select your name to continue:</p>
-                </>
-              )}
-              {isMobile && (
-                <p className="text-gray-600 text-base">Choose your profile:</p>
-              )}
-            </div>
+            <ClientOnly fallback={
+              <div className="text-center mb-6">
+                <Calendar className="text-blue-600 w-12 h-12 mx-auto mb-3" />
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                  {selectedTeam?.name}
+                </h1>
+                <p className="text-gray-600 text-sm sm:text-base">Select your name to continue:</p>
+              </div>
+            }>
+              <div className={`text-center mb-6 ${isMobile ? 'pt-4' : ''}`}>
+                {!isMobile && (
+                  <>
+                    <Calendar className="text-blue-600 w-12 h-12 mx-auto mb-3" />
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                      {selectedTeam?.name}
+                    </h1>
+                    <p className="text-gray-600 text-sm sm:text-base">Select your name to continue:</p>
+                  </>
+                )}
+                {isMobile && (
+                  <p className="text-gray-600 text-base">Choose your profile:</p>
+                )}
+              </div>
+            </ClientOnly>
             <div className="space-y-2">
               {teamMembers.map((member) => (
                 <button
@@ -467,24 +486,26 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Enhanced Mobile Team Navigation */}
-      {isMobile && (
-        <MobileTeamNavigation
-          currentUser={selectedUser!}
-          team={selectedTeam}
-          onNavigateHome={() => window.location.href = '/'}
-          onSwitchUser={() => setSelectedUser(null)}
-          onChangeTeam={handleBackToSelection}
-          onSettings={() => {
-            // Handle settings navigation
-            console.log('Settings clicked');
-          }}
-          onLogout={() => {
-            // Handle logout
-            console.log('Logout clicked');
-          }}
-        />
-      )}
+      {/* Enhanced Mobile Team Navigation - Hydration Safe */}
+      <ClientOnly fallback={<div className="h-16 bg-white shadow-sm" />}>
+        {isMobile && (
+          <MobileTeamNavigation
+            currentUser={selectedUser!}
+            team={selectedTeam}
+            onNavigateHome={() => window.location.href = '/'}
+            onSwitchUser={() => setSelectedUser(null)}
+            onChangeTeam={handleBackToSelection}
+            onSettings={() => {
+              // Handle settings navigation
+              console.log('Settings clicked');
+            }}
+            onLogout={() => {
+              // Handle logout
+              console.log('Logout clicked');
+            }}
+          />
+        )}
+      </ClientOnly>
 
       {/* Desktop Layout */}
       <div className="max-w-7xl mx-auto p-2 sm:p-6">

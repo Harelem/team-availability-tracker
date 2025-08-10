@@ -18,6 +18,7 @@ import {
   NavigationState,
   UIState
 } from '@/types/state';
+import { AppError } from '@/types/errors';
 
 // =============================================================================
 // STATE REDUCER
@@ -611,14 +612,14 @@ export function appStateReducer(state: AppState, action: AppAction): AppState {
     const historyEntry = {
       action: action.type,
       timestamp: new Date(),
-      previousState: state,
-      newState
+      previousState: state as Partial<AppState>,
+      newState: newState as Partial<AppState>
     };
 
     newState.history = [...state.history.slice(-49), historyEntry]; // Keep last 50 entries
   }
 
-  return newState;
+  return newState as AppState;
 }
 
 // =============================================================================
@@ -631,7 +632,7 @@ export function createSelectors(state: AppState): AppSelectors {
     isLoading: (key?: keyof LoadingState) => 
       key ? state.ui.loading[key] : Object.values(state.ui.loading).some(Boolean),
     
-    getError: (key: keyof ErrorState) => state.ui.errors[key],
+    getError: (key: keyof ErrorState): AppError | string | null => state.ui.errors[key],
     
     hasError: () => Object.values(state.ui.errors).some(error => error !== null),
     
