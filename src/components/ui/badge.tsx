@@ -45,24 +45,66 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
     },
     ref
   ) => {
-    // Base styles
+    // Enhanced base styles with professional polish
     const baseClasses = cx(
       'inline-flex items-center justify-center',
-      'font-medium text-xs uppercase tracking-wide',
-      'rounded-full border whitespace-nowrap',
-      'transition-all duration-200 ease-in-out',
+      'font-medium text-xs uppercase tracking-wider',
+      'rounded-full border-2 whitespace-nowrap',
+      'transition-all duration-200 cubic-bezier(0.4, 0, 0.2, 1)',
+      'transform will-change-transform',
+      'hover:scale-105 hover:shadow-md',
+      'active:scale-95 active:duration-75',
+      'focus:outline-none focus:ring-2 focus:ring-offset-1',
+      'motion-reduce:transition-none motion-reduce:transform-none',
+      'backdrop-blur-sm shadow-sm',
       pulse ? 'animate-pulse' : ''
     );
 
-    // Variant styles
+    // Enhanced variant styles with WCAG AA compliance and professional gradients
     const variantClasses = {
-      primary: 'bg-blue-100 text-blue-800 border-blue-200',
-      secondary: 'bg-gray-100 text-gray-800 border-gray-200',
-      success: 'bg-green-100 text-green-800 border-green-200',
-      warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      error: 'bg-red-100 text-red-800 border-red-200',
-      info: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-      outline: 'bg-transparent text-gray-700 border-gray-300 hover:bg-gray-50'
+      primary: cx(
+        'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-900 border-blue-300',
+        'dark:from-blue-900/30 dark:to-blue-800/20 dark:text-blue-200 dark:border-blue-700',
+        'hover:from-blue-100 hover:to-blue-150 hover:border-blue-400',
+        'focus:ring-blue-500 focus:ring-opacity-50'
+      ),
+      secondary: cx(
+        'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 border-gray-300',
+        'dark:from-gray-800 dark:to-gray-700 dark:text-gray-200 dark:border-gray-600',
+        'hover:from-gray-100 hover:to-gray-150 hover:border-gray-400',
+        'focus:ring-gray-500 focus:ring-opacity-50'
+      ),
+      success: cx(
+        'bg-gradient-to-br from-green-50 to-green-100 text-green-900 border-green-300',
+        'dark:from-green-900/30 dark:to-green-800/20 dark:text-green-200 dark:border-green-700',
+        'hover:from-green-100 hover:to-green-150 hover:border-green-400',
+        'focus:ring-green-500 focus:ring-opacity-50'
+      ),
+      warning: cx(
+        'bg-gradient-to-br from-yellow-50 to-yellow-100 text-yellow-900 border-yellow-300',
+        'dark:from-yellow-900/30 dark:to-yellow-800/20 dark:text-yellow-200 dark:border-yellow-700',
+        'hover:from-yellow-100 hover:to-yellow-150 hover:border-yellow-400',
+        'focus:ring-yellow-500 focus:ring-opacity-50'
+      ),
+      error: cx(
+        'bg-gradient-to-br from-red-50 to-red-100 text-red-900 border-red-300',
+        'dark:from-red-900/30 dark:to-red-800/20 dark:text-red-200 dark:border-red-700',
+        'hover:from-red-100 hover:to-red-150 hover:border-red-400',
+        'focus:ring-red-500 focus:ring-opacity-50'
+      ),
+      info: cx(
+        'bg-gradient-to-br from-cyan-50 to-cyan-100 text-cyan-900 border-cyan-300',
+        'dark:from-cyan-900/30 dark:to-cyan-800/20 dark:text-cyan-200 dark:border-cyan-700',
+        'hover:from-cyan-100 hover:to-cyan-150 hover:border-cyan-400',
+        'focus:ring-cyan-500 focus:ring-opacity-50'
+      ),
+      outline: cx(
+        'bg-transparent text-gray-800 border-gray-400',
+        'dark:text-gray-200 dark:border-gray-500',
+        'hover:bg-gradient-to-br hover:from-gray-50 hover:to-gray-100 hover:border-gray-500',
+        'dark:hover:from-gray-800 dark:hover:to-gray-700',
+        'focus:ring-gray-500 focus:ring-opacity-50'
+      )
     };
 
     // Size styles

@@ -33,9 +33,9 @@ export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonE
 
 const LoadingSpinner: React.FC<{ size: ButtonSize }> = ({ size }) => {
   const sizeClasses = {
-    xs: 'w-3 h-3',
+    xs: 'w-3.5 h-3.5',
     sm: 'w-4 h-4',
-    md: 'w-4 h-4',
+    md: 'w-4.5 h-4.5',
     lg: 'w-5 h-5',
     xl: 'w-6 h-6'
   };
@@ -43,11 +43,21 @@ const LoadingSpinner: React.FC<{ size: ButtonSize }> = ({ size }) => {
   return (
     <div
       className={cx(
-        'animate-spin rounded-full border-2 border-current border-t-transparent',
+        'animate-spin rounded-full',
+        'border-2 border-current border-t-transparent',
+        'motion-reduce:animate-pulse motion-reduce:border-solid',
+        // Enhanced spinner with subtle styling
+        'drop-shadow-sm opacity-90',
         sizeClasses[size]
       )}
       aria-hidden="true"
-    />
+      role="presentation"
+      style={{
+        animation: 'spin 0.8s linear infinite'
+      }}
+    >
+      <span className="sr-only">Loading</span>
+    </div>
   );
 };
 
@@ -80,96 +90,133 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     // =============================================================================
 
     const baseClasses = cx(
-      // Base layout and interaction
+      // Enhanced base layout with professional styling
       'inline-flex items-center justify-center',
-      'font-medium transition-all duration-200 ease-in-out',
-      'cursor-pointer select-none outline-none',
+      'font-semibold text-sm leading-tight',
       'border relative overflow-hidden',
+      'cursor-pointer select-none outline-none',
       
-      // Focus styles
+      // Professional transitions and transforms
+      'transition-all duration-200 ease-out',
+      'transform will-change-transform',
+      'active:scale-[0.96] active:duration-75',
+      
+      // Enhanced hover effects
+      'hover:shadow-lg hover:-translate-y-0.5',
+      'hover:duration-150',
+      
+      // Professional focus styles
       'focus:outline-none focus:ring-2 focus:ring-offset-2',
+      'focus-visible:ring-2 focus-visible:ring-offset-2',
       
-      // Disabled styles
-      'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none'
+      // Improved disabled states
+      'disabled:opacity-60 disabled:cursor-not-allowed',
+      'disabled:transform-none disabled:shadow-none',
+      'disabled:hover:shadow-none disabled:hover:transform-none',
+      
+      // Accessibility and reduced motion
+      'motion-reduce:transition-none motion-reduce:transform-none',
+      
+      // Mobile optimizations
+      'touch-manipulation',
+      'min-h-[44px]' // Minimum touch target
     );
 
     const variantClasses = {
       primary: cx(
-        'bg-blue-600 text-white border-blue-600',
-        'hover:bg-blue-700 hover:border-blue-700',
-        'active:bg-blue-800 active:border-blue-800',
-        'focus:ring-blue-500'
+        'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-600',
+        'shadow-sm shadow-blue-500/20',
+        'hover:from-blue-700 hover:to-blue-800 hover:border-blue-700',
+        'hover:shadow-md hover:shadow-blue-500/25',
+        'active:from-blue-800 active:to-blue-900',
+        'focus:ring-blue-500 focus:ring-opacity-50',
+        'disabled:from-gray-400 disabled:to-gray-500 disabled:shadow-none'
       ),
       secondary: cx(
-        'bg-gray-100 text-gray-900 border-gray-300',
-        'hover:bg-gray-200 hover:border-gray-400',
-        'active:bg-gray-300 active:border-gray-500',
-        'focus:ring-gray-500'
+        'bg-white text-gray-700 border-gray-300 shadow-sm',
+        'hover:bg-gray-50 hover:border-gray-400 hover:text-gray-800',
+        'hover:shadow-md hover:shadow-gray-200/50',
+        'active:bg-gray-100 active:border-gray-500',
+        'focus:ring-gray-500 focus:ring-opacity-50'
       ),
       outline: cx(
-        'bg-transparent text-blue-600 border-blue-600',
-        'hover:bg-blue-50 hover:border-blue-700',
+        'bg-transparent text-blue-600 border-2 border-blue-600',
+        'hover:bg-blue-50 hover:border-blue-700 hover:text-blue-700',
+        'hover:shadow-md hover:shadow-blue-500/20',
         'active:bg-blue-100 active:border-blue-800',
-        'focus:ring-blue-500'
+        'focus:ring-blue-500 focus:ring-opacity-50'
       ),
       ghost: cx(
         'bg-transparent text-gray-700 border-transparent',
-        'hover:bg-gray-100 hover:border-transparent',
-        'active:bg-gray-200 active:border-transparent',
-        'focus:ring-gray-500'
+        'hover:bg-gray-100 hover:text-gray-800',
+        'hover:shadow-sm',
+        'active:bg-gray-200',
+        'focus:ring-gray-500 focus:ring-opacity-50'
       ),
       link: cx(
-        'bg-transparent text-blue-600 border-transparent',
-        'hover:text-blue-800 hover:underline',
+        'bg-transparent text-blue-600 border-transparent p-0 shadow-none',
+        'hover:text-blue-800 hover:underline hover:decoration-2',
+        'hover:shadow-none hover:transform-none',
         'active:text-blue-900',
-        'focus:ring-blue-500',
-        'underline-offset-4'
+        'focus:ring-blue-500 focus:ring-opacity-50',
+        'underline-offset-4 transition-colors duration-150'
       ),
       success: cx(
-        'bg-green-600 text-white border-green-600',
-        'hover:bg-green-700 hover:border-green-700',
-        'active:bg-green-800 active:border-green-800',
-        'focus:ring-green-500'
+        'bg-gradient-to-r from-green-600 to-green-700 text-white border-green-600',
+        'shadow-sm shadow-green-500/20',
+        'hover:from-green-700 hover:to-green-800 hover:border-green-700',
+        'hover:shadow-md hover:shadow-green-500/25',
+        'active:from-green-800 active:to-green-900',
+        'focus:ring-green-500 focus:ring-opacity-50'
       ),
       warning: cx(
-        'bg-yellow-600 text-white border-yellow-600',
-        'hover:bg-yellow-700 hover:border-yellow-700',
-        'active:bg-yellow-800 active:border-yellow-800',
-        'focus:ring-yellow-500'
+        'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white border-yellow-500',
+        'shadow-sm shadow-yellow-500/20',
+        'hover:from-yellow-600 hover:to-yellow-700 hover:border-yellow-600',
+        'hover:shadow-md hover:shadow-yellow-500/25',
+        'active:from-yellow-700 active:to-yellow-800',
+        'focus:ring-yellow-500 focus:ring-opacity-50'
       ),
       error: cx(
-        'bg-red-600 text-white border-red-600',
-        'hover:bg-red-700 hover:border-red-700',
-        'active:bg-red-800 active:border-red-800',
-        'focus:ring-red-500'
+        'bg-gradient-to-r from-red-600 to-red-700 text-white border-red-600',
+        'shadow-sm shadow-red-500/20',
+        'hover:from-red-700 hover:to-red-800 hover:border-red-700',
+        'hover:shadow-md hover:shadow-red-500/25',
+        'active:from-red-800 active:to-red-900',
+        'focus:ring-red-500 focus:ring-opacity-50'
       )
     };
 
     const sizeClasses = {
       xs: cx(
-        'h-6 px-2 text-xs rounded',
-        iconOnly ? 'w-6' : 'min-w-6',
-        'gap-1'
+        'h-8 px-3 text-xs rounded-md', // Increased from h-6 for better accessibility
+        'min-h-[32px]', // Minimum touch target
+        iconOnly ? 'w-8 min-w-[32px]' : 'min-w-[64px]',
+        'gap-1 font-medium'
       ),
       sm: cx(
-        'h-8 px-3 text-sm rounded-md',
-        iconOnly ? 'w-8' : 'min-w-8',
-        'gap-1.5'
+        'h-9 px-4 text-sm rounded-md',
+        'min-h-[36px]', // Better mobile touch target
+        iconOnly ? 'w-9 min-w-[36px]' : 'min-w-[80px]',
+        'gap-1.5 font-medium'
       ),
       md: cx(
-        'h-10 px-4 text-sm rounded-md',
-        iconOnly ? 'w-10' : 'min-w-10',
-        'gap-2'
+        'h-11 px-5 text-sm rounded-lg',
+        'min-h-[44px]', // Optimal mobile touch target
+        iconOnly ? 'w-11 min-w-[44px]' : 'min-w-[100px]',
+        'gap-2 font-semibold'
       ),
       lg: cx(
         'h-12 px-6 text-base rounded-lg',
-        iconOnly ? 'w-12' : 'min-w-12',
-        'gap-2'
+        'min-h-[48px]', // Comfortable touch target
+        iconOnly ? 'w-12 min-w-[48px]' : 'min-w-[120px]',
+        'gap-2.5 font-semibold'
       ),
       xl: cx(
-        'h-14 px-8 text-lg rounded-lg',
-        iconOnly ? 'w-14' : 'min-w-14',
-        'gap-3'
+        'h-14 px-8 text-lg rounded-xl',
+        'min-h-[56px]', // Large touch target
+        iconOnly ? 'w-14 min-w-[56px]' : 'min-w-[140px]',
+        'gap-3 font-semibold'
       )
     };
 
@@ -177,9 +224,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       baseClasses,
       variantClasses[variant],
       sizeClasses[size],
-      fullWidth ? 'w-full' : '',
-      loading ? 'opacity-80 cursor-wait' : '',
-      (!disabled && !loading) ? 'active:scale-95' : '',
+      fullWidth ? 'w-full justify-center' : '',
+      loading ? cx(
+        'cursor-wait pointer-events-none',
+        'opacity-80',
+        'transform-none hover:transform-none', // Disable hover effects when loading
+        'shadow-sm' // Reduce shadow when loading
+      ) : '',
+      disabled ? cx(
+        'transform-none hover:transform-none',
+        'shadow-none hover:shadow-none'
+      ) : '',
       className
     );
 

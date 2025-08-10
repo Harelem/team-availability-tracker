@@ -49,8 +49,10 @@ export default function SimplifiedMetricsCards({
         status="good"
         interactive
         onClick={handleTotalWorkforceClick}
-        className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+        className="ui-card cursor-pointer focus-ring touch-target-large"
         aria-label={`Total workforce: ${dashboardData.companyOverview.totalMembers} members across ${dashboardData.companyOverview.totalTeams} teams. Click for daily status details.`}
+        role="button"
+        tabIndex={0}
       />
 
       {/* 2. Max Capacity - Keep existing functionality unchanged */}
@@ -61,6 +63,7 @@ export default function SimplifiedMetricsCards({
         icon={Calendar}
         variant="primary"
         status="excellent"
+        className="ui-card"
       />
 
       {/* 3. Current Potential - Team potential hours after deductions */}
@@ -71,6 +74,7 @@ export default function SimplifiedMetricsCards({
         icon={CheckCircle}
         variant="success"
         status="excellent"
+        className="ui-card"
       />
 
       {/* 4. Capacity Gap - Max capacity minus actual potential */}
@@ -90,6 +94,7 @@ export default function SimplifiedMetricsCards({
         icon={Zap}
         variant="warning"
         status={Math.abs(dashboardData.companyOverview.capacityGap) < 10 ? 'good' : 'warning'}
+        className="ui-card"
       />
 
       {/* 5. Current Utilization - Utilization percentage */}
@@ -103,6 +108,7 @@ export default function SimplifiedMetricsCards({
         variant="primary"
         status={dashboardData.companyOverview.currentUtilization >= 90 ? 'excellent' :
                dashboardData.companyOverview.currentUtilization >= 80 ? 'good' : 'warning'}
+        className="ui-card"
       />
 
       {/* Workforce Status Modal */}
