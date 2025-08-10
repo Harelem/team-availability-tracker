@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
@@ -55,6 +55,7 @@ import ClientOnly from '@/components/ClientOnly';
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
   const { isMobile } = useIsMobile();
+  const router = useRouter();
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -314,14 +315,14 @@ function HomeContent() {
     // If coming from executive context, return to COO dashboard
     if (executiveParam === 'true') {
       console.log('🏢 Returning to COO Executive Dashboard');
-      window.location.href = '/executive';
+      router.push('/executive');
       return;
     }
     
     // Otherwise, return to team selection
     setSelectedTeam(null);
     setSelectedUser(null);
-  }, [searchParams, setSelectedTeam]);
+  }, [searchParams, setSelectedTeam, router]);
 
   // Show team selection if no team selected
   if (!selectedTeam) {
@@ -492,7 +493,7 @@ function HomeContent() {
           <MobileTeamNavigation
             currentUser={selectedUser!}
             team={selectedTeam}
-            onNavigateHome={() => window.location.href = '/'}
+            onNavigateHome={() => router.push('/')}
             onSwitchUser={() => setSelectedUser(null)}
             onChangeTeam={handleBackToSelection}
             onSettings={() => {

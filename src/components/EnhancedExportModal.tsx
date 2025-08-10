@@ -186,7 +186,7 @@ export default function EnhancedExportModal({
             Export Type
           </label>
           <div className="space-y-3">
-            {/* Current Week */}
+            {/* Current Sprint */}
             <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
               <input
                 type="radio"
@@ -287,7 +287,7 @@ export default function EnhancedExportModal({
                     <BarChart3 className="w-4 h-4 text-indigo-600" />
                     <span className="font-medium text-gray-900">Complete Overview</span>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">Comprehensive 4-week company analysis</p>
+                  <p className="text-sm text-gray-500 mt-1">Comprehensive 2-sprint company analysis</p>
                 </div>
               </label>
             )}
@@ -370,7 +370,7 @@ export default function EnhancedExportModal({
                 onChange={(e) => setIncludeUtilizationAnalysis(e.target.checked)}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">📊 Weekly and total hours calculations</span>
+              <span className="text-sm text-gray-700">📊 Sprint and total hours calculations</span>
             </label>
             
             <label className="flex items-center gap-3 cursor-pointer">

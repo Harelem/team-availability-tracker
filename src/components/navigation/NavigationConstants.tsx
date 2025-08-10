@@ -66,21 +66,13 @@ export interface NavigationUser {
   isCOO?: boolean;
 }
 
-// Primary Bottom Tab Navigation
+// Primary Bottom Tab Navigation (only include working routes)
 export const PRIMARY_NAVIGATION: NavigationItem[] = [
   {
     id: 'home',
-    label: 'Home',
+    label: 'Dashboard',
     icon: Home,
     path: '/',
-    group: 'primary',
-    requiresAuth: true
-  },
-  {
-    id: 'schedule',
-    label: 'Schedule',
-    icon: Calendar,
-    path: '/schedule',
     group: 'primary',
     requiresAuth: true
   },
@@ -88,18 +80,9 @@ export const PRIMARY_NAVIGATION: NavigationItem[] = [
     id: 'teams',
     label: 'Teams',
     icon: Users,
-    path: '/teams',
+    path: '/?tab=teams',
     group: 'primary',
     requiresAuth: true
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: BarChart3,
-    path: '/analytics',
-    group: 'primary',
-    requiresAuth: true,
-    permissions: ['manager', 'coo']
   },
   {
     id: 'menu',
@@ -109,7 +92,7 @@ export const PRIMARY_NAVIGATION: NavigationItem[] = [
   }
 ];
 
-// COO-Specific Navigation Items
+// COO-Specific Navigation Items (only working routes)
 export const COO_NAVIGATION: NavigationItem[] = [
   {
     id: 'executive-dashboard',
@@ -117,24 +100,6 @@ export const COO_NAVIGATION: NavigationItem[] = [
     icon: Building2,
     path: '/executive',
     group: 'primary',
-    requiresAuth: true,
-    permissions: ['coo']
-  },
-  {
-    id: 'company-analytics',
-    label: 'Company Analytics',
-    icon: TrendingUp,
-    path: '/company-analytics',
-    group: 'secondary',
-    requiresAuth: true,
-    permissions: ['coo']
-  },
-  {
-    id: 'workforce-status',
-    label: 'Workforce Status',
-    icon: Activity,
-    path: '/workforce-status',
-    group: 'secondary',
     requiresAuth: true,
     permissions: ['coo']
   }
@@ -171,64 +136,21 @@ export const MANAGER_NAVIGATION: NavigationItem[] = [
   }
 ];
 
-// Secondary Navigation (Hamburger Menu)
+// Secondary Navigation (Hamburger Menu) - Only working features
 export const SECONDARY_NAVIGATION: NavigationItem[] = [
   {
-    id: 'profile',
-    label: 'Profile Settings',
-    icon: User,
-    path: '/profile',
-    group: 'user',
-    requiresAuth: true
-  },
-  {
-    id: 'notifications',
-    label: 'Notifications',
-    icon: Bell,
-    path: '/notifications',
-    group: 'user',
-    requiresAuth: true,
-    badge: 0 // Will be updated dynamically
-  },
-  {
-    id: 'export-data',
-    label: 'Export Data',
-    icon: Download,
-    path: '/exports',
-    group: 'secondary',
-    requiresAuth: true,
-    permissions: ['manager', 'coo']
-  },
-  {
-    id: 'archive',
-    label: 'Archive',
-    icon: Archive,
-    path: '/archive',
-    group: 'secondary',
-    requiresAuth: true,
-    permissions: ['manager', 'coo']
+    id: 'help',
+    label: 'Help & Support',
+    icon: HelpCircle,
+    onClick: () => alert('For support, contact your system administrator or check the documentation.'),
+    group: 'user'
   },
   {
     id: 'accessibility',
     label: 'Accessibility',
     icon: Accessibility,
-    path: '/accessibility',
+    onClick: () => alert('Accessibility features: This app supports keyboard navigation, screen readers, and high contrast mode.'),
     group: 'user'
-  },
-  {
-    id: 'help',
-    label: 'Help & Support',
-    icon: HelpCircle,
-    path: '/help',
-    group: 'user'
-  },
-  {
-    id: 'settings',
-    label: 'App Settings',
-    icon: Settings,
-    path: '/settings',
-    group: 'admin',
-    requiresAuth: true
   }
 ];
 
@@ -366,25 +288,11 @@ export const getNavigationItemsForUser = (user: NavigationUser) => {
   };
 };
 
-// Route Constants
+// Route Constants (only working routes)
 export const ROUTES = {
   HOME: '/',
-  SCHEDULE: '/schedule',
-  TEAMS: '/teams',
-  ANALYTICS: '/analytics',
   EXECUTIVE: '/executive',
-  PROFILE: '/profile',
-  SETTINGS: '/settings',
-  HELP: '/help',
-  EXPORTS: '/exports',
-  ARCHIVE: '/archive',
-  ACCESSIBILITY: '/accessibility',
-  NOTIFICATIONS: '/notifications',
-  TEAM_MANAGEMENT: '/team-management',
-  COMPANY_ANALYTICS: '/company-analytics',
-  WORKFORCE_STATUS: '/workforce-status',
-  MANAGER_REPORTS: '/manager-reports',
-  TEAM_ANALYTICS: '/team-analytics'
+  TEAMS_TAB: '/?tab=teams'
 } as const;
 
 // Mobile Breakpoints

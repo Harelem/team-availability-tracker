@@ -260,9 +260,9 @@ export default function ExportDropdown({
 
             <hr className="my-1 border-gray-200" />
 
-            {/* Week Options */}
+            {/* Sprint Period Options */}
             <div className="px-3 py-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Week Options</div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sprint Period Options</div>
             </div>
             
             <button
@@ -270,7 +270,7 @@ export default function ExportDropdown({
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
             >
               <ArrowLeft className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-700">Previous Week</span>
+              <span className="text-gray-700">Previous Sprint</span>
             </button>
 
             <button
@@ -278,7 +278,7 @@ export default function ExportDropdown({
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
             >
               <Clock className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-700">Next Week</span>
+              <span className="text-gray-700">Next Sprint</span>
             </button>
 
             <hr className="my-1 border-gray-200" />

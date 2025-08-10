@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useMobileNavigation } from '@/hooks/useMobileNavigation';
 import MobileAppNavigation from './MobileAppNavigation';
@@ -20,6 +20,7 @@ export default function GlobalMobileNavigation({
   className = ''
 }: GlobalMobileNavigationProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isMobile, isLoading: mobileLoading } = useIsMobile();
   const [currentUser, setCurrentUser] = useState(null);
   
@@ -47,19 +48,21 @@ export default function GlobalMobileNavigation({
       currentPage={pathname || undefined}
       showExecutive={showExecutive}
       onNavigateHome={() => {
-        window.location.href = '/';
+        router.push('/');
       }}
       onNavigateTeams={() => {
-        window.location.href = '/?tab=teams';
+        router.push('/?tab=teams');
       }}
       onNavigateExecutive={() => {
-        window.location.href = '/executive';
+        router.push('/executive');
       }}
       onNavigateSettings={() => {
-        window.location.href = '/settings';
+        // Settings not implemented yet - show a helpful message
+        alert('Settings page coming soon! For now, use the menu in the top-left corner for options.');
       }}
       onNavigateProfile={() => {
-        window.location.href = '/profile';
+        // Profile not implemented yet - show a helpful message  
+        alert('Profile page coming soon! User info is shown in the navigation header.');
       }}
       className={className}
     />
