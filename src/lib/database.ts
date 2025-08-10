@@ -186,7 +186,7 @@ export const DatabaseService = {
       const operation = async () => {
         let query = supabase
           .from('team_members')
-          .select('id, name, hebrew, is_manager, email, team_id, created_at, updated_at')
+          .select('id, name, hebrew, is_manager, email, team_id, role, is_critical, inactive_date, created_at, updated_at')
         
         if (teamId) {
           query = query.eq('team_id', teamId)
@@ -212,8 +212,12 @@ export const DatabaseService = {
           name: member.name,
           hebrew: member.hebrew || '',
           isManager: member.is_manager || false,
+          is_manager: member.is_manager || false, // Database column name compatibility
           email: member.email || '',
           team_id: member.team_id,
+          role: member.role || undefined,
+          is_critical: member.is_critical || false,
+          inactive_date: member.inactive_date || undefined,
           created_at: member.created_at,
           updated_at: member.updated_at
         }))
@@ -3309,70 +3313,33 @@ The table creation script includes:
       const teams = await this.getOperationalTeams()
       console.log(`📊 Found ${teams.length} operational teams`)
       
-      // Get all team members with team_id - updated to include team_id column
-      const { data: allMembers, error: membersError } = await supabase
-        .from('team_members')
-        .select(`
-          id,
-          name,
-          hebrew,
-          is_manager,
-          team_id
-        `)
+      // Use enhanced database function for better performance
+      const { data: dailyStatusData, error: dailyStatusError } = await supabase
+        .rpc('get_daily_company_status_data', { target_date: dateStr })
 
-      if (membersError) {
-        console.error('Error fetching team members:', membersError)
-        throw new Error(`Failed to fetch team members: ${membersError.message}`)
+      if (dailyStatusError) {
+        console.error('Error fetching daily status data:', dailyStatusError)
+        throw new Error(`Failed to fetch daily status data: ${dailyStatusError.message}`)
       }
 
-      console.log(`👥 Found ${allMembers?.length || 0} total team members`)
+      console.log(`👥 Found ${dailyStatusData?.length || 0} daily status records`)
 
-      // Get schedule entries for the date
-      const { data: scheduleData, error: scheduleError } = await supabase
-        .from('schedule_entries')
-        .select('member_id, value, reason')
-        .eq('date', dateStr)
+      // Process the data from the enhanced function
+      const members: DailyMemberStatus[] = (dailyStatusData || []).map(record => ({
+        id: record.member_id,
+        name: record.member_name || record.member_hebrew,
+        teamId: record.team_id,
+        teamName: record.team_name,
+        role: record.role || (record.is_manager ? 'Manager' : 'Team Member'),
+        hours: record.hours, // Already converted by database function
+        reason: record.reason,
+        isCritical: record.is_critical || false
+      }))
 
-      if (scheduleError) {
-        console.error('Error fetching schedule data:', scheduleError)
-        throw new Error(`Failed to fetch schedule data: ${scheduleError.message}`)
-      }
-
-      console.log(`📅 Found ${scheduleData?.length || 0} schedule entries for ${dateStr}`)
-
-      // Helper function to convert value to hours
-      const valueToHours = (value: string | null): number => {
-        if (!value) return 1 // Default to full day
-        switch (value) {
-          case '1': return 1
-          case '0.5': return 0.5
-          case 'X': return 0
-          default: return 1
-        }
-      }
-
-      // Process the data with proper team relationships
-      const members: DailyMemberStatus[] = allMembers.map(member => {
-        const schedule = scheduleData?.find(s => s.member_id === member.id)
-        const hours = valueToHours(schedule?.value)
-        const team = teams.find(t => t.id === member.team_id)
-
-        return {
-          id: member.id,
-          name: member.name || member.hebrew,
-          teamId: member.team_id,
-          teamName: team?.name || 'Unassigned Team',
-          role: member.is_manager ? 'Manager' : 'Team Member',
-          hours: hours,
-          reason: schedule?.reason,
-          isCritical: false // Can be extended later
-        }
-      })
-
-      // Calculate company-wide summary
+      // Calculate company-wide summary using actual hours
       const summary: DailyStatusSummary = {
-        available: members.filter(m => m.hours === 1).length,
-        halfDay: members.filter(m => m.hours === 0.5).length,
+        available: members.filter(m => m.hours >= 7).length,
+        halfDay: members.filter(m => m.hours > 0 && m.hours < 7).length,
         unavailable: members.filter(m => m.hours === 0 && m.reason !== 'שמירה').length,
         reserve: members.filter(m => m.reason === 'שמירה').length
       }
@@ -3387,8 +3354,8 @@ The table creation script includes:
           name: team.name,
           manager: teamManagers.map(m => m.name).join(', ') || 'No Manager',
           total: teamMembers.length,
-          available: teamMembers.filter(m => m.hours === 1).length,
-          halfDay: teamMembers.filter(m => m.hours === 0.5).length,
+          available: teamMembers.filter(m => m.hours >= 7).length,
+          halfDay: teamMembers.filter(m => m.hours > 0 && m.hours < 7).length,
           unavailable: teamMembers.filter(m => m.hours === 0 && m.reason !== 'שמירה').length,
           reserveDuty: teamMembers.filter(m => m.reason === 'שמירה'),
           criticalAbsences: teamMembers.filter(m => m.hours === 0 && m.isCritical)

@@ -41,7 +41,11 @@ export interface WorkOption {
 }
 
 export interface ScheduleEntry {
+  id?: number;
+  member_id?: number;
+  date?: string;
   value: '1' | '0.5' | 'X';
+  hours?: number; // Computed hours field from enhanced schema
   reason?: string;
   created_at?: string;
   updated_at?: string;

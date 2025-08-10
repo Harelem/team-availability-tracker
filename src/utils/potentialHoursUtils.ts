@@ -1,6 +1,7 @@
 'use client';
 
 import { TeamMember, Team, WeekData } from '@/types';
+import { valueToHours } from './hoursCalculations';
 
 /**
  * Potential Hours Calculation Utilities
@@ -141,19 +142,7 @@ export const calculateActualHours = (scheduleData: WeekData, memberIds: number[]
       const entry = memberSchedule[dateKey];
       if (!entry) return;
       
-      switch (entry.value) {
-        case '1':
-          totalHours += HOURS_PER_DAY;
-          break;
-        case '0.5':
-          totalHours += HOURS_PER_DAY / 2;
-          break;
-        case 'X':
-          totalHours += 0;
-          break;
-        default:
-          break;
-      }
+      totalHours += valueToHours(entry.value);
     });
   });
   
