@@ -51,8 +51,9 @@ const NavTab: React.FC<NavTabProps> = ({
       disabled={disabled}
       className={combineClasses(
         'flex flex-col items-center justify-center flex-1 py-2 px-1 relative transition-all duration-200',
-        DESIGN_SYSTEM.buttons.touch,
-        'min-h-[60px]',
+        DESIGN_SYSTEM.buttons.touchComfortable,
+        DESIGN_SYSTEM.mobile.touchFeedback,
+        'min-h-[64px]', // Increased for better mobile experience
         isActive 
           ? 'text-blue-600' 
           : disabled 
@@ -261,8 +262,9 @@ export function CompactMobileAppNavigation({
         <button
           onClick={onNavigateHome}
           className={combineClasses(
-            'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200',
-            DESIGN_SYSTEM.buttons.touch,
+            'flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200',
+            DESIGN_SYSTEM.buttons.touchComfortable,
+            DESIGN_SYSTEM.mobile.touchFeedback,
             activeTab === 'home' 
               ? 'bg-blue-100 text-blue-700' 
               : 'text-gray-600 hover:bg-gray-100'
@@ -277,8 +279,9 @@ export function CompactMobileAppNavigation({
         <button
           onClick={onNavigateTeams}
           className={combineClasses(
-            'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200',
-            DESIGN_SYSTEM.buttons.touch,
+            'flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200',
+            DESIGN_SYSTEM.buttons.touchComfortable,
+            DESIGN_SYSTEM.mobile.touchFeedback,
             activeTab === 'teams' 
               ? 'bg-blue-100 text-blue-700' 
               : 'text-gray-600 hover:bg-gray-100'
@@ -294,8 +297,9 @@ export function CompactMobileAppNavigation({
           <button
             onClick={onNavigateExecutive}
             className={combineClasses(
-              'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200',
-              DESIGN_SYSTEM.buttons.touch,
+              'flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200',
+              DESIGN_SYSTEM.buttons.touchComfortable,
+              DESIGN_SYSTEM.mobile.touchFeedback,
               activeTab === 'executive' 
                 ? 'bg-blue-100 text-blue-700' 
                 : 'text-gray-600 hover:bg-gray-100'

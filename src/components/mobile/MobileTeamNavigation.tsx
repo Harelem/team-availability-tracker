@@ -303,7 +303,7 @@ const MobileTeamNavigation: React.FC<MobileTeamNavigationProps> = ({
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button 
               {...getInteractionProps(() => setMenuOpen(true), { hapticFeedback: true })}
-              className="p-2 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex-shrink-0 transition-colors"
+              className="p-3 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex-shrink-0 transition-all duration-200 active:scale-95"
               aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
               aria-expanded={menuOpen}
               style={{ 

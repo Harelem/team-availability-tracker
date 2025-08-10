@@ -101,12 +101,15 @@ export const DESIGN_SYSTEM = {
     success: 'bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium rounded-lg transition-colors', 
     danger: 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium rounded-lg transition-colors',
     ghost: 'hover:bg-gray-100 active:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors',
-    // Size variants
-    sm: 'px-3 py-1.5 text-sm min-h-[36px]',
-    md: 'px-4 py-2 text-sm min-h-[40px]',
-    lg: 'px-6 py-3 text-base min-h-[44px]',
-    // Mobile-friendly touch targets
-    touch: 'min-h-[44px] min-w-[44px]'
+    // Size variants - Mobile-first with proper touch targets
+    sm: 'px-3 py-2 text-sm min-h-[44px]',
+    md: 'px-4 py-2.5 text-sm min-h-[48px]',
+    lg: 'px-6 py-3 text-base min-h-[56px]',
+    xl: 'px-8 py-4 text-lg min-h-[64px]',
+    // Mobile-optimized touch targets
+    touch: 'min-h-[44px] min-w-[44px] touch-manipulation',
+    touchComfortable: 'min-h-[48px] min-w-[48px] touch-manipulation',
+    touchLarge: 'min-h-[56px] min-w-[56px] touch-manipulation'
   },
 
   // Card styles
@@ -161,6 +164,36 @@ export const DESIGN_SYSTEM = {
     all: 'transition-all duration-200',
     slow: 'transition-all duration-300',
     fast: 'transition-all duration-150'
+  },
+
+  // Mobile-specific enhancements
+  mobile: {
+    // Touch feedback
+    touchFeedback: 'active:scale-95 transition-transform duration-150',
+    // Improved tap targets
+    tapTarget: 'relative before:absolute before:-inset-2 before:rounded-lg',
+    // Safe area handling
+    safeArea: {
+      top: 'pt-[env(safe-area-inset-top)]',
+      bottom: 'pb-[env(safe-area-inset-bottom)]',
+      left: 'pl-[env(safe-area-inset-left)]',
+      right: 'pr-[env(safe-area-inset-right)]',
+      all: 'p-[env(safe-area-inset-top)_env(safe-area-inset-right)_env(safe-area-inset-bottom)_env(safe-area-inset-left)]'
+    },
+    // Mobile scrolling
+    scroll: {
+      smooth: 'scroll-smooth overscroll-y-contain',
+      momentum: '-webkit-overflow-scrolling: touch',
+      hideScrollbar: 'scrollbar-hide'
+    },
+    // Pull to refresh
+    pullToRefresh: 'overscroll-y-contain',
+    // Gesture support
+    gestures: {
+      swipe: 'touch-pan-x',
+      scroll: 'touch-pan-y',
+      zoom: 'touch-pinch-zoom'
+    }
   }
 } as const;
 

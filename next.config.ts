@@ -117,18 +117,50 @@ const nextConfig: NextConfig = {
       };
     }
 
-    // Bundle splitting for better caching
+    // Enhanced bundle splitting for mobile optimization
     if (!dev && !isServer) {
       config.optimization.splitChunks = {
         ...config.optimization.splitChunks,
+        chunks: 'all',
         cacheGroups: {
           ...config.optimization.splitChunks.cacheGroups,
+          // Core framework
+          framework: {
+            test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+            name: 'framework',
+            chunks: 'all',
+            priority: 40,
+            enforce: true,
+          },
+          // UI libraries (Lucide icons)
+          ui: {
+            test: /[\\/]node_modules[\\/](lucide-react|@radix-ui)[\\/]/,
+            name: 'ui',
+            chunks: 'all',
+            priority: 30,
+          },
+          // Mobile-specific components
+          mobile: {
+            test: /[\\/](mobile|Mobile)[\\/]/,
+            name: 'mobile',
+            chunks: 'all',
+            priority: 25,
+          },
+          // Navigation components
+          navigation: {
+            test: /[\\/](navigation|Navigation)[\\/]/,
+            name: 'navigation',
+            chunks: 'all',
+            priority: 20,
+          },
+          // Vendor libraries
           vendor: {
             test: /[\\/]node_modules[\\/]/,
             name: 'vendors',
             chunks: 'all',
             priority: 10,
           },
+          // Common components
           common: {
             name: 'common',
             minChunks: 2,

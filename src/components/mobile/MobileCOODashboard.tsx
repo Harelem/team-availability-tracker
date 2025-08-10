@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, RefreshCw, Users, TrendingUp, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, RefreshCw, Users, TrendingUp, Eye } from 'lucide-react';
 import { TeamDailyStatus } from '@/types';
 import TeamDetailModal from '@/components/modals/TeamDetailModal';
+import { useSwipeNavigation, usePullToRefresh } from '@/hooks/useTouchGestures';
+import MobileLoadingSpinner, { MobileCardSkeleton, useLoadingStates } from './MobileLoadingSpinner';
 
 interface MobileCOODashboardProps {
   teams: TeamDailyStatus[];
@@ -29,6 +31,35 @@ export default function MobileCOODashboard({
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  
+  // Enhanced loading states management
+  const { setLoading, isLoading, isAnyLoading } = useLoadingStates();
+
+  // Swipe navigation for date changes
+  const swipeNavigation = useSwipeNavigation(
+    () => changeDate(1),  // Swipe left = next day
+    () => changeDate(-1), // Swipe right = previous day
+    { threshold: 60, velocity: 0.3 }
+  );
+
+  // Pull-to-refresh functionality
+  const pullToRefresh = usePullToRefresh(
+    async () => {
+      await new Promise(resolve => {
+        setRefreshing(true);
+        setTimeout(() => {
+          window.location.reload();
+          resolve(void 0);
+        }, 1000);
+      });
+    },
+    { 
+      threshold: 80,
+      refreshingText: 'Refreshing data...',
+      pullText: 'Pull down to refresh',
+      releaseText: 'Release to refresh'
+    }
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -47,9 +78,13 @@ export default function MobileCOODashboard({
   };
 
   const changeDate = (days: number) => {
+    setLoading('dateChange', true);
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + days);
     onDateChange(newDate);
+    
+    // Clear loading state after a short delay
+    setTimeout(() => setLoading('dateChange', false), 300);
   };
 
   const handleTeamDetailsClick = (teamId: number) => {
@@ -63,7 +98,31 @@ export default function MobileCOODashboard({
   };
 
   return (
-    <div className="mobile-dashboard min-h-screen bg-gray-50">
+    <div 
+      className="mobile-dashboard min-h-screen bg-gray-50 mobile-pull-to-refresh"
+      {...swipeNavigation.bind()}
+      {...pullToRefresh.bind()}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullToRefresh.state.isPulling || pullToRefresh.state.isRefreshing) && (
+        <div 
+          className="fixed top-0 left-0 right-0 bg-blue-50 border-b border-blue-200 z-50 py-3 px-4 text-center transition-all duration-300"
+          style={{ 
+            transform: `translateY(${pullToRefresh.state.isPulling ? Math.min(pullToRefresh.state.pullDistance / 2, 40) : pullToRefresh.state.isRefreshing ? 0 : -100}px)`,
+            opacity: pullToRefresh.state.isPulling || pullToRefresh.state.isRefreshing ? 1 : 0
+          }}
+        >
+          <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
+            {pullToRefresh.state.isRefreshing ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+            <span>{pullToRefresh.state.message}</span>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Header */}
       <div className="mobile-header">
         <div className="flex items-center justify-between">
@@ -78,8 +137,10 @@ export default function MobileCOODashboard({
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-3 text-gray-400 hover:text-gray-600 active:text-gray-700 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-lg hover:bg-gray-100"
+            style={{ touchAction: 'manipulation' }}
             title="Refresh"
+            aria-label="Refresh data"
           >
             <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
@@ -91,10 +152,16 @@ export default function MobileCOODashboard({
         <div className="flex items-center justify-between">
           <button
             onClick={() => changeDate(-1)}
-            className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            disabled={loading}
+            className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center"
+            style={{ touchAction: 'manipulation' }}
+            disabled={loading || isLoading('dateChange')}
+            aria-label="Previous day"
           >
-            <ChevronLeft className="h-5 w-5" />
+            {isLoading('dateChange') ? (
+              <MobileLoadingSpinner variant="dots" size="sm" />
+            ) : (
+              <ChevronLeft className="h-5 w-5" />
+            )}
           </button>
           
           <div className="text-center flex-1">
@@ -106,10 +173,16 @@ export default function MobileCOODashboard({
           
           <button
             onClick={() => changeDate(1)}
-            className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            disabled={loading}
+            className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center"
+            style={{ touchAction: 'manipulation' }}
+            disabled={loading || isLoading('dateChange')}
+            aria-label="Next day"
           >
-            <ChevronRight className="h-5 w-5" />
+            {isLoading('dateChange') ? (
+              <MobileLoadingSpinner variant="dots" size="sm" />
+            ) : (
+              <ChevronRight className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>
@@ -199,10 +272,7 @@ export default function MobileCOODashboard({
         </div>
         
         {loading ? (
-          <div className="text-center py-8">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-gray-400" />
-            <p className="text-gray-500">Loading team data...</p>
-          </div>
+          <MobileCardSkeleton count={5} />
         ) : teams.length === 0 ? (
           <div className="mobile-card text-center py-8">
             <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -290,7 +360,9 @@ export default function MobileCOODashboard({
                 <div className="flex gap-2">
                   <button 
                     onClick={() => handleTeamDetailsClick(team.id)}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 px-3 text-xs bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1 py-3 px-3 text-xs bg-blue-100 hover:bg-blue-200 active:bg-blue-300 rounded-lg transition-all duration-200 active:scale-95 min-h-[44px]"
+                    style={{ touchAction: 'manipulation' }}
+                    aria-label={`View details for ${team.name}`}
                   >
                     <Eye className="w-3 h-3" />
                     <span>פרטים • Details</span>
@@ -307,21 +379,27 @@ export default function MobileCOODashboard({
         <div className="flex justify-around">
           <button 
             onClick={() => window.location.href = '/'}
-            className="mobile-nav-item"
+            className="mobile-nav-item min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
+            style={{ touchAction: 'manipulation' }}
+            aria-label="Go to Teams dashboard"
           >
             <Users className="h-5 w-5 mobile-nav-item-icon" />
             <span className="mobile-nav-item-label">Teams</span>
           </button>
           <button 
             onClick={() => window.location.href = '/executive'}
-            className="mobile-nav-item active"
+            className="mobile-nav-item active min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
+            style={{ touchAction: 'manipulation' }}
+            aria-label="Executive dashboard (current page)"
           >
             <TrendingUp className="h-5 w-5 mobile-nav-item-icon" />
             <span className="mobile-nav-item-label">Executive</span>
           </button>
           <button 
             onClick={handleRefresh}
-            className="mobile-nav-item"
+            className="mobile-nav-item min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
+            style={{ touchAction: 'manipulation' }}
+            aria-label="Refresh data"
           >
             <RefreshCw className={`h-5 w-5 mobile-nav-item-icon ${refreshing ? 'animate-spin' : ''}`} />
             <span className="mobile-nav-item-label">Refresh</span>

@@ -33,6 +33,75 @@ body {
   touch-action: manipulation;
 }
 
+/* Enhanced touch targets for mobile */
+.touch-target-minimal {
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.touch-target-comfortable {
+  min-width: 48px;
+  min-height: 48px;
+  touch-action: manipulation;
+}
+
+.touch-target-large {
+  min-width: 56px;
+  min-height: 56px;
+  touch-action: manipulation;
+}
+
+/* Touch feedback animations */
+.touch-feedback {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.touch-feedback:active {
+  transform: scale(0.95);
+}
+
+/* Hardware acceleration for smooth animations */
+.mobile-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Optimized scrolling for mobile */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+
+/* Reduce motion for performance if requested */
+@media (prefers-reduced-motion: reduce) {
+  .touch-feedback {
+    transition: none;
+  }
+  
+  .touch-feedback:active {
+    transform: none;
+  }
+}
+
+/* Better tap highlights for iOS */
+@media (max-width: 640px) {
+  * {
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  input, textarea, [contenteditable] {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}
+
 /* Better focus states for mobile */
 @media (max-width: 640px) {
   button:focus,
