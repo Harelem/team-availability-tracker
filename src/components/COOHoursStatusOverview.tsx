@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Building2, TrendingUp, Calendar, Users, AlertTriangle, Info } from 'lucide-react';
 import { Team, TeamMember, CurrentGlobalSprint } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -9,6 +9,7 @@ import { calculateWorkingDaysBetween } from '@/lib/calculationService';
 import { MissingMembersService } from '@/lib/missingMembersService';
 import { MissingMemberData } from '@/types/tooltipTypes';
 import TeamMembersTooltip from '@/components/ui/TeamMembersTooltip';
+import { dataConsistencyManager } from '@/utils/dataConsistencyManager';
 
 interface TeamSprintStatus {
   teamName: string;
@@ -42,12 +43,22 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
   const [tooltipData, setTooltipData] = useState<Record<string, MissingMemberData>>({});
   const [tooltipLoading, setTooltipLoading] = useState<Record<string, boolean>>({});
   const [activeTooltipTeam, setActiveTooltipTeam] = useState<string | null>(null);
+  
+  // Request cancellation ref
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (allTeams && currentSprint) {
       loadCompanyHoursStatus();
     }
-  }, [allTeams, currentSprint]);
+    
+    // Cleanup function to cancel ongoing requests
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [allTeams, currentSprint]); // Fixed: Remove function dependency to prevent infinite loop
 
   // Keyboard support for accessibility
   useEffect(() => {
@@ -110,46 +121,99 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
   };
 
 
-  const loadCompanyHoursStatus = async () => {
+  // Memoized load function to prevent unnecessary re-creation and infinite loops
+  const loadCompanyHoursStatus = useCallback(async () => {
+    // Cancel any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
+    
     setIsLoading(true);
     setError(null);
     
     try {
+      // Check if request was cancelled before starting
+      if (signal.aborted) {
+        console.log('🔍 Request cancelled before starting');
+        return;
+      }
+      
       console.log('🔍 Loading company-wide hours status...');
       
       const currentPeriod = calculateSprintPeriod(currentSprint, 0);
       const nextPeriod = calculateSprintPeriod(currentSprint, 1);
       
-      const currentSprintTeamStatus: TeamSprintStatus[] = [];
-      const nextSprintTeamStatus: TeamSprintStatus[] = [];
+      // Pre-load team members for all teams to avoid sequential DB calls
+      const teamsWithMembers = await Promise.all(
+        allTeams.map(async (team) => {
+          const teamMembers = await DatabaseService.getTeamMembers(team.id, false); // Use cache for team members
+          return { team, teamMembers };
+        })
+      );
       
-      for (const team of allTeams) {
-        // Get team members
-        const teamMembers = await DatabaseService.getTeamMembers(team.id);
-        
+      // Filter out teams with no members
+      const teamsWithMembersFiltered = teamsWithMembers.filter(({ team, teamMembers }) => {
         if (teamMembers.length === 0) {
           console.log(`⚠️ Team ${team.name} has no members, skipping`);
-          continue;
+          return false;
         }
-        
-        // Current sprint status for this team
+        return true;
+      });
+      
+      // Process current sprint status for all teams in parallel
+      const currentSprintPromises = teamsWithMembersFiltered.map(async ({ team, teamMembers }) => {
         const currentStatus = await checkTeamSprintStatus(team, teamMembers, currentPeriod);
-        currentSprintTeamStatus.push({
+        return {
           teamName: team.name,
           teamId: team.id,
           color: team.color,
           ...currentStatus
-        });
-        
-        // Next sprint status for this team
+        };
+      });
+      
+      // Process next sprint status for all teams in parallel
+      const nextSprintPromises = teamsWithMembersFiltered.map(async ({ team, teamMembers }) => {
         const nextStatus = await checkTeamSprintStatus(team, teamMembers, nextPeriod);
-        nextSprintTeamStatus.push({
+        return {
           teamName: team.name,
           teamId: team.id,
           color: team.color,
           ...nextStatus
-        });
+        };
+      });
+      
+      // Wait for both current and next sprint data to complete
+      const [currentSprintTeamStatus, nextSprintTeamStatus] = await Promise.all([
+        Promise.all(currentSprintPromises),
+        Promise.all(nextSprintPromises)
+      ]);
+      
+      // Validate data consistency before setting state
+      const dataValidation = dataConsistencyManager.validateDataConsistency(
+        [...currentSprintTeamStatus, ...nextSprintTeamStatus],
+        [
+          // Validator functions for team sprint status
+          (item) => Boolean(item.teamName && typeof item.teamName === 'string'),
+          (item) => Boolean(typeof item.teamId === 'number' && item.teamId > 0),
+          (item) => Boolean(typeof item.completeMembers === 'number' && item.completeMembers >= 0),
+          (item) => Boolean(typeof item.totalMembers === 'number' && item.totalMembers > 0),
+          (item) => Boolean(typeof item.teamCompletionRate === 'number' && item.teamCompletionRate >= 0 && item.teamCompletionRate <= 100),
+          (item) => Boolean(item.completeMembers <= item.totalMembers),
+          (item) => Boolean(['excellent', 'good', 'needs_attention', 'critical'].includes(item.status))
+        ]
+      );
+      
+      if (!dataValidation.isValid) {
+        console.error('❌ Data validation failed:', dataValidation.errors);
+        setError('Data validation failed - inconsistent team status data detected');
+        return;
       }
+      
+      console.log('✅ Data validation passed - setting company status');
       
       setCompanyStatus({
         currentSprint: currentSprintTeamStatus.sort((a, b) => b.teamCompletionRate - a.teamCompletionRate),
@@ -159,25 +223,33 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
       console.log('✅ Company hours status loaded successfully');
       
     } catch (error) {
+      // Don't set error state if the request was cancelled
+      if (signal.aborted) {
+        console.log('🔍 Request cancelled during execution');
+        return;
+      }
+      
       console.error('❌ Error loading company hours status:', error);
       setError('Failed to load company hours status');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [allTeams, currentSprint]); // Include dependencies to prevent stale closures
 
-  const checkTeamSprintStatus = async (
+  // Memoized team sprint status calculation
+  const checkTeamSprintStatus = useCallback(async (
     team: Team,
     teamMembers: TeamMember[],
     sprintPeriod: { start: string; end: string }
   ) => {
     const workingDays = calculateWorkingDaysBetween(new Date(sprintPeriod.start), new Date(sprintPeriod.end));
     
-    // Get all schedule entries for team members in this period
+    // Get all schedule entries for team members in this period (using cache)
     const scheduleData = await DatabaseService.getScheduleEntries(
       sprintPeriod.start,
       sprintPeriod.end,
-      team.id
+      team.id,
+      false // Use cache for schedule entries
     );
     
     // Calculate completion per member
@@ -213,7 +285,7 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
       teamCompletionRate,
       status
     };
-  };
+  }, []); // No dependencies - pure calculation function
 
   const TeamStatusBadge = ({ status }: { status: 'excellent' | 'good' | 'needs_attention' | 'critical' }) => {
     const badges = {
@@ -243,23 +315,26 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
     return colors[status];
   };
 
-  const CompanyCompletionSummary = ({ sprintData }: { sprintData: TeamSprintStatus[] }) => {
-    const totalMembers = sprintData.reduce((sum, team) => sum + team.totalMembers, 0);
-    const completeMembers = sprintData.reduce((sum, team) => sum + team.completeMembers, 0);
-    const companyRate = totalMembers > 0 ? Math.round((completeMembers / totalMembers) * 100) : 0;
-    
-    return (
-      <div className="text-center bg-gray-50 p-4 rounded-lg">
-        <div className="text-3xl font-bold text-gray-900 mb-1">{companyRate}%</div>
-        <div className="text-sm text-gray-600">
-          {completeMembers}/{totalMembers} employees completed
+  // Memoized company completion summary to prevent unnecessary recalculations
+  const CompanyCompletionSummary = useMemo(() => {
+    return ({ sprintData }: { sprintData: TeamSprintStatus[] }) => {
+      const totalMembers = sprintData.reduce((sum, team) => sum + team.totalMembers, 0);
+      const completeMembers = sprintData.reduce((sum, team) => sum + team.completeMembers, 0);
+      const companyRate = totalMembers > 0 ? Math.round((completeMembers / totalMembers) * 100) : 0;
+      
+      return (
+        <div className="text-center bg-gray-50 p-4 rounded-lg">
+          <div className="text-3xl font-bold text-gray-900 mb-1">{companyRate}%</div>
+          <div className="text-sm text-gray-600">
+            {completeMembers}/{totalMembers} employees completed
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Across {sprintData.length} teams
+          </div>
         </div>
-        <div className="text-xs text-gray-500 mt-1">
-          Across {sprintData.length} teams
-        </div>
-      </div>
-    );
-  };
+      );
+    };
+  }, []); // No dependencies - pure calculation function
 
   if (isLoading) {
     return (

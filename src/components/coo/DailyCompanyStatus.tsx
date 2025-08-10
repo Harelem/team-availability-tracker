@@ -187,7 +187,7 @@ export default function DailyCompanyStatus({
                       </div>
                       <div className="text-2xl font-bold text-gray-900 mt-1">{count}</div>
                       <div className="text-sm text-gray-500">
-                        {percentage}% מהחברה • {percentage}% of company
+                        {percentage}% • מהחברה of company
                       </div>
                     </div>
                     <div className="text-3xl">{category.icon}</div>

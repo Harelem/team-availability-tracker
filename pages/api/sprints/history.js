@@ -33,7 +33,7 @@ async function handleGet(req, res) {
     // Get current sprint from global_sprint_settings
     const { data: currentSprintData, error: currentError } = await supabase
       .from('global_sprint_settings')
-      .select('*')
+      .select('current_sprint_number, sprint_length_weeks, sprint_start_date, created_at')
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

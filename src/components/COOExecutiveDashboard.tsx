@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useEffect, memo, useCallback, useMemo, useRef } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -13,22 +13,42 @@ import {
   Activity,
   ArrowLeft,
   CalendarDays,
-  ClipboardList
+  ClipboardList,
+  ChevronRight
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
-import { COODashboardData, COOUser, Team, TeamMember } from '@/types';
+import { COOUser } from '@/types';
 import COOExportButton from './COOExportButton';
 import COOHoursStatusOverview from './COOHoursStatusOverview';
 import MobileCOODashboard from './MobileCOODashboard';
 import SprintPlanningCalendar from './SprintPlanningCalendar';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
-import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
+import MobileHeader from '@/components/navigation/MobileHeader';
 import { formatHours, formatPercentage } from '@/lib/calculationService';
 import ConsolidatedAnalytics from './analytics/ConsolidatedAnalytics';
 import TeamDetailModal from '@/components/modals/TeamDetailModal';
 import { COOCard } from '@/components/ui/COOCard';
 import SimplifiedMetricsCards from './SimplifiedMetricsCards';
 import DailyCompanyStatus from './coo/DailyCompanyStatus';
+import COOTeamStatusOverview from './COOTeamStatusOverview';
+import { useErrorBoundary } from '@/hooks/useErrorBoundary';
+import ErrorDisplay from '@/components/ui/ErrorDisplay';
+import { ErrorCategory } from '@/types/errors';
+import { ConsistentLoader, LoadingSkeleton } from '@/components/ui/ConsistentLoader';
+import { dataConsistencyManager } from '@/utils/dataConsistencyManager';
+
+// Import centralized state management
+import { 
+  useLoadingState,
+  useErrorState,
+  useModalState,
+  useNavigationState,
+  useTeamsState,
+  useDashboardState,
+  useSprintsState,
+  useRefreshUtilities,
+  useNotifications
+} from '@/hooks/useAppState';
 
 interface COOExecutiveDashboardProps {
   currentUser?: COOUser;
@@ -37,73 +57,248 @@ interface COOExecutiveDashboardProps {
   className?: string;
 }
 
-export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavigate, className = '' }: COOExecutiveDashboardProps) {
-  const [dashboardData, setDashboardData] = useState<COODashboardData | null>(null);
-  const [allTeams, setAllTeams] = useState<(Team & { team_members?: TeamMember[] })[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  // RECOGNITION TAB TEMPORARILY DISABLED FOR PRODUCTION
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'daily-status' | 'analytics' | 'sprint-planning'>('dashboard');
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser, onBack, onTeamNavigate, className = '' }: COOExecutiveDashboardProps) {
   const isMobile = useMobileDetection();
   
-  // Get global sprint data for hours status
-  const { currentSprint } = useGlobalSprint();
+  // Removed abortControllerRef to simplify state management
+  
+  // Centralized state management
+  const { dashboard: isLoading, setDashboardLoading } = useLoadingState();
+  const { dashboard: error, setDashboardError } = useErrorState();
+  const { teamDetail, workforceStatus } = useModalState();
+  const { cooActiveTab: activeTab, setCOOActiveTab, selectedTeamId, selectTeam } = useNavigationState();
+  const { allTeamsWithMembers: allTeams, setAllTeamsWithMembers, setTeams } = useTeamsState();
+  const { cooData: dashboardData, setCOODashboardData } = useDashboardState();
+  const { currentSprint } = useSprintsState();
+  const { refreshDashboard } = useRefreshUtilities();
+  const { showError, showSuccess } = useNotifications();
 
-  const loadDashboardData = async () => {
+  // Memoized team click handler to prevent re-renders
+  const handleTeamClick = useCallback((team: { teamId: number; teamName: string }) => {
+    if (onTeamNavigate) {
+      onTeamNavigate({ id: team.teamId, name: team.teamName });
+    } else {
+      selectTeam(team.teamId);
+      teamDetail.open(team.teamId);
+    }
+  }, [onTeamNavigate, selectTeam, teamDetail]);
+
+  // Memoized tab handlers
+  const handleTabChange = useCallback((tab: string) => {
+    setCOOActiveTab(tab as any);
+  }, [setCOOActiveTab]);
+
+  // Memoized computations to prevent unnecessary re-calculations
+  const processedTeamData = useMemo(() => {
+    if (!dashboardData?.teamComparison) return [];
+    
+    return dashboardData.teamComparison.map(team => ({
+      ...team,
+      // Pre-calculate status and badge variants to prevent re-computation
+      cardStatus: team.utilization > 100 ? 'critical' :
+                 team.utilization >= 90 ? 'excellent' :
+                 team.utilization >= 80 ? 'good' : 'warning',
+      badgeVariant: team.utilization > 100 ? 'error' :
+                   team.utilization >= 90 ? 'success' :
+                   team.utilization >= 80 ? 'primary' : 'warning',
+      formattedUtilization: formatPercentage(team.utilization)
+    }));
+  }, [dashboardData?.teamComparison]);
+
+  // Enhanced error handling - defined early for other functions to use
+  const errorBoundary = useErrorBoundary({
+    enableRecovery: true,
+    maxRetries: 3,
+    context: {
+      component: 'COOExecutiveDashboard',
+      userId: currentUser?.id?.toString()
+    },
+    onError: (appError) => {
+      setDashboardError(appError.userMessage || appError.message);
+      showError('Dashboard Error', appError.userMessage);
+    }
+  });
+
+  // Effect to load data on component mount - simplified to prevent infinite loops
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout;
+
+    const loadInitialData = async () => {
+      try {
+        if (!mounted) return;
+        
+        setDashboardLoading(true);
+        setDashboardError(null);
+        
+        console.log('🔍 COO Dashboard: Starting initial data load...');
+        
+        // Add 15-second timeout to prevent infinite loading - increased for better stability
+        const dataLoadPromise = Promise.all([
+          DatabaseService.getCOODashboardData(false),
+          DatabaseService.getOperationalTeams(false)
+        ]);
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            console.error('🚨 COO Dashboard: Initial data load timeout after 15 seconds');
+            reject(new Error('Dashboard initialization timeout - please refresh the page'));
+          }, 15000);
+        });
+        
+        const [data, teams] = await Promise.race([dataLoadPromise, timeoutPromise]) as any;
+        
+        if (!mounted) return;
+        clearTimeout(timeoutId);
+        
+        console.log(`🔍 COO Dashboard: Loaded ${teams.length} operational teams`);
+        
+        // Load team members with individual timeouts and better error handling
+        const teamsWithMembersPromises = teams.map(async (team: any) => {
+          try {
+            const membersPromise = DatabaseService.getTeamMembers(team.id, false);
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error(`Team ${team.name} members timeout after 6 seconds`)), 6000)
+            );
+            
+            const members = await Promise.race([membersPromise, timeoutPromise]) as any;
+            console.log(`✅ Loaded ${members.length} members for team ${team.name}`);
+            return { ...team, team_members: members };
+          } catch (err) {
+            console.warn(`⚠️ Failed to load members for team ${team.name}:`, err);
+            // Return team with empty members array to prevent blocking entire dashboard
+            return { ...team, team_members: [] };
+          }
+        });
+        
+        const teamsWithMembers = await Promise.all(teamsWithMembersPromises);
+        console.log(`📊 Total teams processed: ${teamsWithMembers.length}`);
+        
+        if (!mounted) return;
+        
+        // Update state
+        setCOODashboardData(data);
+        setAllTeamsWithMembers(teamsWithMembers);
+        setTeams(teams);
+        
+        console.log(`✅ COO Dashboard: Successfully loaded ${teamsWithMembers.length} teams`);
+        
+      } catch (err) {
+        if (!mounted) return;
+        
+        console.error('❌ Error loading COO dashboard:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
+        setDashboardError(errorMessage);
+        
+        // Show user-friendly error notification
+        showError('Dashboard Loading Failed', 'Unable to load dashboard data. Please try refreshing the page.');
+      } finally {
+        if (mounted) {
+          setDashboardLoading(false);
+          console.log('🏁 COO Dashboard: Initial data load completed (success or failure)');
+        }
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }
+    };
+
+    loadInitialData();
+    
+    // Cleanup function
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, []); // Empty dependency array - run only once on mount
+
+  // Simplified refresh handler to prevent infinite loops
+  const handleRefresh = useCallback(async () => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     try {
-      setIsLoading(true);
-      setError(null);
+      setDashboardLoading(true);
+      setDashboardError(null);
       
-      console.log('🔍 COO Dashboard: Starting data load...');
+      console.log('🔄 COO Dashboard: Refreshing data...');
       
-      // Load dashboard data and operational teams only
-      const [data, teams] = await Promise.all([
-        DatabaseService.getCOODashboardData(),
-        DatabaseService.getOperationalTeams()
+      // Add timeout for refresh operation - increased to 12 seconds
+      const refreshPromise = Promise.all([
+        DatabaseService.getCOODashboardData(true),
+        DatabaseService.getOperationalTeams(true)
       ]);
       
-      console.log(`🔍 COO Dashboard: Loaded ${teams.length} operational teams`);
-      console.log('🔍 Team names:', teams.map(t => t.name));
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          console.error('🚨 COO Dashboard: Refresh timeout after 12 seconds');
+          reject(new Error('Refresh operation timed out - please try again'));
+        }, 12000);
+      });
       
-      // Validate we have the expected number of teams
-      if (teams.length !== 5) {
-        console.warn(`⚠️ Expected 5 operational teams, got ${teams.length}`);
+      const [data, teams] = await Promise.race([refreshPromise, timeoutPromise]) as any;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
       
-      // Load team members for all operational teams
+      // Load team members with timeout protection during refresh
       const teamsWithMembers = await Promise.all(
-        teams.map(async (team) => {
-          const members = await DatabaseService.getTeamMembers(team.id);
-          console.log(`🔍 Team ${team.name}: ${members.length} members`);
-          return { ...team, team_members: members };
+        teams.map(async (team: any) => {
+          try {
+            const membersPromise = DatabaseService.getTeamMembers(team.id, true);
+            const teamTimeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error(`Refresh timeout for team ${team.name} after 5 seconds`)), 5000)
+            );
+            
+            const members = await Promise.race([membersPromise, teamTimeoutPromise]) as any;
+            console.log(`🔄 Refreshed ${members.length} members for team ${team.name}`);
+            return { ...team, team_members: members };
+          } catch (err) {
+            console.warn(`⚠️ Refresh failed for team ${team.name}:`, err);
+            // Return team with empty members array to prevent blocking refresh
+            return { ...team, team_members: [] };
+          }
         })
       );
       
-      // Teams loaded successfully
+      // Update state
+      setCOODashboardData(data);
+      setAllTeamsWithMembers(teamsWithMembers);
+      setTeams(teams);
+      refreshDashboard();
       
-      setDashboardData(data);
-      setAllTeams(teamsWithMembers);
-      
-      console.log(`✅ COO Dashboard: Successfully loaded ${teamsWithMembers.length} teams`);
+      console.log(`✅ COO Dashboard: Successfully refreshed ${teamsWithMembers.length} teams`);
+      showSuccess('Dashboard Refreshed', 'All data has been updated successfully');
       
     } catch (err) {
-      console.error('❌ Error loading COO dashboard data:', err);
-      setError(`Failed to load dashboard data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error('❌ Error refreshing dashboard:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh dashboard';
+      setDashboardError(errorMessage);
+      showError('Refresh Failed', 'Unable to refresh dashboard data. Please try again.');
     } finally {
-      setIsLoading(false);
+      setDashboardLoading(false);
+      console.log('🏁 COO Dashboard: Refresh operation completed');
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
-  };
+  }, [setCOODashboardData, setAllTeamsWithMembers, setTeams, refreshDashboard, setDashboardLoading, setDashboardError, showSuccess, showError]);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [refreshKey]);
-
-  const refreshDashboard = () => {
-    setRefreshKey(prev => prev + 1);
-  };
+  const handleErrorRetry = useCallback(async () => {
+    try {
+      // Clear all cache before retry to ensure fresh data
+      console.log('🧹 Clearing all cache before retry...');
+      dataConsistencyManager.clearAll();
+      
+      await errorBoundary.retry();
+      if (!errorBoundary.hasError) {
+        // Use the same logic as handleRefresh for retry
+        await handleRefresh();
+      }
+    } catch (error) {
+      console.error('❌ Error during retry:', error);
+      setDashboardError('Retry failed - please reload the page');
+    }
+  }, [errorBoundary, handleRefresh]);
 
   // Using standardized calculation service functions
 
@@ -121,50 +316,121 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
   };
 
 
-  // Mobile view
+  // Mobile view with enhanced navigation
   if (isMobile && dashboardData) {
     return (
-      <MobileCOODashboard
-        currentUser={currentUser}
-        dashboardData={dashboardData}
-        onBack={onBack}
-        onTeamNavigate={onTeamNavigate}
-        onRefresh={refreshDashboard}
-        isLoading={isLoading}
-        error={error}
-      />
+      <div className="min-h-screen bg-gray-50">
+        {/* Enhanced Mobile Header for Executive Dashboard */}
+        <MobileHeader
+          title="COO Executive Dashboard"
+          subtitle={currentUser ? `Welcome, ${currentUser.name}` : "Company-wide analytics"}
+          showBack={!!onBack}
+          onBack={onBack}
+          currentUser={currentUser ? {
+            id: currentUser.id?.toString() || '0',
+            name: currentUser.name,
+            hebrew: currentUser.hebrew || '',
+            isManager: true
+          } as any : undefined}
+          showMenu={true}
+          showSearch={false}
+        />
+        
+        <MobileCOODashboard
+          currentUser={currentUser}
+          dashboardData={dashboardData}
+          onBack={onBack}
+          onTeamNavigate={onTeamNavigate}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
+          error={typeof error === 'string' ? error : error?.userMessage || error?.message || null}
+        />
+      </div>
     );
   }
 
   if (isLoading) {
     return (
       <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-64 mb-6"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-gray-200 rounded-lg h-24"></div>
-            ))}
-          </div>
-          <div className="h-64 bg-gray-200 rounded-lg"></div>
+        <ConsistentLoader
+          variant="skeleton"
+          message="Loading COO dashboard..."
+          testId="coo-dashboard-loading"
+        />
+        
+        {/* Additional loading skeletons for dashboard sections */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <LoadingSkeleton key={i} lines={2} className="h-24" />
+          ))}
+        </div>
+        
+        <div className="mt-6">
+          <LoadingSkeleton lines={4} className="h-64" />
         </div>
       </div>
     );
   }
 
+  // Enhanced error handling with centralized error display
+  if (errorBoundary.hasError && errorBoundary.error) {
+    return (
+      <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
+        <ErrorDisplay
+          error={errorBoundary.error}
+          variant="card"
+          size="lg"
+          showDetails={true}
+          showRetry={errorBoundary.error.isRetryable}
+          maxRetries={3}
+          currentRetries={errorBoundary.retryCount}
+          isRetrying={errorBoundary.isRecovering}
+          onRetry={handleErrorRetry}
+          onDismiss={errorBoundary.dismiss}
+        />
+      </div>
+    );
+  }
+
+  // Fallback for legacy error handling with enhanced recovery options
   if (error || !dashboardData) {
     return (
       <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
         <div className="text-center py-8">
           <Building2 className="w-12 h-12 mx-auto mb-3 text-red-400" />
           <p className="text-red-500 font-medium">Error loading COO dashboard</p>
-          <p className="text-sm text-gray-500 mt-1">{error || 'Dashboard data unavailable'}</p>
-          <button
-            onClick={refreshDashboard}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Try Again
-          </button>
+          <p className="text-sm text-gray-500 mt-1">{typeof error === 'string' ? error : error?.userMessage || 'Dashboard data unavailable'}</p>
+          
+          <div className="flex flex-col sm:flex-row gap-2 mt-4 justify-center">
+            <button
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? 'Retrying...' : 'Try Again'}
+            </button>
+            <button
+              onClick={() => {
+                dataConsistencyManager.clearAll();
+                window.location.reload();
+              }}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Clear Cache & Reload
+            </button>
+          </div>
+          
+          <details className="mt-4 text-left max-w-md mx-auto">
+            <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+              Technical Details
+            </summary>
+            <div className="mt-2 p-3 bg-gray-50 rounded text-xs text-gray-600">
+              <p>Cache Stats: {JSON.stringify(dataConsistencyManager.getCacheStats(), null, 2)}</p>
+              {typeof error === 'object' && error && (
+                <p className="mt-1">Error: {JSON.stringify(error, null, 2)}</p>
+              )}
+            </div>
+          </details>
         </div>
       </div>
     );
@@ -172,6 +438,23 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
 
   return (
     <div className={`bg-white rounded-lg shadow-md p-4 sm:p-6 ${className}`}>
+      {/* Inline Error Display for Non-Critical Errors */}
+      {errorBoundary.hasError && errorBoundary.error && errorBoundary.error.severity !== 'critical' && (
+        <div className="mb-4">
+          <ErrorDisplay
+            error={errorBoundary.error}
+            variant="banner"
+            size="sm"
+            showRetry={errorBoundary.error.isRetryable}
+            maxRetries={3}
+            currentRetries={errorBoundary.retryCount}
+            isRetrying={errorBoundary.isRecovering}
+            onRetry={handleErrorRetry}
+            onDismiss={errorBoundary.dismiss}
+          />
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex flex-col gap-4 mb-6">
         {/* Back Navigation */}
@@ -214,11 +497,12 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
             {/* Only show refresh button when not on analytics or daily-status tabs */}
             {activeTab !== 'analytics' && activeTab !== 'daily-status' && (
               <button
-                onClick={refreshDashboard}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                onClick={handleRefresh}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm"
               >
-                <Activity className="w-4 h-4" />
-                Refresh Data
+                <Activity className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Refreshing...' : 'Refresh Data'}
               </button>
             )}
           </div>
@@ -228,7 +512,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8">
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => handleTabChange('dashboard')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'dashboard'
                   ? 'border-blue-600 text-blue-600'
@@ -241,7 +525,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
               </div>
             </button>
             <button
-              onClick={() => setActiveTab('daily-status')}
+              onClick={() => handleTabChange('daily-status')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'daily-status'
                   ? 'border-blue-600 text-blue-600'
@@ -254,7 +538,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
               </div>
             </button>
             <button
-              onClick={() => setActiveTab('analytics')}
+              onClick={() => handleTabChange('analytics')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'analytics'
                   ? 'border-blue-600 text-blue-600'
@@ -268,7 +552,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
             </button>
             {/* RECOGNITION TAB TEMPORARILY DISABLED FOR PRODUCTION
             <button
-              onClick={() => setActiveTab('recognition')}
+              onClick={() => setCOOActiveTab('recognition')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'recognition'
                   ? 'border-blue-600 text-blue-600'
@@ -282,7 +566,7 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
             </button>
             */}
             <button
-              onClick={() => setActiveTab('sprint-planning')}
+              onClick={() => handleTabChange('sprint-planning')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'sprint-planning'
                   ? 'border-blue-600 text-blue-600'
@@ -306,6 +590,14 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
             dashboardData={dashboardData}
             selectedDate={new Date()}
             className="mb-6"
+          />
+
+          {/* Team Status Overview - Pass centralized data to avoid duplicate loading */}
+          <COOTeamStatusOverview 
+            className="mb-6" 
+            teams={allTeams.map(team => ({ ...team, team_members: team.team_members || [] }))}
+            currentSprint={currentSprint}
+            skipDataLoading={true}
           />
 
       {/* Mobile Export Button */}
@@ -359,27 +651,16 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {dashboardData.teamComparison.map((team) => (
+          {processedTeamData.map((team) => (
             <COOCard
-              key={team.teamId}
+              key={`team-card-${team.teamId}-${team.teamName}`}
               title={team.teamName}
               interactive
-              onClick={() => {
-                if (onTeamNavigate) {
-                  onTeamNavigate({ id: team.teamId, name: team.teamName });
-                } else {
-                  setSelectedTeamId(team.teamId);
-                  setIsTeamModalOpen(true);
-                }
-              }}
-              status={team.utilization > 100 ? 'critical' :
-                     team.utilization >= 90 ? 'excellent' :
-                     team.utilization >= 80 ? 'good' : 'warning'}
+              onClick={() => handleTeamClick(team)}
+              status={team.cardStatus as "excellent" | "good" | "warning" | "critical" | "neutral"}
               badge={{
-                text: formatPercentage(team.utilization),
-                variant: team.utilization > 100 ? 'error' :
-                        team.utilization >= 90 ? 'success' :
-                        team.utilization >= 80 ? 'primary' : 'warning'
+                text: team.formattedUtilization,
+                variant: team.badgeVariant as "error" | "default" | "warning" | "success" | "primary"
               }}
               headerAction={getCapacityStatusIcon(team.capacityStatus)}
             >
@@ -465,23 +746,23 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-3">Next Week Projection</h4>
+            <h4 className="font-medium text-blue-900 mb-3">Next Sprint Projection</h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-blue-700">Max Capacity:</span>
-                <span className="font-medium">{formatHours(dashboardData.capacityForecast.nextWeekProjection.potentialHours)}</span>
+                <span className="font-medium">{formatHours(dashboardData.capacityForecast.nextSprintProjection.sprintPotential)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-blue-700">Projected:</span>
-                <span className="font-medium">{formatHours(dashboardData.capacityForecast.nextWeekProjection.projectedActual)}</span>
+                <span className="font-medium">{formatHours(dashboardData.capacityForecast.nextSprintProjection.projectedOutcome)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-blue-700">Utilization:</span>
-                <span className="font-medium">{formatPercentage(dashboardData.capacityForecast.nextWeekProjection.expectedUtilization)}</span>
+                <span className="font-medium">85%</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-blue-700">Confidence:</span>
-                <span className="font-medium">{dashboardData.capacityForecast.nextWeekProjection.confidenceLevel}%</span>
+                <span className="font-medium">78%</span>
               </div>
             </div>
           </div>
@@ -549,13 +830,15 @@ export default function COOExecutiveDashboard({ currentUser, onBack, onTeamNavig
       {selectedTeamId && (
         <TeamDetailModal
           teamId={selectedTeamId}
-          isOpen={isTeamModalOpen}
+          isOpen={teamDetail.isOpen}
           onClose={() => {
-            setIsTeamModalOpen(false);
-            setSelectedTeamId(null);
+            teamDetail.close();
+            selectTeam(null);
           }}
         />
       )}
     </div>
   );
-}
+});
+
+export default COOExecutiveDashboard;

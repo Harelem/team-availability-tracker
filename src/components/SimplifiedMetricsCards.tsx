@@ -57,9 +57,9 @@ export default function SimplifiedMetricsCards({
       <COOMetricCard
         title="Max Capacity"
         value={formatHours(dashboardData.companyOverview.sprintMax)}
-        trend={`${dashboardData.companyOverview.totalMembers} × 2 weeks × 7h`}
+        trend={`${dashboardData.companyOverview.totalMembers} × 2 sprints × 35h`}
         icon={Calendar}
-        variant="info"
+        variant="primary"
         status="excellent"
       />
 

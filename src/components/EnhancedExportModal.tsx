@@ -198,9 +198,9 @@ export default function EnhancedExportModal({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-gray-900">Current Week</span>
+                  <span className="font-medium text-gray-900">Current Sprint</span>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Sunday to Thursday (this week)</p>
+                <p className="text-sm text-gray-500 mt-1">Sunday to Thursday (current sprint)</p>
               </div>
             </label>
 

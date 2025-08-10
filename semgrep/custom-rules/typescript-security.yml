@@ -1,0 +1,274 @@
+rules:
+  - id: typescript-unsafe-any-cast
+    message: |
+      Unsafe type casting with 'as any' bypasses TypeScript's type safety.
+      This can lead to runtime errors and potential security vulnerabilities.
+      Consider using proper type guards or interfaces.
+    severity: WARNING
+    languages:
+      - typescript
+    pattern-either:
+      - pattern: |
+          $EXPR as any
+      - pattern: |
+          <any>$EXPR
+    pattern-not-inside:
+      - pattern-inside: |
+          // @ts-ignore
+          ...
+      - pattern-inside: |
+          // eslint-disable-next-line
+          ...
+    metadata:
+      category: security
+      subcategory: type-safety
+      confidence: MEDIUM
+      impact: MEDIUM
+
+  - id: typescript-unsafe-object-access
+    message: |
+      Unsafe object property access without proper type checking.
+      This can lead to runtime errors and potential injection attacks.
+    severity: WARNING
+    languages:
+      - typescript
+    patterns:
+      - pattern: |
+          $OBJ[$USER_INPUT]
+      - pattern-not-inside: |
+          if ($USER_INPUT in $OBJ) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (typeof $OBJ[$USER_INPUT] !== 'undefined') {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: type-safety
+      confidence: MEDIUM
+      impact: MEDIUM
+
+  - id: typescript-weak-crypto
+    message: |
+      Using weak cryptographic functions or insufficient key lengths.
+      Consider using stronger algorithms and longer keys.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          crypto.createHash('md5')
+      - pattern: |
+          crypto.createHash('sha1')
+      - pattern: |
+          Math.random()
+      - pattern: |
+          new Date().getTime()
+    metadata:
+      category: security
+      subcategory: crypto
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      confidence: HIGH
+      impact: HIGH
+
+  - id: typescript-sql-injection-risk
+    message: |
+      Potential SQL injection vulnerability from string concatenation.
+      Use parameterized queries or prepared statements instead.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          $QUERY = "SELECT * FROM " + $TABLE + " WHERE " + $CONDITION
+      - pattern: |
+          $QUERY = `SELECT * FROM ${$TABLE} WHERE ${$CONDITION}`
+      - pattern: |
+          query(`SELECT * FROM ${$TABLE}`)
+      - pattern: |
+          supabase.from($USER_INPUT)
+    pattern-not-inside:
+      - pattern: |
+          const ALLOWED_TABLES = [...]
+          if (ALLOWED_TABLES.includes($TABLE)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: injection
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+      impact: HIGH
+
+  - id: typescript-unsafe-eval
+    message: |
+      Using eval() or Function constructor can lead to code injection.
+      Avoid dynamic code execution with user input.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          eval($CODE)
+      - pattern: |
+          new Function($CODE)
+      - pattern: |
+          setTimeout($STRING, ...)
+      - pattern: |
+          setInterval($STRING, ...)
+    metadata:
+      category: security
+      subcategory: injection
+      cwe: "CWE-94: Code Injection"
+      confidence: HIGH
+      impact: HIGH
+
+  - id: typescript-insecure-random
+    message: |
+      Math.random() is not cryptographically secure.
+      Use crypto.randomBytes() or crypto.getRandomValues() for security-sensitive operations.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          Math.random()
+      - pattern: |
+          Math.floor(Math.random() * $N)
+    pattern-inside:
+      - pattern-either:
+        - pattern-inside: |
+            function generate$TOKEN(...) { ... }
+        - pattern-inside: |
+            function create$SESSION(...) { ... }
+        - pattern-inside: |
+            function $CRYPTO_FUNC(...) { ... }
+    metadata:
+      category: security
+      subcategory: crypto
+      cwe: "CWE-338: Use of Cryptographically Weak PRNG"
+      confidence: MEDIUM
+      impact: MEDIUM
+
+  - id: typescript-unsafe-regex
+    message: |
+      Regular expression may be vulnerable to ReDoS (Regular Expression Denial of Service).
+      Complex regex patterns can cause exponential time complexity.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          /(.*)+/
+      - pattern: |
+          /(.*)*/ 
+      - pattern: |
+          /(.+)+/
+      - pattern: |
+          /(.+)*/
+      - pattern: |
+          /([^]*)*/
+    metadata:
+      category: security
+      subcategory: dos
+      cwe: "CWE-1333: ReDoS"
+      confidence: MEDIUM
+      impact: MEDIUM
+
+  - id: typescript-hardcoded-credentials
+    message: |
+      Hardcoded credentials or API keys detected.
+      Use environment variables or secure credential management instead.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          const $VAR = "sk_live_..."
+      - pattern: |
+          const $VAR = "pk_live_..."
+      - pattern: |
+          password: "..."
+      - pattern: |
+          token: "..."
+      - pattern: |
+          secret: "..."
+      - pattern: |
+          apiKey: "..."
+    pattern-not-inside:
+      - pattern: |
+          process.env.$VAR
+      - pattern: |
+          const $VAR = process.env.$ENV_VAR || "default"
+    metadata:
+      category: security
+      subcategory: credentials
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      confidence: HIGH
+      impact: HIGH
+
+  - id: typescript-unsafe-url-construction
+    message: |
+      Unsafe URL construction with user input can lead to SSRF or open redirects.
+      Validate and sanitize URLs before use.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            new URL($USER_INPUT)
+        - pattern: |
+            fetch($USER_INPUT)
+        - pattern: |
+            axios.get($USER_INPUT)
+        - pattern: |
+            request($USER_INPUT)
+      - pattern-not-inside: |
+          if (isValidUrl($USER_INPUT)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: ssrf
+      cwe: "CWE-918: Server-Side Request Forgery"
+      confidence: MEDIUM
+      impact: HIGH
+
+  - id: typescript-unsafe-file-path
+    message: |
+      Unsafe file path construction with user input can lead to directory traversal.
+      Validate and sanitize file paths before use.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            fs.readFile($USER_INPUT, ...)
+        - pattern: |
+            fs.writeFile($USER_INPUT, ...)
+        - pattern: |
+            path.join($USER_INPUT, ...)
+        - pattern: |
+            require($USER_INPUT)
+      - pattern-not-inside: |
+          if (path.isAbsolute($USER_INPUT) && $USER_INPUT.startsWith(SAFE_DIR)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: traversal
+      cwe: "CWE-22: Path Traversal"
+      confidence: HIGH
+      impact: HIGH

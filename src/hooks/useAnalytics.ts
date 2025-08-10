@@ -453,7 +453,7 @@ export function useAlerts(
     try {
       const alerts = alertSystem.getActiveAlerts({
         severity: configRef.current.severityFilter,
-        category: configRef.current.categoryFilter
+        category: configRef.current.categoryFilter as any
       });
 
       // Auto-acknowledge if enabled

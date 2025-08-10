@@ -1,0 +1,74 @@
+# Semgrep Configuration for Team Availability Tracker
+# This configuration provides comprehensive security analysis
+# tailored for Next.js/React applications with TypeScript
+
+# Core security rulesets - using external configs
+extends: 
+  - p/security-audit
+  - p/owasp-top-ten
+  - p/cwe-top-25
+
+# Custom rules directory
+include:
+  - semgrep/custom-rules/
+
+# Performance and targeting
+paths:
+  include:
+    - "src/"
+    - "pages/"
+    - "components/"
+    - "lib/"
+    - "utils/"
+    - "hooks/"
+    - "contexts/"
+    - "types/"
+    - "*.js"
+    - "*.jsx" 
+    - "*.ts"
+    - "*.tsx"
+    - "*.json"
+    - "*.yaml"
+    - "*.yml"
+    - "Dockerfile"
+    - "docker-compose.yml"
+    - "next.config.*"
+    - "tailwind.config.*"
+    - "jest.config.*"
+    - "playwright.config.*"
+  
+  exclude:
+    - "node_modules/"
+    - ".next/"
+    - "build/"
+    - "dist/"
+    - "coverage/"
+    - "__tests__/"
+    - "*.test.ts"
+    - "*.test.tsx"
+    - "*.spec.ts"
+    - "*.spec.tsx"
+    - "*.min.js"
+    - "*.bundle.js"
+    - ".git/"
+    - "*.log"
+
+# Output formatting for CI
+output:
+  format: json
+  destination: semgrep/reports/semgrep-results.json
+
+# Performance tuning
+max_target_bytes: 1000000  # 1MB max file size
+timeout: 30  # 30 second timeout per rule
+timeout_threshold: 20  # 20 second warning threshold
+jobs: 4  # Parallel processing
+
+# Custom metadata for CI/CD integration
+metadata:
+  project: "team-availability-tracker"
+  version: "2.2.0"
+  environment: "development"
+  security_focus: "high"
+  compliance: ["owasp", "cwe", "gdpr"]
+  tech_stack: ["nextjs", "react", "typescript", "supabase", "tailwind"]

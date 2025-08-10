@@ -58,13 +58,81 @@ const ensureOutputDirectory = () => {
   }
 };
 
+// Validate and sanitize command execution
+const validateCommand = (command) => {
+  // Allowlist of safe commands for performance/security audit
+  const allowedCommands = [
+    'npm run test',
+    'npm run test:performance',
+    'npm run test:security',
+    'npm run audit:performance',
+    'npm run audit:security',
+    'npm run build',
+    'npm run lint',
+    'npm run typecheck',
+    'npm run semgrep:security',
+    'npm run semgrep:custom',
+    'lighthouse --chrome-flags="--headless" --output=json --output-path=./audit-reports/lighthouse.json http://localhost:3000'
+  ];
+
+  // Check if command is in allowlist (allow partial matches for npm commands)
+  const isAllowed = allowedCommands.some(allowed => {
+    // Exact match
+    if (command.trim() === allowed) return true;
+    
+    // For npm commands, allow additional flags
+    if (allowed.startsWith('npm run') && command.trim().startsWith(allowed)) {
+      const remainder = command.trim().substring(allowed.length).trim();
+      // Only allow safe flags
+      return !remainder || /^--?(verbose|silent|quiet|coverage)(\s|$)/.test(remainder);
+    }
+    
+    return false;
+  });
+
+  if (!isAllowed) {
+    throw new Error(`Command not in allowlist: ${command}`);
+  }
+
+  // Additional validation - no dangerous characters
+  const dangerousPatterns = [
+    /[;&|`$(){}[\]]/,  // Shell metacharacters (except for lighthouse command)
+    /\.\./,            // Directory traversal
+    /rm\s+-rf/i,       // Dangerous delete commands
+    /sudo/i,           // Privilege escalation
+    /curl|wget/i,      // Network commands (except controlled ones)
+    /eval|exec/i       // Code execution
+  ];
+
+  for (const pattern of dangerousPatterns) {
+    // Skip shell metacharacter check for lighthouse command (contains legitimate quotes)
+    if (pattern.source === '[;&|`$(){}[\\]]' && command.includes('lighthouse')) {
+      continue;
+    }
+    
+    if (pattern.test(command)) {
+      throw new Error(`Command contains dangerous pattern: ${command}`);
+    }
+  }
+
+  return command.trim();
+};
+
 const runCommand = (command, description) => {
   log.info(`Running: ${description}`);
   try {
-    const output = execSync(command, { 
+    // Validate command before execution
+    const safeCommand = validateCommand(command);
+    log.info(`Executing validated command: ${safeCommand}`);
+    
+    const output = execSync(safeCommand, { 
       encoding: 'utf8', 
       maxBuffer: 1024 * 1024 * 10, // 10MB buffer
-      timeout: 300000 // 5 minute timeout
+      timeout: 300000, // 5 minute timeout
+      env: {
+        ...process.env,
+        NODE_ENV: 'test' // Ensure test environment
+      }
     });
     return { success: true, output };
   } catch (error) {

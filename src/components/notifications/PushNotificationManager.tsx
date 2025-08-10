@@ -257,13 +257,13 @@ export function PushNotificationManager({
     setNotifications(prev => [newNotification, ...prev.slice(0, 49)]); // Keep last 50
 
     // Show browser notification if permission granted and preference enabled
-    if (permission.granted && preferences[notification.type]) {
+    if (permission.granted && (preferences as any)[notification.type]) {
       const browserNotification = new Notification(notification.title, {
         body: notification.body,
         icon: notification.icon || '/icons/icon-192x192.png',
         badge: notification.badge || '/icons/icon-72x72.png',
         data: notification.data,
-        tag: notification.id,
+        tag: newNotification.id,
         requireInteraction: notification.type === 'alert'
       });
 

@@ -3,7 +3,6 @@ export interface Team {
   name: string;
   description?: string;
   color?: string;
-  sprint_length_weeks?: number;
   created_at?: string;
   updated_at?: string;
 }

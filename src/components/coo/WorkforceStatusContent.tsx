@@ -141,7 +141,7 @@ export default function WorkforceStatusContent({
         
         <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
           {Object.entries(statusCategories).map(([key, category]) => {
-            const count = groupedMembers[key as keyof typeof groupedMembers]?.length || 0;
+            const count = (groupedMembers as any)[key]?.length || 0;
             return (
               <div key={key} className="text-center">
                 <div className={`inline-flex items-center justify-center rounded-full ${category.color} text-white text-sm font-bold mb-2 ${
@@ -161,7 +161,7 @@ export default function WorkforceStatusContent({
 
       {/* Member Groups */}
       {Object.entries(statusCategories).map(([statusKey, category]) => {
-        const members = groupedMembers[statusKey as keyof typeof groupedMembers] || [];
+        const members = (groupedMembers as any)[statusKey] || [];
         
         if (members.length === 0) return null;
 
@@ -177,7 +177,7 @@ export default function WorkforceStatusContent({
             <div className={`grid gap-3 ${
               isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
             }`}>
-              {members.map((member) => (
+              {members.map((member: any) => (
                 <div
                   key={member.id}
                   className={`border rounded-lg transition-all hover:shadow-sm ${category.lightColor} ${

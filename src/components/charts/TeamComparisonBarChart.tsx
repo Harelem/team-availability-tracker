@@ -111,10 +111,10 @@ export function TeamComparisonBarChart({
     return null;
   };
 
-  // Handle bar click
-  const handleBarClick = (teamData: TeamComparisonData) => {
-    if (onTeamClick) {
-      onTeamClick(teamData.teamId);
+  // Handle bar click - updated for Recharts v2 compatibility
+  const handleBarClick = (data: any, index: number) => {
+    if (onTeamClick && data && data.payload) {
+      onTeamClick(data.payload.teamId);
     }
   };
 

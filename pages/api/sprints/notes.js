@@ -39,7 +39,7 @@ async function handleGet(req, res) {
   try {
     let query = supabase
       .from('sprint_notes')
-      .select('*')
+      .select('id, sprint_number, sprint_start_date, sprint_end_date, notes, created_by, updated_by, created_at, updated_at')
       .order('sprint_number', { ascending: false });
 
     if (sprintNumber) {

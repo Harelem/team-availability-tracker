@@ -15,7 +15,7 @@
     "test:integration": "jest __tests__/audit/*Integration.test.ts --verbose",
     "audit:pre-production": "node scripts/run-pre-production-audit.js",
     "audit:performance": "jest __tests__/audit/performance.test.ts --verbose",
-    "audit:security": "jest __tests__/audit/security.test.ts --verbose",
+    "audit:security": "jest __tests__/audit/security.test.tsx --verbose",
     "audit:data-accuracy": "jest __tests__/audit/dataAccuracy.test.ts --verbose",
     "audit:ui-patterns": "jest __tests__/audit/uiPatterns.test.ts --verbose",
     "test:data-integrity": "jest __tests__/integrity --coverage --verbose",
@@ -44,7 +44,15 @@
     "test:tablet": "playwright test --project=ipad",
     "generate:icons": "node scripts/generate-pwa-icons.js",
     "generate:compatibility-report": "node scripts/generate-compatibility-report.js",
-    "pwa:audit": "npx lighthouse --view --preset=pwa"
+    "pwa:audit": "npx lighthouse --view --preset=pwa",
+    "semgrep": "uvx semgrep --config=.semgrep.yml .",
+    "semgrep:security": "uvx semgrep --config=p/security-audit --config=p/owasp-top-ten --config=p/cwe-top-25 .",
+    "semgrep:quality": "uvx semgrep --config=p/eslint --config=p/react-best-practices --config=p/typescript-best-practices .",
+    "semgrep:secrets": "uvx semgrep --config=p/secrets .",
+    "semgrep:react": "uvx semgrep --config=p/react --config=p/nextjs .",
+    "semgrep:custom": "uvx semgrep --config=semgrep/custom-rules/ .",
+    "semgrep:ci": "uvx semgrep --config=p/security-audit --config=p/owasp-top-ten --config=p/cwe-top-25 --config=semgrep/custom-rules/ --error --quiet --output=semgrep/reports/semgrep-results.json --json .",
+    "audit:security-enhanced": "npm run audit:security && npm run semgrep:security"
   },
   "dependencies": {
     "@axe-core/react": "^4.10.2",

@@ -1,0 +1,186 @@
+# Semgrep Ignore Patterns for Team Availability Tracker
+# This file excludes files and patterns that should not be analyzed
+
+# Dependencies and build outputs
+node_modules/
+.next/
+build/
+dist/
+out/
+*.min.js
+*.bundle.js
+*.chunk.js
+
+# Development and testing files
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts  
+*.spec.tsx
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+coverage/
+jest-coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# Generated files
+*.d.ts.map
+*.js.map
+*.generated.ts
+*.generated.js
+auto-generated/
+generated/
+
+# Documentation and metadata
+*.md
+*.txt
+README*
+CHANGELOG*
+LICENSE*
+*.pdf
+*.doc
+*.docx
+
+# Configuration files (analyzed selectively)
+.env*
+*.log
+*.pid
+*.seed
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+.turbo/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+*.tmp
+*.temp
+
+# Image and media files (not code)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.mp4
+*.mp3
+*.wav
+*.pdf
+
+# Data files
+*.json.backup
+*.sql.backup
+backup/
+dumps/
+*.dump
+
+# Deployment and infrastructure (selective analysis)
+Dockerfile.old
+docker-compose.*.yml
+*.dockerfile
+k8s/
+kubernetes/
+
+# Logs and monitoring
+logs/
+*.log
+monitoring-data/
+audit-reports/*.html
+audit-reports/*.json
+
+# Performance and profiling
+*.cpuprofile
+*.heapprofile
+profile/
+perf/
+
+# Specific to this project
+# Test fixtures and mock data
+__tests__/fixtures/
+scripts/test-*.js
+sql/test-*.sql
+data-integrity-verification.json
+production-test.log
+
+# Large generated reports
+ERROR_HANDLING_GUIDE.md
+PERFORMANCE_SECURITY_AUDIT_REPORT.md
+DATA_INTEGRITY_SUMMARY.md
+
+# External libraries and vendors
+vendor/
+third-party/
+
+# Mobile app builds (if any)
+ios/
+android/
+.expo/
+
+# Editor-specific ignores
+.vimrc
+.nvimrc
+.emacs*
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.backup
+*.bak
+*.old
+*~
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Specific patterns for security analysis exclusion
+# (Only exclude if they don't contain security-relevant code)
+
+# Very large generated files that would slow down analysis
+coverage/lcov-report/
+node_modules/@types/
+node_modules/.bin/

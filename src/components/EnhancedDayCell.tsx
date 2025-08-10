@@ -151,12 +151,12 @@ export default function EnhancedDayCell({
         </button>
         
         {/* Tooltip - shows on both hover and click */}
-        <div className={`absolute right-0 top-6 bg-gray-900 text-white text-xs p-2 rounded shadow-lg z-50 w-48 break-words transition-opacity duration-200 ${
-          showReasonTooltip ? 'opacity-100 visible' : 'opacity-0 invisible'
-        }`}>
-          {currentValue.reason}
-          <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-900 rotate-45"></div>
-        </div>
+        {showReasonTooltip && (
+          <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs p-2 rounded shadow-lg z-[60] w-48 break-words transition-opacity duration-200 opacity-100 visible">
+            {currentValue.reason}
+            <div className="absolute -top-1 right-2 w-2 h-2 bg-gray-900 rotate-45"></div>
+          </div>
+        )}
       </div>
     );
   };

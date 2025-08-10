@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { UseTeamActionsReturn, ExportResult, ReminderResult, NavigationResult } from '@/types/modalTypes';
+import { UseTeamActionsReturn, ExportResult, NavigationResult } from '@/types/modalTypes';
 
 /**
  * Custom hook for team-related actions in the modal

@@ -102,10 +102,10 @@ export function SprintCapacityBarChart({
     return null;
   };
 
-  // Handle bar click
-  const handleBarClick = (data: SprintCapacityData) => {
-    if (onTeamClick) {
-      onTeamClick(data.teamId);
+  // Handle bar click - updated for Recharts v2 compatibility
+  const handleBarClick = (data: any, index: number) => {
+    if (onTeamClick && data && data.payload) {
+      onTeamClick(data.payload.teamId);
     }
   };
 

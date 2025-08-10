@@ -93,8 +93,8 @@ export class LinearRegressionModel {
       throw new Error('Model must be trained before making predictions');
     }
 
-    const predictions = [];
-    const confidenceIntervals = { lower: [], upper: [] };
+    const predictions: number[] = [];
+    const confidenceIntervals: { lower: number[], upper: number[] } = { lower: [], upper: [] };
     
     // Standard error calculation for confidence intervals
     const standardError = Math.sqrt(1 - this.rSquared) * Math.abs(this.slope);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Users, TrendingUp, RefreshCw } from 'lucide-react';
 import { TeamMember, Team, WeekData } from '@/types';
 
@@ -16,11 +16,11 @@ interface MobileTeamDashboardProps {
   onWorkOptionClick: (memberId: number, date: Date, value: string) => void;
   isToday: (date: Date) => boolean;
   isPastDate: (date: Date) => boolean;
-  getCurrentWeekString: () => string;
+  getCurrentSprintString: () => string;
   getTeamTotalHours: () => number;
 }
 
-export default function MobileTeamDashboard({
+const MobileTeamDashboard = memo(function MobileTeamDashboard({
   currentUser,
   teamMembers,
   selectedTeam,
@@ -32,25 +32,57 @@ export default function MobileTeamDashboard({
   onWorkOptionClick,
   isToday,
   isPastDate,
-  getCurrentWeekString,
+  getCurrentSprintString,
   getTeamTotalHours
 }: MobileTeamDashboardProps) {
   const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = async () => {
+  // Memoized handlers to prevent re-renders
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     // Force page refresh for cache invalidation
     setTimeout(() => {
       window.location.reload();
     }, 500);
-  };
+  }, []);
 
-  const formatDate = (date: Date) => {
+  const handleWeekChange = useCallback((offset: number) => {
+    React.startTransition(() => {
+      onWeekChange(offset);
+    });
+  }, [onWeekChange]);
+
+  const handleWorkOptionClick = useCallback((memberId: number, date: Date, value: string) => {
+    React.startTransition(() => {
+      onWorkOptionClick(memberId, date, value);
+    });
+  }, [onWorkOptionClick]);
+
+  // Memoized computations
+  const formattedDates = useMemo(() => {
+    return weekDays.map(date => ({
+      date,
+      formatted: date.toLocaleDateString('he-IL', { 
+        day: 'numeric', 
+        month: 'short' 
+      }),
+      isToday: isToday(date),
+      isPast: isPastDate(date)
+    }));
+  }, [weekDays, isToday, isPastDate]);
+
+  const teamStats = useMemo(() => ({
+    totalHours: getTeamTotalHours ? getTeamTotalHours() : 0,
+    sprintString: getCurrentSprintString ? getCurrentSprintString() : 'Loading...',
+    memberCount: teamMembers.length
+  }), [getTeamTotalHours, getCurrentSprintString, teamMembers.length]);
+
+  const formatDate = useCallback((date: Date) => {
     return date.toLocaleDateString('he-IL', { 
       day: 'numeric', 
       month: 'short' 
     });
-  };
+  }, []);
 
   const formatDayName = (date: Date) => {
     return date.toLocaleDateString('he-IL', { 
@@ -59,7 +91,8 @@ export default function MobileTeamDashboard({
   };
 
   const getDayStats = (date: Date) => {
-    const daySchedule = scheduleData[date.toISOString().split('T')[0]] || {};
+    const dayKey = date.toISOString().split('T')[0];
+    const daySchedule = (scheduleData as any)[dayKey] || {};
     let full = 0, half = 0, absent = 0, missing = 0;
     
     teamMembers.forEach(member => {
@@ -84,27 +117,22 @@ export default function MobileTeamDashboard({
   const capacity = getTeamCapacity();
 
   return (
-    <div className="mobile-dashboard min-h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <div className="mobile-header">
-        <div className="flex items-center justify-between">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-gray-900 truncate">
-              {selectedTeam?.name || 'Team Dashboard'}
-            </h1>
-            <p className="text-sm text-gray-500 truncate">
-              {teamMembers.length} חברי צוות • {teamMembers.length} Team Members
-            </p>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
+    <div className="mobile-dashboard bg-gray-50 p-4 space-y-4">
+      {/* Team stats header - simplified since navigation is handled separately */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-gray-600 truncate">
+            {teamMembers.length} team members • {selectedTeam?.name || 'Team Dashboard'}
+          </p>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="p-2 text-gray-400 hover:text-gray-600 transition-colors min-w-[44px] min-h-[44px] rounded-lg hover:bg-gray-100"
+          title="Refresh data"
+        >
+          <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Team Capacity Overview */}
@@ -142,7 +170,7 @@ export default function MobileTeamDashboard({
       <div className="mobile-card">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => onWeekChange(currentWeekOffset - 1)}
+            onClick={() => handleWeekChange(currentWeekOffset - 1)}
             className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
             disabled={loading}
           >
@@ -150,16 +178,16 @@ export default function MobileTeamDashboard({
           </button>
           
           <div className="text-center flex-1">
-            <div className="font-semibold text-gray-900">{getCurrentWeekString()}</div>
+            <div className="font-semibold text-gray-900">{getCurrentSprintString ? getCurrentSprintString() : 'Loading...'}</div>
             <div className="text-sm text-gray-500">
-              {currentWeekOffset === 0 ? 'שבוע נוכחי • Current Week' : 
-               currentWeekOffset > 0 ? `+${currentWeekOffset} weeks` : 
-               `${currentWeekOffset} weeks`}
+              {currentWeekOffset === 0 ? 'ספרינט נוכחי • Current Sprint' : 
+               currentWeekOffset > 0 ? `+${currentWeekOffset} sprints` : 
+               `${currentWeekOffset} sprints`}
             </div>
           </div>
           
           <button
-            onClick={() => onWeekChange(currentWeekOffset + 1)}
+            onClick={() => handleWeekChange(currentWeekOffset + 1)}
             className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
             disabled={loading}
           >
@@ -174,14 +202,12 @@ export default function MobileTeamDashboard({
           לוח זמנים שבועי • Weekly Schedule
         </h3>
         
-        {weekDays.map(date => {
+        {formattedDates.map(({ date, formatted, isToday: isCurrentDay, isPast }) => {
           const stats = getDayStats(date);
-          const isPast = isPastDate(date);
-          const isCurrentDay = isToday(date);
           
           return (
             <div 
-              key={date.toISOString()} 
+              key={`mobile-day-${date.toISOString()}-${currentWeekOffset}`} 
               className={`mobile-day-card ${isCurrentDay ? 'ring-2 ring-blue-500' : ''}`}
             >
               {/* Day Header */}
@@ -260,19 +286,19 @@ export default function MobileTeamDashboard({
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <div className="flex gap-2">
                     <button
-                      onClick={() => onWorkOptionClick(currentUser.id, date, '1')}
+                      onClick={() => handleWorkOptionClick(currentUser.id, date, '1')}
                       className="flex-1 bg-green-100 text-green-700 py-2 px-3 rounded-lg text-sm font-medium"
                     >
                       יום מלא
                     </button>
                     <button
-                      onClick={() => onWorkOptionClick(currentUser.id, date, '0.5')}
+                      onClick={() => handleWorkOptionClick(currentUser.id, date, '0.5')}
                       className="flex-1 bg-yellow-100 text-yellow-700 py-2 px-3 rounded-lg text-sm font-medium"
                     >
                       חצי יום
                     </button>
                     <button
-                      onClick={() => onWorkOptionClick(currentUser.id, date, 'X')}
+                      onClick={() => handleWorkOptionClick(currentUser.id, date, 'X')}
                       className="flex-1 bg-red-100 text-red-700 py-2 px-3 rounded-lg text-sm font-medium"
                     >
                       לא זמין
@@ -285,39 +311,8 @@ export default function MobileTeamDashboard({
         })}
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      <div className="mobile-nav">
-        <div className="flex justify-around">
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="mobile-nav-item active"
-          >
-            <Calendar className="h-5 w-5 mobile-nav-item-icon" />
-            <span className="mobile-nav-item-label">Schedule</span>
-          </button>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="mobile-nav-item"
-          >
-            <Users className="h-5 w-5 mobile-nav-item-icon" />
-            <span className="mobile-nav-item-label">Teams</span>
-          </button>
-          <button 
-            onClick={() => window.location.href = '/executive'}
-            className="mobile-nav-item"
-          >
-            <TrendingUp className="h-5 w-5 mobile-nav-item-icon" />
-            <span className="mobile-nav-item-label">Executive</span>
-          </button>
-          <button 
-            onClick={handleRefresh}
-            className="mobile-nav-item"
-          >
-            <RefreshCw className={`h-5 w-5 mobile-nav-item-icon ${refreshing ? 'animate-spin' : ''}`} />
-            <span className="mobile-nav-item-label">Refresh</span>
-          </button>
-        </div>
-      </div>
     </div>
   );
-}
+});
+
+export default MobileTeamDashboard;

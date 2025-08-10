@@ -232,7 +232,7 @@ const COOAnalyticsDashboard: React.FC<COOAnalyticsDashboardProps> = ({
 
             {/* New alerts badge */}
             {newAlerts.length > 0 && (
-              <Badge variant="destructive" className="flex items-center gap-1">
+              <Badge variant="error" className="flex items-center gap-1">
                 <Bell className="w-3 h-3" />
                 {newAlerts.length} new
               </Badge>
@@ -460,8 +460,8 @@ const COOAnalyticsDashboard: React.FC<COOAnalyticsDashboardProps> = ({
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <Badge variant={
-                            alert.severity === 'critical' ? 'destructive' :
-                            alert.severity === 'high' ? 'default' : 'secondary'
+                            alert.severity === 'critical' ? 'error' :
+                            alert.severity === 'high' ? 'primary' : 'secondary'
                           }>
                             {alert.severity}
                           </Badge>

@@ -2,21 +2,53 @@
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
-import PersonalDashboard from '@/components/PersonalDashboard';
-import ManagerDashboard from '@/components/ManagerDashboard';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
 import MobileTeamNavigation from '@/components/mobile/MobileTeamNavigation';
 import MobileHeader from '@/components/navigation/MobileHeader';
+
+// Lazy load heavy dashboard components for better initial performance
+const PersonalDashboard = dynamic(() => import('@/components/PersonalDashboard'), {
+  loading: () => (
+    <div className="bg-white rounded-lg p-8 shadow-md">
+      <div className="animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+        <div className="space-y-3">
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </div>
+      </div>
+    </div>
+  )
+});
+
+const ManagerDashboard = dynamic(() => import('@/components/ManagerDashboard'), {
+  loading: () => (
+    <div className="bg-white rounded-lg p-8 shadow-md">
+      <div className="animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-56 mb-4"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="h-32 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+});
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
 import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
-import { TeamMember, Team, WeekData } from '@/types';
+import { TeamMember, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import { verifyEnvironmentConfiguration } from '@/utils/deploymentSafety';
 import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPreservation';
+import { validateDatabaseSchema, safeInitializeWithValidation } from '@/utils/schemaValidator';
+import { loadTeamsWithFallback, saveOfflineData, initializeOfflineMode, getErrorMessage } from '@/utils/errorRecovery';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 function HomeContent() {
@@ -25,99 +57,221 @@ function HomeContent() {
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClientMounted, setIsClientMounted] = useState(false);
   const searchParams = useSearchParams();
   
   const [teams, setTeams] = useState<Team[]>([]);
+  const [backgroundDataLoaded, setBackgroundDataLoaded] = useState(false);
 
-  // Load initial data (teams only)
+  // Background data loading for non-critical operations
+  const loadBackgroundData = useCallback(async () => {
+    if (backgroundDataLoaded) return;
+    
+    try {
+      console.log('🔄 Loading background data...');
+      
+      // Load non-critical data in background
+      const backgroundTasks = [
+        performDataPersistenceCheck(),
+        verifyDatabaseState()
+      ];
+      
+      const [dataChecks, dbState] = await Promise.allSettled(backgroundTasks);
+      
+      // Log background data results
+      if (dataChecks.status === 'fulfilled' && Array.isArray(dataChecks.value)) {
+        const criticalIssues = dataChecks.value.filter((check: any) => check.status === 'FAIL');
+        if (criticalIssues.length > 0) {
+          console.warn('⚠️ Background: Critical data issues detected:', criticalIssues.length);
+        }
+      }
+      
+      if (dbState.status === 'fulfilled' && dbState.value && 'totalScheduleEntries' in dbState.value) {
+        const dbData = dbState.value as any;
+        if (dbData.totalScheduleEntries > 0) {
+          console.log(`📊 Background: Protecting ${dbData.totalScheduleEntries} schedule entries, ${dbData.totalTeamMembers} members`);
+        }
+      }
+      
+      setBackgroundDataLoaded(true);
+      console.log('✅ Background data loading completed');
+      
+    } catch (error) {
+      console.warn('⚠️ Background data loading failed (non-critical):', error);
+    }
+  }, [backgroundDataLoaded]);
+
+  // Client-side mounting detection for hydration safety
   useEffect(() => {
+    setIsClientMounted(true);
+    
+    // Initialize offline mode listeners
+    initializeOfflineMode();
+  }, []);
+
+  // Load initial data (teams only) with timeout protection
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout;
+
     const loadInitialData = async () => {
       try {
+        if (!mounted) return;
         setLoading(true);
         
         console.log('🚀 Starting application with SAFE data preservation...');
         
-        // CRITICAL: Verify environment configuration first
-        const envVerification = verifyEnvironmentConfiguration();
-        if (!envVerification.isConfigValid) {
-          console.error('🚨 Environment configuration issues detected!');
-          envVerification.warnings.forEach(warning => {
-            console.warn(`⚠️ ${warning}`);
-          });
-        }
+        // Add 15-second timeout for initial load
+        // PROGRESSIVE LOADING: First validate schema, then load critical data
+        const initPromise = safeInitializeWithValidation(
+          async () => {
+            console.log('🔍 Step 1: Schema validation...');
+            const schemaValidation = await validateDatabaseSchema();
+            if (!schemaValidation.isValid) {
+              const errorMsg = `Schema validation failed: ${schemaValidation.errors.join(', ')}`;
+              console.error('🚨 CRITICAL SCHEMA ERRORS:', schemaValidation.errors);
+              throw new Error(errorMsg);
+            }
+            console.log('✅ Schema validation passed');
+
+            console.log('🔍 Step 2: Environment verification...');
+            const envVerification = verifyEnvironmentConfiguration();
+            if (!envVerification.isConfigValid) {
+              console.error('🚨 Environment configuration issues detected!');
+              envVerification.warnings.forEach(warning => {
+                console.warn(`⚠️ ${warning}`);
+              });
+            }
+
+            console.log('🔍 Step 3: Critical data loading...');
+            // Load teams with offline fallback
+            const teamsResult = await loadTeamsWithFallback(() => DatabaseService.getTeams());
+            
+            if (!teamsResult.success) {
+              throw new Error(teamsResult.error || 'Failed to load teams');
+            }
+            
+            const teamsData = teamsResult.data!;
+            
+            // Save to offline storage for future use
+            saveOfflineData(teamsData);
+            
+            console.log(`✅ Critical initialization completed with ${teamsData.length} teams`);
+            return teamsData;
+          },
+          'Critical App Initialization',
+          ['teams'] // Required tables for critical initialization
+        );
+
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Application initialization timeout after 3 seconds')), 3000);
+        });
+
+        const initResult = await Promise.race([initPromise, timeoutPromise]) as any;
+        const teamsData = initResult.success ? initResult.data : [];
         
-        // CRITICAL: Check existing data before any operations
-        console.log('🔍 Performing data persistence verification...');
-        const dataChecks = await performDataPersistenceCheck();
-        const criticalIssues = dataChecks.filter(check => check.status === 'FAIL');
+        if (!mounted) return;
+        clearTimeout(timeoutId);
         
-        if (criticalIssues.length > 0) {
-          console.error('🚨 Critical data issues detected!');
-          criticalIssues.forEach(issue => {
-            console.error(`❌ ${issue.check}: ${issue.data}`);
-          });
-        }
-        
-        // CRITICAL: Verify current database state
-        const dbState = await verifyDatabaseState();
-        if (dbState.totalScheduleEntries > 0) {
-          console.log('🔒 CRITICAL: User schedule data exists - PRESERVATION MODE ENABLED');
-          console.log(`📊 Protecting: ${dbState.totalScheduleEntries} schedule entries, ${dbState.totalTeamMembers} members`);
-        }
-        
-        // CRITICAL: Use safe initialization that preserves existing data
-        const [teamsResult, membersResult] = await Promise.all([
-          DatabaseService.safeInitializeTeams(),
-          DatabaseService.safeInitializeTeamMembers()
-        ]);
-        
-        // Log data preservation results
-        if (teamsResult.preserved) {
-          console.log('🔒 TEAMS DATA PRESERVED:', teamsResult.message);
-        } else {
-          console.log('🆕 Teams initialized:', teamsResult.message);
-        }
-        
-        if (membersResult.preserved) {
-          console.log('🔒 MEMBER DATA PRESERVED:', membersResult.message);
-        } else {
-          console.log('🆕 Members initialized:', membersResult.message);
-        }
-        
-        // Load teams data
-        const teamsData = await DatabaseService.getTeams();
         setTeams(teamsData);
+        console.log(`✅ Critical initialization completed with ${teamsData.length} teams`);
         
-        console.log(`✅ Application initialized successfully with ${teamsData.length} teams`);
+        // BACKGROUND LOADING: Start non-critical data loading after UI is shown
+        setTimeout(() => {
+          if (mounted) {
+            loadBackgroundData();
+          }
+        }, 100);
+        
       } catch (error) {
-        console.error('❌ Error loading initial data:', error);
-        setTeams([]);
+        if (!mounted) return;
+        
+        const errorMessage = getErrorMessage(error);
+        console.error('❌ Critical initialization failed:', errorMessage);
+        
+        // FALLBACK: Try offline mode
+        try {
+          console.log('📱 Attempting offline mode...');
+          const offlineResult = await loadTeamsWithFallback(async () => {
+            // This will throw, but loadTeamsWithFallback will catch and use offline data
+            throw error;
+          });
+          
+          if (offlineResult.success && offlineResult.data) {
+            setTeams(offlineResult.data);
+            console.log(`📱 Offline mode successful: ${offlineResult.data.length} teams loaded`);
+            
+            // Show user-friendly message about offline mode
+            if (offlineResult.fromOfflineMode) {
+              console.info('📱 Running in offline mode - some data may not be current');
+            }
+          } else {
+            console.error('❌ Both online and offline initialization failed');
+            setTeams([]);
+          }
+        } catch (fallbackError) {
+          console.error('❌ Complete initialization failure:', fallbackError);
+          setTeams([]);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
+        clearTimeout(timeoutId);
       }
     };
 
     loadInitialData();
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
   }, []);
   
-  // Load team members when a team is selected
+  // Load team members when a team is selected with timeout protection - OPTIMIZED
   useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout;
+
     const loadTeamMembers = async () => {
-      if (!selectedTeam) return;
+      if (!selectedTeam || !mounted) return;
       
       try {
         setLoading(true);
-        const members = await DatabaseService.getTeamMembers(selectedTeam.id);
+        
+        // Fast parallel loading with 2-second timeout 
+        const membersPromise = DatabaseService.getTeamMembers(selectedTeam.id);
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error(`Team members loading timeout after 2 seconds for team: ${selectedTeam.name}`)), 2000);
+        });
+
+        const members = await Promise.race([membersPromise, timeoutPromise]) as any;
+        
+        if (!mounted) return;
+        clearTimeout(timeoutId);
+        
         setTeamMembers(members);
       } catch (error) {
+        if (!mounted) return;
+        
         console.error('Error loading team members:', error);
+        // Show meaningful error but don't block UI
         setTeamMembers([]);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
+        clearTimeout(timeoutId);
       }
     };
 
     loadTeamMembers();
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
   }, [selectedTeam]);
 
   // Reset selected user when team changes
@@ -127,6 +281,8 @@ function HomeContent() {
 
   // Handle URL parameters for team navigation from COO dashboard
   useEffect(() => {
+    if (!searchParams) return;
+    
     const teamParam = searchParams.get('team');
     const executiveParam = searchParams.get('executive');
     
@@ -152,7 +308,7 @@ function HomeContent() {
   }, [setSelectedTeam]);
 
   const handleBackToSelection = useCallback(() => {
-    const executiveParam = searchParams.get('executive');
+    const executiveParam = searchParams?.get('executive');
     
     // If coming from executive context, return to COO dashboard
     if (executiveParam === 'true') {
@@ -186,20 +342,35 @@ function HomeContent() {
     );
   }
 
-  // Team loading state
+  // Team loading state - hydration safe
   if (selectedTeam && loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center"
-             suppressHydrationWarning={true}>
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-12 bg-gray-200 rounded"></div>
-              ))}
-            </div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex items-center justify-center p-4 min-h-screen">
+          <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
+            {!isClientMounted ? (
+              // Server-side safe loading placeholder
+              <div>
+                <div className="h-8 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              // Client-side animated loading
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -221,8 +392,7 @@ function HomeContent() {
         )}
         
         <div className={`${isMobile ? 'p-4 pt-0' : 'flex items-center justify-center p-4'}`}>
-          <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-md w-full"
-               suppressHydrationWarning={true}>
+          <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-md w-full">
             {/* Desktop back button */}
             {!isMobile && (
               <div className="mb-4">
@@ -313,7 +483,6 @@ function HomeContent() {
             // Handle logout
             console.log('Logout clicked');
           }}
-          showAppNavigation={true}
         />
       )}
 
@@ -406,16 +575,18 @@ export default function Home() {
   return (
     <TeamProvider>
       <Suspense fallback={
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center"
-               suppressHydrationWarning={true}>
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
-              <div className="space-y-2">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="h-12 bg-gray-200 rounded"></div>
-                ))}
+        <div className="min-h-screen bg-gray-50">
+          <div className="flex items-center justify-center p-4 min-h-screen">
+            <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
+              {/* Server-safe loading without animations */}
+              <div>
+                <div className="h-8 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

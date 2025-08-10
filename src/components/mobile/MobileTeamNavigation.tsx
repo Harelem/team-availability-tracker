@@ -290,9 +290,9 @@ const MobileTeamNavigation: React.FC<MobileTeamNavigationProps> = ({
   const navigation = useNavigation();
   
   useEffect(() => {
-    // Set the current page in navigation context
+    // Set the current page in navigation context only once on mount
     navigation.navigateTo('/dashboard', { updateHistory: false });
-  }, [navigation]);
+  }, []); // Empty dependency array to run only once
 
   return (
     <>

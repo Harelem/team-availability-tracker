@@ -309,7 +309,7 @@ export const hasPermission = (
   }
 
   // Check user role permissions
-  if (item.permissions.includes(userRole)) {
+  if (item.permissions.includes(userRole as any)) {
     return true;
   }
 

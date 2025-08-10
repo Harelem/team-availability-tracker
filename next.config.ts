@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   
   // TypeScript configuration for production build
   typescript: {
-    // Allow build to continue despite type errors (for production urgency)
-    ignoreBuildErrors: true,
+    // Enable strict TypeScript checking for production builds
+    ignoreBuildErrors: false,
   },
 
   // Experimental features for PWA

@@ -228,9 +228,9 @@ describe('Manual Calculation Verification Tests', () => {
       const thursdayToSunday = SprintCalculations.calculateWorkingDays('2024-01-11', '2024-01-14');
       expect(thursdayToSunday).toBe(2); // Thursday + Sunday
 
-      // Test month boundaries
+      // Test month boundaries (Israeli working days: Sunday-Thursday)
       const monthBoundary = SprintCalculations.calculateWorkingDays('2024-01-31', '2024-02-04');
-      expect(monthBoundary).toBe(5); // Wed-Thu + Sun-Tue
+      expect(monthBoundary).toBe(3); // Wed Jan 31, Thu Feb 1, Sun Feb 4
     });
   });
 

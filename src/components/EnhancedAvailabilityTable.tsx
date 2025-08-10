@@ -9,31 +9,31 @@ interface EnhancedAvailabilityTableProps {
   teamMembers: TeamMember[];
   scheduleData: any;
   workOptions: WorkOption[];
-  weekDays: Date[];
+  sprintDays: Date[];
   onWorkOptionClick: (memberId: number, date: Date, value: string) => void;
   onReasonRequired: (memberId: number, date: Date, value: '0.5' | 'X') => void;
   onQuickReasonSelect?: (memberId: number, date: Date, value: '0.5' | 'X', reason: string) => void;
-  onFullWeekSet: (memberId: number) => void;
-  calculateWeeklyHours: (memberId: number) => number;
+  onFullSprintSet: (memberId: number) => void;
+  calculateSprintHours: (memberId: number) => number;
   getTeamTotalHours: () => number;
   isToday: (date: Date) => boolean;
   isPastDate: (date: Date) => boolean;
   formatDate: (date: Date) => string;
 }
 
-const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']; // Sprint working days (Israeli work week)
 
 export default function EnhancedAvailabilityTable({
   currentUser,
   teamMembers,
   scheduleData,
   workOptions,
-  weekDays,
+  sprintDays,
   onWorkOptionClick,
   onReasonRequired,
   onQuickReasonSelect,
-  onFullWeekSet,
-  calculateWeeklyHours,
+  onFullSprintSet,
+  calculateSprintHours,
   getTeamTotalHours,
   isToday,
   isPastDate,
@@ -50,8 +50,8 @@ export default function EnhancedAvailabilityTable({
     }, 0);
   };
 
-  // Count reasons for the week
-  const getWeekReasonStats = () => {
+  // Count reasons for the sprint
+  const getSprintReasonStats = () => {
     let totalReasons = 0;
     let halfDayReasons = 0;
     let absenceReasons = 0;
@@ -70,7 +70,7 @@ export default function EnhancedAvailabilityTable({
     return { totalReasons, halfDayReasons, absenceReasons };
   };
 
-  const reasonStats = getWeekReasonStats();
+  const reasonStats = getSprintReasonStats();
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -81,7 +81,7 @@ export default function EnhancedAvailabilityTable({
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1 text-blue-700">
                 <MessageSquare className="w-4 h-4" />
-                <span className="font-medium">{reasonStats.totalReasons} reasons this week</span>
+                <span className="font-medium">{reasonStats.totalReasons} reasons this sprint</span>
               </div>
               {reasonStats.halfDayReasons > 0 && (
                 <span className="text-yellow-700">
@@ -145,20 +145,20 @@ export default function EnhancedAvailabilityTable({
                     <div className="text-right">
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4 text-gray-500" />
-                        <span className="font-bold text-lg">{calculateWeeklyHours(member.id)}h</span>
+                        <span className="font-bold text-lg">{calculateSprintHours(member.id)}h</span>
                       </div>
-                      <div className="text-xs text-gray-500">this week</div>
+                      <div className="text-xs text-gray-500">this sprint</div>
                     </div>
                   </div>
                   
-                  {/* Full Week Button */}
+                  {/* Full Sprint Button */}
                   {canEdit && (
                     <div className="mt-4">
                       <button
-                        onClick={() => onFullWeekSet(member.id)}
+                        onClick={() => onFullSprintSet(member.id)}
                         className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-lg py-3 px-4 font-medium hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all touch-manipulation min-h-[48px]"
                       >
-                        Set Full Working Week
+                        Set Full Working Sprint
                       </button>
                     </div>
                   )}
@@ -166,7 +166,7 @@ export default function EnhancedAvailabilityTable({
 
                 {/* Days */}
                 <div className="p-4 space-y-3">
-                  {weekDays.map((date, index) => {
+                  {sprintDays.map((date, index) => {
                     const dateKey = date.toISOString().split('T')[0];
                     const currentValue = scheduleData[member.id]?.[dateKey];
                     const today = isToday(date);
@@ -249,14 +249,14 @@ export default function EnhancedAvailabilityTable({
           <div className="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
             <h3 className="font-semibold text-gray-900 mb-3">Team Summary</h3>
             <div className="grid grid-cols-2 gap-3">
-              {weekDays.map((date, index) => (
+              {sprintDays.map((date, index) => (
                 <div key={date.toISOString().split('T')[0]} className="text-center p-2 bg-white rounded-lg">
                   <div className="font-medium text-gray-700">{dayNames[index].slice(0, 3)}</div>
                   <div className="text-lg font-bold text-gray-900">{getDayTotal(date)}h</div>
                 </div>
               ))}
               <div className="col-span-2 text-center p-3 bg-blue-100 rounded-lg">
-                <div className="text-blue-700 font-medium">Week Total</div>
+                <div className="text-blue-700 font-medium">Sprint Total</div>
                 <div className="text-2xl font-bold text-blue-900">{getTeamTotalHours()}h</div>
               </div>
             </div>
@@ -274,7 +274,7 @@ export default function EnhancedAvailabilityTable({
                 <div className="text-xs sm:text-sm">Team Member</div>
               </th>
               {dayNames.map((day, index) => {
-                const dayDate = weekDays[index];
+                const dayDate = sprintDays[index];
                 const today = isToday(dayDate);
                 const past = isPastDate(dayDate);
                 
@@ -339,11 +339,11 @@ export default function EnhancedAvailabilityTable({
                         </div>
                         {canEdit && (
                           <button
-                            onClick={() => onFullWeekSet(member.id)}
+                            onClick={() => onFullSprintSet(member.id)}
                             className="mt-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded transition-colors"
-                            title="Set full working week"
+                            title="Set full working sprint"
                           >
-                            Full Week
+                            Full Sprint
                           </button>
                         )}
                       </div>
@@ -351,7 +351,7 @@ export default function EnhancedAvailabilityTable({
                   </td>
 
                   {/* Day Cells */}
-                  {weekDays.map((date) => {
+                  {sprintDays.map((date) => {
                     const dateKey = date.toISOString().split('T')[0];
                     const currentValue = scheduleData[member.id]?.[dateKey];
                     
@@ -372,9 +372,9 @@ export default function EnhancedAvailabilityTable({
                     );
                   })}
 
-                  {/* Weekly Hours */}
+                  {/* Sprint Hours */}
                   <td className="py-3 px-1 sm:py-4 sm:px-4 text-center bg-blue-50 font-bold text-xs sm:text-lg">
-                    {calculateWeeklyHours(member.id)}h
+                    {calculateSprintHours(member.id)}h
                   </td>
                 </tr>
               );
@@ -387,7 +387,7 @@ export default function EnhancedAvailabilityTable({
               <td className="sticky left-0 z-10 bg-gray-100 py-3 px-2 sm:py-4 sm:px-6 font-bold text-gray-900 border-r text-xs sm:text-base">
                 Team Total
               </td>
-              {weekDays.map((date) => {
+              {sprintDays.map((date) => {
                 const dayTotal = getDayTotal(date);
                 
                 return (

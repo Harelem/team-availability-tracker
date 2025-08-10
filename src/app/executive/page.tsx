@@ -38,12 +38,18 @@ function ExecutiveDashboardContent() {
   const loadMobileData = useCallback(async () => {
     try {
       const dailyStatus = await DatabaseService.getDailyCompanyStatus(selectedDate);
+      if (!dailyStatus) {
+        console.error('No daily status returned');
+        setTeamsData([]);
+        return;
+      }
+      
       setTeamsData(dailyStatus.teams || []);
       
       // Calculate company metrics using consistent formula with desktop
       const totalMembers = dailyStatus.total; // Use the total from summary
-      const totalAvailable = dailyStatus.summary.available;
-      const totalHalfDay = dailyStatus.summary.halfDay;
+      const totalAvailable = dailyStatus.summary?.available || 0;
+      const totalHalfDay = dailyStatus.summary?.halfDay || 0;
       
       // Calculate capacity in hours
       const maxDailyCapacity = totalMembers * 9; // 9 hours per person per day
@@ -195,12 +201,11 @@ function ExecutiveDashboardContent() {
             showBack={true}
             onBack={handleBackToSelection}
             currentUser={{
-              id: cooUser.id.toString(),
+              id: cooUser.id || 0,
               name: cooUser.name,
               hebrew: cooUser.hebrew || '',
-              role: 'executive' as const,
               isManager: true,
-              isCOO: true
+              team_id: 0
             }}
             showMenu={true}
             showSearch={false}

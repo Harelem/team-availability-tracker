@@ -453,11 +453,13 @@ export default function ConsolidatedAnalytics({
             <CapacityTrendAreaChart
               data={transformCapacityTrendData(
                 dashboardData?.capacityForecast?.quarterlyOutlook?.capacityTrends?.map(trend => ({
-                  period: trend.period,
+                  week: trend.period,
                   date: trend.period,
                   utilization: trend.value,
                   potential: 100,
                   actual: trend.value,
+                  totalHours: trend.value,
+                  potentialHours: 100,
                   teamCount: dashboardData.companyOverview.totalTeams
                 })) || []
               ).data}

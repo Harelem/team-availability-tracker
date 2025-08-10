@@ -24,7 +24,7 @@ interface ExportDropdownProps {
   teamMembers: TeamMember[];
   selectedTeam: Team;
   scheduleData: WeekData;
-  currentWeekDays: Date[];
+  currentSprintDays: Date[];
 }
 
 export default function ExportDropdown({
@@ -32,7 +32,7 @@ export default function ExportDropdown({
   teamMembers,
   selectedTeam,
   scheduleData,
-  currentWeekDays
+  currentSprintDays
 }: ExportDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -173,14 +173,14 @@ export default function ExportDropdown({
     }
   };
 
-  const handleCurrentWeekExport = () => {
-    // Use existing schedule data for current week
-    const statistics = calculateExportStatistics(teamMembers, scheduleData, currentWeekDays);
+  const handleCurrentSprintExport = () => {
+    // Use existing schedule data for current sprint
+    const statistics = calculateExportStatistics(teamMembers, scheduleData, currentSprintDays);
     
     const exportData = {
       teamName: selectedTeam.name,
-      exportType: 'Current Week',
-      dateRange: formatDateRange(currentWeekDays[0], currentWeekDays[4]),
+      exportType: 'Current Sprint',
+      dateRange: formatDateRange(currentSprintDays[0], currentSprintDays[currentSprintDays.length - 1]),
       generatedBy: currentUser.name,
       generatedAt: new Date(),
       members: teamMembers,
@@ -189,18 +189,18 @@ export default function ExportDropdown({
     };
     
     const csvContent = generateWeekCSV(exportData);
-    const filename = generateExportFilename('week', selectedTeam.name, currentWeekDays[0], currentWeekDays[4], 'excel');
+    const filename = generateExportFilename('week', selectedTeam.name, currentSprintDays[0], currentSprintDays[currentSprintDays.length - 1], 'excel');
     downloadFile(csvContent, filename, 'excel');
     setIsOpen(false);
   };
 
   const getWeekExportTypeName = (type: WeekExportType): string => {
     switch (type) {
-      case 'current-week': return 'Current Week';
-      case 'previous-week': return 'Previous Week';
-      case 'next-week': return 'Next Week';
-      case 'specific-week': return 'Specific Week';
-      default: return 'Week Export';
+      case 'current-week': return 'Current Sprint';
+      case 'previous-week': return 'Previous Sprint';
+      case 'next-week': return 'Next Sprint';
+      case 'specific-week': return 'Specific Sprint';
+      default: return 'Sprint Export';
     }
   };
 
@@ -228,16 +228,16 @@ export default function ExportDropdown({
           
           {/* Dropdown Menu */}
           <div className="absolute right-0 sm:right-0 top-full mt-1 w-64 sm:w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 max-h-96 overflow-y-auto transform-gpu">
-            {/* Current Week - Quick Option */}
+            {/* Current Sprint - Quick Option */}
             <button
-              onClick={handleCurrentWeekExport}
+              onClick={handleCurrentSprintExport}
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
             >
               <Calendar className="w-4 h-4 text-blue-600" />
               <div>
-                <div className="font-medium text-gray-900">Export This Week</div>
+                <div className="font-medium text-gray-900">Export Current Sprint</div>
                 <div className="text-xs text-gray-500">
-                  {formatDateRange(currentWeekDays[0], currentWeekDays[4])}
+                  {formatDateRange(currentSprintDays[0], currentSprintDays[currentSprintDays.length - 1])}
                 </div>
               </div>
             </button>

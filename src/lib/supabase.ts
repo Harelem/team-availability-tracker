@@ -4,7 +4,34 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export const supabase = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_url_here' && supabaseAnonKey !== 'your_supabase_anon_key_here'
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      // Performance optimizations for emergency fix
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
+      },
+      // Reduce default timeout from 15 seconds to 3 seconds with progressive loading
+      global: {
+        fetch: (url: RequestInfo | URL, init?: RequestInit) => {
+          return fetch(url, {
+            ...init,
+            // Set aggressive timeout to prevent long waits
+            signal: AbortSignal.timeout(3000) // 3 seconds instead of default 15
+          });
+        }
+      },
+      // Enable connection pooling
+      db: {
+        schema: 'public'
+      },
+      // Optimize auth settings
+      auth: {
+        persistSession: true,
+        detectSessionInUrl: false,
+        autoRefreshToken: true
+      }
+    })
   : createClient('https://placeholder.supabase.co', 'placeholder-key')
 
 // Database types

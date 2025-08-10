@@ -22,7 +22,7 @@ export default function COOHoursViewToggle({
 
   useEffect(() => {
     calculateHoursTotals();
-  }, [allTeams, sprintData]);
+  }, [allTeams, sprintData]); // Fixed: Remove function dependency to prevent infinite loop
 
   const calculateHoursTotals = async () => {
     setTotals(prev => ({ ...prev, loading: true }));

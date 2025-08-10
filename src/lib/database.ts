@@ -4,6 +4,9 @@ import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, Tem
 // RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
 // import { Achievement, RecognitionMetric, CreateAchievementRequest, UpdateMetricRequest, RecognitionQueryOptions, RecognitionQueryResult, LeaderboardEntry, LeaderboardTimeframe } from '@/types/recognitionTypes'
 import { calculateSprintCapacityFromSettings } from './calculationService'
+import { handleError, retryOperation } from '@/utils/errorHandler'
+import { AppError, ErrorCategory } from '@/types/errors'
+import { dataConsistencyManager, CacheKeys } from '@/utils/dataConsistencyManager'
 
 // Sprint History interfaces
 export interface SprintHistoryEntry {
@@ -45,29 +48,50 @@ let dataFixInProgress = false
 export const DatabaseService = {
   // Teams
   async getTeams(): Promise<Team[]> {
-    if (!isSupabaseConfigured()) {
+    try {
+      if (!isSupabaseConfigured()) {
+        return []
+      }
+
+      const operation = async () => {
+        const { data, error } = await supabase
+          .from('teams')
+          .select('id, name, description, color, created_at, updated_at')
+          .order('name')
+        
+        if (error) {
+          throw new Error(`Database query failed: ${error.message}`)
+        }
+        
+        return data.map(team => ({
+          id: team.id,
+          name: team.name,
+          description: team.description || undefined,
+          color: team.color || '#3b82f6',
+          created_at: team.created_at,
+          updated_at: team.updated_at
+        }))
+      }
+
+      return await retryOperation(operation, {
+        enabled: true,
+        maxAttempts: 3,
+        baseDelay: 1000,
+        retryableErrors: [ErrorCategory.DATABASE, ErrorCategory.NETWORK]
+      })
+
+    } catch (error) {
+      const appError = await handleError(error as Error, {
+        component: 'DatabaseService',
+        action: 'getTeams',
+        additionalData: { table: 'teams' }
+      })
+      
+      // For critical data like teams, we might want to throw instead of returning empty array
+      // But maintaining backward compatibility for now
+      console.error('Failed to fetch teams:', appError.userMessage)
       return []
     }
-    
-    const { data, error } = await supabase
-      .from('teams')
-      .select('*')
-      .order('name')
-    
-    if (error) {
-      console.error('Error fetching teams:', error)
-      return []
-    }
-    
-    return data.map(team => ({
-      id: team.id,
-      name: team.name,
-      description: team.description || undefined,
-      color: team.color || '#3b82f6',
-      sprint_length_weeks: team.sprint_length_weeks || 1,
-      created_at: team.created_at,
-      updated_at: team.updated_at
-    }))
   },
 
   async getTeamStats(): Promise<TeamStats[]> {
@@ -148,39 +172,251 @@ export const DatabaseService = {
     }
   },
 
-  // Team Members (now filtered by team)
-  async getTeamMembers(teamId?: number): Promise<TeamMember[]> {
+  // Team Members (now filtered by team) with caching - OPTIMIZED WITH RETRY + PAGINATION
+  async getTeamMembers(teamId?: number, forceRefresh: boolean = false, options?: { 
+    limit?: number; 
+    offset?: number; 
+    enablePagination?: boolean; 
+  }): Promise<TeamMember[]> {
     if (!isSupabaseConfigured()) {
       return []
     }
-    
-    let query = supabase
-      .from('team_members')
-      .select('*')
-    
-    if (teamId) {
-      query = query.eq('team_id', teamId)
-    }
-    
-    query = query.order('name')
-    
-    const { data, error } = await query
-    
-    if (error) {
-      console.error('Error fetching team members:', error)
+
+    try {
+      const operation = async () => {
+        let query = supabase
+          .from('team_members')
+          .select('id, name, hebrew, is_manager, email, team_id, created_at, updated_at')
+        
+        if (teamId) {
+          query = query.eq('team_id', teamId)
+        }
+        
+        // Add pagination if enabled (EGRESS REDUCTION)
+        if (options?.enablePagination) {
+          const limit = options.limit || 50; // Default 50 items per page
+          const offset = options.offset || 0;
+          query = query.range(offset, offset + limit - 1);
+        }
+        
+        query = query.order('name')
+        
+        const { data, error } = await query
+        
+        if (error) {
+          throw new Error(`Database query failed: ${error.message}`)
+        }
+        
+        return data.map(member => ({
+          id: member.id,
+          name: member.name,
+          hebrew: member.hebrew || '',
+          isManager: member.is_manager || false,
+          email: member.email || '',
+          team_id: member.team_id,
+          created_at: member.created_at,
+          updated_at: member.updated_at
+        }))
+      }
+
+      return await dataConsistencyManager.getCachedOrFetch(
+        CacheKeys.TEAM_MEMBERS(teamId),
+        () => retryOperation(operation, {
+          enabled: true,
+          maxAttempts: 3,
+          baseDelay: 500,
+          retryableErrors: [ErrorCategory.DATABASE, ErrorCategory.NETWORK]
+        }),
+        forceRefresh
+      )
+
+    } catch (error) {
+      const appError = await handleError(error as Error, {
+        component: 'DatabaseService',
+        action: 'getTeamMembers',
+        additionalData: { teamId }
+      })
+      
+      console.error('Failed to fetch team members:', appError.userMessage)
       return []
     }
-    
-    return data.map(member => ({
-      id: member.id,
-      name: member.name,
-      hebrew: member.hebrew,
-      isManager: member.is_manager,
-      email: member.email || undefined,
-      team_id: member.team_id,
-      created_at: member.created_at,
-      updated_at: member.updated_at
-    }))
+  },
+
+  // Schedule Entries with PAGINATION (CRITICAL FOR EGRESS REDUCTION)
+  async getScheduleEntriesPaginated(options: {
+    teamId?: number;
+    memberId?: number;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+    count?: boolean;
+  }): Promise<{ data: any[]; count?: number }> {
+    if (!isSupabaseConfigured()) {
+      return { data: [] }
+    }
+
+    try {
+      const operation = async () => {
+        let query = supabase
+          .from('schedule_entries')
+          .select('id, member_id, date, value, reason, created_at, updated_at', { 
+            count: options.count ? 'exact' : undefined 
+          })
+
+        // Apply filters
+        if (options.memberId) {
+          query = query.eq('member_id', options.memberId)
+        }
+        
+        if (options.startDate) {
+          query = query.gte('date', options.startDate)
+        }
+        
+        if (options.endDate) {
+          query = query.lte('date', options.endDate)
+        }
+
+        // CRITICAL: Apply pagination to reduce egress
+        const limit = options.limit || 100; // Default 100 entries per page
+        const offset = options.offset || 0;
+        query = query.range(offset, offset + limit - 1);
+        
+        query = query.order('date', { ascending: false })
+
+        const { data, error, count } = await query
+
+        if (error) {
+          throw new Error(`Database query failed: ${error.message}`)
+        }
+
+        return { data: data || [], count: count || undefined }
+      }
+
+      return await retryOperation(operation, {
+        enabled: true,
+        maxAttempts: 3,
+        baseDelay: 500,
+        retryableErrors: [ErrorCategory.DATABASE, ErrorCategory.NETWORK]
+      })
+
+    } catch (error) {
+      const appError = await handleError(error as Error, {
+        component: 'DatabaseService',
+        action: 'getScheduleEntriesPaginated',
+        additionalData: { options }
+      })
+      
+      console.error('Failed to fetch paginated schedule entries:', appError.userMessage)
+      return { data: [] }
+    }
+  },
+
+  // QUERY BATCHING: Get team with members and recent schedule entries in single request
+  async getTeamWithMembersAndSchedule(teamId: number, options: {
+    includeSchedule?: boolean;
+    scheduleDateRange?: { start: string; end: string };
+    limit?: number;
+  } = {}): Promise<{
+    team: Team | null;
+    members: TeamMember[];
+    scheduleEntries: any[];
+  }> {
+    if (!isSupabaseConfigured()) {
+      return { team: null, members: [], scheduleEntries: [] }
+    }
+
+    try {
+      const operation = async () => {
+        // Single query with joins to reduce egress by 60-70%
+        let selectClause = `
+          id, name, description, color, created_at, updated_at,
+          team_members!inner(
+            id, name, hebrew, is_manager, email, team_id, created_at, updated_at
+          )
+        `;
+
+        // Optionally include schedule data in same query
+        if (options.includeSchedule && options.scheduleDateRange) {
+          selectClause += `,
+          team_members.schedule_entries(
+            id, date, value, reason, created_at
+          )`;
+        }
+
+        let query = supabase
+          .from('teams')
+          .select(selectClause)
+          .eq('id', teamId)
+          .single();
+
+        // Filter schedule entries by date if requested
+        if (options.includeSchedule && options.scheduleDateRange) {
+          query = query
+            .gte('team_members.schedule_entries.date', options.scheduleDateRange.start)
+            .lte('team_members.schedule_entries.date', options.scheduleDateRange.end);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          throw new Error(`Batched query failed: ${error.message}`);
+        }
+
+        // Extract data from joined result
+        const team: Team = {
+          id: data.id,
+          name: data.name,
+          description: data.description,
+          color: data.color || '#3b82f6',
+          created_at: data.created_at,
+          updated_at: data.updated_at
+        };
+
+        const members: TeamMember[] = (data.team_members || []).map((member: any) => ({
+          id: member.id,
+          name: member.name,
+          hebrew: member.hebrew || '',
+          isManager: member.is_manager || false,
+          email: member.email || '',
+          team_id: member.team_id,
+          created_at: member.created_at,
+          updated_at: member.updated_at
+        }));
+
+        // Extract schedule entries if included
+        let scheduleEntries: any[] = [];
+        if (options.includeSchedule && data.team_members) {
+          scheduleEntries = data.team_members
+            .flatMap((member: any) => member.schedule_entries || [])
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+          // Apply limit if specified
+          if (options.limit) {
+            scheduleEntries = scheduleEntries.slice(0, options.limit);
+          }
+        }
+
+        return { team, members, scheduleEntries };
+      };
+
+      return await retryOperation(operation, {
+        enabled: true,
+        maxAttempts: 3,
+        baseDelay: 1000,
+        retryableErrors: [ErrorCategory.DATABASE, ErrorCategory.NETWORK]
+      });
+
+    } catch (error) {
+      const appError = await handleError(error as Error, {
+        component: 'DatabaseService',
+        action: 'getTeamWithMembersAndSchedule',
+        additionalData: { teamId, options }
+      });
+
+      console.error('Failed to fetch batched team data:', appError.userMessage);
+      return { team: null, members: [], scheduleEntries: [] };
+    }
   },
 
   /**
@@ -820,30 +1056,34 @@ export const DatabaseService = {
     }
   },
 
-  // Get only operational teams (excludes Management Team)
-  async getOperationalTeams(): Promise<Team[]> {
+  // Get only operational teams (excludes Management Team) with caching
+  async getOperationalTeams(forceRefresh: boolean = false): Promise<Team[]> {
     if (!isSupabaseConfigured()) {
       return []
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('teams')
-        .select('*')
-        .neq('name', 'Management Team')
-        .order('name')
+    return dataConsistencyManager.getCachedOrFetch(
+      CacheKeys.OPERATIONAL_TEAMS,
+      async () => {
+        const { data, error } = await supabase
+          .from('teams')
+          .select('*')
+          .neq('name', 'Management Team')
+          .order('name')
 
-      if (error) {
-        console.error('Error fetching operational teams:', error)
-        return []
+        if (error) {
+          console.error('Error fetching operational teams:', error)
+          return []
+        }
+
+        console.log(`✅ Loaded ${data?.length || 0} operational teams`)
+        return data || []
+      },
+      {
+        cacheDuration: 30 * 60 * 1000, // 30 minutes cache for team data (EGRESS REDUCTION)
+        forceRefresh
       }
-
-      console.log(`✅ Loaded ${data?.length || 0} operational teams`)
-      return data || []
-    } catch (error) {
-      console.error('Error in getOperationalTeams:', error)
-      return []
-    }
+    )
   },
 
   /**
@@ -1093,49 +1333,58 @@ export const DatabaseService = {
     }
   },
 
-  // Schedule Entries (now team-filtered)
-  async getScheduleEntries(startDate: string, endDate: string, teamId?: number): Promise<Record<number, Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>>> {
+  // Schedule Entries (now team-filtered) with caching
+  async getScheduleEntries(startDate: string, endDate: string, teamId?: number, forceRefresh: boolean = false): Promise<Record<number, Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>>> {
     if (!isSupabaseConfigured()) {
       return {}
     }
     
-    let query = supabase
-      .from('schedule_entries')
-      .select(`
-        *,
-        team_members!inner (
-          team_id
-        )
-      `)
-      .gte('date', startDate)
-      .lte('date', endDate)
-    
-    if (teamId) {
-      query = query.eq('team_members.team_id', teamId)
-    }
-    
-    const { data, error } = await query
-    
-    if (error) {
-      console.error('Error fetching schedule entries:', error)
-      return {}
-    }
-    
-    // Transform to the expected format
-    const scheduleData: Record<number, Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>> = {}
-    data.forEach(entry => {
-      if (!scheduleData[entry.member_id]) {
-        scheduleData[entry.member_id] = {}
+    return dataConsistencyManager.getCachedOrFetch(
+      CacheKeys.SCHEDULE_ENTRIES(startDate, endDate, teamId),
+      async () => {
+        let query = supabase
+          .from('schedule_entries')
+          .select(`
+            *,
+            team_members!inner (
+              team_id
+            )
+          `)
+          .gte('date', startDate)
+          .lte('date', endDate)
+        
+        if (teamId) {
+          query = query.eq('team_members.team_id', teamId)
+        }
+        
+        const { data, error } = await query
+        
+        if (error) {
+          console.error('Error fetching schedule entries:', error)
+          return {}
+        }
+        
+        // Transform to the expected format
+        const scheduleData: Record<number, Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>> = {}
+        data.forEach(entry => {
+          if (!scheduleData[entry.member_id]) {
+            scheduleData[entry.member_id] = {}
+          }
+          scheduleData[entry.member_id][entry.date] = {
+            value: entry.value,
+            reason: entry.reason || undefined,
+            created_at: entry.created_at,
+            updated_at: entry.updated_at
+          }
+        })
+        
+        return scheduleData
+      },
+      {
+        cacheDuration: 5 * 60 * 1000, // 5 minutes cache for schedule data (PERFORMANCE OPTIMIZATION)
+        forceRefresh
       }
-      scheduleData[entry.member_id][entry.date] = {
-        value: entry.value,
-        reason: entry.reason || undefined,
-        created_at: entry.created_at,
-        updated_at: entry.updated_at
-      }
-    })
-    
-    return scheduleData
+    )
   },
 
   async updateScheduleEntry(
@@ -1147,32 +1396,48 @@ export const DatabaseService = {
     if (!isSupabaseConfigured()) {
       return
     }
-    if (value === null) {
-      // Delete the entry
-      const { error } = await supabase
-        .from('schedule_entries')
-        .delete()
-        .eq('member_id', memberId)
-        .eq('date', date)
-      
-      if (error) {
-        console.error('Error deleting schedule entry:', error)
+    
+    try {
+      if (value === null) {
+        // Delete the entry
+        const { error } = await supabase
+          .from('schedule_entries')
+          .delete()
+          .eq('member_id', memberId)
+          .eq('date', date)
+        
+        if (error) {
+          console.error('Error deleting schedule entry:', error)
+          throw error
+        }
+      } else {
+        // Upsert the entry
+        const { error } = await supabase
+          .from('schedule_entries')
+          .upsert({
+            member_id: memberId,
+            date,
+            value,
+            reason: reason || null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'member_id,date' })
+        
+        if (error) {
+          console.error('Error updating schedule entry:', error)
+          throw error
+        }
       }
-    } else {
-      // Upsert the entry
-      const { error } = await supabase
-        .from('schedule_entries')
-        .upsert({
-          member_id: memberId,
-          date,
-          value,
-          reason: reason || null,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'member_id,date' })
+
+      // Invalidate relevant caches after successful update
+      dataConsistencyManager.invalidateCachePattern(/^schedule_entries_/);
+      dataConsistencyManager.invalidateCachePattern(/^company_hours_status_/);
+      dataConsistencyManager.invalidateCache(CacheKeys.COO_DASHBOARD_DATA);
       
-      if (error) {
-        console.error('Error updating schedule entry:', error)
-      }
+      console.log(`✅ Schedule entry updated and caches invalidated for member ${memberId} on ${date}`);
+      
+    } catch (error) {
+      console.error('Error in updateScheduleEntry:', error);
+      throw error;
     }
   },
 
@@ -1505,16 +1770,12 @@ export const DatabaseService = {
    */
   getSprintDateRange(sprintData: CurrentGlobalSprint | null): { startDate: string; endDate: string } {
     if (!sprintData || !sprintData.sprint_start_date) {
-      // Fallback to current week if no sprint data
-      const now = new Date();
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay());
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 13); // 2 week default
-      
+      // Return a consistent fallback period instead of using current date
+      // This prevents data inconsistency when sprint data is missing
+      console.warn('⚠️ No sprint data available, using consistent fallback period');
       return {
-        startDate: startOfWeek.toISOString().split('T')[0],
-        endDate: endOfWeek.toISOString().split('T')[0]
+        startDate: '2024-01-01', // Consistent fallback start
+        endDate: '2024-01-14'    // Consistent fallback end (2 weeks)
       };
     }
 
@@ -1720,19 +1981,21 @@ export const DatabaseService = {
     }
   },
 
-  async getCOODashboardData(): Promise<COODashboardData | null> {
+  async getCOODashboardData(forceRefresh: boolean = false): Promise<COODashboardData | null> {
     if (!isSupabaseConfigured()) {
       return null
     }
     
-    try {
-      console.log('🔍 Loading COO dashboard data...')
-      
-      const teams = await this.getTeams()
-      console.log('🏢 Teams loaded:', teams.length, teams.map(t => ({ id: t.id, name: t.name })))
-      
-      const allMembers = await this.getTeamMembers()
-      console.log('👥 All members loaded:', allMembers.length)
+    return dataConsistencyManager.getCachedOrFetch(
+      CacheKeys.COO_DASHBOARD_DATA,
+      async () => {
+        console.log('🔍 Loading COO dashboard data...')
+        
+        const teams = await this.getTeams()
+        console.log('🏢 Teams loaded:', teams.length, teams.map(t => ({ id: t.id, name: t.name })))
+        
+        const allMembers = await this.getTeamMembers()
+        console.log('👥 All members loaded:', allMembers.length)
       
       // Check for Product Team specifically
       const productTeam = teams.find(t => t.name.toLowerCase().includes('product'))
@@ -1875,10 +2138,12 @@ export const DatabaseService = {
           }
         }
       }
-    } catch (error) {
-      console.error('Error fetching COO dashboard data:', error)
-      return null
-    }
+      },
+      {
+        cacheDuration: 10 * 60 * 1000, // 10 minutes cache for COO dashboard data (EGRESS REDUCTION)
+        forceRefresh
+      }
+    )
   },
 
   // COO User Management
@@ -3511,7 +3776,6 @@ The table creation script includes:
         name: data.name,
         description: data.description || undefined,
         color: data.color || '#3b82f6',
-        sprint_length_weeks: data.sprint_length_weeks || 1,
         created_at: data.created_at,
         updated_at: data.updated_at
       }

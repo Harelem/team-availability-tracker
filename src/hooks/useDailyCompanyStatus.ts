@@ -39,7 +39,7 @@ export const useDailyCompanyStatus = (selectedDate: Date) => {
 
   useEffect(() => {
     fetchDailyStatus();
-  }, [fetchDailyStatus]);
+  }, [selectedDate]); // Only re-run when selectedDate changes
 
   return { 
     data, 

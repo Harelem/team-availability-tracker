@@ -6,26 +6,26 @@ import { TeamMember, WorkOption } from '@/types';
 
 interface MobileScheduleCardProps {
   member: TeamMember;
-  weekDays: Date[];
+  sprintDays: Date[];
   scheduleData: Record<string, { value: '1' | '0.5' | 'X'; reason?: string }>;
   workOptions: WorkOption[];
   canEdit: boolean;
   isCurrentUser: boolean;
   onWorkOptionClick: (date: Date, value: string) => void;
-  onFullWeekSet: () => void;
+  onFullSprintSet: () => void;
   isToday: (date: Date) => boolean;
   isPastDate: (date: Date) => boolean;
 }
 
 export default function MobileScheduleCard({
   member,
-  weekDays,
+  sprintDays,
   scheduleData,
   workOptions,
   canEdit,
   isCurrentUser,
   onWorkOptionClick,
-  onFullWeekSet,
+  onFullSprintSet,
   isToday,
   isPastDate
 }: MobileScheduleCardProps) {
@@ -39,9 +39,9 @@ export default function MobileScheduleCard({
     });
   };
 
-  const calculateWeeklyHours = () => {
+  const calculateSprintHours = () => {
     let totalHours = 0;
-    weekDays.forEach(date => {
+    sprintDays.forEach(date => {
       const dateKey = date.toISOString().split('T')[0];
       const value = scheduleData[dateKey];
       const option = workOptions.find(opt => opt.value === value?.value);
@@ -101,9 +101,9 @@ export default function MobileScheduleCard({
             <div className="text-right">
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4 text-gray-500" />
-                <span className="font-semibold text-gray-900 text-lg">{calculateWeeklyHours()}h</span>
+                <span className="font-semibold text-gray-900 text-lg">{calculateSprintHours()}h</span>
               </div>
-              <div className="text-xs text-gray-500">this week</div>
+              <div className="text-xs text-gray-500">this sprint</div>
             </div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
               isExpanded ? 'rotate-180' : ''
@@ -119,7 +119,7 @@ export default function MobileScheduleCard({
       {/* Expanded Card Content */}
       {isExpanded && (
         <div className="border-t border-gray-200 p-4">
-          {/* Full Week Button - Enhanced mobile design */}
+          {/* Full Sprint Button - Enhanced mobile design */}
           {canEdit && (
             <div className="mb-6">
               <button
@@ -128,16 +128,16 @@ export default function MobileScheduleCard({
                   if ('vibrate' in navigator) {
                     navigator.vibrate(50);
                   }
-                  onFullWeekSet();
+                  onFullSprintSet();
                 }}
                 className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-xl py-5 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all duration-200 touch-manipulation min-h-[60px] shadow-md hover:shadow-lg transform hover:scale-[1.02]"
               >
                 <div className="flex items-center justify-center gap-3">
                   <CheckCircle className="w-6 h-6" />
-                  <span className="text-lg">Set Full Working Week</span>
+                  <span className="text-lg">Set Full Working Sprint</span>
                 </div>
                 <div className="text-xs text-green-600 mt-1 opacity-75">
-                  Sets all weekdays to 7 hours each
+                  Sets all sprint working days to 7 hours each
                 </div>
               </button>
             </div>
@@ -145,7 +145,7 @@ export default function MobileScheduleCard({
 
           {/* Days Grid */}
           <div className="space-y-3">
-            {weekDays.map((date) => {
+            {sprintDays.map((date) => {
               const dateKey = date.toISOString().split('T')[0];
               const currentValue = scheduleData[dateKey];
               const today = isToday(date);

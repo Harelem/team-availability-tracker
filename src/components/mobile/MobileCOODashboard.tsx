@@ -133,17 +133,17 @@ export default function MobileCOODashboard({
             <div className="mobile-metric">
               <div className="mobile-metric-value text-purple-600">{companyMetrics.totalCapacity}h</div>
               <div className="mobile-metric-label">Max Capacity</div>
-              <div className="text-xs text-gray-500 mt-1">Weekly sprint max</div>
+              <div className="text-xs text-gray-500 mt-1">Weekly capacity max</div>
             </div>
           </div>
         </div>
         
-        {/* Row 2: Sprint's Potential & Capacity Gap */}
+        {/* Row 2: Current Potential & Capacity Gap */}
         <div className="grid grid-cols-2 gap-3">
           <div className="mobile-card">
             <div className="mobile-metric">
               <div className="mobile-metric-value text-green-600">{companyMetrics.availableCapacity}h</div>
-              <div className="mobile-metric-label">Sprint's Potential</div>
+              <div className="mobile-metric-label">Current Potential</div>
               <div className="text-xs text-gray-500 mt-1">After deductions</div>
             </div>
           </div>

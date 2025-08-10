@@ -191,22 +191,27 @@ export class PredictiveAnalyticsEngine {
         // Return default low-risk assessment when insufficient data
         const memberInfo = await this.getMemberInfo(memberId);
         return {
-          memberId: teamMemberId,
+          memberId: memberId,
           memberName: memberInfo?.name || `Member ${teamMemberId}`,
           riskScore: 0.2, // Low default risk
           riskLevel: 'low' as const,
-          riskFactors: ['Insufficient historical data for accurate assessment'],
+          factors: {
+            workloadTrend: 0,
+            consistencyScore: 0.5,
+            overtimePattern: 0,
+            vacationFrequency: 0.5,
+            teamStabilityImpact: 0
+          },
+          predictions: {
+            burnoutProbability: 0.2,
+            timeToRisk: 180, // 6 months default
+            interventionWindow: 90 // 3 months to intervene
+          },
           recommendations: [
             'Continue monitoring as more data becomes available',
             'Ensure regular check-ins with team member'
           ],
-          confidence: 0.1, // Very low confidence due to insufficient data
-          dataQuality: {
-            completeness: memberHistory.length / 5, // Show what percentage we have
-            reliability: 0.2,
-            freshness: 0.5
-          },
-          lastAssessment: new Date().toISOString()
+          confidence: 0.1 // Very low confidence due to insufficient data
         };
       }
 

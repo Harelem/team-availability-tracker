@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Eye, RefreshCw } from 'lucide-react';
 import MobileScheduleCard from './MobileScheduleCard';
 import EnhancedManagerExportButton from './EnhancedManagerExportButton';
@@ -21,11 +21,11 @@ interface MobileScheduleViewProps {
   onViewReasons: () => void;
   isToday: (date: Date) => boolean;
   isPastDate: (date: Date) => boolean;
-  getCurrentWeekString: () => string;
+  getCurrentSprintString: () => string;
   getTeamTotalHours: () => number;
 }
 
-export default function MobileScheduleView({
+const MobileScheduleView = memo(function MobileScheduleView({
   currentUser,
   teamMembers,
   selectedTeam,
@@ -40,9 +40,21 @@ export default function MobileScheduleView({
   onViewReasons,
   isToday,
   isPastDate,
-  getCurrentWeekString,
+  getCurrentSprintString,
   getTeamTotalHours
 }: MobileScheduleViewProps) {
+  
+  // Error boundary protection for the entire component
+  if (!currentUser || !selectedTeam || !teamMembers) {
+    return (
+      <div className="lg:hidden p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-red-600 font-medium">Unable to load mobile schedule</p>
+          <p className="text-red-500 text-sm mt-1">Missing required data. Please refresh the page.</p>
+        </div>
+      </div>
+    );
+  }
   const [refreshing, setRefreshing] = useState(false);
   const [isSwipeEnabled, setIsSwipeEnabled] = useState(true);
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
@@ -269,10 +281,24 @@ export default function MobileScheduleView({
         {/* Week Info */}
         <div className="text-center mb-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">
-            Week of {getCurrentWeekString()}
+            Sprint {(() => {
+              try {
+                return getCurrentSprintString ? getCurrentSprintString() : 'Current';
+              } catch (error) {
+                console.warn('Error getting sprint string:', error);
+                return 'Current';
+              }
+            })()}
           </h2>
           <div className="text-sm text-gray-600 mb-2">
-            {selectedTeam.name} • {getTeamTotalHours()}h total
+            {selectedTeam?.name || 'Team'} • {(() => {
+              try {
+                return getTeamTotalHours ? getTeamTotalHours() : 0;
+              } catch (error) {
+                console.warn('Error getting team total hours:', error);
+                return 0;
+              }
+            })()}h total
           </div>
           <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
             <div className="flex items-center gap-1">
@@ -301,7 +327,7 @@ export default function MobileScheduleView({
                 teamMembers={teamMembers}
                 selectedTeam={selectedTeam}
                 scheduleData={scheduleData}
-                currentWeekDays={weekDays}
+                currentSprintDays={weekDays}
               />
             </div>
           </div>
@@ -339,13 +365,13 @@ export default function MobileScheduleView({
             >
               <MobileScheduleCard
                 member={member}
-                weekDays={weekDays}
+                sprintDays={weekDays}
                 scheduleData={scheduleData[member.id] || {}}
                 workOptions={workOptions}
                 canEdit={canEdit}
                 isCurrentUser={isCurrentUserCard}
                 onWorkOptionClick={(date, value) => onWorkOptionClick(member.id, date, value)}
-                onFullWeekSet={() => onFullWeekSet(member.id)}
+                onFullSprintSet={() => onFullWeekSet(member.id)}
                 isToday={isToday}
                 isPastDate={isPastDate}
               />
@@ -358,12 +384,12 @@ export default function MobileScheduleView({
       <div className="bg-blue-50 rounded-lg border border-blue-200 p-4 mt-4">
         <h3 className="font-medium text-blue-900 mb-2 text-sm">Quick Guide:</h3>
         <ul className="text-xs text-blue-800 space-y-1">
-          <li>• <strong>Swipe left/right</strong> to navigate between weeks</li>
+          <li>• <strong>Swipe left/right</strong> to navigate between sprints</li>
           <li>• <strong>Pull down</strong> to refresh schedule data</li>
           <li>• <strong>Tap member names</strong> to expand/collapse their schedule</li>
           <li>• <strong>Your schedule</strong> is highlighted and expanded by default</li>
           <li>• <strong>Tap work options</strong> to set your availability</li>
-          <li>• <strong>Use &quot;Set Full Working Week&quot;</strong> for quick scheduling</li>
+          <li>• <strong>Use &quot;Set Full Working Sprint&quot;</strong> for quick scheduling</li>
           {currentUser.isManager && <li>• <strong>As a manager</strong> you can edit anyone&apos;s schedule</li>}
           <li>• <strong>Today&apos;s column</strong> is highlighted in blue</li>
         </ul>
@@ -371,4 +397,6 @@ export default function MobileScheduleView({
       </div>
     </div>
   );
-}
+});
+
+export default MobileScheduleView;

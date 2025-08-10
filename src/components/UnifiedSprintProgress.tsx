@@ -187,7 +187,7 @@ export const UnifiedSprintProgress: React.FC<UnifiedSprintProgressProps> = ({
             <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
               <BarChart3 className="w-5 h-5 text-blue-600" />
               <span>{sprintData.name}</span>
-              {sprintData?.navigation?.current && (
+              {sprintData?.navigation?.position?.current === sprintData?.navigation?.position?.index && (
                 <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
                   Current
                 </span>

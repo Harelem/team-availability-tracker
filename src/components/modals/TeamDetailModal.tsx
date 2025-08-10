@@ -56,12 +56,15 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
   const { downloadFile } = useFileDownload();
   const { showSuccessNotification, showErrorNotification } = useNotificationActions();
   
-  const { modalRef } = useModalKeyboard(isOpen, onClose, {
+  const modalKeyboard = useModalKeyboard(isOpen, onClose, {
     trapFocus: true,
     closeOnEscape: true,
     closeOnOutsideClick: true,
     restoreFocus: true
   });
+  
+  // Create a modalRef for the modal content
+  const modalRef = React.useRef<HTMLDivElement>(null);
 
   const [showExportDropdown, setShowExportDropdown] = useState(false);
 

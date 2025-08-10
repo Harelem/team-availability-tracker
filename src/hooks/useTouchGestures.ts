@@ -6,7 +6,10 @@
  */
 
 import { useGesture } from '@use-gesture/react';
-import { useRef, useCallback, useState, useEffect } from 'react';
+import { useRef, useCallback, useState, useEffect, useLayoutEffect } from 'react';
+
+// SSR-safe useLayoutEffect that falls back to useEffect on server
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 // Gesture Configuration Types
 interface SwipeConfig {
@@ -261,7 +264,7 @@ export function useLongPress(
 ) {
   const { delay = 500 } = options;
   const [isPressed, setIsPressed] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const start = useCallback((event: TouchEvent | MouseEvent) => {
     setIsPressed(true);
@@ -330,32 +333,55 @@ export function usePinchZoom(
 }
 
 /**
- * Hook to detect if device supports touch
+ * SSR-Safe Hook to detect if device supports touch
+ * Defaults to false (no touch) during SSR to prevent hydration mismatches
  */
 export function useTouchDevice() {
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false); // Default to no touch during SSR
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Hydration effect
+  useIsomorphicLayoutEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
+    // Skip during SSR
+    if (typeof window === 'undefined') return;
+
     const checkTouch = () => {
-      setIsTouchDevice(
-        'ontouchstart' in window ||
-        navigator.maxTouchPoints > 0 ||
-        // @ts-ignore - for IE compatibility
-        navigator.msMaxTouchPoints > 0
-      );
+      try {
+        setIsTouchDevice(
+          'ontouchstart' in window ||
+          navigator.maxTouchPoints > 0 ||
+          // @ts-ignore - for IE compatibility  
+          navigator.msMaxTouchPoints > 0
+        );
+      } catch (error) {
+        console.warn('Error checking touch device capabilities:', error);
+        setIsTouchDevice(false);
+      }
     };
 
-    checkTouch();
-    window.addEventListener('resize', checkTouch);
+    // Only run after hydration
+    if (isHydrated) {
+      checkTouch();
+      window.addEventListener('resize', checkTouch);
+    }
     
-    return () => window.removeEventListener('resize', checkTouch);
-  }, []);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', checkTouch);
+      }
+    };
+  }, [isHydrated]);
 
   return isTouchDevice;
 }
 
 /**
- * Hook for handling touch-friendly interactions
+ * SSR-Safe Hook for handling touch-friendly interactions
+ * Provides different behaviors for touch vs mouse devices
  */
 export function useTouchFriendly() {
   const isTouchDevice = useTouchDevice();
@@ -367,18 +393,28 @@ export function useTouchFriendly() {
   ) => {
     const handleClick = () => {
       // Provide haptic feedback on supported devices
-      if (options.hapticFeedback && 'vibrate' in navigator) {
-        navigator.vibrate(10); // Short vibration for feedback
+      if (options.hapticFeedback && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate(10); // Short vibration for feedback
+        } catch (error) {
+          // Silently handle vibration errors
+          console.debug('Haptic feedback not available:', error);
+        }
       }
       onClick();
     };
 
-    return isTouchDevice ? {
-      onTouchEnd: handleClick,
-      style: { cursor: 'pointer', touchAction: 'manipulation' }
-    } : {
+    // Always return consistent structure to prevent hydration issues
+    // The behavior difference is handled internally
+    return {
       onClick: handleClick,
-      style: { cursor: 'pointer' }
+      onTouchEnd: isTouchDevice ? handleClick : undefined,
+      style: { 
+        cursor: 'pointer', 
+        touchAction: isTouchDevice ? 'manipulation' : 'auto' 
+      },
+      // Add data attribute for debugging
+      'data-touch-device': isTouchDevice
     };
   }, [isTouchDevice]);
 

@@ -451,7 +451,7 @@ export class DataProcessor {
   }
 
   private analyzeWeeklyPattern(data: HistoricalDataPoint[]): SeasonalPattern {
-    const dayOfWeekData = new Array(7).fill(0).map(() => []);
+    const dayOfWeekData: number[][] = new Array(7).fill(null).map(() => []);
     
     data.forEach(point => {
       const dayOfWeek = new Date(point.date).getDay();
@@ -470,7 +470,7 @@ export class DataProcessor {
   }
 
   private analyzeMonthlyPattern(data: HistoricalDataPoint[]): SeasonalPattern {
-    const monthData = new Array(12).fill(0).map(() => []);
+    const monthData: number[][] = new Array(12).fill(null).map(() => []);
     
     data.forEach(point => {
       const month = new Date(point.date).getMonth();

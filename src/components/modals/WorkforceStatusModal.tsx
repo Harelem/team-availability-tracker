@@ -78,7 +78,7 @@ export default function WorkforceStatusModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-hidden bg-black bg-opacity-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
       <div
@@ -86,10 +86,10 @@ export default function WorkforceStatusModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="workforce-modal-title"
-        className={`bg-white shadow-xl w-full overflow-hidden ${
+        className={`bg-white shadow-xl w-full flex flex-col ${
           isMobile 
             ? 'h-full max-h-full rounded-none' // Mobile: Full screen
-            : 'max-w-4xl max-h-[90vh] rounded-lg' // Desktop: Modal
+            : 'max-w-4xl max-h-[90vh] rounded-lg' // Desktop: Modal with proper height constraint
         }`}
       >
         {/* Modal Header */}
@@ -147,8 +147,8 @@ export default function WorkforceStatusModal({
           </div>
         </div>
 
-        {/* Modal Content */}
-        <div className="overflow-y-auto flex-1">
+        {/* Modal Content - Properly scrollable area */}
+        <div className="overflow-y-auto flex-1 min-h-0">
           {error ? (
             <div className="p-6">
               <div className="text-center py-8">

@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Settings, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { TeamMember, Team } from '@/types';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
-import { canManageSprints } from '@/utils/permissions';
 import EnhancedManagerExportButton from './EnhancedManagerExportButton';
 
 interface CompactHeaderBarProps {
@@ -12,12 +11,11 @@ interface CompactHeaderBarProps {
   selectedTeam: Team;
   teamMembers: TeamMember[];
   scheduleData: any;
-  currentWeekOffset: number;
-  currentWeekDays: Date[];
-  onWeekChange: (offset: number) => void;
+  currentSprintOffset: number;
+  currentSprintDays: Date[];
+  onSprintChange: (offset: number) => void;
   onViewReasons: () => void;
-  onSprintSettings: () => void;
-  getCurrentWeekString: () => string;
+  getCurrentSprintString: () => string;
   getTeamTotalHours: () => number;
 }
 
@@ -26,12 +24,11 @@ export default function CompactHeaderBar({
   selectedTeam,
   teamMembers,
   scheduleData,
-  currentWeekOffset,
-  currentWeekDays,
-  onWeekChange,
+  currentSprintOffset,
+  currentSprintDays,
+  onSprintChange,
   onViewReasons,
-  onSprintSettings,
-  getCurrentWeekString,
+  getCurrentSprintString,
   getTeamTotalHours
 }: CompactHeaderBarProps) {
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
@@ -42,7 +39,7 @@ export default function CompactHeaderBar({
     if (!currentSprint) return 0;
     
     const totalHours = getTeamTotalHours();
-    const targetHours = currentSprint.targetHours || (teamMembers.length * 35); // 35h per person default
+    const targetHours = (currentSprint as any)?.targetHours || (teamMembers.length * 35); // 35h per person default
     
     return Math.min(Math.round((totalHours / targetHours) * 100), 100);
   };
@@ -57,19 +54,19 @@ export default function CompactHeaderBar({
         <div className="flex items-center justify-between">
           {/* Left: Essential Info */}
           <div className="flex items-center gap-4">
-            {/* Week Navigation */}
+            {/* Sprint Navigation */}
             <div className="flex items-center gap-2">
               <button
-                onClick={() => onWeekChange(currentWeekOffset - 1)}
+                onClick={() => onSprintChange(currentSprintOffset - 1)}
                 className="flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm touch-target"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Prev</span>
               </button>
               
-              {currentWeekOffset !== 0 && (
+              {currentSprintOffset !== 0 && (
                 <button
-                  onClick={() => onWeekChange(0)}
+                  onClick={() => onSprintChange(0)}
                   className="flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm touch-target"
                 >
                   <Calendar className="w-4 h-4" />
@@ -78,7 +75,7 @@ export default function CompactHeaderBar({
               )}
               
               <button
-                onClick={() => onWeekChange(currentWeekOffset + 1)}
+                onClick={() => onSprintChange(currentSprintOffset + 1)}
                 className="flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm touch-target"
               >
                 <span className="hidden sm:inline">Next</span>
@@ -86,10 +83,10 @@ export default function CompactHeaderBar({
               </button>
             </div>
 
-            {/* Week Info */}
+            {/* Sprint Info */}
             <div className="hidden md:block">
               <div className="text-sm font-medium text-gray-900">
-                {getCurrentWeekString()}
+                {getCurrentSprintString()}
               </div>
               <div className="text-xs text-gray-500">
                 {teamMembers.length} members • {getTeamTotalHours()}h total
@@ -110,16 +107,6 @@ export default function CompactHeaderBar({
 
           {/* Right: Action Buttons */}
           <div className="flex items-center gap-2">
-            {/* Sprint Settings - Only for Harel Mazan */}
-            {canManageSprints(currentUser) && (
-              <button 
-                onClick={onSprintSettings}
-                className="flex items-center gap-1 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm touch-target"
-              >
-                <Settings className="w-4 h-4" />
-                <span className="hidden sm:inline">Sprint</span>
-              </button>
-            )}
             
             {/* Manager Buttons */}
             {currentUser.isManager && (
@@ -137,17 +124,17 @@ export default function CompactHeaderBar({
                   teamMembers={teamMembers}
                   selectedTeam={selectedTeam}
                   scheduleData={scheduleData}
-                  currentWeekDays={currentWeekDays}
+                  currentSprintDays={currentSprintDays}
                 />
               </>
             )}
           </div>
         </div>
 
-        {/* Mobile Week Info */}
+        {/* Mobile Sprint Info */}
         <div className="md:hidden mt-2 text-center">
           <div className="text-sm font-medium text-gray-900">
-            {getCurrentWeekString()}
+            {getCurrentSprintString()}
           </div>
           <div className="text-xs text-gray-500">
             {teamMembers.length} members • {getTeamTotalHours()}h total
@@ -179,7 +166,7 @@ export default function CompactHeaderBar({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Target:</span>
-                    <span className="font-medium">{currentSprint.targetHours || (teamMembers.length * 35)}h</span>
+                    <span className="font-medium">{(currentSprint as any)?.targetHours || (teamMembers.length * 35)}h</span>
                   </div>
                 </div>
               </div>
@@ -194,7 +181,7 @@ export default function CompactHeaderBar({
                   <span className="font-medium">{teamMembers.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Active This Week:</span>
+                  <span className="text-gray-600">Active This Sprint:</span>
                   <span className="font-medium">
                     {teamMembers.filter(member => {
                       const memberData = scheduleData[member.id] || {};
@@ -213,20 +200,20 @@ export default function CompactHeaderBar({
 
             {/* Quick Stats */}
             <div className="bg-white rounded-lg p-3 border border-gray-200">
-              <h3 className="font-medium text-gray-900 mb-2">Week Summary</h3>
+              <h3 className="font-medium text-gray-900 mb-2">Sprint Summary</h3>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Week of:</span>
-                  <span className="font-medium">{getCurrentWeekString()}</span>
+                  <span className="text-gray-600">Sprint:</span>
+                  <span className="font-medium">{getCurrentSprintString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status:</span>
                   <span className={`font-medium ${
-                    currentWeekOffset === 0 ? 'text-blue-600' :
-                    currentWeekOffset < 0 ? 'text-gray-600' : 'text-purple-600'
+                    currentSprintOffset === 0 ? 'text-blue-600' :
+                    currentSprintOffset < 0 ? 'text-gray-600' : 'text-purple-600'
                   }`}>
-                    {currentWeekOffset === 0 ? 'Current' :
-                     currentWeekOffset < 0 ? 'Past' : 'Future'}
+                    {currentSprintOffset === 0 ? 'Current' :
+                     currentSprintOffset < 0 ? 'Past' : 'Future'}
                   </span>
                 </div>
                 <div className="flex justify-between">

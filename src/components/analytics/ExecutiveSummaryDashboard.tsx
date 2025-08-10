@@ -226,7 +226,7 @@ const ExecutiveSummaryDashboard: React.FC<ExecutiveDashboardProps> = ({
               onChange={(e) => setSelectedTimeframe(e.target.value as 'week' | 'month' | 'quarter')}
               className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="week">This Week</option>
+              <option value="week">Current Sprint</option>
               <option value="month">This Month</option>
               <option value="quarter">This Quarter</option>
             </select>
@@ -429,8 +429,8 @@ const ExecutiveSummaryDashboard: React.FC<ExecutiveDashboardProps> = ({
                     <span>{insight.title}</span>
                   </CardTitle>
                   <Badge variant={
-                    insight.impact === 'high' ? 'destructive' :
-                    insight.impact === 'medium' ? 'default' : 'secondary'
+                    insight.impact === 'high' ? 'error' :
+                    insight.impact === 'medium' ? 'primary' : 'secondary'
                   }>
                     {insight.impact} impact
                   </Badge>

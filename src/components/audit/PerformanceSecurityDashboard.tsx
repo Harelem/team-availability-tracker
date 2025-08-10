@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { performanceMonitor } from '@/src/utils/performanceMonitoring';
+import { performanceMonitor } from '@/utils/performanceMonitoring';
 
 // Performance & Security Metrics Interfaces
 interface SecurityMetrics {

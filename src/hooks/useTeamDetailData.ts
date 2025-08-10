@@ -204,7 +204,7 @@ export function useTeamDetailData(teamId: number | null): {
           id: member.id,
           name: member.name,
           hebrew: member.hebrew,
-          isManager: member.isManager,
+          isManager: Boolean(member.isManager),
           plannedHours: memberPlannedHours,
           potentialHours: memberPotentialHours,
           completionPercentage: memberCompletionPercentage,
@@ -354,6 +354,7 @@ export function convertToLegacyFormat(accurateData: AccurateTeamData): TeamDetai
       name: member.name,
       hebrew: member.hebrew || '',
       email: '',
+      team_id: accurateData.teamInfo.id || 0,
       isManager: member.isManager,
       role: member.isManager ? 'Team Manager' : 'Team Member',
       currentWeekStatus: member.availabilityStatus,
@@ -361,7 +362,7 @@ export function convertToLegacyFormat(accurateData: AccurateTeamData): TeamDetai
       sprintPlannedHours: member.plannedHours,
       sprintCompletedHours: member.plannedHours, // Assume planned = completed for now
       individualCompletionPercentage: member.completionPercentage,
-      lastActivityTimestamp: member.lastActivity,
+      lastActivityTimestamp: member.lastActivity || undefined,
       lastActivityDescription: 'Updated schedule',
       availabilityColor: member.availabilityColor
     })),

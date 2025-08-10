@@ -202,14 +202,14 @@ export function CapacityTrendAreaChart({
                 y={averages.potential} 
                 stroke="#3b82f6" 
                 strokeDasharray="5 5" 
-                label={{ value: "Avg Max Capacity", position: "topRight" }}
+                label={{ value: "Avg Max Capacity", position: "top" }}
                 opacity={0.7}
               />
               <ReferenceLine 
                 y={averages.actual} 
                 stroke="#10b981" 
                 strokeDasharray="5 5" 
-                label={{ value: "Avg Actual", position: "topRight" }}
+                label={{ value: "Avg Actual", position: "top" }}
                 opacity={0.7}
               />
             </>

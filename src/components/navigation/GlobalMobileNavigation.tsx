@@ -24,7 +24,7 @@ export default function GlobalMobileNavigation({
   const [currentUser, setCurrentUser] = useState(null);
   
   // Check if navigation should be hidden on current route
-  const shouldHide = hideOnRoutes.some(route => pathname.startsWith(route)) || mobileLoading;
+  const shouldHide = hideOnRoutes.some(route => pathname?.startsWith(route)) || mobileLoading;
 
   // Get current user context (this would come from auth context in real app)
   useEffect(() => {
@@ -39,12 +39,12 @@ export default function GlobalMobileNavigation({
   }
 
   // Determine if we should show executive navigation
-  const showExecutive = pathname.includes('/executive');
+  const showExecutive = pathname?.includes('/executive') || false;
 
   return (
     <MobileAppNavigation
-      currentUser={currentUser}
-      currentPage={pathname}
+      currentUser={currentUser as any}
+      currentPage={pathname || undefined}
       showExecutive={showExecutive}
       onNavigateHome={() => {
         window.location.href = '/';
@@ -60,10 +60,6 @@ export default function GlobalMobileNavigation({
       }}
       onNavigateProfile={() => {
         window.location.href = '/profile';
-      }}
-      onLogout={() => {
-        // Handle global logout - will be implemented with auth system
-        console.log('Logout requested from mobile navigation');
       }}
       className={className}
     />

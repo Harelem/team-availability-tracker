@@ -467,7 +467,7 @@ export class IntelligentAlertSystem {
       
       for (const memberId of members) {
         try {
-          const burnoutAssessment = await predictiveAnalytics.assessBurnoutRisk(memberId.toString());
+          const burnoutAssessment = await predictiveAnalytics.assessBurnoutRisk(String(memberId));
           
           if (burnoutAssessment.riskScore > 0.7) {
             const alert = await this.createAlert({
@@ -478,7 +478,7 @@ export class IntelligentAlertSystem {
               description: `${burnoutAssessment.memberName} shows ${burnoutAssessment.riskLevel} burnout risk`,
               affectedEntity: {
                 type: 'member',
-                id: memberId,
+                id: Number(memberId),
                 name: burnoutAssessment.memberName
               },
               metrics: {

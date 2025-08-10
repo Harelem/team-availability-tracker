@@ -11,7 +11,7 @@ interface EnhancedManagerExportButtonProps {
   teamMembers: TeamMember[];
   selectedTeam: Team;
   scheduleData?: WeekData;
-  currentWeekDays?: Date[];
+  currentSprintDays?: Date[];
 }
 
 export default function EnhancedManagerExportButton({

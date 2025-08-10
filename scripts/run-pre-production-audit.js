@@ -63,10 +63,17 @@ const auditConfig = {
     },
     {
       name: 'Security Vulnerability Scan',
-      script: 'npm run audit:security',
-      description: 'Security measures, input sanitization, and vulnerability assessment',
+      script: 'npm run audit:security-enhanced',
+      description: 'Security tests, static analysis, and vulnerability assessment with Semgrep',
       critical: true,
-      timeout: 75000
+      timeout: 120000
+    },
+    {
+      name: 'Static Code Security Analysis',
+      script: 'npm run semgrep:ci',
+      description: 'Semgrep static analysis for security vulnerabilities and code quality',
+      critical: true,
+      timeout: 90000
     },
     {
       name: 'Cross-Browser Compatibility',
@@ -93,7 +100,9 @@ const auditConfig = {
     testCoverage: 85, // Minimum 85% test coverage
     performanceScore: 80, // Minimum performance score
     accessibilityScore: 95, // Minimum accessibility compliance
-    securityScore: 90 // Minimum security score
+    securityScore: 90, // Minimum security score
+    maxSemgrepErrors: 0, // No critical security errors allowed
+    maxSemgrepWarnings: 5 // Maximum 5 security warnings allowed
   }
 };
 
@@ -132,6 +141,45 @@ class PreProductionAuditor {
     console.log(`${colorMap[level]}[${timestamp}] ${message}${colors.reset}`);
   }
 
+  // Validate and sanitize command execution
+  validateCommand(command) {
+    // Allowlist of safe commands for audit phases
+    const allowedCommands = [
+      'npm run audit:data-accuracy',
+      'npm run audit:ui-patterns', 
+      'npm run test:accessibility-full',
+      'npm run test:integration',
+      'npm run audit:performance',
+      'npm run audit:security-enhanced',
+      'npm run semgrep:ci',
+      'jest __tests__/audit/browserCompatibility.test.ts --verbose',
+      'jest __tests__/audit/productionReadiness.test.ts --verbose'
+    ];
+
+    // Check if command is in allowlist
+    if (!allowedCommands.includes(command.trim())) {
+      throw new Error(`Command not in allowlist: ${command}`);
+    }
+
+    // Additional validation - no dangerous characters
+    const dangerousPatterns = [
+      /[;&|`$(){}[\]]/,  // Shell metacharacters
+      /\.\./,            // Directory traversal
+      /rm\s+-rf/i,       // Dangerous delete commands
+      /sudo/i,           // Privilege escalation
+      /curl|wget/i,      // Network commands
+      /eval|exec/i       // Code execution
+    ];
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(command)) {
+        throw new Error(`Command contains dangerous pattern: ${command}`);
+      }
+    }
+
+    return command.trim();
+  }
+
   async runPhase(phase, index) {
     const phaseNumber = index + 1;
     const totalPhases = auditConfig.phases.length;
@@ -155,12 +203,18 @@ class PreProductionAuditor {
     };
 
     try {
-      this.log(`Executing: ${phase.script}`, 'info');
+      // Validate command before execution
+      const safeCommand = this.validateCommand(phase.script);
+      this.log(`Executing: ${safeCommand}`, 'info');
       
-      const output = execSync(phase.script, {
+      const output = execSync(safeCommand, {
         encoding: 'utf8',
         timeout: phase.timeout,
-        stdio: 'pipe'
+        stdio: 'pipe',
+        env: {
+          ...process.env,
+          NODE_ENV: 'test' // Ensure test environment
+        }
       });
 
       phaseResult.output = output;
@@ -225,6 +279,24 @@ class PreProductionAuditor {
         const violationsMatch = output.match(/(\d+)\s+violations?/i);
         if (violationsMatch) {
           metrics.accessibilityViolations = parseInt(violationsMatch[1]);
+        }
+      }
+
+      // Extract Semgrep metrics
+      if (phaseName.toLowerCase().includes('static') || phaseName.toLowerCase().includes('semgrep')) {
+        const semgrepFindingsMatch = output.match(/(\d+)\s+finding/i);
+        if (semgrepFindingsMatch) {
+          metrics.semgrepFindings = parseInt(semgrepFindingsMatch[1]);
+        }
+
+        const semgrepErrorsMatch = output.match(/(\d+)\s+error/i);
+        if (semgrepErrorsMatch) {
+          metrics.semgrepErrors = parseInt(semgrepErrorsMatch[1]);
+        }
+
+        const semgrepWarningsMatch = output.match(/(\d+)\s+warning/i);
+        if (semgrepWarningsMatch) {
+          metrics.semgrepWarnings = parseInt(semgrepWarningsMatch[1]);
         }
       }
 
