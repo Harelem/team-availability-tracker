@@ -1,269 +1,131 @@
 // UPDATED TYPESCRIPT INTERFACES
-// These interfaces match the enhanced database schema
-// Replace the existing interfaces in src/lib/supabase.ts with these
+// These interfaces match the enhanced database schema after emergency deployment
 
-export interface Database {
-  public: {
-    Tables: {
-      // TEAMS TABLE - CRITICAL ADDITION
-      teams: {
-        Row: {
-          id: number
-          name: string
-          description: string | null
-          color: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          name: string
-          description?: string | null
-          color?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          name?: string
-          description?: string | null
-          color?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      
-      // ENHANCED TEAM_MEMBERS TABLE - WITH MISSING COLUMNS
-      team_members: {
-        Row: {
-          id: number
-          name: string
-          hebrew: string
-          is_manager: boolean
-          email: string | null
-          team_id: number | null        // ADDED - Critical for team relationships
-          role: string | null           // ADDED - Required by daily status
-          is_critical: boolean | null   // ADDED - Required by critical absences  
-          inactive_date: string | null  // ADDED - Required by active member filtering
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          name: string
-          hebrew: string
-          is_manager?: boolean
-          email?: string | null
-          team_id?: number | null       // ADDED
-          role?: string | null          // ADDED  
-          is_critical?: boolean | null  // ADDED
-          inactive_date?: string | null // ADDED
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          name?: string
-          hebrew?: string
-          is_manager?: boolean
-          email?: string | null
-          team_id?: number | null       // ADDED
-          role?: string | null          // ADDED
-          is_critical?: boolean | null  // ADDED
-          inactive_date?: string | null // ADDED
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      
-      // SCHEDULE_ENTRIES TABLE - UNCHANGED BUT ENHANCED WITH VIEW
-      schedule_entries: {
-        Row: {
-          id: number
-          member_id: number
-          date: string
-          value: '1' | '0.5' | 'X'
-          reason: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: number
-          member_id: number
-          date: string
-          value: '1' | '0.5' | 'X'
-          reason?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: number
-          member_id?: number
-          date?: string
-          value?: '1' | '0.5' | 'X'
-          reason?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-    }
-    
-    // ENHANCED VIEWS - NEW ADDITIONS
-    Views: {
-      // SCHEDULE ENTRIES WITH HOURS - Compatibility view
-      schedule_entries_with_hours: {
-        Row: {
-          id: number
-          team_member_id: number  // Alias for member_id
-          member_id: number
-          date: string
-          value: '1' | '0.5' | 'X'
-          hours: number           // Calculated from value
-          reason: string | null
-          created_at: string
-          updated_at: string
-        }
-      }
-      
-      // TEAM STATS - Performance optimized view
-      team_stats: {
-        Row: {
-          id: number
-          name: string
-          description: string | null
-          color: string | null
-          member_count: number
-          manager_count: number
-          created_at: string
-          updated_at: string
-        }
-      }
-    }
-    
-    // ENHANCED FUNCTIONS - NEW ADDITIONS
-    Functions: {
-      // VALUE TO HOURS CONVERSION
-      value_to_hours: {
-        Args: {
-          value_str: string
-        }
-        Returns: number
-      }
-      
-      // DAILY COMPANY STATUS DATA  
-      get_daily_company_status_data: {
-        Args: {
-          target_date: string
-        }
-        Returns: {
-          member_id: number
-          member_name: string
-          member_hebrew: string
-          team_id: number
-          member_role: string
-          is_manager: boolean
-          is_critical: boolean
-          hours: number
-          reason: string | null
-        }[]
-      }
-      
-      // DAILY STATUS SUMMARY
-      get_daily_status_summary: {
-        Args: {
-          target_date?: string
-        }
-        Returns: {
-          total_members: number
-          available_members: number
-          half_day_members: number
-          unavailable_members: number
-          reserve_duty_members: number
-          critical_absences: number
-        }[]
-      }
-      
-      // DATA POPULATION UTILITY
-      populate_default_member_data: {
-        Args: {}
-        Returns: string
-      }
-      
-      // VALIDATION UTILITY
-      validate_schema_deployment: {
-        Args: {}
-        Returns: {
-          check_name: string
-          status: string
-          details: string
-        }[]
-      }
-    }
-  }
+// Enhanced Team interface (matches teams table)
+export interface Team {
+  id: number;
+  name: string;
+  description?: string;
+  color?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// HELPER TYPES FOR ENHANCED FUNCTIONALITY
-export type TeamWithStats = Database['public']['Views']['team_stats']['Row'];
-export type MemberWithTeam = Database['public']['Tables']['team_members']['Row'] & {
-  teams?: Database['public']['Tables']['teams']['Row']
-};
-export type ScheduleWithHours = Database['public']['Views']['schedule_entries_with_hours']['Row'];
-export type DailyStatusData = Database['public']['Functions']['get_daily_company_status_data']['Returns'][0];
-export type DailySummary = Database['public']['Functions']['get_daily_status_summary']['Returns'][0];
+// Enhanced TeamMember interface (matches enhanced team_members table)
+export interface TeamMember {
+  id: number;
+  name: string;
+  hebrew: string;
+  isManager?: boolean;
+  is_manager?: boolean; // Database column name
+  email?: string;
+  team_id: number; // REQUIRED - now matches database
+  role?: string; // NEW - member role (e.g., 'Team Manager', 'Team Member')
+  is_critical?: boolean; // NEW - critical member flag for absence tracking
+  inactive_date?: string; // NEW - for member lifecycle management
+  created_at?: string;
+  updated_at?: string;
+}
 
-// USAGE EXAMPLES FOR DEVELOPERS
-/*
-// Example 1: Query teams with stats
-const { data: teams } = await supabase
-  .from('team_stats')
-  .select('*');
+// Enhanced DailyMemberStatus (already correct - matches database function output)
+export interface DailyMemberStatus {
+  id: number;
+  name: string;
+  teamId: number;
+  teamName: string;
+  role?: string; // Matches enhanced schema
+  hours: number; // 0, 0.5, or 1 (calculated by value_to_hours function)
+  reason?: string;
+  isCritical: boolean; // Matches enhanced schema
+}
 
-// Example 2: Query team members with enhanced fields  
-const { data: members } = await supabase
-  .from('team_members')  
-  .select('id, name, hebrew, team_id, role, is_critical, inactive_date')
-  .is('inactive_date', null);
+// New TeamStats interface (matches team_stats view)
+export interface TeamStats {
+  id: number;
+  name: string;
+  description?: string;
+  color?: string;
+  sprint_length_weeks?: number;
+  member_count: number; // Calculated from enhanced team relationships
+  manager_count: number; // Calculated from enhanced team relationships
+  current_sprint_number?: number;
+  current_sprint_start?: string;
+  current_sprint_end?: string;
+  current_sprint_progress?: number;
+}
 
-// Example 3: Get daily company status using function
-const { data: dailyStatus } = await supabase
-  .rpc('get_daily_company_status_data', { 
-    target_date: '2025-08-10' 
-  });
+// Enhanced ScheduleEntry with hours calculation
+export interface ScheduleEntry {
+  value: '1' | '0.5' | 'X';
+  hours?: number; // NEW - calculated by value_to_hours function
+  reason?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
-// Example 4: Get daily summary using function
-const { data: summary } = await supabase
-  .rpc('get_daily_status_summary', {
-    target_date: '2025-08-10'  
-  });
+// Database function return types (new from enhanced schema)
+export interface DailyStatusSummary {
+  total_members: number;
+  available_members: number;
+  half_day_members: number;
+  unavailable_members: number;
+  reserve_duty_members: number;
+  critical_absences: number;
+}
 
-// Example 5: Convert schedule values to hours using function
-const { data: hours } = await supabase
-  .rpc('value_to_hours', { 
-    value_str: '0.5' 
-  });
+export interface DailyCompanyStatusData {
+  member_id: number;
+  member_name: string;
+  member_hebrew: string;
+  team_id: number;
+  member_role: string;
+  is_manager: boolean;
+  is_critical: boolean;
+  hours: number;
+  reason?: string;
+}
 
-// Example 6: Query schedule entries with calculated hours
-const { data: schedules } = await supabase
-  .from('schedule_entries_with_hours')
-  .select('member_id, date, value, hours, reason')
-  .eq('date', '2025-08-10');
+// IMPLEMENTATION NOTES:
+// 
+// 1. TeamMember Interface Changes:
+//    - team_id is now REQUIRED (not optional) - matches database constraint
+//    - Added role field for member roles
+//    - Added is_critical field for absence tracking
+//    - Added inactive_date field for member lifecycle
+//    - Both isManager and is_manager supported for compatibility
+//
+// 2. Database Functions Available:
+//    - value_to_hours(value_str) - converts '1'/'0.5'/'X' to decimal hours
+//    - get_daily_status_summary(target_date) - returns daily summary stats
+//    - get_daily_company_status_data(target_date) - returns detailed member data
+//
+// 3. Views Available:
+//    - team_stats - enhanced team statistics with member counts
+//    - schedule_entries_with_hours - schedule entries with calculated hours
+//
+// 4. Migration Impact:
+//    - All existing TypeScript code should work with these enhanced interfaces
+//    - team_id is now properly populated for all team members
+//    - role and is_critical fields provide enhanced functionality
+//    - Database queries now have proper team relationships
+//
+// 5. Usage Examples:
+//
+//    // Teams now load properly
+//    const teams = await supabase.from('teams').select('*');
+//    
+//    // Team members with enhanced data
+//    const members = await supabase
+//      .from('team_members')
+//      .select('*, teams(name, color)')
+//      .eq('team_id', teamId);
+//    
+//    // Daily status with enhanced functionality
+//    const { data } = await supabase
+//      .rpc('get_daily_company_status_data', { target_date: date });
+//    
+//    // Team statistics
+//    const stats = await supabase.from('team_stats').select('*');
 
-// Example 7: Critical absences with proper joins
-const { data: criticalAbsences } = await supabase
-  .from('schedule_entries')
-  .select(`
-    member_id,
-    value,
-    reason,
-    team_members!inner (
-      name,
-      hebrew,  
-      team_id,
-      is_critical,
-      teams (name)
-    )
-  `)
-  .eq('date', '2025-08-10')
-  .eq('value', 'X') 
-  .eq('team_members.is_critical', true);
-*/
+// IMPORTANT: Update src/types/index.ts with the enhanced TeamMember interface
+// The existing interfaces are mostly correct, but TeamMember needs the new fields

@@ -12,8 +12,12 @@ export interface TeamMember {
   name: string;
   hebrew: string;
   isManager?: boolean;
+  is_manager?: boolean; // Database column name compatibility
   email?: string;
   team_id: number;
+  role?: string; // NEW - member role (e.g., 'Team Manager', 'Team Member')
+  is_critical?: boolean; // NEW - critical member flag for absence tracking
+  inactive_date?: string; // NEW - for member lifecycle management
   created_at?: string;
   updated_at?: string;
 }
