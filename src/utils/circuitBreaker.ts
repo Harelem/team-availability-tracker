@@ -211,10 +211,18 @@ export class RequestDeduplicator {
 
 // Global circuit breakers for critical services
 export const databaseCircuitBreaker = new CircuitBreaker('Database', {
-  failureThreshold: 3,
-  recoveryTimeout: 30000,  // 30 seconds
-  successThreshold: 2,
-  timeout: 10000  // 10 seconds
+  failureThreshold: 5,           // Allow more failures for complex queries
+  recoveryTimeout: 60000,        // 1 minute recovery time
+  successThreshold: 1,
+  timeout: 30000                 // 30 seconds for complex queries
+});
+
+// COO-specific circuit breaker for dashboard operations
+export const cooDashboardCircuitBreaker = new CircuitBreaker('COODashboard', {
+  failureThreshold: 5,
+  recoveryTimeout: 60000,        // 1 minute recovery time
+  successThreshold: 1,
+  timeout: 45000                 // 45 seconds for COO dashboard
 });
 
 export const schemaValidationCircuitBreaker = new CircuitBreaker('SchemaValidation', {
@@ -231,6 +239,7 @@ export default {
   CircuitBreaker,
   RequestDeduplicator,
   databaseCircuitBreaker,
+  cooDashboardCircuitBreaker,
   schemaValidationCircuitBreaker,
   globalRequestDeduplicator
 };

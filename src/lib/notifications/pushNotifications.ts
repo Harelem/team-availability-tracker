@@ -250,7 +250,7 @@ class PushNotificationManager {
       console.error('Failed to send push notification:', error);
       
       // Handle invalid subscriptions
-      if (error.statusCode === 410 || error.statusCode === 404) {
+      if ((error as any).statusCode === 410 || (error as any).statusCode === 404) {
         console.log('Removing invalid subscription:', userId);
         await this.unsubscribe(userId);
       }

@@ -79,7 +79,7 @@ export interface SprintSummary {
 
 // Team Member with Extended Details
 export interface DetailedTeamMember extends TeamMember {
-  role?: string;
+  // role is inherited from TeamMember as 'member' | 'manager' | 'coo' | undefined
   currentWeekStatus: 'available' | 'partial' | 'unavailable';
   currentWeekHours: number;
   sprintPlannedHours: number;

@@ -166,7 +166,7 @@ function HomeContent() {
         );
 
         const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error('Application initialization timeout after 3 seconds')), 3000);
+          timeoutId = setTimeout(() => reject(new Error('Application initialization timeout after 10 seconds')), 10000);
         });
 
         const initResult = await Promise.race([initPromise, timeoutPromise]) as any;
@@ -405,7 +405,7 @@ function HomeContent() {
                 <div className="mb-4">
                   <button
                     onClick={handleBackToSelection}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors min-h-[44px] touch-manipulation active:bg-gray-100 px-2 py-2 rounded"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span className="text-sm">Back to Selection</span>
@@ -537,13 +537,13 @@ function HomeContent() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedUser(null)}
-                    className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition-colors text-sm sm:text-base touch-target shrink-0"
+                    className="bg-gray-200 text-gray-700 px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition-colors text-sm sm:text-base min-h-[44px] touch-manipulation shrink-0"
                   >
                     Switch User
                   </button>
                   <button
                     onClick={handleBackToSelection}
-                    className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm sm:text-base touch-target shrink-0"
+                    className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm sm:text-base min-h-[44px] touch-manipulation shrink-0"
                   >
                     Change Access
                   </button>

@@ -112,7 +112,11 @@ export default function MobilePerformanceMonitor({
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (logMetrics) {
-          console.log(`📊 ${entry.name}:`, Math.round(entry.value) + 'ms');
+          // Use duration for timing entries, or startTime for other entries
+          const value = ('duration' in entry && typeof entry.duration === 'number') 
+            ? entry.duration 
+            : entry.startTime;
+          console.log(`📊 ${entry.name}:`, Math.round(value) + 'ms');
         }
       }
     });
@@ -259,15 +263,15 @@ export const MobilePerformanceUtils = {
 
   // Optimize scroll performance
   optimizeScroll: (element?: Element) => {
-    const target = element || document.documentElement;
+    const target = (element || document.documentElement) as HTMLElement;
     
     if ('scrollBehavior' in target.style) {
-      (target as HTMLElement).style.scrollBehavior = 'smooth';
+      target.style.scrollBehavior = 'smooth';
     }
     
     // Enable hardware acceleration
     if ('transform' in target.style) {
-      (target as HTMLElement).style.transform = 'translateZ(0)';
+      target.style.transform = 'translateZ(0)';
     }
   },
 

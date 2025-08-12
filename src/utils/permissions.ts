@@ -79,6 +79,14 @@ export const hasManagerPermissions = (user: TeamMember | null): boolean => {
 };
 
 /**
+ * Check if user can access manager-specific quick reasons
+ */
+export const canAccessManagerQuickReasons = (user: TeamMember | null): boolean => {
+  if (!user) return false;
+  return user.isManager || user.is_manager || user.role === 'manager' || isCOOUser(user);
+};
+
+/**
  * Check if COO user can export executive reports
  */
 export const canExportCOOReports = (cooUser: COOUser | null): boolean => {

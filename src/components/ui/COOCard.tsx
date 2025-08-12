@@ -91,7 +91,7 @@ export function COOCard({
     createComponentClass('card', variant, size),
     
     // Interactive states
-    interactive && 'cursor-pointer hover:shadow-md transition-shadow duration-200',
+    interactive && 'cursor-pointer hover:shadow-md transition-shadow duration-200 min-h-[44px] touch-manipulation active:scale-[0.98]',
     elevated && 'shadow-md',
     gradient && 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100',
     

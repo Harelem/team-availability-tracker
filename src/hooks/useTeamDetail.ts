@@ -160,7 +160,7 @@ export function useTeamDetail(teamId: number | null): UseTeamDetailReturn {
 
         return {
           ...member,
-          role: member.isManager ? 'Team Manager' : 'Team Member',
+          role: member.isManager ? 'manager' : 'member',
           currentWeekStatus,
           currentWeekHours,
           sprintPlannedHours,

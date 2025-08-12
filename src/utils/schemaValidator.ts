@@ -34,13 +34,13 @@ const REQUIRED_SCHEMA: TableColumnCheck[] = [
   },
   {
     table: 'schedule_entries',
-    requiredColumns: ['id', 'member_id', 'date', 'hours', 'reason', 'created_at', 'updated_at'],
-    optionalColumns: ['notes']
+    requiredColumns: ['id', 'member_id', 'date', 'value', 'reason', 'created_at', 'updated_at'],
+    optionalColumns: ['notes', 'hours']
   },
   {
     table: 'global_sprint_settings',
-    requiredColumns: ['id', 'current_sprint_number', 'sprint_start_date', 'sprint_end_date', 'sprint_length_weeks', 'is_active'],
-    optionalColumns: ['description', 'sprint_name']
+    requiredColumns: ['id', 'current_sprint_number', 'sprint_start_date', 'sprint_length_weeks'],
+    optionalColumns: ['description', 'sprint_name', 'sprint_end_date', 'notes', 'updated_by', 'created_at', 'updated_at']
   }
 ];
 

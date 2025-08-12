@@ -9,9 +9,10 @@ interface ReasonDialogProps {
   onClose: () => void;
   onSave: (reason: string) => void;
   data: ReasonDialogData | null;
+  isManager?: boolean;
 }
 
-export default function ReasonDialog({ isOpen, onClose, onSave, data }: ReasonDialogProps) {
+export default function ReasonDialog({ isOpen, onClose, onSave, data, isManager = false }: ReasonDialogProps) {
   const [reason, setReason] = useState('');
 
   if (!isOpen || !data) return null;
@@ -35,7 +36,7 @@ export default function ReasonDialog({ isOpen, onClose, onSave, data }: ReasonDi
     : 'Please provide a reason for absence (e.g., sick leave, family emergency)';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 lg:p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 lg:p-4">
       {/* Mobile: Full screen modal, Desktop: Centered modal */}
       <div className="bg-white w-full h-full flex flex-col lg:rounded-lg lg:p-6 lg:max-w-md lg:w-auto lg:h-auto lg:mx-4 lg:max-h-[80vh]">
         {/* Mobile full-screen layout */}
@@ -75,33 +76,34 @@ export default function ReasonDialog({ isOpen, onClose, onSave, data }: ReasonDi
             <div className="mt-4 lg:hidden">
               <p className="text-sm font-medium text-gray-700 mb-2">Quick suggestions:</p>
               <div className="grid grid-cols-2 gap-2">
-                {data.value === '0.5' ? [
-                  'Doctor appointment',
-                  'Personal matter',
-                  'Family emergency',
-                  'Official business'
-                ].map((suggestion, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setReason(suggestion)}
-                    className="text-left p-3 bg-gray-100 rounded-lg text-sm text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px]"
-                  >
-                    {suggestion}
-                  </button>
-                )) : [
-                  'Sick leave',
-                  'Family emergency',
-                  'Personal day off',
-                  'Medical appointment'
-                ].map((suggestion, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setReason(suggestion)}
-                    className="text-left p-3 bg-gray-100 rounded-lg text-sm text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px]"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
+                {(() => {
+                  const baseSuggestions = data.value === '0.5' ? [
+                    'Doctor appointment',
+                    'Personal matter',
+                    'Family emergency',
+                    'Official business'
+                  ] : [
+                    'Sick leave',
+                    'Family emergency',
+                    'Personal day off',
+                    'Medical appointment'
+                  ];
+                  
+                  // Add management option for managers
+                  const suggestions = isManager 
+                    ? ['ניהול - פגישות ניהול', ...baseSuggestions]
+                    : baseSuggestions;
+                  
+                  return suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setReason(suggestion)}
+                      className="text-left p-3 bg-gray-100 rounded-lg text-sm text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px]"
+                    >
+                      {suggestion}
+                    </button>
+                  ));
+                })()}
               </div>
             </div>
           </div>

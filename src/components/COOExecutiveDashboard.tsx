@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, memo, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, memo, useCallback, useMemo, useRef, useState } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -22,6 +22,7 @@ import COOExportButton from './COOExportButton';
 import COOHoursStatusOverview from './COOHoursStatusOverview';
 import MobileCOODashboard from './MobileCOODashboard';
 import SprintPlanningCalendar from './SprintPlanningCalendar';
+import SimplifiedSprintSettings from './SimplifiedSprintSettings';
 import { useMobileDetection } from '@/hooks/useMobileDetection';
 import MobileHeader from '@/components/navigation/MobileHeader';
 import { formatHours, formatPercentage } from '@/lib/calculationService';
@@ -66,6 +67,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
   const { dashboard: isLoading, setDashboardLoading } = useLoadingState();
   const { dashboard: error, setDashboardError } = useErrorState();
   const { teamDetail, workforceStatus } = useModalState();
+  const [showSprintSettings, setShowSprintSettings] = useState(false);
   const { cooActiveTab: activeTab, setCOOActiveTab, selectedTeamId, selectTeam } = useNavigationState();
   const { allTeamsWithMembers: allTeams, setAllTeamsWithMembers, setTeams } = useTeamsState();
   const { cooData: dashboardData, setCOODashboardData } = useDashboardState();
@@ -122,7 +124,6 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
   // Effect to load data on component mount - simplified to prevent infinite loops
   useEffect(() => {
     let mounted = true;
-    let timeoutId: NodeJS.Timeout;
 
     const loadInitialData = async () => {
       try {
@@ -133,35 +134,22 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
         
         console.log('🔍 COO Dashboard: Starting initial data load...');
         
-        // Add 15-second timeout to prevent infinite loading - increased for better stability
-        const dataLoadPromise = Promise.all([
+        // Load data with timeout handling - using circuit breaker now handles timeouts
+        console.log('🔍 COO Dashboard: Starting data load with circuit breaker timeout protection...');
+        
+        const [data, teams] = await Promise.all([
           DatabaseService.getCOODashboardData(false),
           DatabaseService.getOperationalTeams(false)
         ]);
         
-        const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => {
-            console.error('🚨 COO Dashboard: Initial data load timeout after 15 seconds');
-            reject(new Error('Dashboard initialization timeout - please refresh the page'));
-          }, 15000);
-        });
-        
-        const [data, teams] = await Promise.race([dataLoadPromise, timeoutPromise]) as any;
-        
         if (!mounted) return;
-        clearTimeout(timeoutId);
         
         console.log(`🔍 COO Dashboard: Loaded ${teams.length} operational teams`);
         
-        // Load team members with individual timeouts and better error handling
+        // Load team members with circuit breaker protection
         const teamsWithMembersPromises = teams.map(async (team: any) => {
           try {
-            const membersPromise = DatabaseService.getTeamMembers(team.id, false);
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error(`Team ${team.name} members timeout after 6 seconds`)), 6000)
-            );
-            
-            const members = await Promise.race([membersPromise, timeoutPromise]) as any;
+            const members = await DatabaseService.getTeamMembers(team.id, false);
             console.log(`✅ Loaded ${members.length} members for team ${team.name}`);
             return { ...team, team_members: members };
           } catch (err) {
@@ -197,9 +185,6 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
           setDashboardLoading(false);
           console.log('🏁 COO Dashboard: Initial data load completed (success or failure)');
         }
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
       }
     };
 
@@ -208,7 +193,6 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
     // Cleanup function
     return () => {
       mounted = false;
-      clearTimeout(timeoutId);
     };
   }, []); // Empty dependency array - run only once on mount
 
@@ -222,34 +206,19 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
       
       console.log('🔄 COO Dashboard: Refreshing data...');
       
-      // Add timeout for refresh operation - increased to 12 seconds
-      const refreshPromise = Promise.all([
+      // Refresh data with circuit breaker timeout protection
+      console.log('🔄 COO Dashboard: Starting refresh with circuit breaker protection...');
+      
+      const [data, teams] = await Promise.all([
         DatabaseService.getCOODashboardData(true),
         DatabaseService.getOperationalTeams(true)
       ]);
       
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          console.error('🚨 COO Dashboard: Refresh timeout after 12 seconds');
-          reject(new Error('Refresh operation timed out - please try again'));
-        }, 12000);
-      });
-      
-      const [data, teams] = await Promise.race([refreshPromise, timeoutPromise]) as any;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      
-      // Load team members with timeout protection during refresh
+      // Load team members with circuit breaker protection during refresh
       const teamsWithMembers = await Promise.all(
         teams.map(async (team: any) => {
           try {
-            const membersPromise = DatabaseService.getTeamMembers(team.id, true);
-            const teamTimeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error(`Refresh timeout for team ${team.name} after 5 seconds`)), 5000)
-            );
-            
-            const members = await Promise.race([membersPromise, teamTimeoutPromise]) as any;
+            const members = await DatabaseService.getTeamMembers(team.id, true);
             console.log(`🔄 Refreshed ${members.length} members for team ${team.name}`);
             return { ...team, team_members: members };
           } catch (err) {
@@ -277,9 +246,6 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
     } finally {
       setDashboardLoading(false);
       console.log('🏁 COO Dashboard: Refresh operation completed');
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
     }
   }, [setCOODashboardData, setAllTeamsWithMembers, setTeams, refreshDashboard, setDashboardLoading, setDashboardError, showSuccess, showError]);
 
@@ -405,7 +371,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
             <button
               onClick={handleRefresh}
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors min-h-[44px] touch-manipulation active:bg-blue-800"
             >
               {isLoading ? 'Retrying...' : 'Try Again'}
             </button>
@@ -414,7 +380,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
                 dataConsistencyManager.clearAll();
                 window.location.reload();
               }}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors min-h-[44px] touch-manipulation active:bg-gray-800"
             >
               Clear Cache & Reload
             </button>
@@ -462,7 +428,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
           <div className="flex items-center">
             <button
               onClick={onBack}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors min-h-[44px] touch-manipulation active:bg-gray-100 px-2 py-2 rounded"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm">Back to Selection</span>
@@ -499,7 +465,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
               <button
                 onClick={handleRefresh}
                 disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm min-h-[44px] touch-manipulation active:bg-blue-800"
               >
                 <Activity className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                 {isLoading ? 'Refreshing...' : 'Refresh Data'}
@@ -513,7 +479,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
           <nav className="flex space-x-8">
             <button
               onClick={() => handleTabChange('dashboard')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors min-h-[44px] touch-manipulation ${
                 activeTab === 'dashboard'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -526,7 +492,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
             </button>
             <button
               onClick={() => handleTabChange('daily-status')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors min-h-[44px] touch-manipulation ${
                 activeTab === 'daily-status'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -539,7 +505,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
             </button>
             <button
               onClick={() => handleTabChange('analytics')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors min-h-[44px] touch-manipulation ${
                 activeTab === 'analytics'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -567,7 +533,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
             */}
             <button
               onClick={() => handleTabChange('sprint-planning')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors min-h-[44px] touch-manipulation ${
                 activeTab === 'sprint-planning'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -807,9 +773,32 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
       {/* Sprint Planning Tab */}
       {activeTab === 'sprint-planning' && (
         <div className="mt-6">
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Sprint Configuration</h3>
+              <button
+                onClick={() => setShowSprintSettings(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 min-h-[44px] touch-manipulation active:bg-blue-800"
+              >
+                <CalendarDays className="w-4 h-4" />
+                Configure Sprint
+              </button>
+            </div>
+          </div>
           <SprintPlanningCalendar />
         </div>
       )}
+      
+      {/* Simplified Sprint Settings Modal */}
+      <SimplifiedSprintSettings
+        isOpen={showSprintSettings}
+        onClose={() => setShowSprintSettings(false)}
+        onSprintUpdated={() => {
+          console.log('Sprint dates updated');
+          setShowSprintSettings(false);
+          handleRefresh();
+        }}
+      />
       
       {/* Analytics & Insights Tab */}
       {activeTab === 'analytics' && (

@@ -5,7 +5,7 @@
  * and ensure consistent server/client rendering.
  */
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 // =============================================================================
 // HOOKS
@@ -286,9 +286,7 @@ export const validateHydrationSafety = {
 // =============================================================================
 
 export {
-  useClientSideMount as useIsHydrated,
-  useHydrationSafeLoading,
-  createHydrationSafePattern
+  useClientSideMount as useIsHydrated
 };
 
 export default {

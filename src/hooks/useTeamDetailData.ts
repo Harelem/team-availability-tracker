@@ -356,7 +356,7 @@ export function convertToLegacyFormat(accurateData: AccurateTeamData): TeamDetai
       email: '',
       team_id: accurateData.teamInfo.id || 0,
       isManager: member.isManager,
-      role: member.isManager ? 'Team Manager' : 'Team Member',
+      role: member.isManager ? 'manager' : 'member',
       currentWeekStatus: member.availabilityStatus,
       currentWeekHours: member.currentWeekHours,
       sprintPlannedHours: member.plannedHours,

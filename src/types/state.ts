@@ -10,8 +10,13 @@ import {
   TeamMember, 
   COODashboardData, 
   COOUser, 
-  CurrentGlobalSprint, 
+  CurrentGlobalSprint,
+  CurrentEnhancedSprint, 
   TeamSprintStats,
+  TeamSprintAnalytics,
+  EnhancedSprintConfig,
+  SprintWorkingDay,
+  MemberSprintCapacity,
   WeekData,
   DailyCompanyStatusData
 } from './index';
@@ -46,8 +51,15 @@ export interface ErrorState {
 }
 
 // Enhanced error state with additional metadata
-export interface EnhancedErrorState extends ErrorState {
-  // Error history for debugging
+export interface EnhancedErrorState {
+  // Base error fields from ErrorState
+  members: AppError | string | null;
+  schedules: AppError | string | null;
+  sprints: AppError | string | null;
+  analytics: AppError | string | null;
+  exports: AppError | string | null;
+  
+  // Additional error tracking metadata
   errorHistory: Array<{
     error: AppError;
     timestamp: Date;
@@ -214,8 +226,17 @@ export interface MembersState {
 }
 
 export interface SprintsState {
+  // Legacy support
   currentSprint: CurrentGlobalSprint | null;
   teamStats: TeamSprintStats | null;
+  
+  // Enhanced sprint system
+  enhancedCurrentSprint: CurrentEnhancedSprint | null;
+  enhancedSprintConfigs: EnhancedSprintConfig[];
+  teamAnalytics: TeamSprintAnalytics | null;
+  workingDays: SprintWorkingDay[];
+  memberCapacities: Record<number, MemberSprintCapacity>; // memberId -> capacity
+  
   history: Array<{
     id: number;
     name: string;
@@ -226,6 +247,9 @@ export interface SprintsState {
   settings: {
     defaultLength: number;
     autoAdvance: boolean;
+    // Enhanced sprint system settings
+    autoGenerateWeekends: boolean;
+    managerDefaultHours: number;
   };
   lastFetch: Date | null;
 }
@@ -414,10 +438,20 @@ export type AppAction =
   | { type: 'UPDATE_MEMBER'; payload: { member: TeamMember } }
   | { type: 'DELETE_MEMBER'; payload: { memberId: number } }
   
-  // Data Actions - Sprints
+  // Data Actions - Sprints (Legacy)
   | { type: 'SET_CURRENT_SPRINT'; payload: { sprint: CurrentGlobalSprint | null } }
   | { type: 'SET_TEAM_SPRINT_STATS'; payload: { stats: TeamSprintStats | null } }
   | { type: 'UPDATE_SPRINT_SETTINGS'; payload: { settings: Partial<SprintsState['settings']> } }
+  
+  // Data Actions - Enhanced Sprints
+  | { type: 'SET_ENHANCED_CURRENT_SPRINT'; payload: { sprint: CurrentEnhancedSprint | null } }
+  | { type: 'SET_ENHANCED_SPRINT_CONFIGS'; payload: { configs: EnhancedSprintConfig[] } }
+  | { type: 'ADD_ENHANCED_SPRINT_CONFIG'; payload: { config: EnhancedSprintConfig } }
+  | { type: 'UPDATE_ENHANCED_SPRINT_CONFIG'; payload: { id: string; updates: Partial<EnhancedSprintConfig> } }
+  | { type: 'SET_TEAM_SPRINT_ANALYTICS'; payload: { analytics: TeamSprintAnalytics | null } }
+  | { type: 'SET_SPRINT_WORKING_DAYS'; payload: { workingDays: SprintWorkingDay[] } }
+  | { type: 'SET_MEMBER_SPRINT_CAPACITY'; payload: { memberId: number; capacity: MemberSprintCapacity } }
+  | { type: 'CLEAR_MEMBER_CAPACITIES' }
   
   // Data Actions - Schedules
   | { type: 'SET_SCHEDULE_DATA'; payload: { data: WeekData } }
@@ -582,12 +616,24 @@ export const createInitialState = (): AppState => ({
       lastFetch: null,
     },
     sprints: {
+      // Legacy support
       currentSprint: null,
       teamStats: null,
+      
+      // Enhanced sprint system
+      enhancedCurrentSprint: null,
+      enhancedSprintConfigs: [],
+      teamAnalytics: null,
+      workingDays: [],
+      memberCapacities: {},
+      
       history: [],
       settings: {
         defaultLength: 2,
         autoAdvance: false,
+        // Enhanced sprint system settings
+        autoGenerateWeekends: true,
+        managerDefaultHours: 3.5,
       },
       lastFetch: null,
     },

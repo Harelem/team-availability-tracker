@@ -69,7 +69,7 @@ export function withSecurity(handler: Function, options: {
 
       // Rate limiting
       if (options.rateLimiter !== 'none') {
-        const clientId = req.ip || req.headers.get('x-forwarded-for') || 'unknown';
+        const clientId = (req as any).ip || req.headers.get('x-forwarded-for') || 'unknown';
         const limiter = options.rateLimiter === 'auth' ? authRateLimiter : apiRateLimiter;
         
         if (!limiter.isAllowed(clientId)) {

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { TeamDashboardData, Team, CurrentGlobalSprint, TeamMember } from '@/types';
 import { DatabaseService } from '@/lib/database';
+import { operation } from '@/utils/debugLogger';
 import { formatHours, formatPercentage } from '@/lib/calculationService';
 import { COOMetricCard } from '@/components/ui/COOCard';
 
@@ -51,7 +52,7 @@ export default function TeamSummaryOverview({
         
         if (data) {
           setDashboardData(data);
-          console.log(`✅ Team summary loaded successfully`);
+          operation('Team summary loaded successfully');
         } else {
           throw new Error('No data returned from team dashboard service');
         }

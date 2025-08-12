@@ -15,9 +15,8 @@ export interface TeamMember {
   is_manager?: boolean; // Database column name compatibility
   email?: string;
   team_id: number;
-  role?: string; // NEW - member role (e.g., 'Team Manager', 'Team Member')
-  is_critical?: boolean; // NEW - critical member flag for absence tracking
-  inactive_date?: string; // NEW - for member lifecycle management
+  manager_max_hours?: number; // Enhanced sprint system - custom hours for managers
+  role?: 'member' | 'manager' | 'coo'; // Enhanced sprint system - role-based permissions
   created_at?: string;
   updated_at?: string;
 }
@@ -47,6 +46,9 @@ export interface ScheduleEntry {
   value: '1' | '0.5' | 'X';
   hours?: number; // Computed hours field from enhanced schema
   reason?: string;
+  sprint_id?: string; // Enhanced sprint system - links entries to sprints (UUID)
+  is_weekend?: boolean; // Enhanced sprint system - auto-calculated weekend flag
+  calculated_hours?: number; // Enhanced sprint system - auto-calculated hours (7.0, 3.5, 0.0)
   created_at?: string;
   updated_at?: string;
 }
@@ -130,6 +132,7 @@ export interface DailyCompanyStatusData {
   members: DailyMemberStatus[];
   teams: TeamDailyStatus[];
   selectedDate: Date;
+  usedFallback?: boolean; // Indicates if fallback mechanism was used for monitoring
 }
 
 // Team selection screen props
@@ -138,7 +141,52 @@ export interface TeamSelectionScreenProps {
   onTeamSelect: (team: Team) => void;
 }
 
-// Global Sprint System Types
+// Enhanced Sprint System Types
+export interface EnhancedSprintConfig {
+  id: string; // UUID
+  sprint_number: number;
+  start_date: string;
+  end_date: string;
+  length_weeks: number;
+  working_days_count: number; // Auto-calculated working days (Sun-Thu only)
+  is_active: boolean;
+  created_by: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SprintWorkingDay {
+  id: string; // UUID
+  sprint_id: string; // References enhanced_sprint_configs(id)
+  work_date: string;
+  day_of_week: number; // 0=Sunday, 6=Saturday
+  is_working_day: boolean; // Auto-calculated (Sun-Thu = true)
+  is_holiday: boolean;
+  holiday_name?: string;
+}
+
+export interface CurrentEnhancedSprint {
+  id: string;
+  sprint_number: number;
+  start_date: string;
+  end_date: string;
+  length_weeks: number;
+  working_days_count: number;
+  is_active: boolean;
+  notes?: string;
+  days_elapsed: number;
+  days_remaining: number;
+  total_days: number;
+  progress_percentage: number;
+  working_days_remaining: number;
+  is_current: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+// Legacy interface for backward compatibility
 export interface GlobalSprintSettings {
   id: number;
   sprint_length_weeks: number;
@@ -151,19 +199,44 @@ export interface GlobalSprintSettings {
 }
 
 export interface CurrentGlobalSprint {
-  id: number;
+  id: number | string; // Can be number (legacy) or string (enhanced UUID)
   sprint_length_weeks: number;
   current_sprint_number: number;
   sprint_start_date: string;
   sprint_end_date: string;
   days_remaining: number;
+  working_days_remaining?: number; // Enhanced sprint system
   progress_percentage: number;
   is_active: boolean;
+  notes?: string; // Enhanced sprint system
   created_at: string;
   updated_at: string;
   updated_by: string;
 }
 
+export interface TeamSprintAnalytics {
+  team_id: number;
+  team_name: string;
+  description?: string;
+  color?: string;
+  sprint_id: string; // Enhanced sprint system - UUID reference
+  sprint_number: number;
+  start_date: string;
+  end_date: string;
+  working_days_count: number;
+  progress_percentage: number;
+  days_remaining: number;
+  total_members: number;
+  manager_count: number;
+  regular_member_count: number;
+  max_capacity_hours: number; // Total theoretical capacity
+  actual_hours: number; // Actual logged hours
+  current_week_hours: number; // Current week hours (Sun-Thu)
+  utilization_percentage: number;
+  completion_percentage: number; // How many working days are filled
+}
+
+// Legacy interface for backward compatibility  
 export interface TeamSprintStats {
   team_id: number;
   team_name: string;
@@ -183,6 +256,20 @@ export interface TeamSprintStats {
   capacity_utilization: number;
 }
 
+export interface EnhancedSprintContextType {
+  currentSprint: CurrentEnhancedSprint | null;
+  teamAnalytics: TeamSprintAnalytics | null;
+  workingDays: SprintWorkingDay[];
+  isLoading: boolean;
+  error: string | null;
+  refreshSprint: () => Promise<void>;
+  createSprint: (config: Omit<EnhancedSprintConfig, 'id' | 'working_days_count' | 'created_at' | 'updated_at'>) => Promise<boolean>;
+  updateSprintConfig: (id: string, updates: Partial<EnhancedSprintConfig>) => Promise<boolean>;
+  activateSprint: (id: string) => Promise<boolean>;
+  calculateMemberCapacity: (memberId: number, sprintId: string) => Promise<MemberSprintCapacity | null>;
+}
+
+// Legacy interface for backward compatibility
 export interface GlobalSprintContextType {
   currentSprint: CurrentGlobalSprint | null;
   teamStats: TeamSprintStats | null;
@@ -192,6 +279,15 @@ export interface GlobalSprintContextType {
   updateSprintSettings: (settings: Partial<GlobalSprintSettings>) => Promise<boolean>;
   startNewSprint: (lengthWeeks: number) => Promise<boolean>;
   updateSprintDates: (startDate: string, endDate?: string) => Promise<boolean>;
+}
+
+// Sprint Capacity Calculation Types
+export interface MemberSprintCapacity {
+  max_possible_hours: number;
+  actual_hours: number;
+  utilization_percentage: number;
+  working_days_filled: number;
+  total_working_days: number;
 }
 
 // COO Hours View Toggle Types
@@ -382,6 +478,14 @@ export interface COODashboardData {
       actual: number;
       utilization: number;
     }[];
+  };
+  // Enhanced sprint system integration
+  enhancedSprintData?: {
+    sprintId: string;
+    workingDaysCount: number;
+    workingDaysRemaining: number;
+    autoWeekendHandling: boolean;
+    teamAnalytics: TeamSprintAnalytics[];
   };
   optimizationRecommendations: string[];
   capacityForecast: CapacityForecast;

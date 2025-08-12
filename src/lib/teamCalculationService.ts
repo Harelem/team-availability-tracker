@@ -9,6 +9,7 @@
 
 import { TeamMember, CurrentGlobalSprint, ScheduleEntry, TeamDashboardData, TeamMemberCapacityStatus } from '@/types';
 import { DatabaseService } from './database';
+import { debug } from '@/utils/debugLogger';
 
 export interface TeamMetricsInput {
   teamId: number;
@@ -20,12 +21,62 @@ export interface TeamMetricsInput {
 export class TeamCalculationService {
   private static readonly HOURS_PER_DAY = 7;
   private static readonly WORKING_DAYS_PER_WEEK = 5;
+  
+  // Simple cache for team calculations to prevent redundant processing
+  private static calculationCache = new Map<string, { data: TeamDashboardData; timestamp: number }>();
+  private static readonly CACHE_DURATION = 30000; // 30 seconds cache
+
+  /**
+   * Generate cache key for team calculations
+   */
+  private static getCacheKey(input: TeamMetricsInput): string {
+    const { teamId, currentSprint, scheduleData } = input;
+    const scheduleHash = scheduleData ? Object.keys(scheduleData).length : 0;
+    const sprintKey = currentSprint ? `${currentSprint.id}_${currentSprint.current_sprint_number}` : 'no_sprint';
+    return `team_${teamId}_${sprintKey}_schedule_${scheduleHash}`;
+  }
+
+  /**
+   * Check if cached data is still valid
+   */
+  private static isCacheValid(timestamp: number): boolean {
+    return Date.now() - timestamp < this.CACHE_DURATION;
+  }
+
+  /**
+   * Clear cache for specific team or all teams
+   */
+  static clearCache(teamId?: number): void {
+    if (teamId) {
+      // Clear cache for specific team
+      const keysToDelete = Array.from(this.calculationCache.keys()).filter(key => 
+        key.startsWith(`team_${teamId}_`)
+      );
+      keysToDelete.forEach(key => this.calculationCache.delete(key));
+      debug(`Cleared cache for team ${teamId}`);
+    } else {
+      // Clear all cache
+      this.calculationCache.clear();
+      debug('Cleared all team calculation cache');
+    }
+  }
 
   /**
    * Calculate comprehensive team dashboard metrics
    */
   static async calculateTeamMetrics(input: TeamMetricsInput): Promise<TeamDashboardData> {
     const { teamId, teamMembers, currentSprint, scheduleData } = input;
+    
+    // Check cache first
+    const cacheKey = this.getCacheKey(input);
+    const cached = this.calculationCache.get(cacheKey);
+    
+    if (cached && this.isCacheValid(cached.timestamp)) {
+      debug(`Using cached team metrics for team ${teamId}`);
+      return cached.data;
+    }
+    
+    debug(`Calculating fresh team metrics for team ${teamId}`);
     
     // Get team info
     const team = await DatabaseService.getTeamById(teamId);
@@ -53,14 +104,16 @@ export class TeamCalculationService {
     // Calculate sprint utilization (how much of our sprint-to-date potential we're using)
     const currentUtilization = sprintToDateMetrics.potentialHours > 0 ? (sprintToDateMetrics.actualHours / sprintToDateMetrics.potentialHours) * 100 : 0;
     
-    // Debug logging for utilization calculation (temporary)
-    console.log('=== SPRINT UTILIZATION DEBUG ===');
-    console.log('Max Capacity:', maxCapacity, 'hours');
-    console.log('Sprint Potential (available):', sprintPotential, 'hours');
-    console.log('Sprint-to-date Actual:', sprintToDateMetrics.actualHours, 'hours');
-    console.log('Sprint-to-date Potential:', sprintToDateMetrics.potentialHours, 'hours');
-    console.log('Current Utilization:', currentUtilization.toFixed(2), '%');
-    console.log('=== END DEBUG ===');
+    // Debug logging available in development mode
+    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG_CALCULATIONS === 'true') {
+      console.log('=== SPRINT UTILIZATION DEBUG ===');
+      console.log('Max Capacity:', maxCapacity, 'hours');
+      console.log('Sprint Potential (available):', sprintPotential, 'hours');
+      console.log('Sprint-to-date Actual:', sprintToDateMetrics.actualHours, 'hours');
+      console.log('Sprint-to-date Potential:', sprintToDateMetrics.potentialHours, 'hours');
+      console.log('Current Utilization:', currentUtilization.toFixed(2), '%');
+      console.log('=== END DEBUG ===');
+    }
     
     // Validation: Ensure utilization never exceeds 100%
     if (currentUtilization > 100) {
@@ -85,7 +138,7 @@ export class TeamCalculationService {
     // Sprint progress (if sprint is active)
     const sprintProgress = currentSprint ? await this.calculateSprintProgress(teamMembers, currentSprint, scheduleData) : undefined;
 
-    return {
+    const result: TeamDashboardData = {
       teamOverview: {
         teamId,
         teamName: team.name,
@@ -101,6 +154,14 @@ export class TeamCalculationService {
       currentWeekMetrics,
       sprintProgress,
     };
+
+    // Cache the result
+    this.calculationCache.set(cacheKey, {
+      data: result,
+      timestamp: Date.now()
+    });
+
+    return result;
   }
 
   /**

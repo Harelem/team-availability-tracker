@@ -549,7 +549,7 @@ export function setupGlobalDebugUtils(
     
     // Cache management
     clearCache: () => dispatch({ type: 'CLEAR_ALL_CACHE' }),
-    invalidateCache: (key: string) => dispatch({ type: 'INVALIDATE_CACHE', payload: { key } }),
+    invalidateCache: (key: 'teams' | 'members' | 'schedules' | 'dashboards' | 'analytics') => dispatch({ type: 'INVALIDATE_CACHE', payload: { key } }),
     
     // Utilities
     StateInspector,

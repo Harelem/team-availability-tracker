@@ -41,6 +41,14 @@ export default function EnhancedAvailabilityTable({
   formatDate
 }: EnhancedAvailabilityTableProps) {
 
+  // CRITICAL: Add debug logging for array mismatch investigation
+  console.log('EnhancedAvailabilityTable Debug:', {
+    sprintDaysLength: sprintDays?.length || 0,
+    dayNamesLength: dayNames?.length || 0,
+    sprintDaysFirst: sprintDays?.[0],
+    sprintDaysLast: sprintDays?.[sprintDays.length - 1]
+  });
+
   // Defensive checks for required props
   if (!currentUser || !Array.isArray(teamMembers) || !scheduleData || !Array.isArray(workOptions) || !Array.isArray(sprintDays)) {
     console.warn('EnhancedAvailabilityTable: Missing required props', {
@@ -57,9 +65,30 @@ export default function EnhancedAvailabilityTable({
     );
   }
 
-  // Calculate daily totals for footer - DEFENSIVE PROGRAMMING
+  // CRITICAL: Validation check for empty arrays
+  if (sprintDays.length === 0) {
+    console.error('EnhancedAvailabilityTable: Empty sprintDays array');
+    return (
+      <div className="p-4 bg-yellow-100 border border-yellow-400 rounded-lg">
+        <p className="text-yellow-800">Unable to load availability table: No sprint days provided</p>
+      </div>
+    );
+  }
+
+  // CRITICAL: Warn about array length mismatch
+  if (sprintDays.length !== dayNames.length) {
+    console.warn(`EnhancedAvailabilityTable: Array length mismatch! sprintDays: ${sprintDays.length}, dayNames: ${dayNames.length}`);
+  }
+
+  // Calculate daily totals for footer - ENHANCED DEFENSIVE PROGRAMMING
   const getDayTotal = (date: Date) => {
-    if (!date || !Array.isArray(teamMembers) || !scheduleData || !Array.isArray(workOptions)) {
+    if (!date || typeof date.toISOString !== 'function') {
+      console.warn('getDayTotal: Invalid date provided:', date);
+      return 0;
+    }
+    
+    if (!Array.isArray(teamMembers) || !scheduleData || !Array.isArray(workOptions)) {
+      console.warn('getDayTotal: Missing required data structures');
       return 0;
     }
     
@@ -79,7 +108,7 @@ export default function EnhancedAvailabilityTable({
         return total + (typeof hours === 'number' ? hours : 0);
       }, 0);
     } catch (error) {
-      console.warn('Error calculating day total:', error);
+      console.error('getDayTotal error for date:', date, 'Error:', error);
       return 0;
     }
   };
@@ -205,7 +234,7 @@ export default function EnhancedAvailabilityTable({
                     <div className="mt-4">
                       <button
                         onClick={() => onFullSprintSet(member.id)}
-                        className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-lg py-3 px-4 font-medium hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all touch-manipulation min-h-[48px]"
+                        className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-lg py-3 px-4 font-medium hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all touch-manipulation min-h-[44px]"
                       >
                         Set Full Working Sprint
                       </button>
@@ -275,7 +304,7 @@ export default function EnhancedAvailabilityTable({
                                   }
                                 }}
                                 disabled={!canEdit}
-                                className={`flex-1 py-3 px-2 rounded-lg border-2 font-bold text-sm transition-all touch-manipulation min-h-[48px] ${
+                                className={`flex-1 py-3 px-2 rounded-lg border-2 font-bold text-sm transition-all touch-manipulation min-h-[44px] ${
                                   canEdit ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-60'
                                 } ${
                                   isSelected 
@@ -300,16 +329,26 @@ export default function EnhancedAvailabilityTable({
             );
           })}
           
-          {/* Mobile Team Summary */}
+          {/* Mobile Team Summary - CRITICAL FIX FOR ARRAY INDEX CRASH */}
           <div className="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
             <h3 className="font-semibold text-gray-900 mb-3">Team Summary</h3>
             <div className="grid grid-cols-2 gap-3">
-              {sprintDays.map((date, index) => (
-                <div key={date.toISOString().split('T')[0]} className="text-center p-2 bg-white rounded-lg">
-                  <div className="font-medium text-gray-700">{dayNames[index].slice(0, 3)}</div>
-                  <div className="text-lg font-bold text-gray-900">{getDayTotal(date)}h</div>
-                </div>
-              ))}
+              {sprintDays.map((date, index) => {
+                if (!date || typeof date.toISOString !== 'function') {
+                  console.warn('EnhancedAvailabilityTable: Invalid date object:', date);
+                  return null;
+                }
+
+                // Generate day name dynamically from date
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+
+                return (
+                  <div key={date.toISOString().split('T')[0]} className="text-center p-2 bg-white rounded-lg">
+                    <div className="font-medium text-gray-700">{dayName.slice(0, 3)}</div>
+                    <div className="text-lg font-bold text-gray-900">{getDayTotal(date)}h</div>
+                  </div>
+                );
+              })}
               <div className="col-span-2 text-center p-3 bg-blue-100 rounded-lg">
                 <div className="text-blue-700 font-medium">Sprint Total</div>
                 <div className="text-2xl font-bold text-blue-900">{getTeamTotalHours()}h</div>
@@ -328,10 +367,18 @@ export default function EnhancedAvailabilityTable({
               <th className="sticky left-0 z-20 bg-gray-50 text-left py-3 px-2 sm:py-4 sm:px-6 font-semibold text-gray-900 border-r min-w-[120px] sm:min-w-[140px]">
                 <div className="text-xs sm:text-sm">Team Member</div>
               </th>
-              {dayNames.map((day, index) => {
-                const dayDate = sprintDays[index];
-                const today = isToday(dayDate);
-                const past = isPastDate(dayDate);
+              {sprintDays.map((dayDate, index) => {
+                // CRITICAL: Defensive check for valid date objects
+                if (!dayDate || typeof dayDate.toISOString !== 'function') {
+                  console.warn(`Header: Invalid date object at index ${index}:`, dayDate);
+                  return null;
+                }
+                
+                // Generate day name dynamically from date instead of using fixed array
+                const day = dayDate.toLocaleDateString('en-US', { weekday: 'long' });
+                
+                const today = typeof isToday === 'function' ? isToday(dayDate) : false;
+                const past = typeof isPastDate === 'function' ? isPastDate(dayDate) : false;
                 
                 return (
                   <th key={day} className={`text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold border-r min-w-[85px] sm:min-w-[120px] ${
@@ -351,7 +398,7 @@ export default function EnhancedAvailabilityTable({
                       <span className={`text-xs mt-0.5 sm:mt-1 ${
                         today ? 'text-blue-700 font-medium' : 'text-gray-500'
                       }`}>
-                        {formatDate(dayDate)}
+                        {typeof formatDate === 'function' ? formatDate(dayDate) : dayDate.toLocaleDateString()}
                         {today && <span className="block text-xs font-medium">Today</span>}
                       </span>
                     </div>
@@ -395,7 +442,7 @@ export default function EnhancedAvailabilityTable({
                         {canEdit && (
                           <button
                             onClick={() => onFullSprintSet(member.id)}
-                            className="mt-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded transition-colors"
+                            className="mt-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 px-3 py-2 rounded transition-colors min-h-[36px] min-w-[44px] touch-manipulation active:bg-green-300"
                             title="Set full working sprint"
                           >
                             Full Sprint
@@ -405,8 +452,13 @@ export default function EnhancedAvailabilityTable({
                     </div>
                   </td>
 
-                  {/* Day Cells */}
+                  {/* Day Cells - ENHANCED SAFETY CHECKS */}
                   {sprintDays.map((date) => {
+                    if (!date || typeof date.toISOString !== 'function') {
+                      console.warn('Desktop table: Invalid date in sprintDays:', date);
+                      return null;
+                    }
+                    
                     const dateKey = date.toISOString().split('T')[0];
                     const currentValue = scheduleData[member.id]?.[dateKey];
                     
@@ -418,8 +470,8 @@ export default function EnhancedAvailabilityTable({
                         currentValue={currentValue}
                         workOptions={workOptions}
                         canEdit={canEdit}
-                        isToday={isToday(date)}
-                        isPast={isPastDate(date)}
+                        isToday={typeof isToday === 'function' ? isToday(date) : false}
+                        isPast={typeof isPastDate === 'function' ? isPastDate(date) : false}
                         onWorkOptionClick={onWorkOptionClick}
                         onReasonRequired={onReasonRequired}
                         onQuickReasonSelect={onQuickReasonSelect}
@@ -443,6 +495,11 @@ export default function EnhancedAvailabilityTable({
                 Team Total
               </td>
               {sprintDays.map((date) => {
+                if (!date || typeof date.toISOString !== 'function') {
+                  console.warn('Footer totals: Invalid date in sprintDays:', date);
+                  return null;
+                }
+                
                 const dayTotal = getDayTotal(date);
                 
                 return (

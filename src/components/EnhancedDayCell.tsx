@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Info } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
+import { canAccessManagerQuickReasons } from '@/utils/permissions';
 
 interface EnhancedDayCellProps {
   member: TeamMember;
@@ -35,6 +36,26 @@ const HEBREW_QUICK_REASONS = {
   ]
 };
 
+// Manager-specific quick reason options (includes management reason)
+const MANAGER_HEBREW_QUICK_REASONS = {
+  '0.5': [
+    { emoji: '🏢', text: 'ניהול', value: 'ניהול - פגישות ניהול ותכנון' },
+    { emoji: '👤', text: 'אישי', value: 'עניין אישי' },
+    { emoji: '🏖️', text: 'חופש', value: 'יום חופש' },
+    { emoji: '🩺', text: 'רופא', value: 'רופא - תור רפואי' },
+    { emoji: '🛡️', text: 'שמירה', value: 'שמירה/מילואים' },
+    { emoji: '🤒', text: 'מחלה', value: 'מחלה/אי הרגשה טובה' }
+  ],
+  'X': [
+    { emoji: '🏢', text: 'ניהול', value: 'ניהול - פגישות ניהול ותכנון' },
+    { emoji: '👤', text: 'אישי', value: 'עניין אישי' },
+    { emoji: '🏖️', text: 'חופש', value: 'יום חופש' },
+    { emoji: '🩺', text: 'רופא', value: 'רופא - תור רפואי' },
+    { emoji: '🛡️', text: 'שמירה', value: 'שמירה/מילואים' },
+    { emoji: '🤒', text: 'מחלה', value: 'מחלה/אי הרגשה טובה' }
+  ]
+};
+
 export default function EnhancedDayCell({
   member,
   date,
@@ -52,9 +73,14 @@ export default function EnhancedDayCell({
   const [showReasonTooltip, setShowReasonTooltip] = useState(false);
   const reasonTooltipRef = useRef<HTMLDivElement>(null);
 
-  // const dateKey = date.toISOString().split('T')[0]; // Not used in this component
+  // Weekend detection (Friday = 5, Saturday = 6)
+  const isWeekend = date.getDay() === 5 || date.getDay() === 6;
 
   const handleWorkOptionClick = (value: string) => {
+    // Prevent editing weekend days
+    if (isWeekend) {
+      return;
+    }
     const currentVal = currentValue?.value;
     
     // If clicking the same value, deselect it
@@ -127,6 +153,7 @@ export default function EnhancedDayCell({
   }, [showReasonTooltip]);
 
   const getCellBackgroundColor = () => {
+    if (isWeekend) return 'bg-gray-100 border-gray-300';
     if (isToday) return 'bg-blue-50 border-blue-200';
     if (isPast) return 'bg-gray-25';
     return '';
@@ -166,36 +193,52 @@ export default function EnhancedDayCell({
       {/* Reason Indicator */}
       {getReasonIndicator()}
       
-      {/* Work Option Buttons */}
-      <div className="flex gap-0.5 sm:gap-1 justify-center">
-        {workOptions.map(option => {
-          const isSelected = currentValue?.value === option.value;
-          return (
-            <button
-              key={option.value}
-              onClick={() => canEdit && handleWorkOptionClick(option.value)}
-              disabled={!canEdit}
-              className={`min-h-[36px] w-8 sm:w-auto px-1.5 sm:px-3 py-1.5 sm:py-2 rounded-md border font-medium text-xs sm:text-sm transition-all touch-manipulation relative ${
-                canEdit ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-60'
-              } ${
-                isSelected 
-                  ? option.color + ' ring-2 ring-offset-1 ring-blue-500' 
-                  : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
-              }`}
-              title={canEdit ? option.description : 'You can only edit your own schedule'}
-            >
-              {option.label}
-              {isSelected && currentValue?.reason && (
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {/* Work Option Buttons or Weekend Display */}
+      {isWeekend ? (
+        <div className="flex justify-center">
+          <div className="min-h-[36px] px-3 py-2 rounded-md border bg-gray-200 text-gray-600 border-gray-300 text-sm font-medium flex items-center gap-2">
+            <span>X</span>
+            <span className="text-xs text-gray-500">Weekend</span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-0.5 sm:gap-1 justify-center">
+          {workOptions.filter(option => {
+            // Managers can only use 0.5 (half day) and X (unavailable) options
+            if (canAccessManagerQuickReasons(member)) {
+              return option.value === '0.5' || option.value === 'X';
+            }
+            // Regular members can use all options
+            return true;
+          }).map(option => {
+            const isSelected = currentValue?.value === option.value;
+            return (
+              <button
+                key={option.value}
+                onClick={() => canEdit && handleWorkOptionClick(option.value)}
+                disabled={!canEdit}
+                className={`min-h-[36px] w-8 sm:w-auto px-1.5 sm:px-3 py-1.5 sm:py-2 rounded-md border font-medium text-xs sm:text-sm transition-all touch-manipulation relative ${
+                  canEdit ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-60'
+                } ${
+                  isSelected 
+                    ? option.color + ' ring-2 ring-offset-1 ring-blue-500' 
+                    : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                }`}
+                title={canEdit ? option.description : 'You can only edit your own schedule'}
+              >
+                {option.label}
+                {isSelected && currentValue?.reason && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Quick Reasons Modal - Enhanced for mobile */}
       {showQuickReasons && pendingValue && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 lg:p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 lg:p-4">
           <div className="bg-white w-full h-full flex flex-col lg:rounded-lg lg:max-w-md lg:w-auto lg:h-auto lg:max-h-[80vh] lg:shadow-xl">
             {/* Header - Enhanced for mobile */}
             <div className="p-4 bg-gray-50 border-b border-gray-200 lg:bg-white lg:border-b lg:border-gray-200">
@@ -230,25 +273,31 @@ export default function EnhancedDayCell({
                 </h4>
                 
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-2">
-                  {HEBREW_QUICK_REASONS[pendingValue].map((reason, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        // Add haptic feedback
-                        if ('vibrate' in navigator) {
-                          navigator.vibrate(50);
-                        }
-                        handleQuickReasonSelect(reason.value);
-                      }}
-                      className="flex items-center gap-3 p-4 text-left bg-gray-50 hover:bg-blue-50 active:bg-blue-100 rounded-xl transition-all duration-200 border border-gray-200 hover:border-blue-300 active:border-blue-400 min-h-[60px] lg:min-h-[44px] lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
-                    >
-                      <span className="text-2xl lg:text-lg">{reason.emoji}</span>
-                      <span className="text-base lg:text-sm font-medium text-gray-900 flex-1">
-                        {reason.text}
-                      </span>
-                      <span className="text-gray-400">→</span>
-                    </button>
-                  ))}
+                  {(() => {
+                    // Use manager-specific reasons if the member is a manager
+                    const isManager = canAccessManagerQuickReasons(member);
+                    const reasonOptions = isManager ? MANAGER_HEBREW_QUICK_REASONS[pendingValue] : HEBREW_QUICK_REASONS[pendingValue];
+                    
+                    return reasonOptions.map((reason, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          // Add haptic feedback
+                          if ('vibrate' in navigator) {
+                            navigator.vibrate(50);
+                          }
+                          handleQuickReasonSelect(reason.value);
+                        }}
+                        className="flex items-center gap-3 p-4 text-left bg-gray-50 hover:bg-blue-50 active:bg-blue-100 rounded-xl transition-all duration-200 border border-gray-200 hover:border-blue-300 active:border-blue-400 min-h-[60px] lg:min-h-[44px] lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
+                      >
+                        <span className="text-2xl lg:text-lg">{reason.emoji}</span>
+                        <span className="text-base lg:text-sm font-medium text-gray-900 flex-1">
+                          {reason.text}
+                        </span>
+                        <span className="text-gray-400">→</span>
+                      </button>
+                    ));
+                  })()}
                 </div>
 
                 <div className="border-t border-gray-200 pt-4 mt-6 lg:pt-3 lg:mt-4">

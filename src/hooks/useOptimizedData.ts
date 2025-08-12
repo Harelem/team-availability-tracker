@@ -269,10 +269,10 @@ export function useDataLayerPerformance() {
     const updateMetrics = () => {
       const cacheStats = dataService.getCacheStats()
       setMetrics({
-        cacheHitRate: 0, // TODO: Implement in DataService
+        cacheHitRate: cacheStats.hitRate || 0,
         averageResponseTime: 0, // TODO: Implement in DataService  
-        queryCount: 0, // TODO: Implement in DataService
-        cacheSize: cacheStats.size
+        queryCount: cacheStats.totalQueries || 0,
+        cacheSize: cacheStats.cacheSize
       })
     }
 

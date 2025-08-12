@@ -98,7 +98,7 @@ export default function SprintPotentialModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
       <div

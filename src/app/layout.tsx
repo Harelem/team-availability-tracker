@@ -7,6 +7,8 @@ import { PageErrorBoundary } from "@/components/ErrorBoundary";
 import { AppStateProvider } from "@/contexts/AppStateContext";
 import { MobileNavigationProvider } from "@/components/navigation/MobileNavigationProvider";
 import GlobalMobileNavigation from "@/components/navigation/GlobalMobileNavigation";
+import DatabaseHealthMonitor from "@/components/DatabaseHealthMonitor";
+import DatabaseMonitoringDashboard from "@/components/DatabaseMonitoringDashboard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -176,6 +178,15 @@ export default function RootLayout({
         
         {/* Version display for mobile emergency debugging */}
         <VersionDisplay />
+        
+        {/* Database health monitoring */}
+        <DatabaseHealthMonitor 
+          enableStartupCheck={true}
+          enablePeriodicCheck={false}
+        />
+        
+        {/* Database monitoring dashboard */}
+        <DatabaseMonitoringDashboard />
         
         {/* Performance monitoring initialization script - external file for security */}
         <script src="/scripts/performance-monitor.js" defer></script>

@@ -16,23 +16,31 @@ export default function TeamSelectionScreen({
   onTeamSelect 
 }: TeamSelectionScreenProps) {
   const [teamStats, setTeamStats] = useState<TeamStats[]>([]);
+  const [currentSprint, setCurrentSprint] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadTeamStats = async () => {
+    const loadTeamStatsAndSprint = async () => {
       try {
-        const statsData = await DatabaseService.getTeamStats();
+        // Load both team stats and current sprint in parallel
+        const [statsData, sprintData] = await Promise.all([
+          DatabaseService.getTeamStats(),
+          DatabaseService.getCurrentGlobalSprint()
+        ]);
+        
         setTeamStats(statsData);
+        setCurrentSprint(sprintData);
       } catch (error) {
-        console.error('Error loading team stats:', error);
+        console.error('Error loading team stats and sprint:', error);
         setTeamStats([]);
+        setCurrentSprint(null);
       } finally {
         setLoading(false);
       }
     };
 
-    loadTeamStats();
+    loadTeamStatsAndSprint();
   }, []);
 
 
@@ -45,6 +53,18 @@ export default function TeamSelectionScreen({
 
   const getTeamStats = (teamId: number) => {
     return teamStats.find(stat => stat.id === teamId) || { member_count: 0, manager_count: 0 };
+  };
+
+  // Calculate sprint hours potential for a team
+  const calculateSprintHoursPotential = (memberCount: number) => {
+    if (!currentSprint || !memberCount) return 0;
+    
+    // Calculate working days in sprint (assuming 10 working days for a typical 2-week sprint)
+    // This is a simplified calculation - in reality, you'd calculate based on sprint dates
+    const workingDaysInSprint = 10;
+    const hoursPerDay = 7;
+    
+    return memberCount * workingDaysInSprint * hoursPerDay;
   };
 
   if (loading) {
@@ -158,7 +178,11 @@ export default function TeamSelectionScreen({
                       
                       {/* Team Metrics Preview */}
                       <div className="text-xs text-gray-500">
-                        Weekly capacity: {stats.member_count * 35}h
+                        {currentSprint ? (
+                          <>Sprint hours potential: {calculateSprintHoursPotential(stats.member_count)}h</>
+                        ) : (
+                          <>Weekly capacity: {stats.member_count * 35}h</>
+                        )}
                       </div>
                     </div>
                     

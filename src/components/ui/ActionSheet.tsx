@@ -229,7 +229,7 @@ export const ActionSheet = forwardRef<HTMLDivElement, ActionSheetProps>(
     // =============================================================================
 
     const overlayClasses = cx(
-      'fixed inset-0 z-50 bg-black bg-opacity-50',
+      'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
       'transition-all duration-300 ease-out',
       isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none',
       overlayClassName

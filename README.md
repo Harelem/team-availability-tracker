@@ -277,6 +277,59 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📧 Contact support: support@example.com
 
 ### Troubleshooting
+
+#### Database Issues
+If you encounter database-related errors:
+
+```bash
+# Quick health check
+npm run db:health
+
+# Comprehensive validation
+npm run db:validate
+
+# Verify all database functions
+npm run db:verify
+```
+
+**Common Database Problems:**
+
+1. **"Could not find function" errors**:
+   - Apply SQL migration: Run `/sql/enhance-daily-company-status.sql` in Supabase
+   - Validate fix: `npm run db:validate`
+   - See [CRITICAL-DATABASE-FIX.md](CRITICAL-DATABASE-FIX.md) for detailed instructions
+
+2. **COO Dashboard not loading**:
+   - Check database functions: `npm run db:verify`
+   - Apply missing migrations and restart application
+   - Monitor browser console for specific error messages
+
+3. **Schema mismatches**:
+   - Verify database schema matches application requirements
+   - Run data integrity validation: `npm run verify:data-integrity`
+   - Apply any pending migrations from `/sql/` directory
+
+4. **Performance issues**:
+   - Check database connection speed with health checks
+   - Verify indexes are properly created (see migration files)
+   - Monitor query performance in Supabase dashboard
+
+#### Application Startup Issues
+```bash
+# Validate before starting
+npm run startup:validate
+
+# CI/CD validation
+npm run ci:validate
+```
+
+The application includes automatic health checks that will:
+- Verify database connectivity on startup
+- Check for missing critical database functions
+- Provide clear error messages with fix instructions
+- Display health status in development mode
+
+#### Additional Troubleshooting
 - [Common Issues](docs/troubleshooting/common-issues.md)
 - [Performance Problems](docs/troubleshooting/performance.md)
 - [Accessibility Issues](docs/troubleshooting/accessibility.md)

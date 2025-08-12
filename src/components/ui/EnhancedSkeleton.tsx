@@ -268,4 +268,3 @@ export const skeletonStyles = `
 // =============================================================================
 
 export default Skeleton;
-export { MetricCardSkeleton, TableRowSkeleton, CardSkeleton, DashboardSkeleton };

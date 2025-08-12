@@ -206,7 +206,7 @@ export function IOSInstallInstructions({
   className?: string; 
 }) {
   return (
-    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-end md:items-center justify-center z-50 ${className}`}>
+    <div className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center z-50 ${className}`}>
       <div className="bg-white rounded-t-lg md:rounded-lg p-6 w-full md:w-96 md:max-w-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">

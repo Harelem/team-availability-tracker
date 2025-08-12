@@ -263,7 +263,8 @@ export const components = {
   // Button Components
   button: {
     base: `inline-flex items-center justify-center px-4 py-2 border text-sm font-medium rounded-lg 
-           focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200`,
+           focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200
+           min-h-[44px] touch-manipulation active:scale-95`,
     
     // Button Variants
     variants: {
@@ -502,6 +503,29 @@ export const icons = {
 } as const;
 
 // =============================================================================
+// MOBILE TOUCH TARGET UTILITIES
+// =============================================================================
+
+export const touchTargets = {
+  // Standard touch target sizes based on Apple/Android guidelines
+  small: 'min-h-[36px] min-w-[36px]',      // For compact layouts
+  medium: 'min-h-[44px] min-w-[44px]',     // Standard iOS/Android minimum
+  large: 'min-h-[48px] min-w-[48px]',      // For primary actions
+  
+  // Touch-friendly interaction patterns
+  touch: 'touch-manipulation active:scale-95 transition-transform duration-150',
+  cardTouch: 'touch-manipulation active:scale-[0.98] transition-transform duration-150',
+  
+  // Mobile-optimized spacing for easier touch interaction
+  spacing: {
+    tight: 'gap-2',      // 8px
+    normal: 'gap-3',     // 12px  
+    loose: 'gap-4',      // 16px
+    comfortable: 'gap-6' // 24px
+  }
+} as const;
+
+// =============================================================================
 // DEFAULT EXPORT
 // =============================================================================
 
@@ -514,6 +538,7 @@ export default {
   animations,
   breakpoints,
   icons,
+  touchTargets,
   // Utility functions
   cn,
   getStatusStyles,

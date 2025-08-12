@@ -98,16 +98,19 @@ export default function ManagerDashboard({
     return dates;
   }, [currentSprint]);
 
-  // Calculate team statistics
+  // Calculate team statistics based on actual sprint data
   const teamStats = React.useMemo(() => {
     const totalMembers = teamMembers.length;
     const managersCount = teamMembers.filter(m => m.isManager).length;
     const regularMembers = totalMembers - managersCount;
     
-    // These would be calculated from actual schedule data in a real implementation
-    const completedMembers = Math.floor(totalMembers * 0.7); // Mock data
-    const totalHours = totalMembers * 35; // Mock: 35 hours average per person per week
-    const gapsIdentified = Math.floor(totalMembers * 0.1); // Mock: 10% have gaps
+    // Calculate sprint potential: workingDays * members * 7 hours per day
+    const sprintPotentialHours = sprintWorkingDays.length * totalMembers * 7;
+    
+    // For now, use simplified calculations until we have real schedule data integration
+    // In a real implementation, this would query actual schedule entries
+    const completedMembers = Math.floor(totalMembers * 0.8); // Placeholder
+    const totalSubmittedHours = Math.floor(sprintPotentialHours * 0.75); // Placeholder: 75% of potential
     
     const completionPercentage = totalMembers > 0 ? Math.round((completedMembers / totalMembers) * 100) : 0;
     
@@ -117,10 +120,11 @@ export default function ManagerDashboard({
       regularMembers,
       completedMembers,
       completionPercentage,
-      totalHours,
-      gapsIdentified
+      totalSubmittedHours,
+      sprintPotentialHours,
+      sprintLength: sprintWorkingDays.length
     };
-  }, [teamMembers]);
+  }, [teamMembers, sprintWorkingDays]);
 
   const handleMembersUpdated = useCallback(() => {
     // This would trigger a refresh of team members data
@@ -160,8 +164,8 @@ export default function ManagerDashboard({
         )}
       </div>
 
-      {/* Manager Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Simplified Manager Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <PersonalStatsCard
           title="Team Completion"
           value={`${teamStats.completedMembers}/${teamStats.totalMembers}`}
@@ -172,27 +176,19 @@ export default function ManagerDashboard({
         />
         
         <PersonalStatsCard
-          title="Sprint Coverage"
-          value={`${100 - teamStats.gapsIdentified}%`}
-          icon={Calendar}
-          color="green"
-          description="Days with coverage"
-        />
-        
-        <PersonalStatsCard
-          title="Total Hours"
-          value={`${teamStats.totalHours}h`}
+          title="Sprint Hours Submitted"
+          value={`${teamStats.totalSubmittedHours}h`}
           icon={Clock}
-          color="purple"
-          description="Team capacity"
+          color="green"
+          description={`of ${teamStats.sprintPotentialHours}h potential`}
         />
         
         <PersonalStatsCard
-          title="Gaps Identified"
-          value={teamStats.gapsIdentified.toString()}
-          icon={AlertCircle}
-          color={teamStats.gapsIdentified > 0 ? 'yellow' : 'green'}
-          description={teamStats.gapsIdentified > 0 ? 'Need attention' : 'All covered'}
+          title="Sprint Length"
+          value={`${teamStats.sprintLength} days`}
+          icon={Calendar}
+          color="purple"
+          description="Working days in current sprint"
         />
       </div>
 

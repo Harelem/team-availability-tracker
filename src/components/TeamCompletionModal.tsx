@@ -91,178 +91,74 @@ export default function TeamCompletionModal({
           </button>
         </div>
 
-        {/* Team Summary Stats */}
+        {/* Simplified Team Summary */}
         <div className={combineClasses(
           'border-b border-gray-200',
-          DESIGN_SYSTEM.spacing.lg
+          DESIGN_SYSTEM.spacing.lg,
+          'text-center'
         )}>
-          <div className={combineClasses(
-            DESIGN_SYSTEM.grids.responsive4,
-            DESIGN_SYSTEM.grids.gap.md
-          )}>
-            <div className={combineClasses(
-              'text-center',
-              DESIGN_SYSTEM.spacing.md,
-              DESIGN_SYSTEM.colors.success.bgLight,
-              DESIGN_SYSTEM.radius.md
-            )}>
-              <div className="text-2xl font-bold text-green-900">{completeMembers}</div>
-              <div className="text-sm text-green-700">Complete</div>
-            </div>
-            <div className={combineClasses(
-              'text-center',
-              DESIGN_SYSTEM.spacing.md,
-              DESIGN_SYSTEM.colors.warning.bgLight,
-              DESIGN_SYSTEM.radius.md
-            )}>
-              <div className="text-2xl font-bold text-yellow-900">{partialMembers}</div>
-              <div className="text-sm text-yellow-700">In Progress</div>
-            </div>
-            <div className={combineClasses(
-              'text-center',
-              DESIGN_SYSTEM.spacing.md,
-              DESIGN_SYSTEM.colors.danger.bgLight,
-              DESIGN_SYSTEM.radius.md
-            )}>
-              <div className="text-2xl font-bold text-red-900">{notStartedMembers}</div>
-              <div className="text-sm text-red-700">Not Started</div>
-            </div>
-            <div className={combineClasses(
-              'text-center',
-              DESIGN_SYSTEM.spacing.md,
-              DESIGN_SYSTEM.colors.primary.bgLight,
-              DESIGN_SYSTEM.radius.md
-            )}>
-              <div className="text-2xl font-bold text-blue-900">{totalHours}h</div>
-              <div className="text-sm text-blue-700">Total Hours</div>
-            </div>
+          <div className="text-3xl font-bold text-gray-900 mb-2">
+            {completeMembers}/{totalMembers}
           </div>
-
-          {/* Overall Progress Bar */}
-          <div className="mt-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Team Progress</span>
-              <span className="text-sm text-gray-600">{teamCompletionPercentage}%</span>
-            </div>
-            <div className={combineClasses(
-              COMPONENT_PATTERNS.progressContainer,
-              'h-3'
-            )}>
-              <div 
-                className={combineClasses(
-                  COMPONENT_PATTERNS.progressFill,
-                  'h-3',
-                  teamCompletionPercentage >= 90 ? 'bg-green-500' :
-                  teamCompletionPercentage >= 70 ? 'bg-blue-500' :
-                  teamCompletionPercentage >= 50 ? 'bg-yellow-500' :
-                  'bg-red-500'
-                )}
-                style={{ width: `${teamCompletionPercentage}%` }}
-              />
-            </div>
+          <div className="text-sm text-gray-600 mb-4">
+            Members completed • {totalHours}h total submitted
+          </div>
+          
+          {/* Simple Progress Indicator */}
+          <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+            <div 
+              className={combineClasses(
+                'h-4 rounded-full transition-all duration-300',
+                teamCompletionPercentage >= 90 ? 'bg-green-500' :
+                teamCompletionPercentage >= 70 ? 'bg-blue-500' :
+                teamCompletionPercentage >= 50 ? 'bg-yellow-500' :
+                'bg-red-500'
+              )}
+              style={{ width: `${teamCompletionPercentage}%` }}
+            />
+          </div>
+          <div className="text-xs text-gray-500">
+            {teamCompletionPercentage}% team completion
           </div>
         </div>
 
-        {/* Member Details */}
+        {/* Simplified Member Status List */}
         <div className={combineClasses(
           DESIGN_SYSTEM.spacing.lg,
           'overflow-y-auto max-h-96'
         )}>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Individual Member Status</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Members Status</h3>
           
-          <div className="space-y-3">
-            {memberStatuses.map(({ member, hoursSubmitted, daysCompleted, totalDays, completionPercentage, status, lastUpdate }) => (
-              <div key={member.id} className={combineClasses(
-                'bg-gray-50 hover:bg-gray-100',
-                DESIGN_SYSTEM.radius.md,
-                DESIGN_SYSTEM.spacing.md,
-                DESIGN_SYSTEM.transitions.default
-              )}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className={combineClasses(
-                      'w-10 h-10 bg-blue-100',
-                      COMPONENT_PATTERNS.avatar
-                    )}>
-                      <span className="text-blue-600 font-medium text-sm">
-                        {member.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{member.name}</div>
-                      <div className="text-sm text-gray-500">{member.hebrew}</div>
-                    </div>
-                    {member.isManager && (
-                      <span className={combineClasses(
-                        COMPONENT_PATTERNS.badge,
-                        'bg-purple-100 text-purple-800'
-                      )}>
-                        Manager
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="text-right">
-                    <span className={combineClasses(
-                      'px-3 py-1 text-sm font-medium rounded-full',
-                      status === 'complete' ? 'bg-green-100 text-green-800' :
-                      status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    )}>
-                      {status === 'complete' ? 'Complete' :
-                       status === 'partial' ? 'In Progress' : 'Not Started'}
+          <div className="space-y-2">
+            {memberStatuses.map(({ member, hoursSubmitted, completionPercentage, status }) => (
+              <div key={member.id} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 font-medium text-sm">
+                      {member.name.charAt(0)}
                     </span>
                   </div>
+                  <div>
+                    <div className="font-medium text-gray-900">{member.name}</div>
+                    <div className="text-sm text-gray-500">{member.hebrew}</div>
+                  </div>
+                  {member.isManager && (
+                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
+                      Manager
+                    </span>
+                  )}
                 </div>
-
-                <div className="grid grid-cols-3 gap-4 mb-3">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 text-gray-600 mb-1">
-                      <Calendar className="w-4 h-4" />
-                      <span className="text-xs">Days</span>
-                    </div>
-                    <div className="text-sm font-medium">{daysCompleted}/{totalDays}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 text-gray-600 mb-1">
-                      <Clock className="w-4 h-4" />
-                      <span className="text-xs">Hours</span>
-                    </div>
-                    <div className="text-sm font-medium">{hoursSubmitted}h</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 text-gray-600 mb-1">
-                      {status === 'complete' ? 
-                        <CheckCircle className="w-4 h-4" /> :
-                        <AlertCircle className="w-4 h-4" />
-                      }
-                      <span className="text-xs">Progress</span>
-                    </div>
-                    <div className="text-sm font-medium">{completionPercentage}%</div>
+                
+                <div className="text-right">
+                  <div className="font-medium text-gray-900">{hoursSubmitted}h</div>
+                  <div className={`text-sm ${
+                    status === 'complete' ? 'text-green-600' :
+                    status === 'partial' ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
+                    {completionPercentage}% complete
                   </div>
                 </div>
-
-                {/* Progress Bar */}
-                <div className={combineClasses(
-                  COMPONENT_PATTERNS.progressContainer,
-                  'mb-2'
-                )}>
-                  <div 
-                    className={combineClasses(
-                      COMPONENT_PATTERNS.progressFill,
-                      status === 'complete' ? 'bg-green-500' :
-                      status === 'partial' ? 'bg-yellow-500' :
-                      'bg-red-500'
-                    )}
-                    style={{ width: `${completionPercentage}%` }}
-                  />
-                </div>
-
-                {lastUpdate && (
-                  <div className="text-xs text-gray-500">
-                    Last updated: {lastUpdate.toLocaleDateString()} at {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                )}
               </div>
             ))}
           </div>

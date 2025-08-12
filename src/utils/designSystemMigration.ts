@@ -203,37 +203,37 @@ export const calculateMigrationPriority = (patterns: Record<string, number>): Ar
     {
       category: 'Layout & Spacing',
       count: patterns.manualSpacing + patterns.manualFlex + patterns.manualGrid,
-      priority: 'high',
+      priority: 'high' as const,
       impact: 'Foundation for responsive design and consistent spacing'
     },
     {
       category: 'Buttons',
       count: patterns.manualButtons,
-      priority: 'high',
+      priority: 'high' as const,
       impact: 'High user interaction, accessibility improvements'
     },
     {
       category: 'Cards',
       count: patterns.manualCards,
-      priority: 'medium',
+      priority: 'medium' as const,
       impact: 'Visual consistency and interactive states'
     },
     {
       category: 'Forms',
       count: patterns.manualForms + patterns.manualValidation + patterns.manualInputs,
-      priority: 'high',
+      priority: 'high' as const,
       impact: 'Better validation, accessibility, and user experience'
     },
     {
       category: 'Loading States',
       count: patterns.manualLoading + patterns.manualSpinner,
-      priority: 'medium',
+      priority: 'medium' as const,
       impact: 'Consistent loading experiences'
     },
     {
       category: 'Modals',
       count: patterns.manualModals,
-      priority: 'medium',
+      priority: 'medium' as const,
       impact: 'Focus management and accessibility'
     }
   ].sort((a, b) => b.count - a.count);

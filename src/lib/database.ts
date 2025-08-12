@@ -1,12 +1,16 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, TeamSprintStats, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, TeamDailyStatus, DailyStatusSummary, TeamDashboardData } from '@/types'
-import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
+import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, TeamDailyStatus, DailyStatusSummary, TeamDashboardData } from '@/types'
+// Template types temporarily disabled for production
+// import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
 // RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
 // import { Achievement, RecognitionMetric, CreateAchievementRequest, UpdateMetricRequest, RecognitionQueryOptions, RecognitionQueryResult, LeaderboardEntry, LeaderboardTimeframe } from '@/types/recognitionTypes'
 import { calculateSprintCapacityFromSettings } from './calculationService'
 import { handleError, retryOperation } from '@/utils/errorHandler'
 import { AppError, ErrorCategory } from '@/types/errors'
 import { dataConsistencyManager, CacheKeys } from '@/utils/dataConsistencyManager'
+import { cooDashboardCircuitBreaker, databaseCircuitBreaker } from '@/utils/circuitBreaker'
+import { operation, debug, error as logError } from '@/utils/debugLogger'
+import { connectionRetry } from '@/utils/connectionRetry'
 
 // Sprint History interfaces
 export interface SprintHistoryEntry {
@@ -44,6 +48,86 @@ const isSupabaseConfigured = () => {
 
 // Flag to prevent multiple executions of data fixes
 let dataFixInProgress = false
+
+// Timeout-aware query execution for COO operations
+export const executeCOOQuery = async <T>(
+  operation: () => Promise<T>,
+  fallback: T,
+  operationName: string
+): Promise<T> => {
+  try {
+    // Use COO circuit breaker for dashboard queries
+    return await cooDashboardCircuitBreaker.execute(operation);
+  } catch (error) {
+    if (error instanceof Error && (error.message.includes('timeout') || error.message.includes('timed out'))) {
+      console.warn(`COO Query timeout for ${operationName}, using fallback`);
+      return fallback;
+    }
+    throw error;
+  }
+};
+
+// Progressive data loading for COO dashboard
+export const getCOODashboardDataProgressive = async () => {
+  const results = {
+    teams: [] as Team[],
+    teamData: new Map<number, any>(),
+    errors: [] as Array<{ teamId: number; error: string }>,
+    timeouts: [] as Array<{ teamId: number; message: string }>
+  };
+  
+  try {
+    // Step 1: Load teams quickly (should never timeout)
+    results.teams = await DatabaseService.getTeams();
+    console.log(`📊 Progressive loading: Found ${results.teams.length} teams`);
+    
+    // Step 2: Load team data progressively with individual timeouts
+    const teamDataPromises = results.teams.map(async (team) => {
+      try {
+        const data = await executeCOOQuery(
+          () => Promise.resolve({ actualHours: 0, potentialHours: 0 }), // Placeholder until getCOOTeamData is implemented
+          { actualHours: 0, potentialHours: 0 } as any, // Type assertion for fallback
+          `team-${team.id}`
+        );
+        return { teamId: team.id, data };
+      } catch (error) {
+        console.error(`Team ${team.id} (${team.name}) failed:`, error);
+        results.errors.push({ 
+          teamId: team.id, 
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        return { 
+          teamId: team.id, 
+          data: { actualHours: 0, potentialHours: 0, status: 'error' }
+        };
+      }
+    });
+    
+    const teamResults = await Promise.allSettled(teamDataPromises);
+    teamResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        results.teamData.set(result.value.teamId, result.value.data);
+        if (result.value.data.status === 'timeout') {
+          results.timeouts.push({
+            teamId: result.value.teamId,
+            message: `Team ${results.teams[index]?.name || result.value.teamId} data loading timed out`
+          });
+        }
+      } else {
+        results.errors.push({ 
+          teamId: results.teams[index]?.id || index, 
+          error: result.reason instanceof Error ? result.reason.message : 'Promise rejected'
+        });
+      }
+    });
+    
+  } catch (error) {
+    console.error('COO Dashboard progressive load failed:', error);
+    throw error;
+  }
+  
+  return results;
+};
 
 export const DatabaseService = {
   // Teams
@@ -186,7 +270,7 @@ export const DatabaseService = {
       const operation = async () => {
         let query = supabase
           .from('team_members')
-          .select('id, name, hebrew, is_manager, email, team_id, role, is_critical, inactive_date, created_at, updated_at')
+          .select('id, name, hebrew, is_manager, email, team_id, created_at, updated_at')
         
         if (teamId) {
           query = query.eq('team_id', teamId)
@@ -215,9 +299,6 @@ export const DatabaseService = {
           is_manager: member.is_manager || false, // Database column name compatibility
           email: member.email || '',
           team_id: member.team_id,
-          role: member.role || undefined,
-          is_critical: member.is_critical || false,
-          inactive_date: member.inactive_date || undefined,
           created_at: member.created_at,
           updated_at: member.updated_at
         }))
@@ -231,7 +312,7 @@ export const DatabaseService = {
           baseDelay: 500,
           retryableErrors: [ErrorCategory.DATABASE, ErrorCategory.NETWORK]
         }),
-        forceRefresh
+        { forceRefresh }
       )
 
     } catch (error) {
@@ -354,12 +435,12 @@ export const DatabaseService = {
           .eq('id', teamId)
           .single();
 
-        // Filter schedule entries by date if requested
-        if (options.includeSchedule && options.scheduleDateRange) {
-          query = query
-            .gte('team_members.schedule_entries.date', options.scheduleDateRange.start)
-            .lte('team_members.schedule_entries.date', options.scheduleDateRange.end);
-        }
+        // TODO: Filter schedule entries by date if requested - needs proper query structure
+        // if (options.includeSchedule && options.scheduleDateRange) {
+        //   query = query
+        //     .gte('team_members.schedule_entries.date', options.scheduleDateRange.start)
+        //     .lte('team_members.schedule_entries.date', options.scheduleDateRange.end);
+        // }
 
         const { data, error } = await query;
 
@@ -367,17 +448,21 @@ export const DatabaseService = {
           throw new Error(`Batched query failed: ${error.message}`);
         }
 
+        if (!data) {
+          throw new Error(`Team not found with ID: ${teamId}`);
+        }
+
         // Extract data from joined result
         const team: Team = {
-          id: data.id,
-          name: data.name,
-          description: data.description,
-          color: data.color || '#3b82f6',
-          created_at: data.created_at,
-          updated_at: data.updated_at
+          id: (data as any).id,
+          name: (data as any).name,
+          description: (data as any).description,
+          color: (data as any).color || '#3b82f6',
+          created_at: (data as any).created_at,
+          updated_at: (data as any).updated_at
         };
 
-        const members: TeamMember[] = (data.team_members || []).map((member: any) => ({
+        const members: TeamMember[] = ((data as any).team_members || []).map((member: any) => ({
           id: member.id,
           name: member.name,
           hebrew: member.hebrew || '',
@@ -390,8 +475,8 @@ export const DatabaseService = {
 
         // Extract schedule entries if included
         let scheduleEntries: any[] = [];
-        if (options.includeSchedule && data.team_members) {
-          scheduleEntries = data.team_members
+        if (options.includeSchedule && (data as any).team_members) {
+          scheduleEntries = (data as any).team_members
             .flatMap((member: any) => member.schedule_entries || [])
             .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -1476,16 +1561,43 @@ export const DatabaseService = {
       return null
     }
     
-    const { data, error } = await supabase
+    // First try the enhanced sprint view (v2.3.0+)
+    const { data: enhancedData, error: enhancedError } = await supabase
+      .from('current_enhanced_sprint')
+      .select('*')
+      .single()
+    
+    if (!enhancedError && enhancedData) {
+      // Map enhanced sprint data to legacy format for backward compatibility
+      return {
+        id: enhancedData.id,
+        current_sprint_number: enhancedData.sprint_number,
+        sprint_length_weeks: enhancedData.length_weeks,
+        sprint_start_date: enhancedData.start_date,
+        sprint_end_date: enhancedData.end_date,
+        progress_percentage: enhancedData.progress_percentage || 0,
+        days_remaining: enhancedData.days_remaining || 0,
+        working_days_remaining: enhancedData.working_days_remaining || 0,
+        is_active: enhancedData.is_active || enhancedData.is_current || false,
+        notes: enhancedData.notes || '',
+        created_at: enhancedData.created_at,
+        updated_at: enhancedData.updated_at,
+        updated_by: enhancedData.created_by || 'system'
+      }
+    }
+    
+    // Fallback to legacy current_global_sprint view if enhanced doesn't exist
+    const { data: legacyData, error: legacyError } = await supabase
       .from('current_global_sprint')
       .select('*')
       .single()
     
-    if (error) {
+    if (legacyError) {
+      console.warn('Neither current_enhanced_sprint nor current_global_sprint view exists')
       return null
     }
     
-    return data
+    return legacyData
   },
 
   async getTeamSprintStats(teamId: number): Promise<TeamSprintStats | null> {
@@ -1511,20 +1623,36 @@ export const DatabaseService = {
       return false
     }
     
-    const { error } = await supabase
-      .from('global_sprint_settings')
-      .update({
-        ...settings,
-        updated_by: updatedBy,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', 1) // Assuming single row
-    
-    if (error) {
+    try {
+      // Try to update enhanced sprint configs first (v2.3.0+)
+      const { error: enhancedError } = await supabase
+        .from('enhanced_sprint_configs')
+        .update({
+          length_weeks: settings.sprint_length_weeks,
+          updated_at: new Date().toISOString(),
+          created_by: updatedBy // using created_by as it maps to updated_by
+        })
+        .eq('is_active', true)
+      
+      if (!enhancedError) {
+        return true
+      }
+
+      // Fallback to legacy global_sprint_settings
+      const { error: legacyError } = await supabase
+        .from('global_sprint_settings')
+        .update({
+          ...settings,
+          updated_by: updatedBy,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 1) // Assuming single row
+      
+      return !legacyError
+    } catch (error) {
+      console.error('Error updating sprint settings:', error)
       return false
     }
-    
-    return true
   },
 
   async startNewGlobalSprint(lengthWeeks: number, updatedBy: string): Promise<boolean> {
@@ -1532,26 +1660,57 @@ export const DatabaseService = {
       return false
     }
     
-    // Get current sprint to increment sprint number
-    const currentSprint = await this.getCurrentGlobalSprint()
-    const newSprintNumber = currentSprint ? currentSprint.current_sprint_number + 1 : 1
-    
-    const { error } = await supabase
-      .from('global_sprint_settings')
-      .update({
-        sprint_length_weeks: lengthWeeks,
-        current_sprint_number: newSprintNumber,
-        sprint_start_date: new Date().toISOString().split('T')[0],
-        updated_by: updatedBy,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', 1) // Assuming single row
-    
-    if (error) {
+    try {
+      // Get current sprint to increment sprint number
+      const currentSprint = await this.getCurrentGlobalSprint()
+      const newSprintNumber = currentSprint ? currentSprint.current_sprint_number + 1 : 1
+      
+      const startDate = new Date().toISOString().split('T')[0]
+      const endDate = new Date()
+      endDate.setDate(endDate.getDate() + (lengthWeeks * 7) - 1)
+      const endDateString = endDate.toISOString().split('T')[0]
+
+      // Try enhanced sprint configs first (v2.3.0+)
+      // First, deactivate current sprint
+      await supabase
+        .from('enhanced_sprint_configs')
+        .update({ is_active: false })
+        .eq('is_active', true)
+
+      // Create new enhanced sprint
+      const { error: enhancedError } = await supabase
+        .from('enhanced_sprint_configs')
+        .insert({
+          sprint_number: newSprintNumber,
+          start_date: startDate,
+          end_date: endDateString,
+          length_weeks: lengthWeeks,
+          is_active: true,
+          created_by: updatedBy,
+          notes: `New sprint created by ${updatedBy}`
+        })
+      
+      if (!enhancedError) {
+        return true
+      }
+
+      // Fallback to legacy global_sprint_settings
+      const { error: legacyError } = await supabase
+        .from('global_sprint_settings')
+        .update({
+          sprint_length_weeks: lengthWeeks,
+          current_sprint_number: newSprintNumber,
+          sprint_start_date: startDate,
+          updated_by: updatedBy,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 1) // Assuming single row
+      
+      return !legacyError
+    } catch (error) {
+      console.error('Error starting new sprint:', error)
       return false
     }
-    
-    return true
   },
 
   async updateSprintDates(startDate: string, endDate?: string, updatedBy: string = 'Harel Mazan'): Promise<boolean> {
@@ -1968,6 +2127,7 @@ export const DatabaseService = {
           teamId: team.id,
           teamName: team.name,
           memberCount: 0,
+          maxCapacity: 0,
           weeklyPotential: 0,
           actualHours: 0,
           utilization: 0,
@@ -1993,6 +2153,8 @@ export const DatabaseService = {
     return dataConsistencyManager.getCachedOrFetch(
       CacheKeys.COO_DASHBOARD_DATA,
       async () => {
+        // Use COO circuit breaker to handle complex dashboard queries with extended timeout
+        return await cooDashboardCircuitBreaker.execute(async () => {
         console.log('🔍 Loading COO dashboard data...')
         
         const teams = await this.getTeams()
@@ -2142,6 +2304,7 @@ export const DatabaseService = {
           }
         }
       }
+        }); // Close cooDashboardCircuitBreaker.execute
       },
       {
         cacheDuration: 10 * 60 * 1000, // 10 minutes cache for COO dashboard data (EGRESS REDUCTION)
@@ -2688,8 +2851,23 @@ export const DatabaseService = {
   // Helper function to enrich sprint data with calculated fields
   async enrichSprintData(sprint: Partial<SprintHistoryEntry>): Promise<SprintHistoryEntry> {
     const today = new Date()
-    const startDate = new Date(sprint.sprint_start_date!)
-    const endDate = new Date(sprint.sprint_end_date!)
+    
+    // Handle optional dates safely
+    if (!sprint.sprint_start_date || !sprint.sprint_end_date) {
+      console.warn('enrichSprintData: Missing required dates for sprint', sprint)
+      return {
+        ...sprint,
+        sprint_start_date: sprint.sprint_start_date || '',
+        sprint_end_date: sprint.sprint_end_date || '',
+        progress_percentage: 0,
+        days_remaining: 0,
+        total_days: 0,
+        status: 'upcoming'
+      } as SprintHistoryEntry
+    }
+    
+    const startDate = new Date(sprint.sprint_start_date)
+    const endDate = new Date(sprint.sprint_end_date)
     
     let progress_percentage = 0
     let days_remaining = 0
@@ -3070,8 +3248,8 @@ The table creation script includes:
     }
   },
 
-  // Availability Templates
-  async getAvailabilityTemplates(options?: TemplateQueryOptions): Promise<TemplateSearchResult> {
+  // Availability Templates - TEMPORARILY DISABLED FOR PRODUCTION
+  async getAvailabilityTemplates(options?: any): Promise<any> {
     if (!isSupabaseConfigured()) {
       return { templates: [], totalCount: 0, hasMore: false }
     }
@@ -3145,7 +3323,7 @@ The table creation script includes:
     }
   },
 
-  async createTemplate(template: CreateTemplateRequest): Promise<AvailabilityTemplate | null> {
+  async createTemplate(template: any): Promise<any> {
     if (!isSupabaseConfigured()) {
       return null
     }
@@ -3184,7 +3362,7 @@ The table creation script includes:
     }
   },
 
-  async updateTemplate(update: UpdateTemplateRequest): Promise<AvailabilityTemplate | null> {
+  async updateTemplate(update: any): Promise<any> {
     if (!isSupabaseConfigured()) {
       return null
     }
@@ -3255,7 +3433,7 @@ The table creation script includes:
     try {
       const { error } = await supabase
         .from('availability_templates')
-        .update({ usage_count: supabase.sql`usage_count + 1` })
+        .update({ usage_count: 1 }) // TODO: implement proper increment when templates are enabled
         .eq('id', templateId)
 
       if (error) {
@@ -3266,7 +3444,7 @@ The table creation script includes:
     }
   },
 
-  async getTemplateById(templateId: string): Promise<AvailabilityTemplate | null> {
+  async getTemplateById(templateId: string): Promise<any> {
     if (!isSupabaseConfigured()) {
       return null
     }
@@ -3298,6 +3476,89 @@ The table creation script includes:
     }
   },
 
+  // Utility function for delays
+  delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  },
+
+  // Fallback method for getDailyCompanyStatus when database function is not available
+  async getDailyCompanyStatusFallback(dateStr: string): Promise<any[]> {
+    console.log('🔧 Using fallback method for daily company status')
+    
+    try {
+      // Query team_members and schedule_entries directly
+      const { data: members, error: membersError } = await supabase
+        .from('team_members')
+        .select(`
+          id,
+          name,
+          hebrew,
+          team_id,
+          is_manager,
+          role,
+          is_critical,
+          inactive_date
+        `)
+        .is('inactive_date', null) // Only active members
+      
+      if (membersError) {
+        console.error('Fallback: Error fetching team_members:', membersError)
+        throw membersError
+      }
+
+      // Get schedule entries for the specific date
+      const { data: schedules, error: schedulesError } = await supabase
+        .from('schedule_entries')
+        .select('member_id, value, reason')
+        .eq('date', dateStr)
+      
+      if (schedulesError) {
+        console.error('Fallback: Error fetching schedule_entries:', schedulesError)
+        throw schedulesError
+      }
+
+      // Create a map for quick lookup
+      const scheduleMap = new Map()
+      schedules?.forEach(schedule => {
+        scheduleMap.set(schedule.member_id, schedule)
+      })
+
+      // Helper function to convert value to hours (same logic as database function)
+      const valueToHours = (value: string | null): number => {
+        if (!value) return 1.0 // Default to full day
+        switch (value) {
+          case '1': return 1.0
+          case '0.5': return 0.5
+          case 'X': return 0.0
+          default: return 1.0
+        }
+      }
+
+      // Combine member data with schedule data
+      const result = members?.map(member => {
+        const schedule = scheduleMap.get(member.id)
+        
+        return {
+          member_id: member.id,
+          member_name: member.name,
+          member_hebrew: member.hebrew,
+          team_id: member.team_id,
+          member_role: member.role || (member.is_manager ? 'Manager' : 'Team Member'),
+          is_manager: member.is_manager,
+          is_critical: member.is_critical || false,
+          hours: valueToHours(schedule?.value),
+          reason: schedule?.reason || null
+        }
+      }) || []
+
+      console.log(`✅ Fallback method returned ${result.length} member records`)
+      return result
+
+    } catch (error) {
+      console.error('🚨 Fallback method failed:', error)
+      throw new Error(`Fallback method failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  },
 
   // Daily Company Status Methods
   async getDailyCompanyStatus(selectedDate: Date): Promise<DailyCompanyStatusData | null> {
@@ -3305,35 +3566,76 @@ The table creation script includes:
       return null
     }
 
-    try {
-      const dateStr = selectedDate.toISOString().split('T')[0]
-      console.log('🏢 Loading daily company status for:', dateStr)
+    const dateStr = selectedDate.toISOString().split('T')[0]
+    debug('Loading daily company status for:', dateStr)
 
+    // Wrap the entire operation with retry logic
+    return connectionRetry.retryOperation(async () => {
       // Get all operational teams (excludes Management Team)
       const teams = await this.getOperationalTeams()
-      console.log(`📊 Found ${teams.length} operational teams`)
+      debug(`Found ${teams.length} operational teams`)
+
+      let dailyStatusData: any[] | null = null
+      let usedFallback = false
+
+    try {
+      // Try to use enhanced database function for better performance
+      console.log('📞 Attempting to call database function get_daily_company_status_data...')
       
-      // Use enhanced database function for better performance
-      const { data: dailyStatusData, error: dailyStatusError } = await supabase
+      const { data: functionData, error: functionError } = await supabase
         .rpc('get_daily_company_status_data', { target_date: dateStr })
 
-      if (dailyStatusError) {
-        console.error('Error fetching daily status data:', dailyStatusError)
-        throw new Error(`Failed to fetch daily status data: ${dailyStatusError.message}`)
+      if (functionError) {
+        // Check if it's a function not found error
+        if (functionError.message.includes('could not find function') || 
+            functionError.message.includes('function') && functionError.message.includes('does not exist')) {
+          console.warn('⚠️ Database function get_daily_company_status_data not found, using fallback method')
+          dailyStatusData = await this.getDailyCompanyStatusFallback(dateStr)
+          usedFallback = true
+        } else {
+          console.error('🚨 Database function error:', functionError)
+          // For other errors, try fallback after a brief retry
+          await this.delay(1000) // Wait 1 second
+          
+          console.log('🔄 Retrying database function call...')
+          const { data: retryData, error: retryError } = await supabase
+            .rpc('get_daily_company_status_data', { target_date: dateStr })
+          
+          if (retryError) {
+            console.warn('⚠️ Retry failed, using fallback method:', retryError.message)
+            dailyStatusData = await this.getDailyCompanyStatusFallback(dateStr)
+            usedFallback = true
+          } else {
+            dailyStatusData = retryData
+          }
+        }
+      } else {
+        dailyStatusData = functionData
       }
+    } catch (error) {
+      console.error('🚨 Exception calling database function:', error)
+      console.log('🔄 Using fallback method due to exception')
+      dailyStatusData = await this.getDailyCompanyStatusFallback(dateStr)
+      usedFallback = true
+    }
 
-      console.log(`👥 Found ${dailyStatusData?.length || 0} daily status records`)
+    if (usedFallback) {
+      console.log('🔧 Successfully retrieved data using fallback method')
+    }
 
-      // Process the data from the enhanced function
-      const members: DailyMemberStatus[] = (dailyStatusData || []).map(record => ({
+    console.log(`👥 Found ${dailyStatusData?.length || 0} daily status records`)
+
+    try {
+      // Process the data from the enhanced function or fallback
+      const members: DailyMemberStatus[] = (dailyStatusData || []).map((record: any) => ({
         id: record.member_id,
         name: record.member_name || record.member_hebrew,
         teamId: record.team_id,
         teamName: record.team_name,
-        role: record.role || (record.is_manager ? 'Manager' : 'Team Member'),
+        role: record.is_manager ? 'Manager' : 'Team Member',
         hours: record.hours, // Already converted by database function
         reason: record.reason,
-        isCritical: record.is_critical || false
+        isCritical: false // Column doesn't exist in schema, defaulting to false
       }))
 
       // Calculate company-wide summary using actual hours
@@ -3372,11 +3674,12 @@ The table creation script includes:
         total: members.length,
         members,
         teams: teamStatuses,
-        selectedDate
+        selectedDate,
+        usedFallback // Include this info for monitoring/debugging
       }
 
     } catch (error) {
-      console.error('Error getting daily company status:', {
+      console.error('🚨 Error processing daily company status data:', {
         error: error instanceof Error ? {
           name: error.name,
           message: error.message,
@@ -3384,11 +3687,51 @@ The table creation script includes:
         } : error,
         errorString: String(error),
         date: selectedDate.toISOString().split('T')[0],
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        usedFallback,
+        context: 'data_processing_phase'
       })
       
-      // Re-throw with more context for debugging
-      throw new Error(`Daily company status failed for ${selectedDate.toISOString().split('T')[0]}: ${error instanceof Error ? error.message : String(error)}`)
+      // Provide user-friendly error message
+      const userMessage = usedFallback 
+        ? 'Unable to load daily status using backup method. Please check database connectivity.'
+        : 'Unable to load daily status. The system will automatically retry with backup method.'
+      
+      throw new Error(userMessage)
+    }
+    }, {
+      maxRetries: 2,
+      initialDelay: 1000,
+      maxDelay: 5000,
+      onRetry: (attempt, delay, error) => {
+        logError(`Retrying daily company status (attempt ${attempt}) after ${delay}ms`, error);
+      }
+    }, `daily_company_status_${dateStr}`);
+  },
+
+  // Enhanced error wrapper that provides better context
+  async executeWithFallback<T>(
+    primaryOperation: () => Promise<T>,
+    fallbackOperation: () => Promise<T>,
+    operationName: string
+  ): Promise<T> {
+    try {
+      console.log(`🔄 Executing ${operationName}...`)
+      return await primaryOperation()
+    } catch (error) {
+      console.warn(`⚠️ ${operationName} failed, trying fallback:`, error)
+      
+      try {
+        const result = await fallbackOperation()
+        console.log(`✅ ${operationName} succeeded using fallback`)
+        return result
+      } catch (fallbackError) {
+        console.error(`🚨 Both primary and fallback ${operationName} failed:`, {
+          primaryError: error,
+          fallbackError
+        })
+        throw new Error(`${operationName} failed: ${error instanceof Error ? error.message : String(error)}`)
+      }
     }
   },
 
@@ -3410,13 +3753,11 @@ The table creation script includes:
             name,
             hebrew,
             team_id,
-            is_critical,
             teams (name)
           )
         `)
         .eq('date', dateStr)
         .eq('value', 'X')
-        .eq('team_members.is_critical', true)
 
       if (error) throw error
 
@@ -3500,8 +3841,8 @@ The table creation script includes:
       let query = supabase
         .from('schedule_entries')
         .select(`
-          team_member_id,
-          hours,
+          member_id,
+          value,
           team_members (
             team_id,
             teams (
@@ -3539,7 +3880,26 @@ The table creation script includes:
         
         const capacity = teamCapacities.get(teamId)
         capacity.totalMembers += 1
-        capacity.availableHours += entry.hours || 7 // Default to full day
+        
+        // Convert value to hours using correct conversion logic
+        let hours = 7 // Default to full day
+        if (entry.value) {
+          switch (entry.value) {
+            case '1':
+              hours = 7
+              break
+            case '0.5':
+              hours = 3.5
+              break
+            case 'X':
+              hours = 0
+              break
+            default:
+              hours = 7
+          }
+        }
+        
+        capacity.availableHours += hours
         capacity.potentialHours += 7 // Full day potential
       })
 
@@ -3625,60 +3985,6 @@ The table creation script includes:
     }
   },
 
-  async getSprintHistory(): Promise<any[]> {
-    if (!isSupabaseConfigured()) {
-      return []
-    }
-
-    try {
-      // Get current sprint settings to generate history
-      const currentSprint = await this.getCurrentGlobalSprint()
-      if (!currentSprint) {
-        return []
-      }
-
-      const currentSprintNumber = currentSprint.current_sprint_number
-      const sprintLengthWeeks = currentSprint.sprint_length_weeks
-      const currentStartDate = new Date(currentSprint.sprint_start_date)
-
-      // Generate sprint history (±10 sprints from current)
-      const sprints = []
-      const sprintRange = 10
-
-      for (let i = -sprintRange; i <= sprintRange; i++) {
-        const sprintNum = currentSprintNumber + i
-        if (sprintNum <= 0) continue
-
-        const startDate = new Date(currentStartDate)
-        startDate.setDate(startDate.getDate() + (i * sprintLengthWeeks * 7))
-        
-        const endDate = new Date(startDate)
-        endDate.setDate(endDate.getDate() + (sprintLengthWeeks * 7) - 1)
-
-        const isCurrent = sprintNum === currentSprintNumber
-        const isPast = sprintNum < currentSprintNumber
-        const isFuture = sprintNum > currentSprintNumber
-
-        sprints.push({
-          sprint_number: sprintNum,
-          sprint_start_date: startDate.toISOString().split('T')[0],
-          sprint_end_date: endDate.toISOString().split('T')[0],
-          sprint_length_weeks: sprintLengthWeeks,
-          is_current: isCurrent,
-          is_past: isPast,
-          is_future: isFuture,
-          status: isCurrent ? 'current' : isPast ? 'completed' : 'planned'
-        })
-      }
-
-      // Sort by sprint number
-      sprints.sort((a, b) => a.sprint_number - b.sprint_number)
-      return sprints
-    } catch (error) {
-      console.error('Error fetching sprint history:', error)
-      return []
-    }
-  },
 
   async getSprintWithNavigation(sprintNumber?: number): Promise<any> {
     if (!isSupabaseConfigured()) {
@@ -3692,7 +3998,7 @@ The table creation script includes:
       }
 
       // Find target sprint (current if not specified)
-      const targetSprintNum = sprintNumber || sprints.find(s => s.is_current)?.sprint_number
+      const targetSprintNum = sprintNumber || sprints.find(s => s.status === 'active')?.sprint_number
       if (!targetSprintNum) {
         return null
       }
@@ -3785,7 +4091,7 @@ The table creation script includes:
         scheduleData
       })
       
-      console.log(`✅ Team dashboard data calculated successfully`)
+      operation('Team dashboard data calculated successfully')
       return teamMetrics
       
     } catch (error) {
@@ -3808,5 +4114,329 @@ The table creation script includes:
     }
     
     return weekDays
+  },
+
+  // ========================================================================
+  // ENHANCED SPRINT SYSTEM METHODS
+  // ========================================================================
+  
+  // Get current active enhanced sprint
+  async getCurrentEnhancedSprint(): Promise<any> {
+    if (!isSupabaseConfigured()) {
+      console.error('Supabase not configured for getCurrentEnhancedSprint')
+      return null
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('current_enhanced_sprint')
+        .select('*')
+        .single()
+      
+      if (error) {
+        console.error('Error fetching current enhanced sprint:', error)
+        return null
+      }
+      
+      return data
+    } catch (error) {
+      console.error('Error in getCurrentEnhancedSprint:', error)
+      return null
+    }
+  },
+  
+  // Get all enhanced sprint configurations
+  async getEnhancedSprintConfigs(): Promise<any[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('enhanced_sprint_configs')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      if (error) {
+        console.error('Error fetching enhanced sprint configs:', error)
+        return []
+      }
+      
+      return data || []
+    } catch (error) {
+      console.error('Error in getEnhancedSprintConfigs:', error)
+      return []
+    }
+  },
+  
+  // Create new enhanced sprint configuration
+  async createEnhancedSprintConfig(config: any): Promise<any> {
+    if (!isSupabaseConfigured()) {
+      console.error('Supabase not configured for createEnhancedSprintConfig')
+      return null
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('enhanced_sprint_configs')
+        .insert([config])
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('Error creating enhanced sprint config:', error)
+        return null
+      }
+      
+      return data
+    } catch (error) {
+      console.error('Error in createEnhancedSprintConfig:', error)
+      return null
+    }
+  },
+  
+  // Update enhanced sprint configuration
+  async updateEnhancedSprintConfig(id: string, updates: any): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('enhanced_sprint_configs')
+        .update(updates)
+        .eq('id', id)
+      
+      if (error) {
+        console.error('Error updating enhanced sprint config:', error)
+        return false
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Error in updateEnhancedSprintConfig:', error)
+      return false
+    }
+  },
+  
+  // Get team sprint analytics from view
+  async getTeamSprintAnalytics(): Promise<any[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('team_sprint_analytics')
+        .select('*')
+        .order('team_name')
+      
+      if (error) {
+        console.error('Error fetching team sprint analytics:', error)
+        return []
+      }
+      
+      return data || []
+    } catch (error) {
+      console.error('Error in getTeamSprintAnalytics:', error)
+      return []
+    }
+  },
+  
+  // Get sprint working days for a specific sprint
+  async getSprintWorkingDays(sprintId: string): Promise<any[]> {
+    if (!isSupabaseConfigured()) {
+      return []
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('sprint_working_days')
+        .select('*')
+        .eq('sprint_id', sprintId)
+        .order('work_date')
+      
+      if (error) {
+        console.error('Error fetching sprint working days:', error)
+        return []
+      }
+      
+      return data || []
+    } catch (error) {
+      console.error('Error in getSprintWorkingDays:', error)
+      return []
+    }
+  },
+  
+  // Calculate member sprint capacity using database function
+  async calculateMemberSprintCapacity(memberId: number, sprintId: string): Promise<any> {
+    if (!isSupabaseConfigured()) {
+      return null
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .rpc('calculate_member_sprint_capacity', {
+          member_id: memberId,
+          sprint_id: sprintId
+        })
+      
+      if (error) {
+        console.error('Error calculating member sprint capacity:', error)
+        return null
+      }
+      
+      return data?.[0] || null
+    } catch (error) {
+      console.error('Error in calculateMemberSprintCapacity:', error)
+      return null
+    }
+  },
+  
+  // Auto-generate weekend entries for a sprint
+  async autoGenerateWeekendEntries(sprintId: string): Promise<number> {
+    if (!isSupabaseConfigured()) {
+      return 0
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .rpc('auto_generate_weekend_entries', {
+          sprint_id: sprintId
+        })
+      
+      if (error) {
+        console.error('Error auto-generating weekend entries:', error)
+        return 0
+      }
+      
+      return data || 0
+    } catch (error) {
+      console.error('Error in autoGenerateWeekendEntries:', error)
+      return 0
+    }
+  },
+  
+  // Activate a specific sprint (sets is_active = true, deactivates others)
+  async activateEnhancedSprint(sprintId: string): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+    
+    try {
+      // First, deactivate all current sprints
+      await supabase
+        .from('enhanced_sprint_configs')
+        .update({ is_active: false })
+        .eq('is_active', true)
+      
+      // Then activate the specified sprint
+      const { error } = await supabase
+        .from('enhanced_sprint_configs')
+        .update({ is_active: true })
+        .eq('id', sprintId)
+      
+      if (error) {
+        console.error('Error activating enhanced sprint:', error)
+        return false
+      }
+      
+      // Auto-generate weekend entries for the newly activated sprint
+      await this.autoGenerateWeekendEntries(sprintId)
+      
+      return true
+    } catch (error) {
+      console.error('Error in activateEnhancedSprint:', error)
+      return false
+    }
+  },
+  
+  // Update schedule entry with sprint_id linkage
+  async updateScheduleEntryWithSprint(
+    memberId: number, 
+    date: string, 
+    value: string | null, 
+    reason?: string, 
+    sprintId?: string
+  ): Promise<boolean> {
+    if (!isSupabaseConfigured()) {
+      return false
+    }
+    
+    try {
+      const updateData: any = { value, reason }
+      
+      // If no sprint_id provided, try to link to current active sprint
+      if (!sprintId) {
+        const currentSprint = await this.getCurrentEnhancedSprint()
+        if (currentSprint) {
+          updateData.sprint_id = currentSprint.id
+        }
+      } else {
+        updateData.sprint_id = sprintId
+      }
+      
+      const { error } = await supabase
+        .from('schedule_entries')
+        .upsert({
+          member_id: memberId,
+          date,
+          ...updateData
+        }, {
+          onConflict: 'member_id,date'
+        })
+      
+      if (error) {
+        console.error('Error updating schedule entry with sprint:', error)
+        return false
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Error in updateScheduleEntryWithSprint:', error)
+      return false
+    }
+  },
+
+  /**
+   * Converts schedule entry value strings to numeric hours using database function
+   */
+  async convertValueToHours(valueStr: string): Promise<number> {
+    try {
+      const { data, error } = await supabase.rpc('value_to_hours', { 
+        value_str: valueStr 
+      });
+
+      if (error) {
+        // Fallback to client-side conversion if function is missing
+        if (error.message.includes('could not find function')) {
+          console.warn('⚠️ Database function value_to_hours not found, using client-side fallback');
+          return this.convertValueToHoursClient(valueStr);
+        }
+        throw new Error(error.message);
+      }
+
+      return data || 0;
+    } catch (error) {
+      console.error('Error converting value to hours:', error);
+      return this.convertValueToHoursClient(valueStr);
+    }
+  },
+
+  /**
+   * Client-side fallback for value to hours conversion
+   */
+  convertValueToHoursClient(valueStr: string): number {
+    switch (valueStr?.trim()) {
+      case '1':
+        return 1;
+      case '0.5':
+        return 0.5;
+      case 'X':
+      case '0':
+        return 0;
+      default:
+        return 0;
+    }
   }
 }

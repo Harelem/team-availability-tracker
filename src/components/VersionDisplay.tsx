@@ -26,7 +26,7 @@ export default function VersionDisplay() {
 
       {/* Version info modal */}
       {isVisible && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900">Version Info</h3>

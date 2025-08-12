@@ -116,7 +116,7 @@ export function appStateReducer(state: AppState, action: AppAction): AppState {
       case 'ADD_NOTIFICATION':
         const newNotification = {
           ...action.payload,
-          id: action.payload.id || `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           timestamp: new Date()
         };
         return {

@@ -21,7 +21,7 @@
     "test:data-integrity": "jest __tests__/integrity --coverage --verbose",
     "test:data-integrity-full": "ts-node __tests__/runDataIntegrityTests.ts",
     "test:persistence": "jest __tests__/integrity/dataPersistence.test.ts --verbose",
-    "test:validation": "jest __tests__/integrity/fieldValidation.test.ts --verbose", 
+    "test:validation": "jest __tests__/integrity/fieldValidation.test.ts --verbose",
     "test:calculations": "jest __tests__/integrity/calculationVerification.test.ts --verbose",
     "test:edge-cases": "jest __tests__/integrity/edgeCaseTesting.test.ts --verbose",
     "verify:data-integrity": "node __tests__/standalone-integrity-test.js",
@@ -52,7 +52,12 @@
     "semgrep:react": "uvx semgrep --config=p/react --config=p/nextjs .",
     "semgrep:custom": "uvx semgrep --config=semgrep/custom-rules/ .",
     "semgrep:ci": "uvx semgrep --config=p/security-audit --config=p/owasp-top-ten --config=p/cwe-top-25 --config=semgrep/custom-rules/ --error --quiet --output=semgrep/reports/semgrep-results.json --json .",
-    "audit:security-enhanced": "npm run audit:security && npm run semgrep:security"
+    "audit:security-enhanced": "npm run audit:security && npm run semgrep:security",
+    "db:health": "node scripts/startup-validation.js health",
+    "db:validate": "node scripts/validate-database-fix.js",
+    "db:verify": "node scripts/verify-database-functions.js",
+    "startup:validate": "node scripts/startup-validation.js startup",
+    "ci:validate": "node scripts/startup-validation.js ci"
   },
   "dependencies": {
     "@axe-core/react": "^4.10.2",
@@ -68,6 +73,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.1.0",
+    "tailwind-merge": "^3.3.1",
     "web-push": "^3.6.7",
     "workbox-webpack-plugin": "^7.3.0",
     "xlsx": "^0.18.5"
@@ -82,6 +88,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",

@@ -25,6 +25,7 @@ class DataConsistencyManager {
   private pendingRequests = new Map<string, PendingRequest<any>>();
   private readonly DEFAULT_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (EMERGENCY EGRESS REDUCTION)
   private readonly STATIC_DATA_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours for teams/members (AGGRESSIVE CACHING)
+  private readonly DYNAMIC_DATA_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for frequently changing data
   private readonly REQUEST_TIMEOUT = 5 * 1000; // 5 seconds (FAST FAIL FOR PERFORMANCE)
   private readonly EGRESS_REDUCTION_MODE = true; // Enable aggressive caching
 
@@ -38,6 +39,31 @@ class DataConsistencyManager {
            cacheKey.includes('operational_teams') ||
            cacheKey.includes('coo_dashboard_data') ||
            cacheKey.includes('company_hours_status');
+  }
+
+  /**
+   * Check if this is dynamic data that changes frequently
+   */
+  private isDynamicData(cacheKey: string): boolean {
+    return cacheKey.includes('schedule_entries') ||
+           cacheKey.includes('availability') ||
+           cacheKey.includes('team_dashboard') ||
+           cacheKey.includes('daily_status');
+  }
+
+  /**
+   * Get optimal cache duration based on data type
+   */
+  private getOptimalCacheDuration(cacheKey: string, providedDuration?: number): number {
+    if (providedDuration) return providedDuration;
+    
+    if (this.isStaticData(cacheKey)) {
+      return this.STATIC_DATA_CACHE_DURATION;
+    } else if (this.isDynamicData(cacheKey)) {
+      return this.DYNAMIC_DATA_CACHE_DURATION;
+    } else {
+      return this.DEFAULT_CACHE_DURATION;
+    }
   }
 
   /**
@@ -91,9 +117,8 @@ class DataConsistencyManager {
       requestId?: string;
     } = {}
   ): Promise<T> {
-    // Use extended cache duration for static data (EGRESS REDUCTION)
-    const isStatic = this.isStaticData(cacheKey);
-    const effectiveCacheDuration = isStatic ? this.STATIC_DATA_CACHE_DURATION : options.cacheDuration || this.DEFAULT_CACHE_DURATION;
+    // Use optimal cache duration based on data type (INTELLIGENT CACHING)
+    const effectiveCacheDuration = this.getOptimalCacheDuration(cacheKey, options.cacheDuration);
     
     const {
       forceRefresh = false,
@@ -101,7 +126,8 @@ class DataConsistencyManager {
     } = options;
 
     // EGRESS REDUCTION: Check localStorage first for static data
-    if (!forceRefresh && isStatic && this.EGRESS_REDUCTION_MODE) {
+    const isStaticDataType = this.isStaticData(cacheKey);
+    if (!forceRefresh && isStaticDataType && this.EGRESS_REDUCTION_MODE) {
       const localStorageData = this.getFromLocalStorage<T>(cacheKey);
       if (localStorageData !== null) {
         console.log(`🔥 EGRESS REDUCTION: LocalStorage HIT for key: ${cacheKey}`);

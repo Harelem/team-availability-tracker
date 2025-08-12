@@ -264,6 +264,7 @@ export const USER_ERROR_MESSAGES = {
   [ERROR_CODES.DB_CONNECTION_FAILED]: 'Unable to connect to the database. Please try again later.',
   [ERROR_CODES.DB_QUERY_FAILED]: 'Failed to retrieve data. Please refresh and try again.',
   [ERROR_CODES.DB_TIMEOUT]: 'The operation is taking too long. Please try again.',
+  [ERROR_CODES.DB_CONSTRAINT_VIOLATION]: 'The operation violates data constraints. Please check your input and try again.',
   
   [ERROR_CODES.INVALID_INPUT]: 'Please check your input and try again.',
   [ERROR_CODES.REQUIRED_FIELD_MISSING]: 'Please fill in all required fields.',

@@ -6,7 +6,7 @@
  */
 
 import * as XLSX from 'xlsx';
-import { COODashboardData, CompanyAnalytics, Alert } from '@/types';
+import { COODashboardData } from '@/types';
 
 export interface ExportData {
   [sheetName: string]: any[];
@@ -28,7 +28,7 @@ export const exportToExcel = async (
       const worksheet = XLSX.utils.json_to_sheet(sheetData);
       
       // Auto-size columns
-      const colWidths = [];
+      const colWidths: { wch: number }[] = [];
       if (sheetData.length > 0) {
         const headers = Object.keys(sheetData[0]);
         headers.forEach((header, index) => {
@@ -74,8 +74,8 @@ export const exportToExcel = async (
  */
 export const exportAnalyticsToExcel = async (
   dashboardData: COODashboardData,
-  companyAnalytics?: CompanyAnalytics | null,
-  alerts?: Alert[] | null,
+  companyAnalytics?: any | null,
+  alerts?: any[] | null,
   generatedBy: string = 'COO Dashboard'
 ): Promise<void> => {
   try {
@@ -172,7 +172,7 @@ export const exportAnalyticsToExcel = async (
       
       // Team Comparisons
       if (companyAnalytics.performance.teamComparisons?.length > 0) {
-        exportData['Team Performance'] = companyAnalytics.performance.teamComparisons.map(team => ({
+        exportData['Team Performance'] = companyAnalytics.performance.teamComparisons.map((team: any) => ({
           'Team ID': team.teamId,
           'Team Name': team.teamName,
           'Baseline Performance': team.baselinePerformance,

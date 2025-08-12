@@ -28,10 +28,10 @@ export function createLazyComponent<T extends ComponentType<any>>(
   importFn: () => Promise<{ default: T }>,
   options: LazyLoadingOptions = {}
 ): LazyExoticComponent<T> {
-  const { retry = 3, timeout = 10000 } = options;
+  const { retry = 3, timeout = 30000 } = options; // Extended timeout for COO dashboard compatibility
 
   const enhancedImportFn = async (): Promise<{ default: T }> => {
-    let lastError: Error;
+    let lastError: Error = new Error('Unknown error');
     
     for (let attempt = 1; attempt <= retry; attempt++) {
       try {
@@ -115,8 +115,8 @@ export const LazyComponents = {
   ),
 
   // Mobile-specific components
-  MobileNavigation: createLazyComponent(
-    () => import('@/components/mobile/MobileNavigation'),
+  MobileTeamNavigation: createLazyComponent(
+    () => import('@/components/mobile/MobileTeamNavigation'),
     { preload: true } // Critical for mobile
   ),
   
@@ -137,20 +137,14 @@ export const LazyComponents = {
   ),
 
   // Chart components (heavy dependencies)
-  SprintCapacityBarChart: createLazyComponent(
-    () => import('@/components/charts/SprintCapacityBarChart'),
-    { preload: false }
-  ),
+  // SprintCapacityBarChart: Chart components use named exports
+  // TODO: Implement lazy loading for chart components with named exports
   
-  TeamUtilizationPieChart: createLazyComponent(
-    () => import('@/components/charts/TeamUtilizationPieChart'),
-    { preload: false }
-  ),
+  // TeamUtilizationPieChart: Chart components use named exports
+  // TODO: Implement lazy loading for chart components with named exports
   
-  CapacityTrendAreaChart: createLazyComponent(
-    () => import('@/components/charts/CapacityTrendAreaChart'),
-    { preload: false }
-  ),
+  // CapacityTrendAreaChart: Chart components use named exports
+  // TODO: Implement lazy loading for chart components with named exports
 
   // Modal components
   TeamDetailModal: createLazyComponent(
@@ -262,12 +256,12 @@ export class IntelligentPreloader {
   // Preload based on device type
   preloadForDevice(isMobile: boolean): void {
     if (isMobile) {
-      this.preloadOnHover('MobileNavigation');
+      this.preloadOnHover('MobileTeamNavigation');
       this.preloadOnHover('MobileScheduleView');
     } else {
       // Desktop users might need charts more often
-      this.preloadOnIntersection('SprintCapacityBarChart');
-      this.preloadOnIntersection('TeamUtilizationPieChart');
+      // this.preloadOnIntersection('SprintCapacityBarChart'); // TODO: Chart components use named exports
+      // this.preloadOnIntersection('TeamUtilizationPieChart'); // TODO: Chart components use named exports
     }
   }
 

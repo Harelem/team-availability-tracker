@@ -9,15 +9,36 @@ export const supabase = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_
       realtime: {
         params: {
           eventsPerSecond: 10
-        }
+        },
+        // Enhanced WebSocket connection settings
+        heartbeatIntervalMs: 30000, // 30 seconds
+        reconnectAfterMs: function(tries: number) {
+          // Exponential backoff with jitter
+          const backoff = Math.min(1000 * Math.pow(2, tries), 30000);
+          const jitter = Math.random() * 1000;
+          return backoff + jitter;
+        },
+        // Connection timeout settings
+        timeout: 10000, // 10 seconds connection timeout
+        // Logger for debugging connection issues
+        logger: process.env.NODE_ENV === 'development' ? console.log : undefined
       },
-      // Reduce default timeout from 15 seconds to 3 seconds with progressive loading
+      // Increased timeout from 3 seconds to 20 seconds for COO dashboard compatibility
       global: {
+        headers: {
+          // Reduce referrer policy warnings
+          'Referrer-Policy': 'same-origin',
+          // Cache control for better performance
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
         fetch: (url: RequestInfo | URL, init?: RequestInit) => {
           return fetch(url, {
             ...init,
-            // Set aggressive timeout to prevent long waits
-            signal: AbortSignal.timeout(3000) // 3 seconds instead of default 15
+            // Extended timeout to support COO dashboard complex queries
+            signal: AbortSignal.timeout(20000), // 20 seconds for complex COO queries
+            // Enhanced credentials handling to reduce cookie domain issues
+            credentials: 'same-origin',
+            mode: 'cors'
           });
         }
       },
@@ -25,11 +46,13 @@ export const supabase = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_
       db: {
         schema: 'public'
       },
-      // Optimize auth settings
+      // Optimize auth settings to reduce cookie issues
       auth: {
         persistSession: true,
         detectSessionInUrl: false,
-        autoRefreshToken: true
+        autoRefreshToken: true,
+        // Use secure storage settings
+        storageKey: 'sb-auth-token'
       }
     })
   : createClient('https://placeholder.supabase.co', 'placeholder-key')
@@ -195,6 +218,45 @@ export interface Database {
           updated_by?: string
         }
       }
+      enhanced_sprint_configs: {
+        Row: {
+          id: string
+          sprint_number: number
+          start_date: string
+          end_date: string
+          length_weeks: number
+          working_days_count: number
+          is_active: boolean
+          created_by: string
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          sprint_number: number
+          start_date: string
+          end_date: string
+          length_weeks: number
+          is_active?: boolean
+          created_by?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          sprint_number?: number
+          start_date?: string
+          end_date?: string
+          length_weeks?: number
+          is_active?: boolean
+          created_by?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       schedule_entries_with_hours: {
@@ -207,6 +269,44 @@ export interface Database {
           reason: string | null
           created_at: string
           updated_at: string
+        }
+      }
+      current_enhanced_sprint: {
+        Row: {
+          id: string
+          sprint_number: number
+          start_date: string
+          end_date: string
+          length_weeks: number
+          working_days_count: number
+          is_active: boolean
+          notes: string | null
+          days_elapsed: number
+          days_remaining: number
+          total_days: number
+          progress_percentage: number
+          working_days_remaining: number
+          is_current: boolean
+          created_at: string
+          updated_at: string
+          created_by: string
+        }
+      }
+      current_global_sprint: {
+        Row: {
+          id: number
+          current_sprint_number: number
+          sprint_length_weeks: number
+          sprint_start_date: string
+          sprint_end_date: string
+          progress_percentage: number
+          days_remaining: number
+          working_days_remaining: number
+          is_active: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+          updated_by: string
         }
       }
     }

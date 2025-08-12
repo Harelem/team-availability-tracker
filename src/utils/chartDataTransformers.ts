@@ -112,7 +112,7 @@ export function transformUtilizationDistributionData(
     return acc;
   }, {} as Record<string, number>);
 
-  const data: UtilizationDistributionData[] = [
+  const data = [
     {
       status: 'optimal',
       count: statusCounts.optimal || 0,
@@ -137,7 +137,7 @@ export function transformUtilizationDistributionData(
   ].filter(item => item.count > 0); // Only include statuses with teams
 
   return {
-    data,
+    data: data as UtilizationDistributionData[],
     metadata: {
       totalRecords: data.length,
       dateRange: {

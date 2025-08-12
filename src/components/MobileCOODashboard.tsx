@@ -57,7 +57,7 @@ export default function MobileCOODashboard({
             <p className="text-sm text-gray-500 mb-4">{error}</p>
             <button
               onClick={onRefresh}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors min-h-[44px] touch-manipulation active:bg-blue-800"
             >
               Try Again
             </button>
@@ -76,7 +76,7 @@ export default function MobileCOODashboard({
           {onBack && (
             <button
               onClick={onBack}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 touch-manipulation"
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 touch-manipulation min-h-[44px] active:bg-gray-100 px-2 py-2 rounded"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="text-sm">Back to Selection</span>
@@ -91,7 +91,7 @@ export default function MobileCOODashboard({
             </div>
             <button
               onClick={onRefresh}
-              className="p-2 text-gray-500 hover:text-gray-700 touch-manipulation"
+              className="p-2 text-gray-500 hover:text-gray-700 touch-manipulation min-h-[44px] min-w-[44px] active:bg-gray-100 rounded"
             >
               <Activity className="w-4 h-4" />
             </button>
@@ -141,7 +141,7 @@ export default function MobileCOODashboard({
             {dashboardData.teamComparison.map((team) => (
               <div 
                 key={team.teamId} 
-                className="bg-white p-4 rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                className="bg-white p-4 rounded-lg shadow-sm cursor-pointer hover:bg-gray-50 transition-colors min-h-[44px] touch-manipulation active:bg-gray-100"
                 onClick={() => onTeamNavigate && onTeamNavigate({ id: team.teamId, name: team.teamName })}
               >
                 <div className="flex items-center justify-between mb-2">

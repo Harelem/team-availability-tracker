@@ -184,7 +184,7 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
 
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center sm:p-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center sm:p-4">
       <div
         ref={modalRef}
         role="dialog"
@@ -217,7 +217,7 @@ export default function TeamDetailModal({ teamId, isOpen, onClose }: TeamDetailM
                   <p className="text-red-600 text-sm mt-1">{error}</p>
                   <button
                     onClick={refetch}
-                    className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                    className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm min-h-[44px] touch-manipulation active:bg-red-800"
                   >
                     Try Again
                   </button>

@@ -40,20 +40,22 @@ export default function SimplifiedMetricsCards({
       className
     )}>
       {/* 1. Total Workforce - Shows daily status with click functionality */}
-      <COOMetricCard
-        title="Total Workforce"
-        value={`${dashboardData.companyOverview.totalMembers}`}
-        trend={`${dashboardData.companyOverview.totalTeams} teams`}
-        icon={Users}
-        variant="primary"
-        status="good"
-        interactive
+      <div
         onClick={handleTotalWorkforceClick}
         className="ui-card cursor-pointer focus-ring touch-target-large"
         aria-label={`Total workforce: ${dashboardData.companyOverview.totalMembers} members across ${dashboardData.companyOverview.totalTeams} teams. Click for daily status details.`}
         role="button"
         tabIndex={0}
-      />
+      >
+        <COOMetricCard
+          title="Total Workforce"
+          value={`${dashboardData.companyOverview.totalMembers}`}
+          trend={`${dashboardData.companyOverview.totalTeams} teams`}
+          icon={Users}
+          variant="primary"
+          status="good"
+        />
+      </div>
 
       {/* 2. Max Capacity - Keep existing functionality unchanged */}
       <COOMetricCard

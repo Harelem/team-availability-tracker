@@ -14,8 +14,13 @@ interface PersonalScheduleTableProps {
   editable?: boolean;
 }
 
-const workOptions: WorkOption[] = [
+const allWorkOptions: WorkOption[] = [
   { value: '1', label: '1', hours: 7, description: 'Full day (7 hours)', color: 'bg-green-100 text-green-800 border-green-300' },
+  { value: '0.5', label: '0.5', hours: 3.5, description: 'Half day (3.5 hours)', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
+  { value: 'X', label: 'X', hours: 0, description: 'Sick/OoO (0 hours)', color: 'bg-red-100 text-red-800 border-red-300' }
+];
+
+const managerWorkOptions: WorkOption[] = [
   { value: '0.5', label: '0.5', hours: 3.5, description: 'Half day (3.5 hours)', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
   { value: 'X', label: 'X', hours: 0, description: 'Sick/OoO (0 hours)', color: 'bg-red-100 text-red-800 border-red-300' }
 ];
@@ -30,6 +35,11 @@ export default function PersonalScheduleTable({
 }: PersonalScheduleTableProps) {
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
   const [reasonDialogData, setReasonDialogData] = useState<{memberId: number; date: Date; value: '0.5' | 'X'} | null>(null);
+  
+  // Determine work options based on user role
+  const workOptions = (user.isManager || user.is_manager || user.role === 'manager') 
+    ? managerWorkOptions 
+    : allWorkOptions;
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 

@@ -221,32 +221,39 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
       // Base overlay styles
       'fixed inset-0 z-50 flex items-center justify-center',
       'bg-black bg-opacity-50 backdrop-blur-sm',
-      'p-4 overflow-auto',
+      'p-2 sm:p-4 overflow-auto',
       
       // Animation
       'animate-in fade-in duration-200',
+      
+      // Mobile optimizations
+      'touch-manipulation overscroll-contain',
       
       overlayClassName
     );
 
     const sizeClasses = {
-      xs: 'max-w-xs',
-      sm: 'max-w-sm',
-      md: 'max-w-md',
-      lg: 'max-w-lg',
-      xl: 'max-w-xl',
-      '2xl': 'max-w-2xl',
-      '3xl': 'max-w-3xl',
-      '4xl': 'max-w-4xl',
-      '5xl': 'max-w-5xl',
-      '6xl': 'max-w-6xl',
-      full: 'max-w-full w-full h-full rounded-none'
+      xs: 'max-w-xs mx-2 sm:mx-0',
+      sm: 'max-w-sm mx-2 sm:mx-0',
+      md: 'max-w-md mx-2 sm:mx-0',
+      lg: 'max-w-lg mx-2 sm:mx-0',
+      xl: 'max-w-xl mx-2 sm:mx-0',
+      '2xl': 'max-w-2xl mx-2 sm:mx-0',
+      '3xl': 'max-w-3xl mx-2 sm:mx-0',
+      '4xl': 'max-w-4xl mx-2 sm:mx-0',
+      '5xl': 'max-w-5xl mx-2 sm:mx-0',
+      '6xl': 'max-w-6xl mx-2 sm:mx-0',
+      full: 'max-w-full w-full h-full mx-0 rounded-none sm:rounded-lg'
     };
 
     const contentClasses = cx(
       // Base content styles
-      'relative w-full bg-white rounded-lg shadow-xl',
-      'max-h-[90vh] overflow-hidden flex flex-col',
+      'relative w-full bg-white rounded-lg sm:rounded-xl shadow-xl',
+      'max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col',
+      
+      // Mobile optimizations
+      'touch-manipulation',
+      'min-h-0', // Ensure flex shrinking works properly
       
       // Animation
       'animate-in zoom-in-95 duration-200',
@@ -282,17 +289,17 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
           aria-describedby={description ? 'modal-description' : undefined}
           data-testid={testId}
         >
-          {/* Close button */}
+          {/* Close button - Mobile optimized */}
           {!hideCloseButton && (
-            <div className="absolute top-4 right-4 z-10">
-              <IconButton
-                icon={<X size={16} />}
-                variant="ghost"
-                size="sm"
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
+              <button
                 onClick={onClose}
                 aria-label="Close modal"
-                testId={testId ? `${testId}-close` : undefined}
-              />
+                data-testid={testId ? `${testId}-close` : undefined}
+                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-colors min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
+              >
+                <X size={20} className="text-gray-600" />
+              </button>
             </div>
           )}
 
@@ -318,8 +325,8 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
             </ModalHeader>
           )}
 
-          {/* Content */}
-          <div className="flex-1 overflow-auto">
+          {/* Content - Mobile optimized scrolling */}
+          <div className="flex-1 overflow-auto overscroll-contain">
             {children}
           </div>
         </div>
@@ -347,7 +354,7 @@ export const ModalHeader: React.FC<ModalHeaderProps> = ({
   className 
 }) => {
   return (
-    <div className={cx('px-6 py-4 border-b border-gray-200', className)}>
+    <div className={cx('px-4 sm:px-6 py-4 border-b border-gray-200', className)}>
       {children}
     </div>
   );
@@ -358,7 +365,7 @@ export const ModalBody: React.FC<ModalBodyProps> = ({
   className 
 }) => {
   return (
-    <div className={cx('px-6 py-4', className)}>
+    <div className={cx('px-4 sm:px-6 py-4', className)}>
       {children}
     </div>
   );
@@ -370,8 +377,8 @@ export const ModalFooter: React.FC<ModalFooterProps> = ({
 }) => {
   return (
     <div className={cx(
-      'px-6 py-4 border-t border-gray-200',
-      'flex items-center justify-end space-x-3',
+      'px-4 sm:px-6 py-4 border-t border-gray-200',
+      'flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-3',
       className
     )}>
       {children}
@@ -423,7 +430,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <button
           onClick={onClose}
           disabled={loading}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          className="px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 min-h-[44px] touch-manipulation order-2 sm:order-1"
         >
           {cancelText}
         </button>
@@ -431,9 +438,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           onClick={onConfirm}
           disabled={loading}
           className={cx(
-            'px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50',
-            variant === 'default' ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : '',
-            variant === 'danger' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : ''
+            'px-4 py-3 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 min-h-[44px] touch-manipulation order-1 sm:order-2',
+            variant === 'default' ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 active:bg-blue-800' : '',
+            variant === 'danger' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500 active:bg-red-800' : ''
           )}
         >
           {loading ? 'Loading...' : confirmText}
