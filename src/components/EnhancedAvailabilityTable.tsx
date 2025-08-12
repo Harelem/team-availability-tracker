@@ -22,8 +22,6 @@ interface EnhancedAvailabilityTableProps {
   formatDate: (date: Date) => string;
 }
 
-const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']; // Sprint working days (Israeli work week)
-
 export default function EnhancedAvailabilityTable({
   currentUser,
   teamMembers,
@@ -41,12 +39,18 @@ export default function EnhancedAvailabilityTable({
   formatDate
 }: EnhancedAvailabilityTableProps) {
 
-  // CRITICAL: Add debug logging for array mismatch investigation
+  // Generate day names dynamically from sprintDays to fix array mismatch
+  const dayNames = (sprintDays || []).map(date => 
+    date.toLocaleDateString('en-US', { weekday: 'long' })
+  );
+
+  // Add debug logging for sprint days information
   console.log('EnhancedAvailabilityTable Debug:', {
     sprintDaysLength: sprintDays?.length || 0,
     dayNamesLength: dayNames?.length || 0,
     sprintDaysFirst: sprintDays?.[0],
-    sprintDaysLast: sprintDays?.[sprintDays.length - 1]
+    sprintDaysLast: sprintDays?.[sprintDays.length - 1],
+    generatedDayNames: dayNames
   });
 
   // Defensive checks for required props
@@ -75,9 +79,15 @@ export default function EnhancedAvailabilityTable({
     );
   }
 
-  // CRITICAL: Warn about array length mismatch
+  // Arrays should now always match since dayNames is generated from sprintDays
+  // Validation: Ensure both arrays have the same length (they should always match now)
   if (sprintDays.length !== dayNames.length) {
-    console.warn(`EnhancedAvailabilityTable: Array length mismatch! sprintDays: ${sprintDays.length}, dayNames: ${dayNames.length}`);
+    console.error('EnhancedAvailabilityTable: Unexpected array length mismatch after dynamic generation');
+    return (
+      <div className="p-4 bg-red-100 border border-red-400 rounded-lg">
+        <p className="text-red-800">Error: Sprint days and day names arrays don't match</p>
+      </div>
+    );
   }
 
   // Calculate daily totals for footer - ENHANCED DEFENSIVE PROGRAMMING
