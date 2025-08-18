@@ -66,8 +66,8 @@ export default function ExportDropdown({
       }
       
       // Fetch data for the specific week
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
+      const startDateStr = startDate.toISOString().split('T')[0] || '' || '';
+      const endDateStr = endDate.toISOString().split('T')[0] || '' || '';
       const weekData = await DatabaseService.getScheduleEntries(startDateStr, endDateStr, selectedTeam.id);
       
       // Handle case where no data is returned
@@ -127,8 +127,8 @@ export default function ExportDropdown({
       const sprintEndDate = new Date(currentSprint.sprint_end_date);
       
       // Fetch data for the sprint period
-      const startDateStr = sprintStartDate.toISOString().split('T')[0];
-      const endDateStr = sprintEndDate.toISOString().split('T')[0];
+      const startDateStr = sprintStartDate.toISOString().split('T')[0] || '';
+      const endDateStr = sprintEndDate.toISOString().split('T')[0] || '';
       const sprintData = await DatabaseService.getScheduleEntries(startDateStr, endDateStr, selectedTeam.id);
       
       // Get all days in sprint period
@@ -180,7 +180,7 @@ export default function ExportDropdown({
     const exportData = {
       teamName: selectedTeam.name,
       exportType: 'Current Sprint',
-      dateRange: formatDateRange(currentSprintDays[0], currentSprintDays[currentSprintDays.length - 1]),
+      dateRange: currentSprintDays.length > 0 ? formatDateRange(currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!) : '',
       generatedBy: currentUser.name,
       generatedAt: new Date(),
       members: teamMembers,
@@ -189,7 +189,7 @@ export default function ExportDropdown({
     };
     
     const csvContent = generateWeekCSV(exportData);
-    const filename = generateExportFilename('week', selectedTeam.name, currentSprintDays[0], currentSprintDays[currentSprintDays.length - 1], 'excel');
+    const filename = generateExportFilename('week', selectedTeam.name, currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!, 'excel');
     downloadFile(csvContent, filename, 'excel');
     setIsOpen(false);
   };
@@ -237,7 +237,7 @@ export default function ExportDropdown({
               <div>
                 <div className="font-medium text-gray-900">Export Current Sprint</div>
                 <div className="text-xs text-gray-500">
-                  {formatDateRange(currentSprintDays[0], currentSprintDays[currentSprintDays.length - 1])}
+                  {currentSprintDays.length > 0 ? formatDateRange(currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!) : 'No dates available'}
                 </div>
               </div>
             </button>

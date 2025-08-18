@@ -85,8 +85,8 @@ export default function ManagerDashboard({
     if (!currentSprint) return [];
     
     const dates = [];
-    const start = new Date((currentSprint as any).start_date || Date.now());
-    const end = new Date((currentSprint as any).end_date || Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const start = new Date(currentSprint.sprint_start_date || Date.now());
+    const end = new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000);
     
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dayOfWeek = d.getDay();
@@ -157,7 +157,7 @@ export default function ManagerDashboard({
             <h3 className="font-medium text-purple-900 mb-2">Managing Sprint</h3>
             <p className="text-purple-700 text-sm mb-1">{(currentSprint as any)?.name || 'Current Sprint'}</p>
             <p className="text-purple-600 text-xs">
-              {new Date((currentSprint as any)?.start_date || Date.now()).toLocaleDateString()} - {new Date((currentSprint as any)?.end_date || Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+              {new Date(currentSprint.sprint_start_date || Date.now()).toLocaleDateString()} - {new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}
               <span className="ml-2">({teamStats.totalMembers} team members)</span>
             </p>
           </div>

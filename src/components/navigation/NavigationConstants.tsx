@@ -274,7 +274,7 @@ export const getNavigationItemsForUser = (user: NavigationUser) => {
   if (user.isCOO) {
     // Insert COO dashboard before analytics
     const analyticsIndex = primaryItems.findIndex(item => item.id === 'analytics');
-    if (analyticsIndex !== -1) {
+    if (analyticsIndex !== -1 && COO_NAVIGATION[0]) {
       primaryItems.splice(analyticsIndex, 0, COO_NAVIGATION[0]); // Executive dashboard
     }
   }

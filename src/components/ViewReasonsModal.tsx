@@ -32,6 +32,7 @@ export default function ViewReasonsModal({
       const memberData = scheduleData[member.id] || {};
       weekDays.forEach(date => {
         const dateKey = date.toISOString().split('T')[0];
+        if (!dateKey) return;
         const entry = memberData[dateKey];
         if (entry && (entry.value === '0.5' || entry.value === 'X') && entry.reason) {
           entries.push({

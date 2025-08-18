@@ -52,8 +52,8 @@ export default function SimplifiedSprintSettings({
         twoWeeksLater.setDate(today.getDate() + 14);
         
         setFormData({
-          startDate: today.toISOString().split('T')[0],
-          endDate: twoWeeksLater.toISOString().split('T')[0]
+          startDate: today.toISOString().split('T')[0] || '',
+          endDate: twoWeeksLater.toISOString().split('T')[0] || ''
         });
       }
     } catch (err) {

@@ -222,7 +222,7 @@ export const cooDashboardCircuitBreaker = new CircuitBreaker('COODashboard', {
   failureThreshold: 5,
   recoveryTimeout: 60000,        // 1 minute recovery time
   successThreshold: 1,
-  timeout: 45000                 // 45 seconds for COO dashboard
+  timeout: 90000                 // 90 seconds for COO dashboard (increased from 45s)
 });
 
 export const schemaValidationCircuitBreaker = new CircuitBreaker('SchemaValidation', {

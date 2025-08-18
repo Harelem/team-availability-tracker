@@ -30,7 +30,7 @@ export default function MobilePerformanceMonitor({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    let startTime = performance.now();
+    const startTime = performance.now();
     
     const measurePerformance = () => {
       const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;

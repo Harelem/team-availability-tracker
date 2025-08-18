@@ -15,6 +15,7 @@ import { useAppStateReducer } from '@/lib/appState';
 declare global {
   interface Window {
     __APP_STATE__?: boolean;
+    __APP_STATE_PROVIDER_INITIALIZED__?: boolean;
   }
 }
 
@@ -31,7 +32,22 @@ export function AppStateProvider({
   initialState,
   enableDevTools = process.env.NODE_ENV === 'development'
 }: AppStateProviderProps) {
-  console.log('🔄 AppStateProvider initializing...');
+  // Prevent multiple initialization logging in development
+  const initializationRef = React.useRef(false);
+  
+  if (!initializationRef.current) {
+    console.log('🔄 AppStateProvider initializing...');
+    initializationRef.current = true;
+    
+    // Global initialization guard
+    if (typeof window !== 'undefined') {
+      if (window.__APP_STATE_PROVIDER_INITIALIZED__) {
+        console.warn('⚠️ Multiple AppStateProvider instances detected');
+      } else {
+        window.__APP_STATE_PROVIDER_INITIALIZED__ = true;
+      }
+    }
+  }
   
   const {
     state,
@@ -46,7 +62,16 @@ export function AppStateProvider({
   
   React.useEffect(() => {
     setIsProviderReady(true);
-    console.log('✅ AppStateProvider fully initialized');
+    if (!initializationRef.current || !window.__APP_STATE_PROVIDER_INITIALIZED__) {
+      console.log('✅ AppStateProvider fully initialized');
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.__APP_STATE_PROVIDER_INITIALIZED__ = false;
+      }
+    };
   }, []);
 
   // Initialize app state on mount

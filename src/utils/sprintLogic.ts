@@ -120,7 +120,7 @@ export class SprintLogic {
    */
   static calculateSprintEndDate(startDate: Date, lengthWeeks: number): Date {
     const workingDaysNeeded = lengthWeeks * 5; // 5 working days per week
-    let current = new Date(startDate);
+    const current = new Date(startDate);
     let workingDaysAdded = 0;
     
     while (workingDaysAdded < workingDaysNeeded) {

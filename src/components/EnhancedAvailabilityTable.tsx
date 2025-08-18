@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+import { detectCurrentSprintForDate } from '@/utils/smartSprintDetection';
 import { Clock, MessageSquare } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
 import EnhancedDayCell from './EnhancedDayCell';
@@ -39,22 +41,123 @@ export default function EnhancedAvailabilityTable({
   formatDate
 }: EnhancedAvailabilityTableProps) {
 
-  // Generate day names dynamically from sprintDays to fix array mismatch
-  const dayNames = (sprintDays || []).map(date => 
-    date.toLocaleDateString('en-US', { weekday: 'long' })
-  );
+  // Helper function for comprehensive date validation
+  const validateSprintDate = (date: any): date is Date => {
+    return date && 
+           typeof date === 'object' && 
+           date instanceof Date &&
+           typeof date.toLocaleDateString === 'function' &&
+           typeof date.toISOString === 'function' &&
+           !isNaN(date.getTime()) &&
+           date.getFullYear() >= 2020 && // Reasonable date range
+           date.getFullYear() <= 2030;
+  };
 
-  // Add debug logging for sprint days information
-  console.log('EnhancedAvailabilityTable Debug:', {
-    sprintDaysLength: sprintDays?.length || 0,
-    dayNamesLength: dayNames?.length || 0,
-    sprintDaysFirst: sprintDays?.[0],
-    sprintDaysLast: sprintDays?.[sprintDays.length - 1],
-    generatedDayNames: dayNames
-  });
+  // Generate calculated sprint fallback when no valid data is available
+  const generateCalculatedSprintFallback = () => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
+    
+    // Generate 10 working days (2-week sprint)
+    const calculatedDays: Date[] = [];
+    const currentDate = new Date(startOfWeek);
+    let workingDaysAdded = 0;
+    
+    while (workingDaysAdded < 10) { // 2 weeks * 5 working days
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek >= 0 && dayOfWeek <= 4) { // Sunday to Thursday
+        calculatedDays.push(new Date(currentDate));
+        workingDaysAdded++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return {
+      validatedSprintDays: calculatedDays,
+      dayNames: calculatedDays.map(date => 
+        date.toLocaleDateString('en-US', { weekday: 'long' })
+      )
+    };
+  };
 
-  // Defensive checks for required props
-  if (!currentUser || !Array.isArray(teamMembers) || !scheduleData || !Array.isArray(workOptions) || !Array.isArray(sprintDays)) {
+  // Enhanced date validation with smart fallback generation
+  const { validatedSprintDays, dayNames } = useMemo(() => {
+    // Priority 1: Use provided sprintDays if valid
+    if (Array.isArray(sprintDays) && sprintDays.length > 0) {
+      const validDates = sprintDays.filter(validateSprintDate);
+      
+      if (validDates.length === sprintDays.length && validDates.length > 0) {
+        return {
+          validatedSprintDays: validDates,
+          dayNames: validDates.map(date => 
+            date.toLocaleDateString('en-US', { weekday: 'long' })
+          )
+        };
+      }
+      
+      // Some dates were invalid, log warning but continue with valid ones
+      if (validDates.length > 0) {
+        console.warn(`EnhancedAvailabilityTable: Filtered ${sprintDays.length - validDates.length} invalid dates from sprintDays`);
+        return {
+          validatedSprintDays: validDates,
+          dayNames: validDates.map(date => 
+            date.toLocaleDateString('en-US', { weekday: 'long' })
+          )
+        };
+      }
+    }
+    
+    // Priority 2: Generate smart fallback using smart sprint detection
+    try {
+      const smartSprint = detectCurrentSprintForDate();
+      if (smartSprint && smartSprint.workingDays && smartSprint.workingDays.length > 0) {
+        if (process.env.NODE_ENV === 'development') {
+          console.info('📅 EnhancedAvailabilityTable: Using smart sprint detection fallback', {
+            sprint: smartSprint.sprintName,
+            workingDays: smartSprint.workingDays.length,
+            dateRange: `${smartSprint.startDate.toDateString()} - ${smartSprint.endDate.toDateString()}`
+          });
+        }
+        
+        return {
+          validatedSprintDays: smartSprint.workingDays,
+          dayNames: smartSprint.workingDays.map(date => 
+            date.toLocaleDateString('en-US', { weekday: 'long' })
+          )
+        };
+      }
+    } catch (error) {
+      console.warn('EnhancedAvailabilityTable: Smart sprint detection failed, using calculated fallback:', error);
+    }
+    
+    // Priority 3: Generate calculated current sprint dates
+    if (process.env.NODE_ENV === 'development') {
+      console.info('📅 EnhancedAvailabilityTable: Using calculated sprint fallback');
+    }
+    
+    return generateCalculatedSprintFallback();
+  }, [sprintDays]);
+
+  // Conditional debug logging - only when fallbacks are used or during development issues
+  if (process.env.NODE_ENV === 'development' && 
+      (!sprintDays || sprintDays.length === 0 || sprintDays.some(date => !validateSprintDate(date)))) {
+    console.info('📅 EnhancedAvailabilityTable: Enhanced fallback system activated', {
+      originalSprintDaysLength: sprintDays?.length || 0,
+      validatedSprintDaysLength: validatedSprintDays?.length || 0,
+      fallbackSource: !sprintDays || sprintDays.length === 0 ? 
+        'empty-array' : 
+        sprintDays.some(date => !validateSprintDate(date)) ? 
+          'invalid-dates' : 
+          'unknown',
+      generatedDateRange: validatedSprintDays.length > 0 ? 
+        `${validatedSprintDays[0]?.toDateString() || ''} - ${validatedSprintDays[validatedSprintDays.length - 1]?.toDateString() || ''}` : 
+        'none'
+    });
+  }
+
+  // Defensive checks for required props - now using validatedSprintDays
+  if (!currentUser || !Array.isArray(teamMembers) || !scheduleData || !Array.isArray(workOptions) || !Array.isArray(validatedSprintDays)) {
     console.warn('EnhancedAvailabilityTable: Missing required props', {
       currentUser: !!currentUser,
       teamMembers: Array.isArray(teamMembers),
@@ -69,26 +172,106 @@ export default function EnhancedAvailabilityTable({
     );
   }
 
-  // CRITICAL: Validation check for empty arrays
-  if (sprintDays.length === 0) {
-    console.error('EnhancedAvailabilityTable: Empty sprintDays array');
+  // ENHANCED: Validation check for validated arrays
+  if (validatedSprintDays.length === 0) {
+    console.error('EnhancedAvailabilityTable: All fallback systems failed to generate valid sprint days');
     return (
       <div className="p-4 bg-yellow-100 border border-yellow-400 rounded-lg">
-        <p className="text-yellow-800">Unable to load availability table: No sprint days provided</p>
+        <p className="text-yellow-800">Unable to load availability table: No valid sprint days could be generated</p>
+        <p className="text-yellow-600 text-sm mt-2">Please check sprint configuration or contact support.</p>
       </div>
     );
   }
 
-  // Arrays should now always match since dayNames is generated from sprintDays
-  // Validation: Ensure both arrays have the same length (they should always match now)
-  if (sprintDays.length !== dayNames.length) {
-    console.error('EnhancedAvailabilityTable: Unexpected array length mismatch after dynamic generation');
+  // Arrays should now always match since dayNames is generated from validatedSprintDays
+  // This validation should never trigger now, but kept for defensive programming
+  if (validatedSprintDays.length !== dayNames.length) {
+    console.error('EnhancedAvailabilityTable: Critical array mismatch in validation system');
     return (
       <div className="p-4 bg-red-100 border border-red-400 rounded-lg">
-        <p className="text-red-800">Error: Sprint days and day names arrays don't match</p>
+        <p className="text-red-800">Critical Error: Internal validation system failure</p>
+        <p className="text-red-600 text-sm mt-2">Please refresh the page or contact support.</p>
       </div>
     );
   }
+
+  // Create enhanced sprint calendar with weekend reference columns
+  const enhancedSprintCalendar = useMemo(() => {
+    if (!validatedSprintDays || validatedSprintDays.length === 0) return [];
+
+    const calendar = [];
+    let previousWeekEnd = null;
+    
+    // Group working days by week and add weekend reference columns
+    for (let i = 0; i < validatedSprintDays.length; i++) {
+      const workingDay = validatedSprintDays[i];
+      if (!workingDay) continue;
+      const dayOfWeek = workingDay.getDay(); // 0=Sunday, 6=Saturday
+      
+      // Check if this is the start of a new week (Sunday)
+      if (dayOfWeek === 0) {
+        // Add weekend reference for the gap between weeks (only if we had a previous week)
+        if (previousWeekEnd) {
+          const friday = new Date(previousWeekEnd);
+          friday.setDate(previousWeekEnd.getDate() + 1);
+          const saturday = new Date(previousWeekEnd);
+          saturday.setDate(previousWeekEnd.getDate() + 2);
+          
+          calendar.push({
+            date: friday,
+            type: 'weekend-reference',
+            label: 'Fri',
+            isVisible: true
+          });
+          
+          calendar.push({
+            date: saturday,
+            type: 'weekend-reference',
+            label: 'Sat',
+            isVisible: true
+          });
+        }
+        previousWeekEnd = null;
+      }
+      
+      // Add the working day
+      calendar.push({
+        date: workingDay,
+        type: 'working-day',
+        label: workingDay.toLocaleDateString('en-US', { weekday: 'short' }),
+        isVisible: true
+      });
+      
+      // If it's Thursday (end of work week), mark it for potential weekend reference
+      if (dayOfWeek === 4) {
+        previousWeekEnd = new Date(workingDay);
+      }
+    }
+    
+    // Add final weekend reference if sprint ends on Thursday
+    if (previousWeekEnd) {
+      const friday = new Date(previousWeekEnd);
+      friday.setDate(previousWeekEnd.getDate() + 1);
+      const saturday = new Date(previousWeekEnd);
+      saturday.setDate(previousWeekEnd.getDate() + 2);
+      
+      calendar.push({
+        date: friday,
+        type: 'weekend-reference',
+        label: 'Fri',
+        isVisible: true
+      });
+      
+      calendar.push({
+        date: saturday,
+        type: 'weekend-reference',
+        label: 'Sat',
+        isVisible: true
+      });
+    }
+    
+    return calendar;
+  }, [validatedSprintDays]);
 
   // Calculate daily totals for footer - ENHANCED DEFENSIVE PROGRAMMING
   const getDayTotal = (date: Date) => {
@@ -104,6 +287,7 @@ export default function EnhancedAvailabilityTable({
     
     try {
       const dateKey = date.toISOString().split('T')[0];
+      if (!dateKey) return 0;
       return teamMembers.reduce((total, member) => {
         if (!member?.id || typeof member.id !== 'number') return total;
         
@@ -161,7 +345,82 @@ export default function EnhancedAvailabilityTable({
 
   return (
     <ComponentErrorBoundary>
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border-2 border-gray-100">
+      {/* Enhanced Team Statistics Dashboard */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 px-6 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-lg">📊</span>
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg">Team Sprint Overview</h3>
+              <p className="text-blue-700 text-sm">{teamMembers.length} team members • {validatedSprintDays.length} working days</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{getTeamTotalHours()}h</div>
+              <div className="text-xs text-blue-500 font-medium">Total Hours</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{Math.round((getTeamTotalHours() / (teamMembers.length * validatedSprintDays.length * 7)) * 100)}%</div>
+              <div className="text-xs text-green-500 font-medium">Utilization</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{reasonStats.totalReasons}</div>
+              <div className="text-xs text-purple-500 font-medium">Reasons</div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Quick Stats Row */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white/60 rounded-xl p-3 flex items-center gap-3">
+            <span className="text-2xl">✅</span>
+            <div>
+              <div className="font-bold text-gray-900">{teamMembers.reduce((acc, member) => {
+                return acc + validatedSprintDays.reduce((dayAcc, day) => {
+                  const dateKey = day.toISOString().split('T')[0];
+                  if (!dateKey) return dayAcc;
+                  const entry = scheduleData[member.id]?.[dateKey];
+                  return dayAcc + (entry?.value === '1' ? 1 : 0);
+                }, 0);
+              }, 0)}</div>
+              <div className="text-xs text-gray-600">Full Days</div>
+            </div>
+          </div>
+          <div className="bg-white/60 rounded-xl p-3 flex items-center gap-3">
+            <span className="text-2xl">⏰</span>
+            <div>
+              <div className="font-bold text-gray-900">{teamMembers.reduce((acc, member) => {
+                return acc + validatedSprintDays.reduce((dayAcc, day) => {
+                  const dateKey = day.toISOString().split('T')[0];
+                  if (!dateKey) return dayAcc;
+                  const entry = scheduleData[member.id]?.[dateKey];
+                  return dayAcc + (entry?.value === '0.5' ? 1 : 0);
+                }, 0);
+              }, 0)}</div>
+              <div className="text-xs text-gray-600">Half Days</div>
+            </div>
+          </div>
+          <div className="bg-white/60 rounded-xl p-3 flex items-center gap-3">
+            <span className="text-2xl">❌</span>
+            <div>
+              <div className="font-bold text-gray-900">{teamMembers.reduce((acc, member) => {
+                return acc + validatedSprintDays.reduce((dayAcc, day) => {
+                  const dateKey = day.toISOString().split('T')[0];
+                  if (!dateKey) return dayAcc;
+                  const entry = scheduleData[member.id]?.[dateKey];
+                  return dayAcc + (entry?.value === 'X' ? 1 : 0);
+                }, 0);
+              }, 0)}</div>
+              <div className="text-xs text-gray-600">Absences</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Reason Summary Bar (if there are reasons) */}
       {reasonStats.totalReasons > 0 && (
         <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
@@ -254,14 +513,14 @@ export default function EnhancedAvailabilityTable({
 
                 {/* Days */}
                 <div className="p-4 space-y-3">
-                  {sprintDays.map((date, index) => {
+                  {validatedSprintDays.map((date, index) => {
                     if (!date || typeof date.toISOString !== 'function') {
                       console.warn('Invalid date in sprintDays:', date, 'at index:', index);
                       return null;
                     }
                     
                     const dateKey = date.toISOString().split('T')[0];
-                    const currentValue = scheduleData[member.id]?.[dateKey];
+                    const currentValue = dateKey ? scheduleData[member.id]?.[dateKey] : undefined;
                     const today = typeof isToday === 'function' ? isToday(date) : false;
                     const past = typeof isPastDate === 'function' ? isPastDate(date) : false;
 
@@ -343,7 +602,7 @@ export default function EnhancedAvailabilityTable({
           <div className="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
             <h3 className="font-semibold text-gray-900 mb-3">Team Summary</h3>
             <div className="grid grid-cols-2 gap-3">
-              {sprintDays.map((date, index) => {
+              {validatedSprintDays.map((date, index) => {
                 if (!date || typeof date.toISOString !== 'function') {
                   console.warn('EnhancedAvailabilityTable: Invalid date object:', date);
                   return null;
@@ -377,40 +636,54 @@ export default function EnhancedAvailabilityTable({
               <th className="sticky left-0 z-20 bg-gray-50 text-left py-3 px-2 sm:py-4 sm:px-6 font-semibold text-gray-900 border-r min-w-[120px] sm:min-w-[140px]">
                 <div className="text-xs sm:text-sm">Team Member</div>
               </th>
-              {sprintDays.map((dayDate, index) => {
+              {enhancedSprintCalendar.map((dayInfo, index) => {
                 // CRITICAL: Defensive check for valid date objects
-                if (!dayDate || typeof dayDate.toISOString !== 'function') {
-                  console.warn(`Header: Invalid date object at index ${index}:`, dayDate);
+                if (!dayInfo.date || typeof dayInfo.date.toISOString !== 'function') {
+                  console.warn(`Header: Invalid date object at index ${index}:`, dayInfo);
                   return null;
                 }
                 
-                // Generate day name dynamically from date instead of using fixed array
-                const day = dayDate.toLocaleDateString('en-US', { weekday: 'long' });
-                
+                const dayDate = dayInfo.date;
+                const isWeekendRef = dayInfo.type === 'weekend-reference';
                 const today = typeof isToday === 'function' ? isToday(dayDate) : false;
                 const past = typeof isPastDate === 'function' ? isPastDate(dayDate) : false;
                 
                 return (
-                  <th key={day} className={`text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold border-r min-w-[85px] sm:min-w-[120px] ${
-                    today 
+                  <th key={`${dayDate.toISOString().split('T')[0]}-${dayInfo.type}`} className={`text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold border-r ${
+                    isWeekendRef 
+                      ? 'min-w-[40px] sm:min-w-[60px] bg-gray-100 text-gray-400' 
+                      : 'min-w-[85px] sm:min-w-[120px]'
+                  } ${
+                    !isWeekendRef && today 
                       ? 'bg-blue-100 text-blue-900 border-blue-300' 
-                      : past
+                      : !isWeekendRef && past
                       ? 'bg-gray-50 text-gray-600'
-                      : 'bg-gray-50 text-gray-900'
+                      : !isWeekendRef 
+                      ? 'bg-gray-50 text-gray-900'
+                      : ''
                   }`}>
                     <div className="flex flex-col">
                       <div className="flex items-center justify-center gap-1">
-                        <span className="text-xs sm:text-sm font-medium">{day.slice(0, 3)}</span>
-                        {today && (
+                        <span className={`text-xs sm:text-sm ${isWeekendRef ? 'font-normal text-gray-400' : 'font-medium'}`}>
+                          {dayInfo.label}
+                        </span>
+                        {!isWeekendRef && today && (
                           <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                         )}
                       </div>
-                      <span className={`text-xs mt-0.5 sm:mt-1 ${
-                        today ? 'text-blue-700 font-medium' : 'text-gray-500'
-                      }`}>
-                        {typeof formatDate === 'function' ? formatDate(dayDate) : dayDate.toLocaleDateString()}
-                        {today && <span className="block text-xs font-medium">Today</span>}
-                      </span>
+                      {!isWeekendRef && (
+                        <span className={`text-xs mt-0.5 sm:mt-1 ${
+                          today ? 'text-blue-700 font-medium' : 'text-gray-500'
+                        }`}>
+                          {typeof formatDate === 'function' ? formatDate(dayDate) : dayDate.toLocaleDateString()}
+                          {today && <span className="block text-xs font-medium">Today</span>}
+                        </span>
+                      )}
+                      {isWeekendRef && (
+                        <span className="text-xs mt-0.5 sm:mt-1 text-gray-400">
+                          {dayDate.getDate()}
+                        </span>
+                      )}
                     </div>
                   </th>
                 );
@@ -462,15 +735,30 @@ export default function EnhancedAvailabilityTable({
                     </div>
                   </td>
 
-                  {/* Day Cells - ENHANCED SAFETY CHECKS */}
-                  {sprintDays.map((date) => {
-                    if (!date || typeof date.toISOString !== 'function') {
-                      console.warn('Desktop table: Invalid date in sprintDays:', date);
+                  {/* Day Cells with Weekend References - ENHANCED SAFETY CHECKS */}
+                  {enhancedSprintCalendar.map((dayInfo) => {
+                    if (!dayInfo.date || typeof dayInfo.date.toISOString !== 'function') {
+                      console.warn('Desktop table: Invalid date in enhancedSprintCalendar:', dayInfo);
                       return null;
                     }
                     
+                    const date = dayInfo.date;
                     const dateKey = date.toISOString().split('T')[0];
-                    const currentValue = scheduleData[member.id]?.[dateKey];
+                    const isWeekendRef = dayInfo.type === 'weekend-reference';
+                    const currentValue = dateKey ? scheduleData[member.id]?.[dateKey] : undefined;
+                    
+                    if (isWeekendRef) {
+                      // Weekend reference column - show weekend indicator
+                      return (
+                        <td key={`${dateKey}-weekend-${member.id}`} className="py-3 px-1 sm:py-4 sm:px-4 text-center bg-gray-50 border-r">
+                          <div className="flex items-center justify-center">
+                            <span className="text-gray-300 text-xs font-medium">
+                              Weekend
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    }
                     
                     return (
                       <EnhancedDayCell
@@ -504,10 +792,22 @@ export default function EnhancedAvailabilityTable({
               <td className="sticky left-0 z-10 bg-gray-100 py-3 px-2 sm:py-4 sm:px-6 font-bold text-gray-900 border-r text-xs sm:text-base">
                 Team Total
               </td>
-              {sprintDays.map((date) => {
-                if (!date || typeof date.toISOString !== 'function') {
-                  console.warn('Footer totals: Invalid date in sprintDays:', date);
+              {enhancedSprintCalendar.map((dayInfo) => {
+                if (!dayInfo.date || typeof dayInfo.date.toISOString !== 'function') {
+                  console.warn('Footer totals: Invalid date in enhancedSprintCalendar:', dayInfo);
                   return null;
+                }
+                
+                const date = dayInfo.date;
+                const isWeekendRef = dayInfo.type === 'weekend-reference';
+                
+                if (isWeekendRef) {
+                  // Weekend reference column in footer
+                  return (
+                    <td key={`${date.toISOString().split('T')[0]}-weekend-footer`} className="py-3 px-1 sm:py-4 sm:px-4 text-center border-r bg-gray-100">
+                      <span className="text-gray-300 text-xs">—</span>
+                    </td>
+                  );
                 }
                 
                 const dayTotal = getDayTotal(date);
@@ -526,29 +826,65 @@ export default function EnhancedAvailabilityTable({
         </table>
       </div>
 
-      {/* Legend - Mobile and Desktop */}
-      <div className="border-t border-gray-200 p-3 sm:p-4 bg-gray-50">
-        <h3 className="font-semibold mb-3 text-sm sm:text-base">Work Options:</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {workOptions.map(option => (
-            <div key={option.value} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 sm:border-0 sm:bg-transparent sm:p-0">
-              <span className={`px-3 py-2 rounded-lg border-2 font-bold text-center min-w-[44px] min-h-[44px] flex items-center justify-center ${option.color}`}>
-                {option.label}
-              </span>
-              <div className="flex-1">
-                <div className="text-sm font-medium text-gray-900">{option.description}</div>
-                <div className="text-xs text-gray-500">{option.hours} hours</div>
+      {/* Enhanced Legend - Mobile and Desktop */}
+      <div className="border-t-2 border-gray-200 p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-blue-50">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xl">⚡</span>
+          <h3 className="font-bold text-gray-900 text-base sm:text-lg">Work Options Guide</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {workOptions.map((option, index) => {
+            const emojis = ['✅', '⏰', '❌'];
+            return (
+              <div key={option.value} className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{emojis[index]}</span>
+                  <span className={`px-4 py-2 rounded-xl border-2 font-bold text-center min-w-[44px] min-h-[44px] flex items-center justify-center ${option.color} shadow-sm`}>
+                    {option.label}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-gray-900">{option.description}</div>
+                  <div className="text-xs text-gray-600 font-medium">{option.hours} hours per day</div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    {option.value === '1' ? 'Click to cycle through options' : 
+                     option.value === '0.5' ? 'Requires reason for half-day' : 
+                     'Requires reason for absence'}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         
-        {/* Hebrew Legend */}
-        <div className="mt-4 pt-3 border-t border-gray-300">
-          <p className="text-xs text-gray-600">
-            <strong>Quick Hebrew Reasons:</strong> 👤 אישי (Personal), 🏖️ חופש (Vacation), 🩺 רופא (Doctor), 
-            🛡️ שמירה (Reserve), 🤒 מחלה (Sick)
-          </p>
+        {/* Enhanced Hebrew Legend */}
+        <div className="mt-6 pt-4 border-t-2 border-gray-300">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">🇮🇱</span>
+            <h4 className="font-semibold text-gray-900">Quick Hebrew Reasons</h4>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
+            <div className="bg-white/60 rounded-lg p-2 flex items-center gap-2">
+              <span>👤</span>
+              <span><strong>אישי</strong> (Personal)</span>
+            </div>
+            <div className="bg-white/60 rounded-lg p-2 flex items-center gap-2">
+              <span>🏖️</span>
+              <span><strong>חופש</strong> (Vacation)</span>
+            </div>
+            <div className="bg-white/60 rounded-lg p-2 flex items-center gap-2">
+              <span>🩺</span>
+              <span><strong>רופא</strong> (Doctor)</span>
+            </div>
+            <div className="bg-white/60 rounded-lg p-2 flex items-center gap-2">
+              <span>🛡️</span>
+              <span><strong>שמירה</strong> (Reserve)</span>
+            </div>
+            <div className="bg-white/60 rounded-lg p-2 flex items-center gap-2">
+              <span>🤒</span>
+              <span><strong>מחלה</strong> (Sick)</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

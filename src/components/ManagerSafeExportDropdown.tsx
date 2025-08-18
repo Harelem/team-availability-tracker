@@ -96,7 +96,11 @@ export default function ManagerSafeExportDropdown({
       
       if (type === 'current-week') {
         weekDays = currentSprintDays;
-        dateRangeText = formatDateRange(currentSprintDays[0], currentSprintDays[currentSprintDays.length - 1]);
+        if (currentSprintDays.length > 0 && currentSprintDays[0] && currentSprintDays[currentSprintDays.length - 1]) {
+          dateRangeText = formatDateRange(currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!);
+        } else {
+          dateRangeText = 'No sprint data available';
+        }
       } else {
         const { startDate, endDate } = calculateWeekRange(type);
         weekDays = getWeekDays(startDate);
@@ -192,7 +196,9 @@ export default function ManagerSafeExportDropdown({
               <div>
                 <div className="font-medium text-gray-900">Export Current Sprint</div>
                 <div className="text-xs text-gray-500">
-                  {formatDateRange(currentSprintDays[0], currentSprintDays[currentSprintDays.length - 1])}
+                  {currentSprintDays.length > 0 && currentSprintDays[0] && currentSprintDays[currentSprintDays.length - 1]
+                    ? formatDateRange(currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!)
+                    : 'No sprint data available'}
                 </div>
                 <div className="text-xs text-green-600 font-medium">
                   ✅ Using Working COO Logic

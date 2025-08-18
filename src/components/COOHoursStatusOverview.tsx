@@ -48,8 +48,39 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    console.log('🔍 COOHoursStatusOverview: Effect triggered', {
+      allTeamsLength: allTeams?.length || 0,
+      hasCurrentSprint: !!currentSprint,
+      currentSprintNumber: currentSprint?.current_sprint_number
+    });
+
     if (allTeams && currentSprint) {
-      loadCompanyHoursStatus();
+      // Add timeout mechanism to prevent infinite loading
+      const loadTimeout = setTimeout(() => {
+        console.warn('⚠️ COOHoursStatusOverview: Force stopping loading after 30 seconds');
+        setIsLoading(false);
+        setError('Loading timeout - forcing component to render with available data');
+      }, 30000);
+
+      loadCompanyHoursStatus().finally(() => {
+        clearTimeout(loadTimeout);
+      });
+
+      return () => {
+        clearTimeout(loadTimeout);
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+      };
+    } else {
+      console.log('🔍 COOHoursStatusOverview: Missing prerequisites, setting loading to false');
+      setIsLoading(false);
+      if (!allTeams) {
+        setError('No teams data available');
+      }
+      if (!currentSprint) {
+        setError('No current sprint data available');
+      }
     }
     
     // Cleanup function to cancel ongoing requests
@@ -88,6 +119,7 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
 
     // Otherwise, load the data
     const [teamIdStr, sprintType] = teamKey.split('-');
+    if (!teamIdStr) return;
     const teamId = parseInt(teamIdStr);
     const team = allTeams.find(t => t.id === teamId);
     
@@ -123,6 +155,13 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
 
   // Memoized load function to prevent unnecessary re-creation and infinite loops
   const loadCompanyHoursStatus = useCallback(async () => {
+    const startTime = Date.now();
+    console.log('🔍 COOHoursStatusOverview: Starting loadCompanyHoursStatus', {
+      allTeamsCount: allTeams?.length || 0,
+      sprintNumber: currentSprint?.current_sprint_number,
+      timestamp: new Date().toISOString()
+    });
+
     // Cancel any existing request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -142,18 +181,43 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
         return;
       }
       
-      console.log('🔍 Loading company-wide hours status...');
+      console.log('🔍 Loading company-wide hours status...', {
+        teamsToProcess: allTeams?.map(t => ({ id: t.id, name: t.name }))
+      });
+
+      // Add overall timeout to prevent hanging
+      const overallTimeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Overall loading timeout after 25 seconds'));
+        }, 25000);
+      });
       
       const currentPeriod = calculateSprintPeriod(currentSprint, 0);
       const nextPeriod = calculateSprintPeriod(currentSprint, 1);
       
+      console.log('🔍 Sprint periods calculated', { currentPeriod, nextPeriod });
+      
       // Pre-load team members for all teams to avoid sequential DB calls
-      const teamsWithMembers = await Promise.all(
+      console.log('🔍 Starting to load team members for all teams...');
+      const teamsWithMembersPromise = Promise.all(
         allTeams.map(async (team) => {
-          const teamMembers = await DatabaseService.getTeamMembers(team.id, false); // Use cache for team members
-          return { team, teamMembers };
+          try {
+            console.log(`🔍 Loading members for team: ${team.name} (ID: ${team.id})`);
+            const teamMembers = await DatabaseService.getTeamMembers(team.id, false); // Use cache for team members
+            console.log(`✅ Loaded ${teamMembers.length} members for team: ${team.name}`);
+            return { team, teamMembers };
+          } catch (error) {
+            console.error(`❌ Failed to load members for team ${team.name}:`, error);
+            return { team, teamMembers: [] }; // Return empty array to prevent blocking
+          }
         })
       );
+
+      // Race the team loading with timeout
+      const teamsWithMembers = await Promise.race([
+        teamsWithMembersPromise,
+        overallTimeoutPromise
+      ]) as { team: any; teamMembers: any[] }[];
       
       // Filter out teams with no members
       const teamsWithMembersFiltered = teamsWithMembers.filter(({ team, teamMembers }) => {
@@ -220,7 +284,13 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
         nextSprint: nextSprintTeamStatus.sort((a, b) => b.teamCompletionRate - a.teamCompletionRate)
       });
       
-      console.log('✅ Company hours status loaded successfully');
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log('✅ Company hours status loaded successfully', {
+        duration: `${duration}ms`,
+        currentSprintTeams: currentSprintTeamStatus.length,
+        nextSprintTeams: nextSprintTeamStatus.length
+      });
       
     } catch (error) {
       // Don't set error state if the request was cancelled
@@ -229,9 +299,27 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
         return;
       }
       
-      console.error('❌ Error loading company hours status:', error);
-      setError('Failed to load company hours status');
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.error('❌ Error loading company hours status:', {
+        error: error instanceof Error ? error.message : String(error),
+        duration: `${duration}ms`,
+        step: 'unknown'
+      });
+      
+      // Set a more descriptive error message
+      if (error instanceof Error && error.message.includes('timeout')) {
+        setError('Loading took too long - please refresh the page to try again');
+      } else {
+        setError(`Failed to load company hours status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     } finally {
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log('🏁 COOHoursStatusOverview: Loading finished', {
+        duration: `${duration}ms`,
+        success: !error
+      });
       setIsLoading(false);
     }
   }, [allTeams, currentSprint]); // Include dependencies to prevent stale closures
@@ -541,7 +629,7 @@ export default function COOHoursStatusOverview({ allTeams, currentSprint }: COOH
       {/* Team Members Modal */}
       {activeTooltipTeam && (
         <TeamMembersTooltip
-          data={tooltipData[activeTooltipTeam]}
+          data={tooltipData[activeTooltipTeam] || null}
           isLoading={tooltipLoading[activeTooltipTeam] || false}
           isVisible={true}
           onClose={closeTooltip}

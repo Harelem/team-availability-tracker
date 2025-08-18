@@ -52,8 +52,8 @@ export default function PersonalDashboard({
     if (!currentSprint) return [];
     
     const dates = [];
-    const start = new Date((currentSprint as any).start_date || Date.now());
-    const end = new Date((currentSprint as any).end_date || Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const start = new Date(currentSprint.sprint_start_date || Date.now());
+    const end = new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000);
     
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dayOfWeek = d.getDay();
@@ -77,8 +77,17 @@ export default function PersonalDashboard({
         setLoading(true);
         
         // Get schedule data for the entire sprint period
-        const startDate = sprintWorkingDays[0].toISOString().split('T')[0];
-        const endDate = sprintWorkingDays[sprintWorkingDays.length - 1].toISOString().split('T')[0];
+        if (sprintWorkingDays.length === 0) {
+          console.warn('No sprint working days available');
+          return;
+        }
+        const startDate = sprintWorkingDays[0]?.toISOString().split('T')[0];
+        const endDate = sprintWorkingDays[sprintWorkingDays.length - 1]?.toISOString().split('T')[0];
+        
+        if (!startDate || !endDate) {
+          console.warn('Invalid sprint dates');
+          return;
+        }
         
         const data = await DatabaseService.getScheduleEntries(startDate, endDate, team.id);
         const userSchedule = data[user.id] || {};
@@ -91,7 +100,7 @@ export default function PersonalDashboard({
         
         sprintWorkingDays.forEach(date => {
           const dateKey = date.toISOString().split('T')[0];
-          const entry = userSchedule[dateKey];
+          const entry = dateKey ? userSchedule[dateKey] : undefined;
           
           if (entry && entry.value) {
             submittedDays++;
@@ -225,7 +234,7 @@ export default function PersonalDashboard({
             <h3 className="font-medium text-blue-900 mb-2">Current Sprint</h3>
             <p className="text-blue-700 text-sm mb-1">{(currentSprint as any)?.name || 'Current Sprint'}</p>
             <p className="text-blue-600 text-xs">
-              {new Date((currentSprint as any)?.start_date || Date.now()).toLocaleDateString()} - {new Date((currentSprint as any)?.end_date || Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+              {new Date(currentSprint.sprint_start_date || Date.now()).toLocaleDateString()} - {new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}
               <span className="ml-2">({personalStats.totalSprintDays} working days)</span>
             </p>
           </div>

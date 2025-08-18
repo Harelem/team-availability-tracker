@@ -13,7 +13,7 @@ interface EnhancedDayCellProps {
   canEdit: boolean;
   isToday: boolean;
   isPast: boolean;
-  onWorkOptionClick: (memberId: number, date: Date, value: string) => void;
+  onWorkOptionClick: (memberId: number, date: Date, value: string, reason?: string) => void;
   onReasonRequired: (memberId: number, date: Date, value: '0.5' | 'X') => void;
   onQuickReasonSelect?: (memberId: number, date: Date, value: '0.5' | 'X', reason: string) => void;
 }
@@ -36,10 +36,10 @@ const HEBREW_QUICK_REASONS = {
   ]
 };
 
-// Manager-specific quick reason options (includes management reason)
+// Manager-specific quick reason options (prominently features management reason)
 const MANAGER_HEBREW_QUICK_REASONS = {
   '0.5': [
-    { emoji: '🏢', text: 'ניהול', value: 'ניהול - פגישות ניהול ותכנון' },
+    { emoji: '🏢', text: 'ניהול', value: 'ניהול - פגישות ניהול ותכנון', isPrimary: true },
     { emoji: '👤', text: 'אישי', value: 'עניין אישי' },
     { emoji: '🏖️', text: 'חופש', value: 'יום חופש' },
     { emoji: '🩺', text: 'רופא', value: 'רופא - תור רפואי' },
@@ -47,7 +47,7 @@ const MANAGER_HEBREW_QUICK_REASONS = {
     { emoji: '🤒', text: 'מחלה', value: 'מחלה/אי הרגשה טובה' }
   ],
   'X': [
-    { emoji: '🏢', text: 'ניהול', value: 'ניהול - פגישות ניהול ותכנון' },
+    { emoji: '🏢', text: 'ניהול', value: 'ניהול - פגישות ניהול ותכנון', isPrimary: true },
     { emoji: '👤', text: 'אישי', value: 'עניין אישי' },
     { emoji: '🏖️', text: 'חופש', value: 'יום חופש' },
     { emoji: '🩺', text: 'רופא', value: 'רופא - תור רפואי' },
@@ -75,6 +75,41 @@ export default function EnhancedDayCell({
 
   // Weekend detection (Friday = 5, Saturday = 6)
   const isWeekend = date.getDay() === 5 || date.getDay() === 6;
+
+  // Status cycling logic: Full → Half → Absent → Full
+  const getNextStatus = (currentVal?: '1' | '0.5' | 'X'): '1' | '0.5' | 'X' => {
+    if (!currentVal || currentVal === 'X') return '1';
+    if (currentVal === '1') return '0.5';
+    if (currentVal === '0.5') return 'X';
+    return '1';
+  };
+
+  // Get status emoji for desktop display
+  const getStatusEmoji = (value?: '1' | '0.5' | 'X'): string => {
+    switch (value) {
+      case '1': return '✅';
+      case '0.5': return '⏰';
+      case 'X': return '❌';
+      default: return '';
+    }
+  };
+
+  // Enhanced cell click handler for 1-click cycling
+  const handleCellClick = () => {
+    if (!canEdit || isWeekend) return;
+    
+    const nextStatus = getNextStatus(currentValue?.value);
+    
+    // If next status requires reason, show quick reasons
+    if (nextStatus === '0.5' || nextStatus === 'X') {
+      setPendingValue(nextStatus);
+      setShowQuickReasons(true);
+      return;
+    }
+    
+    // For full day (1), update directly
+    onWorkOptionClick(member.id, date, nextStatus);
+  };
 
   const handleWorkOptionClick = (value: string) => {
     // Prevent editing weekend days
@@ -196,43 +231,102 @@ export default function EnhancedDayCell({
       {/* Work Option Buttons or Weekend Display */}
       {isWeekend ? (
         <div className="flex justify-center">
-          <div className="min-h-[36px] px-3 py-2 rounded-md border bg-gray-200 text-gray-600 border-gray-300 text-sm font-medium flex items-center gap-2">
-            <span>X</span>
+          <div className="min-h-[36px] px-3 py-2 rounded-xl border bg-gray-200 text-gray-600 border-gray-300 text-sm font-medium flex items-center gap-2">
+            <span>❌</span>
             <span className="text-xs text-gray-500">Weekend</span>
           </div>
         </div>
       ) : (
-        <div className="flex gap-0.5 sm:gap-1 justify-center">
-          {workOptions.filter(option => {
-            // Managers can only use 0.5 (half day) and X (unavailable) options
-            if (canAccessManagerQuickReasons(member)) {
-              return option.value === '0.5' || option.value === 'X';
-            }
-            // Regular members can use all options
-            return true;
-          }).map(option => {
-            const isSelected = currentValue?.value === option.value;
-            return (
+        <div className="space-y-2">
+          {/* Enhanced 1-Click Status Button */}
+          {canEdit ? (
+            <div className="flex justify-center">
               <button
-                key={option.value}
-                onClick={() => canEdit && handleWorkOptionClick(option.value)}
-                disabled={!canEdit}
-                className={`min-h-[36px] w-8 sm:w-auto px-1.5 sm:px-3 py-1.5 sm:py-2 rounded-md border font-medium text-xs sm:text-sm transition-all touch-manipulation relative ${
-                  canEdit ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-60'
-                } ${
-                  isSelected 
-                    ? option.color + ' ring-2 ring-offset-1 ring-blue-500' 
-                    : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                onClick={handleCellClick}
+                className={`min-h-[48px] px-4 py-2 rounded-xl border-2 font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm ${
+                  currentValue?.value
+                    ? workOptions.find(opt => opt.value === currentValue.value)?.color + ' ring-2 ring-blue-400 ring-offset-1'
+                    : 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-600 border-gray-300 hover:from-gray-100 hover:to-gray-200'
                 }`}
-                title={canEdit ? option.description : 'You can only edit your own schedule'}
+                title={`Click to cycle: ${currentValue?.value ? getNextStatus(currentValue.value) : '1'} (${workOptions.find(opt => opt.value === (currentValue?.value ? getNextStatus(currentValue.value) : '1'))?.description})`}
               >
-                {option.label}
-                {isSelected && currentValue?.reason && (
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
-                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{getStatusEmoji(currentValue?.value)}</span>
+                  <div className="text-center">
+                    <div className="text-lg font-bold">
+                      {currentValue?.value
+                        ? workOptions.find(opt => opt.value === currentValue.value)?.label || '?'
+                        : 'Set'
+                      }
+                    </div>
+                    <div className="text-xs opacity-75">
+                      {currentValue?.value
+                        ? `${workOptions.find(opt => opt.value === currentValue.value)?.hours || 0}h`
+                        : 'Click to set'
+                      }
+                    </div>
+                  </div>
+                  {currentValue?.reason && (
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  )}
+                </div>
               </button>
-            );
-          })}
+            </div>
+          ) : (
+            /* Read-only display */
+            <div className="flex justify-center">
+              <div className={`min-h-[48px] px-4 py-2 rounded-xl border-2 font-bold text-sm opacity-60 ${
+                currentValue?.value
+                  ? workOptions.find(opt => opt.value === currentValue.value)?.color
+                  : 'bg-gray-100 text-gray-600 border-gray-300'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{getStatusEmoji(currentValue?.value)}</span>
+                  <div className="text-center">
+                    <div className="text-lg font-bold">
+                      {currentValue?.value
+                        ? workOptions.find(opt => opt.value === currentValue.value)?.label || '?'
+                        : '-'
+                      }
+                    </div>
+                    <div className="text-xs opacity-75">
+                      {currentValue?.value
+                        ? `${workOptions.find(opt => opt.value === currentValue.value)?.hours || 0}h`
+                        : 'Not set'
+                      }
+                    </div>
+                  </div>
+                  {currentValue?.reason && (
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Legacy button row (smaller) */}
+          <div className="flex gap-1 justify-center opacity-50">
+            {workOptions.map(option => {
+              const isSelected = currentValue?.value === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => canEdit && handleWorkOptionClick(option.value)}
+                  disabled={!canEdit}
+                  className={`min-h-[24px] w-6 px-1 py-0.5 rounded border font-medium text-xs transition-all ${
+                    canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'
+                  } ${
+                    isSelected 
+                      ? 'bg-gray-300 border-gray-400 text-gray-700' 
+                      : 'bg-gray-100 text-gray-400 border-gray-200'
+                  }`}
+                  title={canEdit ? `Legacy: ${option.description}` : 'Read only'}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -278,25 +372,43 @@ export default function EnhancedDayCell({
                     const isManager = canAccessManagerQuickReasons(member);
                     const reasonOptions = isManager ? MANAGER_HEBREW_QUICK_REASONS[pendingValue] : HEBREW_QUICK_REASONS[pendingValue];
                     
-                    return reasonOptions.map((reason, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          // Add haptic feedback
-                          if ('vibrate' in navigator) {
-                            navigator.vibrate(50);
-                          }
-                          handleQuickReasonSelect(reason.value);
-                        }}
-                        className="flex items-center gap-3 p-4 text-left bg-gray-50 hover:bg-blue-50 active:bg-blue-100 rounded-xl transition-all duration-200 border border-gray-200 hover:border-blue-300 active:border-blue-400 min-h-[60px] lg:min-h-[44px] lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
-                      >
-                        <span className="text-2xl lg:text-lg">{reason.emoji}</span>
-                        <span className="text-base lg:text-sm font-medium text-gray-900 flex-1">
-                          {reason.text}
-                        </span>
-                        <span className="text-gray-400">→</span>
-                      </button>
-                    ));
+                    return reasonOptions.map((reason, index) => {
+                      const isPrimary = (reason as any).isPrimary && isManager;
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            // Add haptic feedback
+                            if ('vibrate' in navigator) {
+                              navigator.vibrate(50);
+                            }
+                            handleQuickReasonSelect(reason.value);
+                          }}
+                          className={`flex items-center gap-3 p-4 text-left rounded-xl transition-all duration-200 border min-h-[60px] lg:min-h-[44px] lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation ${
+                            isPrimary
+                              ? 'bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border-blue-300 hover:border-blue-400 active:border-blue-500 ring-2 ring-blue-200'
+                              : 'bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border-gray-200 hover:border-blue-300 active:border-blue-400'
+                          }`}
+                        >
+                          <span className={`text-2xl lg:text-lg ${isPrimary ? 'animate-pulse' : ''}`}>
+                            {reason.emoji}
+                          </span>
+                          <div className="flex-1">
+                            <span className={`text-base lg:text-sm font-medium flex-1 ${
+                              isPrimary ? 'text-blue-900' : 'text-gray-900'
+                            }`}>
+                              {reason.text}
+                              {isPrimary && (
+                                <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+                                  Manager
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <span className={isPrimary ? 'text-blue-400' : 'text-gray-400'}>→</span>
+                        </button>
+                      );
+                    });
                   })()}
                 </div>
 

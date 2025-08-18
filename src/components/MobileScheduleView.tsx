@@ -16,7 +16,7 @@ interface MobileScheduleViewProps {
   currentWeekOffset: number;
   loading: boolean;
   onWeekChange: (offset: number) => void;
-  onWorkOptionClick: (memberId: number, date: Date, value: string) => void;
+  onWorkOptionClick: (memberId: number, date: Date, value: string, reason?: string) => void;
   onFullWeekSet: (memberId: number) => void;
   onViewReasons: () => void;
   isToday: (date: Date) => boolean;
@@ -92,9 +92,9 @@ const MobileScheduleView = memo(function MobileScheduleView({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isSwipeEnabled) return;
     
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    pullStartY.current = e.touches[0].clientY;
+    touchStartX.current = e.touches[0]?.clientX || 0;
+    touchStartY.current = e.touches[0]?.clientY || 0;
+    pullStartY.current = e.touches[0]?.clientY || 0;
     isSwiping.current = false;
     isPulling.current = false;
     
@@ -108,8 +108,8 @@ const MobileScheduleView = memo(function MobileScheduleView({
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isSwipeEnabled) return;
     
-    const touchCurrentX = e.touches[0].clientX;
-    const touchCurrentY = e.touches[0].clientY;
+    const touchCurrentX = e.touches[0]?.clientX || 0;
+    const touchCurrentY = e.touches[0]?.clientY || 0;
     const diffX = Math.abs(touchCurrentX - touchStartX.current);
     const diffY = Math.abs(touchCurrentY - touchStartY.current);
     const pullDiff = touchCurrentY - pullStartY.current;
@@ -144,7 +144,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
     
     // Handle horizontal swipe
     if (isSwiping.current) {
-      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndX = e.changedTouches[0]?.clientX || 0;
       const diffX = touchStartX.current - touchEndX;
       const minSwipeDistance = 50;
       
@@ -278,36 +278,56 @@ const MobileScheduleView = memo(function MobileScheduleView({
           </button>
         </div>
 
-        {/* Week Info */}
+        {/* Enhanced Sprint Info */}
         <div className="text-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">
-            Sprint {(() => {
-              try {
-                return getCurrentSprintString ? getCurrentSprintString() : 'Current';
-              } catch (error) {
-                console.warn('Error getting sprint string:', error);
-                return 'Current';
-              }
-            })()}
-          </h2>
-          <div className="text-sm text-gray-600 mb-2">
-            {selectedTeam?.name || 'Team'} • {(() => {
-              try {
-                return getTeamTotalHours ? getTeamTotalHours() : 0;
-              } catch (error) {
-                console.warn('Error getting team total hours:', error);
-                return 0;
-              }
-            })()}h total
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-2xl">🗓️</span>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {(() => {
+                try {
+                  return getCurrentSprintString ? getCurrentSprintString() : 'Current Sprint';
+                } catch (error) {
+                  console.warn('Error getting sprint string:', error);
+                  return 'Current Sprint';
+                }
+              })()}
+            </h2>
           </div>
-          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+          
+          <div className="flex items-center justify-center gap-4 text-sm text-gray-600 mb-3">
             <div className="flex items-center gap-1">
+              <span className="text-blue-600">👥</span>
+              <span>{selectedTeam?.name || 'Team'}</span>
+            </div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="flex items-center gap-1">
+              <span className="text-green-600">⚡</span>
+              <span className="font-medium">{(() => {
+                try {
+                  return getTeamTotalHours ? getTeamTotalHours() : 0;
+                } catch (error) {
+                  console.warn('Error getting team total hours:', error);
+                  return 0;
+                }
+              })()}h total</span>
+            </div>
+          </div>
+
+          {/* Week Navigation Tabs */}
+          <div className="flex bg-gray-100 rounded-full p-1 mb-3">
+            <button className="flex-1 py-2 px-4 bg-blue-500 text-white rounded-full text-sm font-medium transition-all">
+              📅 Full Sprint
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+            <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
               <span>←</span>
-              <span>Swipe to navigate</span>
+              <span>Swipe</span>
               <span>→</span>
             </div>
             <span>•</span>
-            <span>החלק לניווט</span>
+            <span className="bg-gray-100 px-2 py-1 rounded-full">החלק לניווט</span>
           </div>
         </div>
 
@@ -334,20 +354,27 @@ const MobileScheduleView = memo(function MobileScheduleView({
         )}
       </div>
 
-      {/* Work Options Legend */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-        <h3 className="font-medium text-gray-900 mb-3 text-sm">Work Options:</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {workOptions.map(option => (
-            <div key={option.value} className={`p-3 rounded-lg border text-center ${option.color}`}>
-              <div className="font-bold text-lg mb-1">{option.label}</div>
-              <div className="text-xs">{option.hours}h</div>
-              <div className="text-xs mt-1 opacity-75">
-                {option.value === '1' ? 'Full Day' : 
-                 option.value === '0.5' ? 'Half Day' : 'Sick/Out'}
+      {/* Enhanced Work Options Legend */}
+      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-5 mb-4">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xl">⚡</span>
+          <h3 className="font-semibold text-gray-900">Work Options</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {workOptions.map((option, index) => {
+            const emojis = ['✅', '⏰', '❌'];
+            return (
+              <div key={option.value} className={`p-4 rounded-xl border-2 text-center transition-all hover:scale-105 ${option.color} shadow-sm`}>
+                <div className="text-2xl mb-2">{emojis[index]}</div>
+                <div className="font-bold text-lg mb-1">{option.label}</div>
+                <div className="text-sm font-medium">{option.hours}h</div>
+                <div className="text-xs mt-2 opacity-75">
+                  {option.value === '1' ? 'Full Day' : 
+                   option.value === '0.5' ? 'Half Day' : 'Sick/Out'}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -370,7 +397,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
                 workOptions={workOptions}
                 canEdit={canEdit}
                 isCurrentUser={isCurrentUserCard}
-                onWorkOptionClick={(date, value) => onWorkOptionClick(member.id, date, value)}
+                onWorkOptionClick={(date, value, reason) => onWorkOptionClick(member.id, date, value, reason)}
                 onFullSprintSet={() => onFullWeekSet(member.id)}
                 isToday={isToday}
                 isPastDate={isPastDate}
@@ -380,19 +407,40 @@ const MobileScheduleView = memo(function MobileScheduleView({
         })}
       </div>
 
-      {/* Mobile Footer */}
-      <div className="bg-blue-50 rounded-lg border border-blue-200 p-4 mt-4">
-        <h3 className="font-medium text-blue-900 mb-2 text-sm">Quick Guide:</h3>
-        <ul className="text-xs text-blue-800 space-y-1">
-          <li>• <strong>Swipe left/right</strong> to navigate between sprints</li>
-          <li>• <strong>Pull down</strong> to refresh schedule data</li>
-          <li>• <strong>Tap member names</strong> to expand/collapse their schedule</li>
-          <li>• <strong>Your schedule</strong> is highlighted and expanded by default</li>
-          <li>• <strong>Tap work options</strong> to set your availability</li>
-          <li>• <strong>Use &quot;Set Full Working Sprint&quot;</strong> for quick scheduling</li>
-          {currentUser.isManager && <li>• <strong>As a manager</strong> you can edit anyone&apos;s schedule</li>}
-          <li>• <strong>Today&apos;s column</strong> is highlighted in blue</li>
-        </ul>
+      {/* Enhanced Mobile Footer */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 p-5 mt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xl">📱</span>
+          <h3 className="font-semibold text-blue-900">Mobile Quick Guide</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-3 text-sm text-blue-800">
+          <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
+            <span className="text-lg">👆</span>
+            <span><strong>Tap</strong> status buttons to cycle: Full → Half → Absent</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
+            <span className="text-lg">👈👉</span>
+            <span><strong>Swipe</strong> status buttons: Right = More hours, Left = Less hours</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
+            <span className="text-lg">↔️</span>
+            <span><strong>Swipe left/right</strong> on header to navigate sprints</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
+            <span className="text-lg">↓</span>
+            <span><strong>Pull down</strong> to refresh schedule data</span>
+          </div>
+          {currentUser.isManager && (
+            <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
+              <span className="text-lg">👑</span>
+              <span><strong>Manager mode:</strong> You can edit anyone's schedule</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
+            <span className="text-lg">🔵</span>
+            <span><strong>Blue dots</strong> indicate days with reasons</span>
+          </div>
+        </div>
       </div>
       </div>
     </div>

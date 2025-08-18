@@ -80,7 +80,7 @@ const CompactReasonsDisplay: React.FC<CompactReasonsDisplayProps> = ({
       if (!groups[groupKey]) {
         groups[groupKey] = [];
       }
-      groups[groupKey].push(entry);
+      groups[groupKey]!.push(entry);
       return groups;
     }, {} as Record<string, ReasonEntry[]>);
   }, [filteredReasons, groupBy]);

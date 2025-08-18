@@ -113,7 +113,7 @@ export const ActionSheet = forwardRef<HTMLDivElement, ActionSheetProps>(
     const handleTouchStart = useCallback((e: TouchEvent) => {
       if (!contentRef.current?.contains(e.target as Node)) return;
       
-      startYRef.current = e.touches[0].clientY;
+      startYRef.current = e.touches[0]?.clientY ?? 0;
       currentYRef.current = 0;
       isDraggingRef.current = false;
     }, []);
@@ -121,7 +121,7 @@ export const ActionSheet = forwardRef<HTMLDivElement, ActionSheetProps>(
     const handleTouchMove = useCallback((e: TouchEvent) => {
       if (!isDraggingRef.current && !contentRef.current?.contains(e.target as Node)) return;
       
-      const currentY = e.touches[0].clientY;
+      const currentY = e.touches[0]?.clientY ?? 0;
       const deltaY = currentY - startYRef.current;
       
       if (deltaY > 0) { // Only allow downward swipe

@@ -242,7 +242,7 @@ export const DatabaseService = {
             name: team.name,
             description: team.description,
             color: team.color,
-            sprint_length_weeks: team.sprint_length_weeks || 1,
+            sprint_length_weeks: team.sprint_length_weeks || 2,
             member_count,
             manager_count
           }
@@ -429,7 +429,7 @@ export const DatabaseService = {
           )`;
         }
 
-        let query = supabase
+        const query = supabase
           .from('teams')
           .select(selectClause)
           .eq('id', teamId)
@@ -709,12 +709,12 @@ export const DatabaseService = {
         for (const member of members) {
           try {
             // Check if member already exists by name
-            const { data: existing } = await supabase
+            const { data: existingMembers } = await supabase
               .from('team_members')
               .select('id, team_id')
-              .eq('name', member.name)
-              .single();
+              .eq('name', member.name);
 
+            const existing = existingMembers?.[0]
             if (existing) {
               // If member exists but doesn't have team_id, update it
               if (!existing.team_id) {
@@ -1180,12 +1180,12 @@ export const DatabaseService = {
    */
   async ensureCOOUserExists(): Promise<void> {
     try {
-      const { data: cooUser } = await supabase
+      const { data: cooUsers } = await supabase
         .from('team_members')
         .select('id, team_id')
-        .eq('name', 'Nir Shilo')
-        .single();
+        .eq('name', 'Nir Shilo');
 
+      const cooUser = cooUsers?.[0]
       if (!cooUser) {
         const { error } = await supabase
           .from('team_members')
@@ -1231,11 +1231,30 @@ export const DatabaseService = {
     }
     
     try {
+      // First, check if a team member with this name already exists
+      const { data: existingMembers, error: checkError } = await supabase
+        .from('team_members')
+        .select('id, name, team_id')
+        .eq('name', memberData.name.trim())
+      
+      if (checkError) {
+        console.error('Error checking for existing team member:', checkError)
+        return null
+      }
+      
+      const existingMember = existingMembers?.[0]
+      if (existingMember) {
+        // Team member with this name already exists
+        console.error(`❌ Duplicate team member name: "${memberData.name}" already exists (ID: ${existingMember.id})`)
+        throw new Error(`Team member "${memberData.name}" already exists in the system. Please use a different name or check if this person is already registered.`)
+      }
+      
+      // Proceed with insertion since no duplicate found
       const { data, error } = await supabase
         .from('team_members')
         .insert([{
-          name: memberData.name,
-          hebrew: memberData.hebrew,
+          name: memberData.name.trim(),
+          hebrew: memberData.hebrew.trim(),
           team_id: memberData.teamId,
           is_manager: memberData.isManager || false
         }])
@@ -1245,16 +1264,25 @@ export const DatabaseService = {
       if (error) {
         console.error('Error adding team member:', error)
         
+        // Handle duplicate key constraint violations (fallback protection)
+        if (error.code === '23505' && error.message.includes('team_members_name_key')) {
+          throw new Error(`Team member "${memberData.name}" already exists in the system. Please use a different name or check if this person is already registered.`)
+        }
+        
         // Provide helpful guidance for RLS policy issues
         if (error.code === '42501') {
           console.error('🚨 RLS POLICY ISSUE: Team member management is blocked by database security policies')
           console.error('📋 Fix required: Run this SQL in Supabase SQL Editor:')
           console.error('CREATE POLICY "Allow insert/update/delete on team_members" ON team_members FOR ALL USING (true);')
           console.error('📖 See TEAM_MEMBER_RLS_FIX.md for complete instructions')
+          throw new Error('Database security policies are preventing team member management. Please contact your administrator.')
         }
         
-        return null
+        // Generic database error
+        throw new Error(`Failed to add team member: ${error.message}`)
       }
+      
+      console.log(`✅ Successfully added team member: ${data.name} (ID: ${data.id})`)
       
       return {
         id: data.id,
@@ -1267,7 +1295,8 @@ export const DatabaseService = {
       }
     } catch (error) {
       console.error('Error adding team member:', error)
-      return null
+      // Re-throw the error so calling code can handle it appropriately
+      throw error
     }
   },
 
@@ -1369,14 +1398,19 @@ export const DatabaseService = {
     }
     
     try {
-      const { data, error } = await supabase
+      const { data: members, error } = await supabase
         .from('team_members')
         .select('*')
         .eq('id', memberId)
-        .single()
       
       if (error) {
         console.error('Error fetching team member:', error)
+        return null
+      }
+      
+      const data = members?.[0]
+      if (!data) {
+        console.error(`Team member with ID ${memberId} not found`)
         return null
       }
       
@@ -1548,7 +1582,7 @@ export const DatabaseService = {
           event: '*',
           schema: 'public',
           table: 'schedule_entries',
-          filter: `date=gte.${startDate} and date=lte.${endDate}`
+          filter: `date.gte.${startDate},date.lte.${endDate}`
         },
         onUpdate
       )
@@ -1558,46 +1592,127 @@ export const DatabaseService = {
   // Global Sprint Management
   async getCurrentGlobalSprint(): Promise<CurrentGlobalSprint | null> {
     if (!isSupabaseConfigured()) {
-      return null
+      // If no database, fallback to smart detection
+      const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
+      const smartSprint = detectCurrentSprintForDate();
+      return convertToLegacySprintFormat(smartSprint);
     }
     
-    // First try the enhanced sprint view (v2.3.0+)
-    const { data: enhancedData, error: enhancedError } = await supabase
-      .from('current_enhanced_sprint')
-      .select('*')
-      .single()
-    
-    if (!enhancedError && enhancedData) {
-      // Map enhanced sprint data to legacy format for backward compatibility
-      return {
-        id: enhancedData.id,
-        current_sprint_number: enhancedData.sprint_number,
-        sprint_length_weeks: enhancedData.length_weeks,
-        sprint_start_date: enhancedData.start_date,
-        sprint_end_date: enhancedData.end_date,
-        progress_percentage: enhancedData.progress_percentage || 0,
-        days_remaining: enhancedData.days_remaining || 0,
-        working_days_remaining: enhancedData.working_days_remaining || 0,
-        is_active: enhancedData.is_active || enhancedData.is_current || false,
-        notes: enhancedData.notes || '',
-        created_at: enhancedData.created_at,
-        updated_at: enhancedData.updated_at,
-        updated_by: enhancedData.created_by || 'system'
+    try {
+      // First try the enhanced sprint view (v2.3.0+)
+      const { data: enhancedData, error: enhancedError } = await supabase
+        .from('current_enhanced_sprint')
+        .select('*')
+        .single()
+      
+      let databaseSprint: CurrentGlobalSprint | null = null;
+      
+      if (!enhancedError && enhancedData) {
+        // Map enhanced sprint data to legacy format for backward compatibility
+        databaseSprint = {
+          id: enhancedData.id,
+          current_sprint_number: enhancedData.sprint_number,
+          sprint_length_weeks: enhancedData.length_weeks,
+          sprint_start_date: enhancedData.start_date,
+          sprint_end_date: enhancedData.end_date,
+          progress_percentage: enhancedData.progress_percentage || 0,
+          days_remaining: enhancedData.days_remaining || 0,
+          working_days_remaining: enhancedData.working_days_remaining || 0,
+          is_active: enhancedData.is_active || enhancedData.is_current || false,
+          notes: enhancedData.notes || '',
+          created_at: enhancedData.created_at,
+          updated_at: enhancedData.updated_at,
+          updated_by: enhancedData.created_by || 'system'
+        }
+      } else {
+        // Fallback to legacy current_global_sprint view
+        const { data: legacyData, error: legacyError } = await supabase
+          .from('current_global_sprint')
+          .select('*')
+          .single()
+        
+        if (!legacyError && legacyData) {
+          databaseSprint = legacyData;
+        }
+      }
+      
+      // Validate database sprint contains current date
+      if (databaseSprint) {
+        const { validateSprintContainsDate } = await import('@/utils/smartSprintDetection');
+        const validation = validateSprintContainsDate(databaseSprint);
+        
+        if (validation.isValid && !validation.needsUpdate) {
+          debug('✅ Database sprint validated for current date');
+          return databaseSprint;
+        } else if (validation.needsUpdate) {
+          console.log('🔄 Sprint validation failed with auto-recovery needed:', validation.reason);
+          console.log('🔄 Database sprint is outdated, using smart detection instead...');
+        } else {
+          console.warn(`⚠️ Database sprint validation failed: ${validation.reason}`);
+          console.log('🔄 Falling back to smart sprint detection...');
+        }
+      }
+      
+      // If no valid database sprint, use smart detection
+      console.log('📊 Using smart sprint detection as fallback');
+      const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
+      const smartSprint = detectCurrentSprintForDate();
+      const legacyFormat = convertToLegacySprintFormat(smartSprint);
+      
+      debug(`✅ Smart detection result: ${smartSprint.sprintName} (${smartSprint.startDate.toDateString()} - ${smartSprint.endDate.toDateString()})`);
+      
+      // Attempt to update database with correct sprint information (if possible)
+      if (isSupabaseConfigured()) {
+        try {
+          await this.updateSprintDatesFromSmartDetection(smartSprint);
+        } catch (updateError) {
+          debug('Note: Could not update database with smart detection results (this is not critical)');
+        }
+      }
+      
+      return legacyFormat;
+      
+    } catch (error) {
+      logError('Error in getCurrentGlobalSprint, using smart detection fallback:', error);
+      
+      try {
+        // Final fallback to smart detection with additional error handling
+        const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
+        const smartSprint = detectCurrentSprintForDate();
+        const result = convertToLegacySprintFormat(smartSprint);
+        
+        console.log('🛡️ Sprint error recovery successful - using smart detection');
+        return result;
+      } catch (fallbackError) {
+        logError('Critical error: Smart detection fallback also failed:', fallbackError);
+        
+        // Last resort: create a minimal sprint configuration to prevent app crash
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay()); // Start of current week
+        const endOfSprint = new Date(startOfWeek);
+        endOfSprint.setDate(startOfWeek.getDate() + 13); // 2 weeks
+        
+        const emergencySprint: CurrentGlobalSprint = {
+          id: 'emergency-sprint',
+          current_sprint_number: 1,
+          sprint_length_weeks: 2,
+          sprint_start_date: startOfWeek.toISOString().split('T')[0],
+          sprint_end_date: endOfSprint.toISOString().split('T')[0],
+          progress_percentage: 50,
+          days_remaining: Math.max(0, Math.ceil((endOfSprint.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))),
+          working_days_remaining: 5,
+          is_active: true,
+          notes: 'Emergency sprint configuration - please update sprint settings',
+          created_at: today.toISOString(),
+          updated_at: today.toISOString(),
+          updated_by: 'emergency-recovery'
+        };
+        
+        console.warn('🚨 Using emergency sprint configuration to prevent app crash');
+        return emergencySprint;
       }
     }
-    
-    // Fallback to legacy current_global_sprint view if enhanced doesn't exist
-    const { data: legacyData, error: legacyError } = await supabase
-      .from('current_global_sprint')
-      .select('*')
-      .single()
-    
-    if (legacyError) {
-      console.warn('Neither current_enhanced_sprint nor current_global_sprint view exists')
-      return null
-    }
-    
-    return legacyData
   },
 
   async getTeamSprintStats(teamId: number): Promise<TeamSprintStats | null> {
@@ -1710,6 +1825,52 @@ export const DatabaseService = {
     } catch (error) {
       console.error('Error starting new sprint:', error)
       return false
+    }
+  },
+
+  // Helper method to update database with smart detection results
+  async updateSprintDatesFromSmartDetection(smartSprint: any): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+    
+    try {
+      // Try to update the enhanced sprint system first
+      const { error: enhancedError } = await supabase
+        .from('enhanced_global_sprint_v2')
+        .update({
+          current_sprint_number: smartSprint.sprintNumber,
+          sprint_start_date: smartSprint.startDate.toISOString().split('T')[0],
+          sprint_end_date: smartSprint.endDate.toISOString().split('T')[0],
+          progress_percentage: smartSprint.progressPercentage,
+          days_remaining: smartSprint.daysRemaining,
+          working_days_remaining: smartSprint.workingDaysRemaining,
+          updated_at: new Date().toISOString(),
+          updated_by: 'smart-detection'
+        })
+        .eq('id', 1);
+
+      if (enhancedError) {
+        // Fall back to legacy table
+        const { error: legacyError } = await supabase
+          .from('global_sprint_settings')
+          .update({
+            current_sprint_number: smartSprint.sprintNumber,
+            sprint_start_date: smartSprint.startDate.toISOString().split('T')[0],
+            sprint_end_date: smartSprint.endDate.toISOString().split('T')[0],
+            updated_at: new Date().toISOString(),
+            updated_by: 'smart-detection'
+          })
+          .eq('id', 1);
+
+        if (legacyError) {
+          debug('Could not update either enhanced or legacy sprint tables');
+        } else {
+          debug('✅ Updated legacy sprint table with smart detection results');
+        }
+      } else {
+        debug('✅ Updated enhanced sprint table with smart detection results');
+      }
+    } catch (error) {
+      debug('Error updating database with smart detection results:', error);
     }
   },
 

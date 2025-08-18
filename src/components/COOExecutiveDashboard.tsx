@@ -17,7 +17,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
-import { COOUser } from '@/types';
+import { COOUser, CurrentGlobalSprint } from '@/types';
 import COOExportButton from './COOExportButton';
 import COOHoursStatusOverview from './COOHoursStatusOverview';
 import MobileCOODashboard from './MobileCOODashboard';
@@ -134,22 +134,40 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
         
         console.log('🔍 COO Dashboard: Starting initial data load...');
         
-        // Load data with timeout handling - using circuit breaker now handles timeouts
+        // Load data with timeout handling and additional protection
         console.log('🔍 COO Dashboard: Starting data load with circuit breaker timeout protection...');
         
-        const [data, teams] = await Promise.all([
-          DatabaseService.getCOODashboardData(false),
-          DatabaseService.getOperationalTeams(false)
-        ]);
+        // Add additional timeout protection beyond circuit breaker
+        const loadDataWithTimeout = async () => {
+          return Promise.race([
+            Promise.all([
+              DatabaseService.getCOODashboardData(false),
+              DatabaseService.getOperationalTeams(false)
+            ]),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Dashboard load timeout after 120 seconds')), 120000)
+            )
+          ]);
+        };
+        
+        const [data, teams] = await loadDataWithTimeout() as [any, any];
         
         if (!mounted) return;
         
         console.log(`🔍 COO Dashboard: Loaded ${teams.length} operational teams`);
         
-        // Load team members with circuit breaker protection
+        // Load team members with individual timeout protection
         const teamsWithMembersPromises = teams.map(async (team: any) => {
           try {
-            const members = await DatabaseService.getTeamMembers(team.id, false);
+            // Add individual timeout for each team member load (30 seconds)
+            const membersPromise = Promise.race([
+              DatabaseService.getTeamMembers(team.id, false),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`Team ${team.name} members load timeout`)), 30000)
+              )
+            ]);
+            
+            const members = await membersPromise as any[];
             console.log(`✅ Loaded ${members.length} members for team ${team.name}`);
             return { ...team, team_members: members };
           } catch (err) {
@@ -198,7 +216,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
 
   // Simplified refresh handler to prevent infinite loops
   const handleRefresh = useCallback(async () => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    const timeoutId: NodeJS.Timeout | null = null;
     
     try {
       setDashboardLoading(true);
@@ -206,19 +224,36 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
       
       console.log('🔄 COO Dashboard: Refreshing data...');
       
-      // Refresh data with circuit breaker timeout protection
+      // Refresh data with circuit breaker and additional timeout protection
       console.log('🔄 COO Dashboard: Starting refresh with circuit breaker protection...');
       
-      const [data, teams] = await Promise.all([
-        DatabaseService.getCOODashboardData(true),
-        DatabaseService.getOperationalTeams(true)
-      ]);
+      const refreshDataWithTimeout = async () => {
+        return Promise.race([
+          Promise.all([
+            DatabaseService.getCOODashboardData(true),
+            DatabaseService.getOperationalTeams(true)
+          ]),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Dashboard refresh timeout after 120 seconds')), 120000)
+          )
+        ]);
+      };
       
-      // Load team members with circuit breaker protection during refresh
+      const [data, teams] = await refreshDataWithTimeout() as [any, any];
+      
+      // Load team members with individual timeout protection during refresh
       const teamsWithMembers = await Promise.all(
         teams.map(async (team: any) => {
           try {
-            const members = await DatabaseService.getTeamMembers(team.id, true);
+            // Add individual timeout for each team member refresh (30 seconds)
+            const membersPromise = Promise.race([
+              DatabaseService.getTeamMembers(team.id, true),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`Team ${team.name} refresh timeout`)), 30000)
+              )
+            ]);
+            
+            const members = await membersPromise as any[];
             console.log(`🔄 Refreshed ${members.length} members for team ${team.name}`);
             return { ...team, team_members: members };
           } catch (err) {
@@ -254,6 +289,15 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
       // Clear all cache before retry to ensure fresh data
       console.log('🧹 Clearing all cache before retry...');
       dataConsistencyManager.clearAll();
+      
+      // Check circuit breaker state before retry
+      const { cooDashboardCircuitBreaker } = await import('@/utils/circuitBreaker');
+      console.log(`🔍 Circuit breaker state: ${cooDashboardCircuitBreaker.getStats().state}`);
+      
+      if (!cooDashboardCircuitBreaker.isHealthy()) {
+        console.log('⚡ Resetting circuit breaker before retry...');
+        cooDashboardCircuitBreaker.reset();
+      }
       
       await errorBoundary.retry();
       if (!errorBoundary.hasError) {
@@ -577,13 +621,25 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
 
       {/* Hours view control removed - integrated into specific components */}
 
-      {/* Company-Wide Hours Status Overview */}
-      {allTeams.length > 0 && currentSprint && (
-        <COOHoursStatusOverview 
-          allTeams={allTeams}
-          currentSprint={currentSprint}
-        />
-      )}
+      {/* Company-Wide Hours Status Overview - Always render with fallback */}
+      <COOHoursStatusOverview 
+        allTeams={allTeams || []}
+        currentSprint={currentSprint || {
+          id: '1',
+          current_sprint_number: 1,
+          sprint_length_weeks: 2,
+          sprint_start_date: new Date().toISOString().split('T')[0],
+          sprint_end_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          progress_percentage: 50,
+          days_remaining: 14,
+          working_days_remaining: 10,
+          is_active: true,
+          notes: 'Default fallback sprint',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          updated_by: 'system'
+        } as CurrentGlobalSprint}
+      />
 
       {/* Team Count Warning */}
       {allTeams.length !== 5 && (

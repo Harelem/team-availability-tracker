@@ -54,7 +54,7 @@ import ClientOnly from '@/components/ClientOnly';
 
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
-  const { isMobile } = useIsMobile();
+  const { isMobile, isLoading: isMobileLoading, isHydrated } = useIsMobile();
   const router = useRouter();
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -81,14 +81,14 @@ function HomeContent() {
       const [dataChecks, dbState] = await Promise.allSettled(backgroundTasks);
       
       // Log background data results
-      if (dataChecks.status === 'fulfilled' && Array.isArray(dataChecks.value)) {
+      if (dataChecks && dataChecks.status === 'fulfilled' && Array.isArray(dataChecks.value)) {
         const criticalIssues = dataChecks.value.filter((check: any) => check.status === 'FAIL');
         if (criticalIssues.length > 0) {
           console.warn('⚠️ Background: Critical data issues detected:', criticalIssues.length);
         }
       }
       
-      if (dbState.status === 'fulfilled' && dbState.value && 'totalScheduleEntries' in dbState.value) {
+      if (dbState && dbState.status === 'fulfilled' && dbState.value && 'totalScheduleEntries' in dbState.value) {
         const dbData = dbState.value as any;
         if (dbData.totalScheduleEntries > 0) {
           console.log(`📊 Background: Protecting ${dbData.totalScheduleEntries} schedule entries, ${dbData.totalTeamMembers} members`);
@@ -352,29 +352,16 @@ function HomeContent() {
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center p-4 min-h-screen">
           <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
-            {!isClientMounted ? (
-              // Server-side safe loading placeholder
-              <div>
-                <div className="h-8 bg-gray-200 rounded mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
-                <div className="space-y-2">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
+            {/* Consistent loading structure for both server and client */}
+            <div className={isClientMounted ? "animate-pulse" : ""}>
+              <div className="h-8 bg-gray-200 rounded mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                ))}
               </div>
-            ) : (
-              // Client-side animated loading
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
-                <div className="space-y-2">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
@@ -446,7 +433,7 @@ function HomeContent() {
                 <p className="text-gray-600 text-sm sm:text-base">Select your name to continue:</p>
               </div>
             }>
-              <div className={`text-center mb-6 ${isMobile ? 'pt-4' : ''}`}>
+              <div className="text-center mb-6">
                 {!isMobile && (
                   <>
                     <Calendar className="text-blue-600 w-12 h-12 mx-auto mb-3" />
@@ -457,7 +444,9 @@ function HomeContent() {
                   </>
                 )}
                 {isMobile && (
-                  <p className="text-gray-600 text-base">Choose your profile:</p>
+                  <div className="pt-4">
+                    <p className="text-gray-600 text-base">Choose your profile:</p>
+                  </div>
                 )}
               </div>
             </ClientOnly>

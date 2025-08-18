@@ -47,8 +47,8 @@ export default function CustomRangeExportModal({
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + (includeWeekends ? 6 : 4));
     
-    setStartDate(startOfWeek.toISOString().split('T')[0]);
-    setEndDate(endOfWeek.toISOString().split('T')[0]);
+    setStartDate(startOfWeek.toISOString().split('T')[0] || '' || '');
+    setEndDate(endOfWeek.toISOString().split('T')[0] || '' || '');
   };
 
   const setLastWeekDates = () => {
@@ -58,8 +58,8 @@ export default function CustomRangeExportModal({
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + (includeWeekends ? 6 : 4));
     
-    setStartDate(startOfWeek.toISOString().split('T')[0]);
-    setEndDate(endOfWeek.toISOString().split('T')[0]);
+    setStartDate(startOfWeek.toISOString().split('T')[0] || '' || '');
+    setEndDate(endOfWeek.toISOString().split('T')[0] || '' || '');
   };
 
   const setLastMonthDates = () => {
@@ -67,8 +67,8 @@ export default function CustomRangeExportModal({
     const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
     
-    setStartDate(lastMonth.toISOString().split('T')[0]);
-    setEndDate(lastMonthEnd.toISOString().split('T')[0]);
+    setStartDate(lastMonth.toISOString().split('T')[0] || '');
+    setEndDate(lastMonthEnd.toISOString().split('T')[0] || '');
   };
 
   const validateInputs = (): boolean => {

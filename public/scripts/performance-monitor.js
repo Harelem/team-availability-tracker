@@ -48,16 +48,22 @@
         setTimeout(function() {
           var navTiming = performance.getEntriesByType('navigation')[0];
           if (navTiming) {
-            var loadTime = navTiming.loadEventEnd - navTiming.navigationStart;
+            // Helper function to safely calculate timing differences
+            function safeTiming(end, start) {
+              var result = end - start;
+              return isNaN(result) || result < 0 ? 0 : Math.round(result);
+            }
+            
+            var loadTime = safeTiming(navTiming.loadEventEnd, navTiming.navigationStart);
             console.log('Page load time:', loadTime + 'ms');
             
-            // Track key metrics
+            // Track key metrics with safe calculations
             var metrics = {
-              dns: navTiming.domainLookupEnd - navTiming.domainLookupStart,
-              tcp: navTiming.connectEnd - navTiming.connectStart,
-              ssl: navTiming.connectEnd - navTiming.secureConnectionStart,
-              ttfb: navTiming.responseStart - navTiming.navigationStart,
-              dom: navTiming.domInteractive - navTiming.responseStart,
+              dns: safeTiming(navTiming.domainLookupEnd, navTiming.domainLookupStart),
+              tcp: safeTiming(navTiming.connectEnd, navTiming.connectStart),
+              ssl: navTiming.secureConnectionStart > 0 ? safeTiming(navTiming.connectEnd, navTiming.secureConnectionStart) : 0,
+              ttfb: safeTiming(navTiming.responseStart, navTiming.requestStart),
+              dom: safeTiming(navTiming.domInteractive, navTiming.responseStart),
               load: loadTime
             };
             

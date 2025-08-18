@@ -73,6 +73,11 @@ export default function PersonalScheduleTable({
   const updateSchedule = useCallback(async (memberId: number, date: Date, value: string | null, reason?: string) => {
     const dateKey = date.toISOString().split('T')[0];
     
+    if (!dateKey) {
+      console.error('Invalid date key generated');
+      return;
+    }
+    
     try {
       await DatabaseService.updateScheduleEntry(
         memberId,
@@ -104,7 +109,7 @@ export default function PersonalScheduleTable({
     if (!editable) return;
     
     const dateKey = date.toISOString().split('T')[0];
-    const currentValue = scheduleData[user.id]?.[dateKey]?.value;
+    const currentValue = dateKey ? scheduleData[user.id]?.[dateKey]?.value : undefined;
     
     // If clicking the same value, deselect it
     if (currentValue === value) {
@@ -132,12 +137,12 @@ export default function PersonalScheduleTable({
 
   const getValueForDate = (date: Date) => {
     const dateKey = date.toISOString().split('T')[0];
-    return scheduleData[user.id]?.[dateKey]?.value || null;
+    return dateKey ? scheduleData[user.id]?.[dateKey]?.value || null : null;
   };
 
   const getReasonForDate = (date: Date) => {
     const dateKey = date.toISOString().split('T')[0];
-    return scheduleData[user.id]?.[dateKey]?.reason || null;
+    return dateKey ? scheduleData[user.id]?.[dateKey]?.reason || null : null;
   };
 
   // Group dates by week for better display

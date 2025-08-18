@@ -79,6 +79,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   const setSchedulesError = setError;
   const updateScheduleEntry = (memberId: number, date: Date, value: string | null, reason?: string) => {
     const dateKey = date.toISOString().split('T')[0];
+    if (!dateKey) return;
+    
     setScheduleData((prev: any) => ({
       ...prev,
       [memberId]: {
@@ -115,23 +117,21 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   // Calculate current sprint dates (Sun-Thu working days)
   const getCurrentSprintDates = () => {
     if (!currentSprint) {
-      // Fallback to current week if no sprint data
-      const today = new Date();
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay() + (currentSprintOffset * 7));
-      
-      const sprintDays = [];
-      for (let i = 0; i <= 4; i++) { // Sun(0) to Thu(4)
-        const date = new Date(startOfWeek);
-        date.setDate(startOfWeek.getDate() + i);
-        sprintDays.push(date);
-      }
-      return sprintDays;
+      // Fallback to smart sprint detection if no sprint data available
+      console.warn('No current sprint data available, using smart detection fallback');
+      return getSmartSprintDates();
     }
 
-    // Use sprint dates from GlobalSprintContext
+    // Validate that current sprint contains today's date
+    const today = new Date();
     const sprintStart = new Date(currentSprint.sprint_start_date);
     const sprintEnd = new Date(currentSprint.sprint_end_date);
+    
+    // Check if today falls within the sprint range
+    if (today < sprintStart || today > sprintEnd) {
+      console.warn(`🔄 Current date ${today.toDateString()} is outside sprint range ${sprintStart.toDateString()} - ${sprintEnd.toDateString()}, using smart detection`);
+      return getSmartSprintDates();
+    }
     
     // Navigate to different sprints based on offset
     const offsetStart = new Date(sprintStart);
@@ -155,6 +155,103 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     }
     
     return sprintWorkingDays;
+  };
+
+  // Smart sprint detection fallback
+  const getSmartSprintDates = () => {
+    try {
+      // Use the smart detection logic directly
+      const firstSprintStartDate = new Date('2025-07-27'); // Sprint 1 started July 27
+      const sprintLengthWeeks = 2;
+      const workingDaysPerWeek = 5;
+      const workingDaysPerSprint = sprintLengthWeeks * workingDaysPerWeek; // 10 working days
+      
+      const targetDate = new Date();
+      
+      // Calculate which sprint the target date falls into
+      let currentSprintNumber = 1;
+      let sprintStart = new Date(firstSprintStartDate);
+      let sprintEnd = calculateSprintEndFromStart(sprintStart, workingDaysPerSprint);
+      
+      // Find the correct sprint by iterating through sprint boundaries
+      while (targetDate > sprintEnd && currentSprintNumber < 20) { // Safety limit
+        currentSprintNumber++;
+        sprintStart = getNextSprintStart(sprintEnd);
+        sprintEnd = calculateSprintEndFromStart(sprintStart, workingDaysPerSprint);
+      }
+      
+      // Apply navigation offset if needed
+      if (currentSprintOffset !== 0) {
+        const offsetDays = currentSprintOffset * (sprintLengthWeeks * 7);
+        sprintStart.setDate(sprintStart.getDate() + offsetDays);
+        sprintEnd.setDate(sprintEnd.getDate() + offsetDays);
+      }
+      
+      // Generate working days (Sun-Thu) within sprint period
+      const sprintWorkingDays = [];
+      const currentDate = new Date(sprintStart);
+      
+      while (currentDate <= sprintEnd) {
+        const dayOfWeek = currentDate.getDay();
+        // Include Sunday(0) through Thursday(4) - Israeli work week
+        if (dayOfWeek >= 0 && dayOfWeek <= 4) {
+          sprintWorkingDays.push(new Date(currentDate));
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      console.log(`✅ Smart detection: Sprint ${currentSprintNumber} (${sprintStart.toDateString()} - ${sprintEnd.toDateString()}) - ${sprintWorkingDays.length} working days`);
+      return sprintWorkingDays;
+      
+    } catch (error) {
+      console.error('Smart sprint detection failed:', error);
+      // Final fallback to current week
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay() + (currentSprintOffset * 7));
+      
+      const sprintDays = [];
+      for (let i = 0; i <= 4; i++) { // Sun(0) to Thu(4)
+        const date = new Date(startOfWeek);
+        date.setDate(startOfWeek.getDate() + i);
+        sprintDays.push(date);
+      }
+      return sprintDays;
+    }
+  };
+
+  // Helper functions for smart sprint calculation
+  const calculateSprintEndFromStart = (sprintStart: Date, workingDaysInSprint: number): Date => {
+    const current = new Date(sprintStart);
+    let workingDaysAdded = 0;
+    
+    // Count the start date if it's a working day
+    if (current.getDay() >= 0 && current.getDay() <= 4) {
+      workingDaysAdded = 1;
+    }
+    
+    // Add working days until we reach the target count
+    while (workingDaysAdded < workingDaysInSprint) {
+      current.setDate(current.getDate() + 1);
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek >= 0 && dayOfWeek <= 4) {
+        workingDaysAdded++;
+      }
+    }
+    
+    return current;
+  };
+
+  const getNextSprintStart = (previousSprintEnd: Date): Date => {
+    const nextStart = new Date(previousSprintEnd);
+    nextStart.setDate(previousSprintEnd.getDate() + 1);
+    
+    // Skip to next working day
+    while (nextStart.getDay() === 5 || nextStart.getDay() === 6) {
+      nextStart.setDate(nextStart.getDate() + 1);
+    }
+    
+    return nextStart;
   };
 
   // Get dates based on view mode (now defaulting to sprint)
@@ -188,8 +285,17 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       setSchedulesError(null);
       
       const viewDates = getViewDates();
-      const startDate = viewDates[0].toISOString().split('T')[0];
-      const endDate = viewDates[viewDates.length - 1].toISOString().split('T')[0];
+      if (viewDates.length === 0) {
+        console.warn('No view dates available');
+        return;
+      }
+      const startDate = viewDates[0]?.toISOString().split('T')[0];
+      const endDate = viewDates[viewDates.length - 1]?.toISOString().split('T')[0];
+      
+      if (!startDate || !endDate) {
+        console.warn('Invalid start or end date');
+        return;
+      }
       
       try {
         const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
@@ -216,8 +322,12 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   // Set up real-time subscription
   useEffect(() => {
     const viewDates = getViewDates();
-    const startDate = viewDates[0].toISOString().split('T')[0];
-    const endDate = viewDates[viewDates.length - 1].toISOString().split('T')[0];
+    if (viewDates.length === 0) return;
+    
+    const startDate = viewDates[0]?.toISOString().split('T')[0];
+    const endDate = viewDates[viewDates.length - 1]?.toISOString().split('T')[0];
+    
+    if (!startDate || !endDate) return;
     
     const subscription = DatabaseService.subscribeToScheduleChanges(
       startDate,
@@ -265,17 +375,53 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   };
 
   const getCurrentSprintString = () => {
-    // ✅ Add safety check for empty sprintDays array
+    // Enhanced fallback logic: Use smart sprint detection when sprintDays is empty
     if (!sprintDays || sprintDays.length === 0) {
-      console.warn('getCurrentSprintString called with empty sprintDays');
-      if (currentSprint) {
-        return `Sprint ${currentSprint.current_sprint_number} (${formatDate(new Date(currentSprint.sprint_start_date))} - ${formatDate(new Date(currentSprint.sprint_end_date))})`;
+      // IMPROVED: Use smart sprint detection instead of warnings
+      try {
+        // First priority: Use database sprint if available and valid
+        if (currentSprint) {
+          const sprintStart = new Date(currentSprint.sprint_start_date);
+          const sprintEnd = new Date(currentSprint.sprint_end_date);
+          const today = new Date();
+          
+          // Validate that current date falls within database sprint range
+          if (today >= sprintStart && today <= sprintEnd) {
+            return `Sprint ${currentSprint.current_sprint_number} (${formatDate(sprintStart)} - ${formatDate(sprintEnd)})`;
+          }
+        }
+        
+        // Second priority: Use smart sprint detection for accurate fallback
+        const smartSprintDates = getCurrentSprintDates();
+        if (smartSprintDates && smartSprintDates.length > 0) {
+          const startDate = smartSprintDates[0];
+          const endDate = smartSprintDates[smartSprintDates.length - 1];
+          
+          // Determine sprint number from smart detection or database
+          const sprintNumber = currentSprint?.current_sprint_number || 
+            Math.floor((Date.now() - new Date('2025-08-10').getTime()) / (1000 * 60 * 60 * 24 * 14)) + 1;
+          
+          return `Sprint ${sprintNumber} (${formatDate(startDate)} - ${formatDate(endDate)})`;
+        }
+        
+        // Final fallback: Current date with estimated sprint number
+        const today = new Date();
+        const sprintNumber = currentSprint?.current_sprint_number || 
+          Math.floor((Date.now() - new Date('2025-08-10').getTime()) / (1000 * 60 * 60 * 24 * 14)) + 1;
+        
+        return `Sprint ${sprintNumber} (${formatDate(today)})`;
+        
+      } catch (error) {
+        // Graceful error handling: provide minimal but functional sprint string
+        console.warn('Error in getCurrentSprintString fallback logic:', error);
+        const today = new Date();
+        return `Current Sprint (${formatDate(today)})`;
       }
-      return `Sprint of ${formatDate(new Date())}`; // Fallback to today
     }
     
+    // Normal operation: sprintDays is available
     const startDate = sprintDays[0];
-    const endDate = sprintDays[sprintDays.length - 1]; // Last available day
+    const endDate = sprintDays[sprintDays.length - 1];
     
     const sprintLabel = currentSprint ? 
       `Sprint ${currentSprint.current_sprint_number}` : 
@@ -303,6 +449,10 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     if (!currentUser.isManager && memberId !== currentUser.id) return;
 
     const dateKey = date.toISOString().split('T')[0];
+    if (!dateKey) {
+      console.error('Invalid date key generated');
+      return;
+    }
     
     try {
       await DatabaseService.updateScheduleEntry(
@@ -322,20 +472,26 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     }
   };
 
-  const handleWorkOptionClick = (memberId: number, date: Date, value: string) => {
+  const handleWorkOptionClick = (memberId: number, date: Date, value: string, reason?: string) => {
     // Only allow users to edit their own schedule (unless they're a manager)
     if (!currentUser.isManager && memberId !== currentUser.id) return;
 
     const dateKey = date.toISOString().split('T')[0];
-    const currentValue = scheduleData[memberId]?.[dateKey]?.value;
+    const currentValue = dateKey ? scheduleData[memberId]?.[dateKey]?.value : undefined;
     
     // If clicking the same value, deselect it
-    if (currentValue === value) {
+    if (currentValue === value && !reason) {
       updateSchedule(memberId, date, null);
       return;
     }
     
-    // If selecting 0.5 or X, show reason dialog
+    // If reason is provided, update directly (from mobile bottom sheet)
+    if (reason) {
+      updateSchedule(memberId, date, value, reason);
+      return;
+    }
+    
+    // If selecting 0.5 or X, show reason dialog (desktop behavior)
     if (value === '0.5' || value === 'X') {
       reasonDialog.open({ memberId, date, value: value as '0.5' | 'X' });
     } else {
@@ -387,7 +543,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
 
     currentSprintDays.forEach(date => {
       const dateKey = date.toISOString().split('T')[0];
-      const value = memberData[dateKey];
+      const value = dateKey ? memberData[dateKey] : undefined;
       const option = workOptions.find(opt => opt.value === value?.value);
       if (option) {
         totalHours += option.hours;

@@ -202,8 +202,8 @@ export default function SprintPlanningCalendar({ onSprintSelect }: SprintPlannin
     
     // Set prefilled dates and show the form
     setPrefilledDates({
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      startDate: startDate.toISOString().split('T')[0]!,
+      endDate: endDate.toISOString().split('T')[0]!,
       lengthWeeks
     });
     setShowSprintForm(true);

@@ -455,6 +455,7 @@ export const AspectRatio = forwardRef<HTMLDivElement, AspectRatioProps>(
     const paddingBottom = typeof ratio === 'string' 
       ? (() => {
           const [width, height] = ratio.split('/').map(Number);
+          if (!width || !height) return '100%';
           return `${(height / width) * 100}%`;
         })()
       : `${(1 / ratio) * 100}%`;

@@ -178,8 +178,8 @@ export default function EnhancedGlobalSprintSettings({
 
       const newSprint = await enhancedDatabaseService.createSprint({
         sprint_number: nextSprintNumber,
-        start_date: formData.startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
+        start_date: formData.startDate.toISOString().split('T')[0] || '',
+        end_date: endDate.toISOString().split('T')[0] || '',
         length_weeks: formData.sprintLength,
         notes: formData.notes,
         created_by: currentUser?.name || 'COO'

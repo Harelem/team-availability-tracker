@@ -40,14 +40,14 @@ export default function SprintDateEditor({
     const startDateObj = new Date(start);
     const endDateObj = new Date(startDateObj);
     endDateObj.setDate(startDateObj.getDate() + (lengthWeeks * 7) - 1);
-    return endDateObj.toISOString().split('T')[0];
+    return endDateObj.toISOString().split('T')[0] || '';
   };
 
   // Validate dates and generate warnings
   const validateDates = (start: string, end: string): { isValid: boolean; errors: string[]; warnings: string[] } => {
     const errors: string[] = [];
     const warnings: string[] = [];
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0] || '';
     const startDateObj = new Date(start);
     const endDateObj = new Date(end);
     const originalStart = new Date(currentSprint.sprint_start_date);
@@ -110,7 +110,7 @@ export default function SprintDateEditor({
     
     if (newStartDate && endDate) {
       const validation = validateDates(newStartDate, endDate);
-      setError(validation.errors.length > 0 ? validation.errors[0] : null);
+      setError(validation.errors.length > 0 ? validation.errors[0] || null : null);
       setWarnings(validation.warnings);
     }
   };
@@ -122,7 +122,7 @@ export default function SprintDateEditor({
     
     if (startDate && newEndDate) {
       const validation = validateDates(startDate, newEndDate);
-      setError(validation.errors.length > 0 ? validation.errors[0] : null);
+      setError(validation.errors.length > 0 ? validation.errors[0] || null : null);
       setWarnings(validation.warnings);
     }
   };
@@ -135,7 +135,7 @@ export default function SprintDateEditor({
       setCustomEndDate(false);
       
       const validation = validateDates(startDate, calculatedEndDate);
-      setError(validation.errors.length > 0 ? validation.errors[0] : null);
+      setError(validation.errors.length > 0 ? validation.errors[0] || null : null);
       setWarnings(validation.warnings);
     }
   };
@@ -146,7 +146,7 @@ export default function SprintDateEditor({
     
     const validation = validateDates(startDate, endDate);
     if (!validation.isValid) {
-      setError(validation.errors[0]);
+      setError(validation.errors[0] || null);
       return;
     }
 

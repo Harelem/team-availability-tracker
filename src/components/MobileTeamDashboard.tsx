@@ -92,7 +92,7 @@ const MobileTeamDashboard = memo(function MobileTeamDashboard({
 
   const getDayStats = (date: Date) => {
     const dayKey = date.toISOString().split('T')[0];
-    const daySchedule = (scheduleData as any)[dayKey] || {};
+    const daySchedule = dayKey ? (scheduleData as any)[dayKey] || {} : {};
     let full = 0, half = 0, absent = 0, missing = 0;
     
     teamMembers.forEach(member => {
