@@ -35,6 +35,15 @@ rules:
     patterns:
       - pattern: |
           $OBJ[$USER_INPUT]
+      - pattern-not:
+          - pattern: |
+              devices['...']
+          - pattern: |
+              process.env['...']
+          - pattern: |
+              config['...']
+          - pattern: |
+              options['...']
       - pattern-not-inside: |
           if ($USER_INPUT in $OBJ) {
             ...
@@ -89,7 +98,14 @@ rules:
       - pattern: |
           query(`SELECT * FROM ${$TABLE}`)
       - pattern: |
-          supabase.from($USER_INPUT)
+          db.query("SELECT * FROM " + $TABLE)
+      - pattern: |
+          connection.execute(`SELECT * FROM ${$TABLE}`)
+    pattern-not:
+      - pattern: |
+          supabase.from(...)
+      - pattern: |
+          supabase.from($TABLE).select(...)
     pattern-not-inside:
       - pattern: |
           const ALLOWED_TABLES = [...]
@@ -262,6 +278,13 @@ rules:
             path.join($USER_INPUT, ...)
         - pattern: |
             require($USER_INPUT)
+      - pattern-not:
+        - pattern: |
+            require('next/jest')
+        - pattern: |
+            require('@/.../...')
+        - pattern: |
+            require('./...')
       - pattern-not-inside: |
           if (path.isAbsolute($USER_INPUT) && $USER_INPUT.startsWith(SAFE_DIR)) {
             ...
