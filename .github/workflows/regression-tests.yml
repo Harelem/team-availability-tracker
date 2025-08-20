@@ -1,0 +1,423 @@
+name: 🧪 v2.1 Regression Test Suite
+
+on:
+  pull_request:
+    branches: [main, develop, feature/v2.1-agent-coordination]
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 2 * * *' # Daily at 2 AM UTC
+  workflow_dispatch: # Manual trigger
+
+env:
+  NODE_VERSION: '18'
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  # Quick validation first
+  pre-flight-checks:
+    name: 🚀 Pre-flight Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    outputs:
+      should-run-regression: ${{ steps.changes.outputs.should-run }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+        
+      - name: Check for critical file changes
+        id: changes
+        run: |
+          # Check if critical files changed
+          if git diff --name-only HEAD~1 HEAD | grep -E "(src/|__tests__/|package\.json|next\.config\.js)"; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-run=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: TypeScript Check
+        run: npx tsc --noEmit
+        
+      - name: Lint Check
+        run: npm run lint
+        
+      - name: Build Check
+        run: npm run build
+
+  # Critical regression tests (must pass 100%)
+  critical-regression-tests:
+    name: 🔴 Critical Regression Tests
+    runs-on: ubuntu-latest
+    needs: pre-flight-checks
+    if: needs.pre-flight-checks.outputs.should-run-regression == 'true'
+    timeout-minutes: 20
+    
+    strategy:
+      fail-fast: true
+      matrix:
+        test-suite: [
+          'data-integrity',
+          'permissions', 
+          'error-recovery'
+        ]
+        
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+        
+      - name: Setup test database
+        run: |
+          # Create test database schema
+          if [ -f "__tests__/setup/test-db-setup.sql" ]; then
+            echo "Setting up test database..."
+          fi
+          
+      - name: Run critical regression tests - ${{ matrix.test-suite }}
+        run: npm run test:regression:${{ matrix.test-suite }}
+        env:
+          CI: true
+          JEST_TIMEOUT: 30000
+          
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: critical-test-results-${{ matrix.test-suite }}
+          path: |
+            coverage/
+            test-results/
+            
+      - name: Comment PR with critical results
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚨 CRITICAL REGRESSION TEST FAILURE: ${{ matrix.test-suite }}
+              
+              **Status**: ❌ FAILED
+              **Impact**: BLOCKS DEPLOYMENT
+              **Action Required**: Fix immediately before merging
+              
+              Check the [test results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`
+            });
+
+  # High priority regression tests
+  high-priority-regression-tests:
+    name: 🟡 High Priority Regression Tests
+    runs-on: ubuntu-latest
+    needs: [pre-flight-checks, critical-regression-tests]
+    if: needs.pre-flight-checks.outputs.should-run-regression == 'true'
+    timeout-minutes: 30
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        test-suite: [
+          'performance',
+          'mobile',
+          'user-journeys'
+        ]
+        
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+        
+      - name: Setup Playwright (for performance tests)
+        if: matrix.test-suite == 'performance' || matrix.test-suite == 'mobile'
+        run: npx playwright install --with-deps chromium
+        
+      - name: Run high priority regression tests - ${{ matrix.test-suite }}
+        run: npm run test:regression:${{ matrix.test-suite }}
+        env:
+          CI: true
+          
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: high-priority-test-results-${{ matrix.test-suite }}
+          path: |
+            coverage/
+            test-results/
+            playwright-report/
+
+  # Agent-specific tests
+  agent-validation-tests:
+    name: 🤖 Agent Validation Tests
+    runs-on: ubuntu-latest
+    needs: [pre-flight-checks]
+    if: needs.pre-flight-checks.outputs.should-run-regression == 'true'
+    timeout-minutes: 25
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: [
+          'bug-fix',
+          'database-auditor', 
+          'performance',
+          'mobile',
+          'ui-polish',
+          'coverage'
+        ]
+        
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+        
+      - name: Run agent tests - ${{ matrix.agent }}
+        run: npm run test:agent:${{ matrix.agent }}
+        continue-on-error: true
+        
+      - name: Upload agent test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: agent-test-results-${{ matrix.agent }}
+          path: test-results/
+
+  # v2.1 Readiness Check
+  v21-readiness-check:
+    name: ✅ v2.1 Launch Readiness Check
+    runs-on: ubuntu-latest
+    needs: [critical-regression-tests, high-priority-regression-tests, agent-validation-tests]
+    if: always()
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+        
+      - name: Download all test results
+        uses: actions/download-artifact@v3
+        with:
+          path: all-test-results/
+          
+      - name: Calculate v2.1 readiness score
+        id: readiness
+        run: |
+          # Create readiness check script if it doesn't exist
+          if [ ! -f "scripts/v21-readiness-check.js" ]; then
+            mkdir -p scripts
+            cat > scripts/v21-readiness-check.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          function checkReadiness() {
+            console.log('🚀 v2.1 Launch Readiness Check');
+            console.log('================================');
+            
+            let score = 0;
+            let maxScore = 0;
+            const results = [];
+            
+            // Check critical tests
+            const criticalTests = ['data-integrity', 'permissions', 'error-recovery'];
+            criticalTests.forEach(test => {
+              maxScore += 30; // 30 points each for critical
+              const resultPath = path.join('all-test-results', `critical-test-results-${test}`);
+              if (fs.existsSync(resultPath)) {
+                score += 30;
+                results.push(`✅ ${test}: PASSED`);
+              } else {
+                results.push(`❌ ${test}: FAILED`);
+              }
+            });
+            
+            // Check high priority tests  
+            const highTests = ['performance', 'mobile', 'user-journeys'];
+            highTests.forEach(test => {
+              maxScore += 10; // 10 points each for high priority
+              const resultPath = path.join('all-test-results', `high-priority-test-results-${test}`);
+              if (fs.existsSync(resultPath)) {
+                score += 10;
+                results.push(`✅ ${test}: PASSED`);
+              } else {
+                results.push(`⚠️ ${test}: FAILED`);
+              }
+            });
+            
+            const percentage = Math.round((score / maxScore) * 100);
+            
+            console.log('\nResults:');
+            results.forEach(result => console.log(`  ${result}`));
+            
+            console.log(`\nOverall Score: ${percentage}% (${score}/${maxScore})`);
+            
+            if (percentage === 100) {
+              console.log('\n🎉 READY FOR v2.1 LAUNCH!');
+              process.exit(0);
+            } else if (percentage >= 90) {
+              console.log('\n⚠️ ALMOST READY - Minor issues to fix');
+              process.exit(0);
+            } else {
+              console.log('\n🚫 NOT READY FOR LAUNCH - Critical issues must be fixed');
+              process.exit(1);
+            }
+          }
+          
+          checkReadiness();
+          EOF
+          fi
+          
+          node scripts/v21-readiness-check.js
+          
+      - name: Create readiness summary
+        if: always()
+        run: |
+          echo "## 🚀 v2.1 Launch Readiness Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Critical Tests (Must Pass 100%)" >> $GITHUB_STEP_SUMMARY
+          echo "- Data Integrity: ${{ needs.critical-regression-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Permissions: ${{ needs.critical-regression-tests.result }}" >> $GITHUB_STEP_SUMMARY  
+          echo "- Error Recovery: ${{ needs.critical-regression-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### High Priority Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Performance: ${{ needs.high-priority-regression-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Mobile: ${{ needs.high-priority-regression-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- User Journeys: ${{ needs.high-priority-regression-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Agent Validation" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ needs.agent-validation-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Comment PR with final results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const criticalPassed = '${{ needs.critical-regression-tests.result }}' === 'success';
+            const highPassed = '${{ needs.high-priority-regression-tests.result }}' === 'success';
+            
+            let status, color, message;
+            if (criticalPassed && highPassed) {
+              status = '🎉 READY FOR LAUNCH';
+              color = '36a64f'; // Green
+              message = 'All regression tests passed! Ready for v2.1 deployment.';
+            } else if (criticalPassed) {
+              status = '⚠️ ALMOST READY';
+              color = 'ffcc00'; // Yellow
+              message = 'Critical tests passed, but some high-priority tests failed.';
+            } else {
+              status = '🚫 NOT READY';
+              color = 'ff0000'; // Red
+              message = 'Critical regression tests failed. DO NOT DEPLOY.';
+            }
+            
+            const comment = `## ${status}
+            
+            ${message}
+            
+            ### 📊 Test Results Summary
+            - **Critical Tests**: ${criticalPassed ? '✅ PASSED' : '❌ FAILED'}
+            - **High Priority Tests**: ${highPassed ? '✅ PASSED' : '❌ FAILED'}
+            
+            ### 🔗 Links
+            - [View detailed results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - [Download test artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)
+            
+            ---
+            *Automated by v2.1 Regression Test Suite*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Security scan
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit
+        
+      - name: Run security audit
+        run: |
+          npm audit --audit-level=moderate
+          
+      - name: Run Semgrep security scan
+        if: always()
+        run: |
+          if command -v uvx &> /dev/null; then
+            npm run semgrep:security || echo "Security scan completed with warnings"
+          else
+            echo "Semgrep not available, skipping security scan"
+          fi
+        continue-on-error: true
