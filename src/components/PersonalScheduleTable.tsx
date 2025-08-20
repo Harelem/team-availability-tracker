@@ -346,6 +346,7 @@ export default function PersonalScheduleTable({
           </div>
         </div>
       </div>
+      }
 
       {/* Desktop View - Enhanced Table Design */}
       <div className="hidden md:block overflow-x-auto scrollbar-hide">

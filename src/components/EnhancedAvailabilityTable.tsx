@@ -199,8 +199,8 @@ export default function EnhancedAvailabilityTable({
   const enhancedSprintCalendar = useMemo(() => {
     if (!validatedSprintDays || validatedSprintDays.length === 0) return [];
 
-    const calendar = [];
-    let previousWeekEnd = null;
+    const calendar: Array<{date: Date, type: string, label: string, isVisible: boolean}> = [];
+    let previousWeekEnd: Date | null = null;
     
     // Group working days by week and add weekend reference columns
     for (let i = 0; i < validatedSprintDays.length; i++) {

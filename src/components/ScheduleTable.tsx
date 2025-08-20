@@ -56,7 +56,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   
   // Modal state
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
-  const [reasonDialogData, setReasonDialogData] = useState<{memberId: number; date: Date; value: '0.5' | 'X'} | null>(null);
+  const [reasonDialogData, setReasonDialogData] = useState<ReasonDialogData | null>(null);
   const [viewReasonsOpen, setViewReasonsOpen] = useState(false);
   
   // Navigation state 
@@ -175,7 +175,11 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   const reasonDialog = {
     isOpen: reasonDialogOpen,
     open: (data: {memberId: number; date: Date; value: '0.5' | 'X'}) => {
-      setReasonDialogData(data);
+      setReasonDialogData({
+        memberId: data.memberId,
+        dateKey: data.date?.toISOString().split('T')[0] || '',
+        value: data.value
+      });
       setReasonDialogOpen(true);
     },
     close: () => {
@@ -218,7 +222,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     offsetEnd.setDate(offsetEnd.getDate() + (currentSprintOffset * sprintLengthDays));
     
     // Generate working days (Sun-Thu) within sprint period
-    const sprintWorkingDays = [];
+    const sprintWorkingDays: Date[] = [];
     const currentDate = new Date(offsetStart);
     
     while (currentDate <= offsetEnd) {
@@ -264,7 +268,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       }
       
       // Generate working days (Sun-Thu) within sprint period
-      const sprintWorkingDays = [];
+      const sprintWorkingDays: Date[] = [];
       const currentDate = new Date(sprintStart);
       
       while (currentDate <= sprintEnd) {
@@ -286,7 +290,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay() + (currentSprintOffset * 7));
       
-      const sprintDays = [];
+      const sprintDays: Date[] = [];
       for (let i = 0; i <= 4; i++) { // Sun(0) to Thu(4)
         const date = new Date(startOfWeek);
         date.setDate(startOfWeek.getDate() + i);
@@ -347,7 +351,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay() + (currentSprintOffset * 7));
       
-      const weekDays = [];
+      const weekDays: Date[] = [];
       for (let i = 0; i < 5; i++) {
         const date = new Date(startOfWeek);
         date.setDate(startOfWeek.getDate() + i);
@@ -626,7 +630,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
 
   const handleReasonSave = (reason: string) => {
     if (reasonDialogData) {
-      updateSchedule(reasonDialogData.memberId, reasonDialogData.date, reasonDialogData.value, reason);
+      const date = new Date(reasonDialogData.dateKey);
+      updateSchedule(reasonDialogData.memberId, date, reasonDialogData.value, reason);
     }
     reasonDialog.close();
   };

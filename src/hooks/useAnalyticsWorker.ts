@@ -210,7 +210,7 @@ export function useAnalyticsWorker(
     },
 
     calculateMovingAverage: async (data: number[], windowSize: number) => {
-      const result = [];
+      const result: number[] = [];
       for (let i = 0; i < data.length; i++) {
         const start = Math.max(0, i - windowSize + 1);
         const window = data.slice(start, i + 1);

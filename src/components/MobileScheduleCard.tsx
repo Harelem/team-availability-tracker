@@ -196,7 +196,7 @@ export default function MobileScheduleCard({
     }`}>
       {/* Card Header - Enhanced touch interaction */}
       <div 
-        className="p-4 cursor-pointer touch-manipulation min-h-[56px] active:bg-gray-100 transition-all duration-200 active:scale-[0.98]">
+        className="p-4 cursor-pointer touch-manipulation min-h-[56px] active:bg-gray-100 transition-all duration-200 active:scale-[0.98]"
         onClick={() => {
           // Add haptic feedback if supported
           if ('vibrate' in navigator) {
@@ -264,7 +264,7 @@ export default function MobileScheduleCard({
                   }
                   onFullSprintSet();
                 }}
-                className="w-full bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-2 border-green-200 rounded-xl py-5 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all duration-200 touch-manipulation min-h-[60px] shadow-elevation-2 hover:shadow-elevation-3 transform hover:scale-[1.02]">
+                className="w-full bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-2 border-green-200 rounded-xl py-5 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all duration-200 touch-manipulation min-h-[60px] shadow-elevation-2 hover:shadow-elevation-3 transform hover:scale-[1.02]"
               >
                 <div className="flex items-center justify-center gap-3">
                   <CheckCircle className="w-6 h-6" />

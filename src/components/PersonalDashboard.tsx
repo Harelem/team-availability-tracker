@@ -51,7 +51,7 @@ export default function PersonalDashboard({
   const sprintWorkingDays = useMemo(() => {
     if (!currentSprint) return [];
     
-    const dates = [];
+    const dates: Date[] = [];
     const start = new Date(currentSprint.sprint_start_date || Date.now());
     const end = new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000);
     

@@ -161,7 +161,12 @@ jobs:
         timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
     
     - name: Run performance tests
-      run: npx playwright test --project=performance-${{ matrix.browser === 'webkit' && 'mobile' || 'desktop' }}
+      run: |
+        if [ "${{ matrix.browser }}" = "webkit" ]; then
+          npx playwright test --project=performance-mobile
+        else
+          npx playwright test --project=performance-desktop
+        fi
       env:
         NETWORK_CONDITION: ${{ matrix.network }}
     

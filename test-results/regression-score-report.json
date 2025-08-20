@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-08-20T12:27:07.377Z",
+  "overallScore": 54,
+  "scores": {
+    "critical": {
+      "percentage": 55,
+      "earned": 60,
+      "total": 110,
+      "weight": 0.6
+    },
+    "high": {
+      "percentage": 57,
+      "earned": 40,
+      "total": 70,
+      "weight": 0.3
+    },
+    "medium": {
+      "percentage": 40,
+      "earned": 10,
+      "total": 25,
+      "weight": 0.1
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "CRITICAL",
+      "test": "Concurrent Edits",
+      "action": "Must fix before launch"
+    },
+    {
+      "priority": "CRITICAL",
+      "test": "Error Recovery",
+      "action": "Must fix before launch"
+    },
+    {
+      "priority": "HIGH",
+      "test": "Mobile Touch Targets",
+      "action": "Should fix before launch"
+    },
+    {
+      "priority": "HIGH",
+      "test": "Real-time Sync",
+      "action": "Should fix before launch"
+    }
+  ]
+}
