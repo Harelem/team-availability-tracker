@@ -126,8 +126,8 @@ export const touchGestureUtils = {
    * Prevent touch callouts and selection on iOS
    */
   preventIOSTouchCallouts(element: HTMLElement): void {
-    element.style.webkitTouchCallout = 'none'
-    element.style.webkitUserSelect = 'none'
+    (element.style as any).webkitTouchCallout = 'none';
+    (element.style as any).webkitUserSelect = 'none';
     element.style.userSelect = 'none'
   },
 
@@ -135,8 +135,8 @@ export const touchGestureUtils = {
    * Enable smooth scrolling with momentum on iOS
    */
   enableIOSMomentumScrolling(element: HTMLElement): void {
-    element.style.webkitOverflowScrolling = 'touch'
-    element.style.overflowScrolling = 'touch'
+    (element.style as any).webkitOverflowScrolling = 'touch';
+    (element.style as any).overflowScrolling = 'touch'
   },
 
   /**

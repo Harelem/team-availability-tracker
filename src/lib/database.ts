@@ -633,7 +633,7 @@ export const DatabaseService = {
         }, {} as Record<number, string[]>);
         
         Object.entries(membersByTeam).forEach(([teamId, names]) => {
-          console.log(`  Team ${teamId}: ${names.join(', ')}`);
+          console.log(`  Team ${teamId}: ${(names as string[]).join(', ')}`);
         });
         
         return { 
@@ -2292,9 +2292,9 @@ export const DatabaseService = {
       const memberSchedule = scheduleEntries[memberId];
       if (memberSchedule) {
         for (const entry of Object.values(memberSchedule)) {
-          if (entry.value === 'X') {
+          if ((entry as any).value === 'X') {
             totalAbsenceHours += 7; // Full day absence
-          } else if (entry.value === '0.5') {
+          } else if ((entry as any).value === '0.5') {
             totalAbsenceHours += 3.5; // Half day absence
           }
           // '1' = no absence, so no deduction
@@ -2433,7 +2433,7 @@ export const DatabaseService = {
 
       // Step 2: Get schedule data for the specific date range
       const scheduleData = await this.getScheduleEntries(startDateStr, endDateStr);
-      const sprintWeeks = currentSprint?.sprint_length_weeks || 2;
+      const sprintWeeks = (currentSprint as any)?.sprint_length_weeks || 2;
 
       console.log(`📅 Optimized metrics calculation: ${startDateStr} to ${endDateStr}`);
       
@@ -2442,8 +2442,8 @@ export const DatabaseService = {
       let totalPotentialHours = 0;
       let totalActualHours = 0;
 
-      for (const team of teams) {
-        const teamMembers = allMembers.filter(m => m.team_id === team.id);
+      for (const team of (teams as any[])) {
+        const teamMembers = (allMembers as any[]).filter(m => m.team_id === team.id);
         const memberCount = teamMembers.length;
         const memberIds = teamMembers.map(m => m.id);
 

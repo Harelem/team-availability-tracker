@@ -82,7 +82,7 @@ export class SubscriptionManager {
 
       // Set up the subscription
       const subscription = channel.on(
-        'postgres_changes',
+        'postgres_changes' as any,
         {
           event: config.event || '*',
           schema: 'public',

@@ -100,8 +100,6 @@ export default function MobileCOODashboard({
   return (
     <div 
       className="mobile-dashboard min-h-screen bg-gray-50 mobile-pull-to-refresh"
-      {...swipeNavigation.bind()}
-      {...pullToRefresh.bind()}
     >
       {/* Pull-to-refresh indicator */}
       {(pullToRefresh.state.isPulling || pullToRefresh.state.isRefreshing) && (

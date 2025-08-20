@@ -935,7 +935,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
             allTeams={allTeams}
             currentSprint={currentSprint}
             isLoading={isLoading}
-            error={error}
+            error={typeof error === 'string' ? error : error?.userMessage || error?.message || null}
             className="border-0 shadow-none p-0"
           />
         </div>

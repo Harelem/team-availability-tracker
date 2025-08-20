@@ -235,7 +235,7 @@ export class KeyedDebouncer<K, T extends (...args: any[]) => any> {
 
 // React hook for debouncing values
 export function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = React.useState<T>(value)
+  const [debouncedValue, setDebouncedValue] = React.useState(value)
 
   React.useEffect(() => {
     const handler = setTimeout(() => {
@@ -257,7 +257,7 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
   deps: React.DependencyList = []
 ): (...args: Parameters<T>) => void {
   const callbackRef = React.useRef(callback)
-  const debouncedRef = React.useRef<AdvancedDebouncer<T> | null>(null)
+  const debouncedRef = React.useRef(null)
 
   // Update callback reference
   React.useEffect(() => {
@@ -293,7 +293,7 @@ export function useThrottledCallback<T extends (...args: any[]) => any>(
   deps: React.DependencyList = []
 ): (...args: Parameters<T>) => void {
   const callbackRef = React.useRef(callback)
-  const throttledRef = React.useRef<(...args: Parameters<T>) => void | null>(null)
+  const throttledRef = React.useRef(null)
 
   React.useEffect(() => {
     callbackRef.current = callback

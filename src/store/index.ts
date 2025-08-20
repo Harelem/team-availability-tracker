@@ -210,7 +210,7 @@ export const useStore = create<AppStore>()(
           // 2. Debounced server update
           debouncedServerUpdate(key, async () => {
             try {
-              await DatabaseService.updateScheduleEntry(memberId, date, value, reason)
+              await DatabaseService.updateScheduleEntry(memberId, date, value as "1" | "0.5" | "X", reason)
               
               // 3. Remove from optimistic updates on success
               set((state) => {
@@ -410,21 +410,8 @@ export const useStore = create<AppStore>()(
           cooActiveTab: state.cooActiveTab,
           lastSyncTimestamp: state.lastSyncTimestamp,
           // Don't persist sensitive data like user info or schedule entries
-        }),
-        // Convert Maps to Arrays for JSON serialization
-        serialize: (state) => JSON.stringify({
-          ...state,
-          scheduleEntries: Array.from(state.scheduleEntries.entries()),
-          optimisticUpdates: Array.from(state.optimisticUpdates.entries())
-        }),
-        deserialize: (str) => {
-          const parsed = JSON.parse(str)
-          return {
-            ...parsed,
-            scheduleEntries: new Map(parsed.scheduleEntries || []),
-            optimisticUpdates: new Map(parsed.optimisticUpdates || [])
-          }
-        }
+        })
+        // Convert Maps to Arrays for JSON serialization (disabled due to type issues)
       }
     ),
     {

@@ -76,7 +76,16 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.MANAGE_USERS
   ],
   [UserRole.COO]: [
-    ...ROLE_PERMISSIONS[UserRole.ADMIN],
+    Permission.READ_OWN_SCHEDULE,
+    Permission.UPDATE_OWN_SCHEDULE,
+    Permission.READ_ALL_SCHEDULES,
+    Permission.UPDATE_ALL_SCHEDULES,
+    Permission.READ_ALL_TEAMS,
+    Permission.MANAGE_ALL_TEAMS,
+    Permission.MANAGE_SPRINTS,
+    Permission.READ_COMPANY_ANALYTICS,
+    Permission.EXPORT_DATA,
+    Permission.MANAGE_USERS,
     Permission.MANAGE_ROLES,
     Permission.SYSTEM_ADMIN
   ]
