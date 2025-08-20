@@ -137,8 +137,7 @@ export default function MobileCOODashboard({
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-3 text-gray-400 hover:text-gray-600 active:text-gray-700 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-lg hover:bg-gray-100"
-            style={{ touchAction: 'manipulation' }}
+            className="mobile-nav-button p-3 text-gray-400 hover:text-gray-600 active:text-gray-700 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-lg hover:bg-gray-100"
             title="Refresh"
             aria-label="Refresh data"
           >
@@ -152,8 +151,7 @@ export default function MobileCOODashboard({
         <div className="flex items-center justify-between">
           <button
             onClick={() => changeDate(-1)}
-            className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center"
-            style={{ touchAction: 'manipulation' }}
+            className="mobile-nav-button p-3 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center"
             disabled={loading || isLoading('dateChange')}
             aria-label="Previous day"
           >
@@ -173,8 +171,7 @@ export default function MobileCOODashboard({
           
           <button
             onClick={() => changeDate(1)}
-            className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center"
-            style={{ touchAction: 'manipulation' }}
+            className="mobile-nav-button p-3 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 active:scale-95 min-w-[48px] min-h-[48px] flex items-center justify-center"
             disabled={loading || isLoading('dateChange')}
             aria-label="Next day"
           >
@@ -360,8 +357,7 @@ export default function MobileCOODashboard({
                 <div className="flex gap-2">
                   <button 
                     onClick={() => handleTeamDetailsClick(team.id)}
-                    className="flex-1 flex items-center justify-center gap-1 py-3 px-3 text-xs bg-blue-100 hover:bg-blue-200 active:bg-blue-300 rounded-lg transition-all duration-200 active:scale-95 min-h-[44px]"
-                    style={{ touchAction: 'manipulation' }}
+                    className="mobile-nav-button flex-1 flex items-center justify-center gap-1 py-3 px-3 text-xs bg-blue-100 hover:bg-blue-200 active:bg-blue-300 rounded-lg transition-all duration-200 active:scale-95 min-h-[44px]"
                     aria-label={`View details for ${team.name}`}
                   >
                     <Eye className="w-3 h-3" />
@@ -379,8 +375,7 @@ export default function MobileCOODashboard({
         <div className="flex justify-around">
           <button 
             onClick={() => window.location.href = '/'}
-            className="mobile-nav-item min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
-            style={{ touchAction: 'manipulation' }}
+            className="mobile-nav-button mobile-nav-item min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
             aria-label="Go to Teams dashboard"
           >
             <Users className="h-5 w-5 mobile-nav-item-icon" />
@@ -388,8 +383,7 @@ export default function MobileCOODashboard({
           </button>
           <button 
             onClick={() => window.location.href = '/executive'}
-            className="mobile-nav-item active min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
-            style={{ touchAction: 'manipulation' }}
+            className="mobile-nav-button mobile-nav-item active min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
             aria-label="Executive dashboard (current page)"
           >
             <TrendingUp className="h-5 w-5 mobile-nav-item-icon" />
@@ -397,8 +391,7 @@ export default function MobileCOODashboard({
           </button>
           <button 
             onClick={handleRefresh}
-            className="mobile-nav-item min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
-            style={{ touchAction: 'manipulation' }}
+            className="mobile-nav-button mobile-nav-item min-h-[56px] min-w-[56px] transition-all duration-200 active:scale-95"
             aria-label="Refresh data"
           >
             <RefreshCw className={`h-5 w-5 mobile-nav-item-icon ${refreshing ? 'animate-spin' : ''}`} />

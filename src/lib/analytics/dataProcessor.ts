@@ -217,7 +217,7 @@ export class DataProcessor {
     const seasonal = this.extractSeasonal(data, period);
     
     // Residual = original - trend - seasonal
-    const residual = data.map((val, i) => val - trend[i] - seasonal[i]);
+    const residual = data.map((val, i) => val - (trend[i] || 0) - (seasonal[i] || 0));
 
     return {
       timestamps,
@@ -339,11 +339,14 @@ export class DataProcessor {
     const seasonal = new Array(data.length).fill(0);
     
     for (let i = 0; i < data.length; i++) {
-      const seasonalValues = [];
+      const seasonalValues: number[] = [];
       for (let j = i % period; j < data.length; j += period) {
-        seasonalValues.push(data[j]);
+        const value = data[j];
+        if (value !== undefined) {
+          seasonalValues.push(value);
+        }
       }
-      seasonal[i] = this.mean(seasonalValues);
+      seasonal[i] = seasonalValues.length > 0 ? this.mean(seasonalValues) : 0;
     }
     
     return seasonal;
@@ -455,7 +458,7 @@ export class DataProcessor {
     
     data.forEach(point => {
       const dayOfWeek = new Date(point.date).getDay();
-      dayOfWeekData[dayOfWeek].push(point.utilization);
+      dayOfWeekData[dayOfWeek]?.push(point.utilization);
     });
     
     const pattern = dayOfWeekData.map(dayData => 
@@ -474,7 +477,7 @@ export class DataProcessor {
     
     data.forEach(point => {
       const month = new Date(point.date).getMonth();
-      monthData[month].push(point.utilization);
+      monthData[month]?.push(point.utilization);
     });
     
     const pattern = monthData.map(monthlyData => 
@@ -524,11 +527,11 @@ export class DataProcessor {
       
       // Simulate schedule data with some variability
       const random = Math.random();
-      if (random > 0.85) {
+      if (dateKey && random > 0.85) {
         scheduleData[dateKey] = { value: 'X', reason: 'PTO' };
-      } else if (random > 0.75) {
+      } else if (dateKey && random > 0.75) {
         scheduleData[dateKey] = { value: '0.5', reason: 'Half day' };
-      } else {
+      } else if (dateKey) {
         scheduleData[dateKey] = { value: '1' };
       }
       
@@ -553,7 +556,7 @@ export class DataProcessor {
       
       // Only count working days (Sunday=0 to Thursday=4 in Israeli calendar)
       if (dayOfWeek >= 0 && dayOfWeek <= 4) {
-        const entry = scheduleData[dateKey];
+        const entry = dateKey ? scheduleData[dateKey] : undefined;
         if (entry) {
           const dayHours = entry.value === '1' ? 7 : entry.value === '0.5' ? 3.5 : 0;
           actualHours += dayHours;

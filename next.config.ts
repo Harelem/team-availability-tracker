@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
     webVitalsAttribution: ['CLS', 'LCP', 'FID', 'FCP', 'TTFB'],
     
     // Hydration optimization features - optimize imports for key packages
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-tooltip'],
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-tooltip', '@supabase/supabase-js', 'date-fns', 'recharts', 'zustand'],
     
     // Enhanced webpack build cache for faster builds
     webpackBuildWorker: true,
@@ -81,41 +81,23 @@ const nextConfig: NextConfig = {
     styledComponents: true,
   },
   
-  // Development optimization
+  // Development optimization - reduce prefetching to improve performance
   onDemandEntries: {
     // Period (in ms) where the server will keep pages in the buffer
     maxInactiveAge: 25 * 1000,
     // Number of pages that should be kept simultaneously without being disposed
-    pagesBufferLength: 2,
+    pagesBufferLength: 1,
   },
   
-  // Security and performance-optimized headers
+  
+  
+  // Performance-optimized headers (security headers now handled by middleware)
   async headers() {
     return [
       {
         // Main application routes - optimized caching for better performance
         source: '/((?!api|_next/static|_next/image|favicon.ico|sw.js|manifest.json).*)',
         headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
-          },
           // Optimized cache control for HTML pages
           {
             key: 'Cache-Control',
@@ -308,12 +290,8 @@ const nextConfig: NextConfig = {
 
     // Development optimizations for faster builds and better HMR
     if (dev) {
-      config.cache = {
-        type: 'filesystem',
-        buildDependencies: {
-          config: [__filename],
-        },
-      };
+      // Disable filesystem cache to prevent webpack cache errors
+      config.cache = false;
     }
 
     return config;

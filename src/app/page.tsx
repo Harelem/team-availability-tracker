@@ -2,44 +2,14 @@
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
 import MobileBreadcrumb from '@/components/MobileBreadcrumb';
-import MobileTeamNavigation from '@/components/mobile/MobileTeamNavigation';
-import MobileHeader from '@/components/navigation/MobileHeader';
 
-// Lazy load heavy dashboard components for better initial performance
-const PersonalDashboard = dynamic(() => import('@/components/PersonalDashboard'), {
-  loading: () => (
-    <div className="bg-white rounded-lg p-8 shadow-md">
-      <div className="animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
-        <div className="space-y-3">
-          <div className="h-4 bg-gray-200 rounded"></div>
-          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-        </div>
-      </div>
-    </div>
-  )
-});
-
-const ManagerDashboard = dynamic(() => import('@/components/ManagerDashboard'), {
-  loading: () => (
-    <div className="bg-white rounded-lg p-8 shadow-md">
-      <div className="animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-56 mb-4"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="h-32 bg-gray-200 rounded"></div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-});
+// CRITICAL FIX: Direct imports to eliminate originalFactory undefined errors
+import PersonalDashboard from '@/components/PersonalDashboard';
+import ManagerDashboard from '@/components/ManagerDashboard';
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
 import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
@@ -328,16 +298,6 @@ function HomeContent() {
   if (!selectedTeam) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Mobile Header for Team Selection - Hydration Safe */}
-        <ClientOnly fallback={<div className="h-16 bg-white shadow-sm" />}>
-          {isMobile && (
-            <MobileHeader
-              title="Select Team"
-              subtitle="Choose your team to continue"
-              showBack={false}
-            />
-          )}
-        </ClientOnly>
         <TeamSelectionScreen 
           teams={teams}
           onTeamSelect={handleTeamSelect}
@@ -372,17 +332,6 @@ function HomeContent() {
   if (selectedTeam && !selectedUser) {
     return (
       <div className="min-h-screen bg-gray-50">
-        {/* Mobile Header for User Selection - Hydration Safe */}
-        <ClientOnly fallback={<div className="h-16 bg-white shadow-sm" />}>
-          {isMobile && (
-            <MobileHeader
-              title={selectedTeam.name}
-              subtitle="Select your name to continue"
-              showBack={true}
-              onBack={handleBackToSelection}
-            />
-          )}
-        </ClientOnly>
         
         <div className="flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-md w-full">
@@ -476,26 +425,7 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Enhanced Mobile Team Navigation - Hydration Safe */}
-      <ClientOnly fallback={<div className="h-16 bg-white shadow-sm" />}>
-        {isMobile && (
-          <MobileTeamNavigation
-            currentUser={selectedUser!}
-            team={selectedTeam}
-            onNavigateHome={() => router.push('/')}
-            onSwitchUser={() => setSelectedUser(null)}
-            onChangeTeam={handleBackToSelection}
-            onSettings={() => {
-              // Handle settings navigation
-              console.log('Settings clicked');
-            }}
-            onLogout={() => {
-              // Handle logout
-              console.log('Logout clicked');
-            }}
-          />
-        )}
-      </ClientOnly>
+      {/* Mobile Header will be handled inside dashboard components */}
 
       {/* Desktop Layout */}
       <div className="max-w-7xl mx-auto p-2 sm:p-6">
@@ -542,10 +472,29 @@ function HomeContent() {
           </div>
         </div>
         
-        {/* User Type Detection and Dashboard Rendering */}
-        {canViewSprints(selectedUser) && selectedTeam && selectedUser && (
-          <GlobalSprintProvider teamId={selectedTeam.id}>
-            {selectedUser.isManager ? (
+        {/* User Type Detection and Dashboard Rendering - FIXED: Direct component imports */}
+        <div suppressHydrationWarning={true}>
+          {canViewSprints(selectedUser) && selectedTeam && selectedUser && (
+            <GlobalSprintProvider teamId={selectedTeam.id}>
+              {selectedUser.isManager ? (
+                <ManagerDashboard 
+                  user={selectedUser}
+                  team={selectedTeam}
+                  teamMembers={teamMembers}
+                />
+              ) : (
+                <PersonalDashboard 
+                  user={selectedUser}
+                  team={selectedTeam}
+                  teamMembers={teamMembers}
+                />
+              )}
+            </GlobalSprintProvider>
+          )}
+          
+          {/* Show basic dashboard without sprint features if user can't view sprints */}
+          {!canViewSprints(selectedUser) && selectedTeam && selectedUser && (
+            selectedUser.isManager ? (
               <ManagerDashboard 
                 user={selectedUser}
                 team={selectedTeam}
@@ -557,26 +506,9 @@ function HomeContent() {
                 team={selectedTeam}
                 teamMembers={teamMembers}
               />
-            )}
-          </GlobalSprintProvider>
-        )}
-        
-        {/* Show basic dashboard without sprint features if user can't view sprints */}
-        {!canViewSprints(selectedUser) && selectedTeam && selectedUser && (
-          selectedUser.isManager ? (
-            <ManagerDashboard 
-              user={selectedUser}
-              team={selectedTeam}
-              teamMembers={teamMembers}
-            />
-          ) : (
-            <PersonalDashboard 
-              user={selectedUser}
-              team={selectedTeam}
-              teamMembers={teamMembers}
-            />
-          )
-        )}
+            )
+          )}
+        </div>
       </div>
     </div>
   );

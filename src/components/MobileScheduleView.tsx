@@ -56,7 +56,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
     );
   }
   const [refreshing, setRefreshing] = useState(false);
-  const [isSwipeEnabled, setIsSwipeEnabled] = useState(true);
+  const [isSwipeEnabled, setIsSwipeEnabled] = useState(false); // DISABLED: Swipe navigation conflicts with button navigation
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -142,26 +142,10 @@ const MobileScheduleView = memo(function MobileScheduleView({
       setPullDistance(0);
     }
     
-    // Handle horizontal swipe
+    // DISABLED: Horizontal swipe navigation to prevent conflicts with button navigation
     if (isSwiping.current) {
-      const touchEndX = e.changedTouches[0]?.clientX || 0;
-      const diffX = touchStartX.current - touchEndX;
-      const minSwipeDistance = 50;
-      
-      // Add haptic feedback if supported
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50);
-      }
-      
-      if (Math.abs(diffX) > minSwipeDistance) {
-        if (diffX > 0) {
-          // Swipe left - next week
-          onWeekChange(currentWeekOffset + 1);
-        } else {
-          // Swipe right - previous week
-          onWeekChange(currentWeekOffset - 1);
-        }
-      }
+      console.log('Swipe navigation disabled - use navigation buttons instead');
+      // Horizontal swipe navigation disabled to prevent UI conflicts
     }
     
     // Reset states
@@ -239,12 +223,12 @@ const MobileScheduleView = memo(function MobileScheduleView({
         onTouchEnd={handleTouchEnd}
       >
       {/* Mobile Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+      <div className="bg-white rounded-xl shadow-elevation-2 border border-gray-200 p-4 mb-4">
         {/* Week Navigation */}
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => onWeekChange(currentWeekOffset - 1)}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 transition-colors text-sm min-h-[44px] touch-manipulation"
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 active:scale-95 transition-all duration-200 text-sm min-h-[44px] touch-manipulation font-medium"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Previous</span>
@@ -254,14 +238,14 @@ const MobileScheduleView = memo(function MobileScheduleView({
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="p-2 text-gray-600 hover:text-gray-900 active:scale-95 transition-all min-h-[44px] min-w-[44px] touch-manipulation"
+              className="p-2 text-gray-600 hover:text-gray-900 active:scale-95 transition-all duration-200 min-h-[44px] min-w-[44px] touch-manipulation rounded-lg hover:bg-gray-100"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             {currentWeekOffset !== 0 && (
               <button
                 onClick={() => onWeekChange(0)}
-                className="flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg active:bg-blue-700 transition-colors text-sm min-h-[44px] touch-manipulation"
+                className="flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg active:bg-blue-700 active:scale-95 transition-all duration-200 text-sm min-h-[44px] touch-manipulation font-medium shadow-brand-glow"
               >
                 <Calendar className="w-4 h-4" />
                 <span>Current</span>
@@ -271,7 +255,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
           
           <button
             onClick={() => onWeekChange(currentWeekOffset + 1)}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 transition-colors text-sm min-h-[44px] touch-manipulation"
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 active:scale-95 transition-all duration-200 text-sm min-h-[44px] touch-manipulation font-medium"
           >
             <span>Next</span>
             <ChevronRight className="w-4 h-4" />
@@ -282,7 +266,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
         <div className="text-center mb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             <span className="text-2xl">🗓️</span>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-bold text-gray-900 tracking-tight">
               {(() => {
                 try {
                   return getCurrentSprintString ? getCurrentSprintString() : 'Current Sprint';
@@ -315,19 +299,16 @@ const MobileScheduleView = memo(function MobileScheduleView({
 
           {/* Week Navigation Tabs */}
           <div className="flex bg-gray-100 rounded-full p-1 mb-3">
-            <button className="flex-1 py-2 px-4 bg-blue-500 text-white rounded-full text-sm font-medium transition-all">
+            <button className="flex-1 py-2 px-4 bg-blue-500 text-white rounded-full text-sm font-semibold transition-all duration-200 shadow-brand-glow">
               📅 Full Sprint
             </button>
           </div>
           
           <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
             <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
-              <span>←</span>
-              <span>Swipe</span>
-              <span>→</span>
+              <span>👆</span>
+              <span>Tap navigation buttons above</span>
             </div>
-            <span>•</span>
-            <span className="bg-gray-100 px-2 py-1 rounded-full">החלק לניווט</span>
           </div>
         </div>
 
@@ -336,7 +317,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
           <div className="flex gap-2">
             <button 
               onClick={onViewReasons}
-              className="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 transition-colors text-sm min-h-[44px] touch-manipulation"
+              className="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 active:scale-95 transition-all duration-200 text-sm min-h-[44px] touch-manipulation font-medium"
             >
               <Eye className="w-4 h-4" />
               <span>View Reasons</span>
@@ -355,16 +336,16 @@ const MobileScheduleView = memo(function MobileScheduleView({
       </div>
 
       {/* Enhanced Work Options Legend */}
-      <div className="bg-white rounded-xl shadow-sm border-2 border-gray-200 p-5 mb-4">
+      <div className="bg-white rounded-xl shadow-elevation-2 border-2 border-gray-200 p-5 mb-4">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-xl">⚡</span>
-          <h3 className="font-semibold text-gray-900">Work Options</h3>
+          <h3 className="font-bold text-gray-900 tracking-tight">Work Options</h3>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {workOptions.map((option, index) => {
             const emojis = ['✅', '⏰', '❌'];
             return (
-              <div key={option.value} className={`p-4 rounded-xl border-2 text-center transition-all hover:scale-105 ${option.color} shadow-sm`}>
+              <div key={option.value} className={`p-4 rounded-xl border-2 text-center transition-all duration-300 hover:scale-105 active:scale-95 ${option.color} shadow-elevation-1 hover:shadow-elevation-2`}>
                 <div className="text-2xl mb-2">{emojis[index]}</div>
                 <div className="font-bold text-lg mb-1">{option.label}</div>
                 <div className="text-sm font-medium">{option.hours}h</div>
@@ -408,10 +389,10 @@ const MobileScheduleView = memo(function MobileScheduleView({
       </div>
 
       {/* Enhanced Mobile Footer */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 p-5 mt-4">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 p-5 mt-4 shadow-elevation-1">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-xl">📱</span>
-          <h3 className="font-semibold text-blue-900">Mobile Quick Guide</h3>
+          <h3 className="font-bold text-blue-900 tracking-tight">Mobile Quick Guide</h3>
         </div>
         <div className="grid grid-cols-1 gap-3 text-sm text-blue-800">
           <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
@@ -423,8 +404,8 @@ const MobileScheduleView = memo(function MobileScheduleView({
             <span><strong>Swipe</strong> status buttons: Right = More hours, Left = Less hours</span>
           </div>
           <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
-            <span className="text-lg">↔️</span>
-            <span><strong>Swipe left/right</strong> on header to navigate sprints</span>
+            <span className="text-lg">👆</span>
+            <span><strong>Tap Previous/Next</strong> buttons to navigate sprints</span>
           </div>
           <div className="flex items-center gap-2 bg-white/50 rounded-lg p-2">
             <span className="text-lg">↓</span>

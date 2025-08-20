@@ -50,7 +50,7 @@ const NavTab: React.FC<NavTabProps> = ({
       onClick={onClick}
       disabled={disabled}
       className={combineClasses(
-        'flex flex-col items-center justify-center flex-1 py-2 px-1 relative transition-all duration-200',
+        'mobile-nav-button flex flex-col items-center justify-center flex-1 py-2 px-1 relative transition-all duration-200',
         DESIGN_SYSTEM.buttons.touchComfortable,
         DESIGN_SYSTEM.mobile.touchFeedback,
         'min-h-[64px]', // Increased for better mobile experience
@@ -60,7 +60,6 @@ const NavTab: React.FC<NavTabProps> = ({
           ? 'text-gray-400 cursor-not-allowed' 
           : 'text-gray-600 hover:text-blue-500 active:text-blue-700'
       )}
-      style={{ touchAction: 'manipulation' }}
       aria-label={label}
       aria-current={isActive ? 'page' : undefined}
     >

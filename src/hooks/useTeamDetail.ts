@@ -203,7 +203,7 @@ export function useTeamDetail(teamId: number | null): UseTeamDetailReturn {
 
       const averageUtilization = mockWeeklyTrends.reduce((sum, week) => sum + week.utilization, 0) / mockWeeklyTrends.length;
       const recentTrend = mockWeeklyTrends.slice(-2);
-      const trendPercentage = recentTrend.length >= 2 
+      const trendPercentage = recentTrend.length >= 2 && recentTrend[0] && recentTrend[1] && recentTrend[0].utilization
         ? ((recentTrend[1].utilization - recentTrend[0].utilization) / recentTrend[0].utilization) * 100
         : 0;
 
@@ -218,7 +218,7 @@ export function useTeamDetail(teamId: number | null): UseTeamDetailReturn {
 
       return {
         averageUtilization,
-        currentSprintUtilization: mockWeeklyTrends[mockWeeklyTrends.length - 1].utilization,
+        currentSprintUtilization: mockWeeklyTrends[mockWeeklyTrends.length - 1]?.utilization || 0,
         mostProductiveDay: 'Tuesday',
         mostProductiveDayHours: 42,
         topAbsenceReasons: mockAbsenceReasons,
@@ -294,7 +294,7 @@ export function useTeamDetail(teamId: number | null): UseTeamDetailReturn {
         {
           memberId: 1,
           memberName: 'John Doe',
-          date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] || '',
           type: 'missing_schedule',
           description: 'Schedule not submitted for tomorrow',
           priority: 'high'
@@ -302,7 +302,7 @@ export function useTeamDetail(teamId: number | null): UseTeamDetailReturn {
         {
           memberId: 2,
           memberName: 'Jane Smith',
-          date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0] || '',
           type: 'missing_reason',
           description: 'Absence reason not provided',
           priority: 'medium'

@@ -2,124 +2,16 @@
 > team-availability-tracker@2.2.0 dev
 > next dev
 
+ ⚠ Port 3000 is in use, using available port 3002 instead.
    ▲ Next.js 15.3.5
-   - Local:        http://localhost:3000
-   - Network:      http://172.20.10.2:3000
+   - Local:        http://localhost:3002
+   - Network:      http://192.168.2.1:3002
    - Environments: .env.local
+   - Experiments (use with caution):
+     ✓ optimizeCss
+     ✓ webpackBuildWorker
+     ✓ memoryBasedWorkersCount
 
  ✓ Starting...
- ✓ Ready in 1346ms
- ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
-   ▲ Next.js 15.3.5
-   - Local:        http://localhost:3000
-   - Network:      http://172.20.10.2:3000
-   - Environments: .env.local
-
- ✓ Starting...
- ✓ Ready in 1511ms
- ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
-   ▲ Next.js 15.3.5
-   - Local:        http://localhost:3000
-   - Network:      http://172.20.10.2:3000
-   - Environments: .env.local
-
- ✓ Starting...
- ✓ Ready in 1439ms
- ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
-   ▲ Next.js 15.3.5
-   - Local:        http://localhost:3000
-   - Network:      http://172.20.10.2:3000
-   - Environments: .env.local
-
- ✓ Starting...
- ✓ Ready in 1934ms
- ○ Compiling /executive ...
- ✓ Compiled /executive in 9.4s (2135 modules)
-🔄 AppStateProvider initializing...
- ⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3000". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
- GET /executive 200 in 11042ms
- ○ Compiling /_not-found ...
- ✓ Compiled / in 2.3s (2139 modules)
- ✓ Compiled in 2.9s (1084 modules)
- ⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3000". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
- GET /favicon.ico?cb=1754862722836 200 in 4809ms
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
- GET /schedule?cb=1754862722836 404 in 5127ms
- GET /analytics?cb=1754862722836 404 in 5045ms
- GET /teams?cb=1754862722836 404 in 5119ms
- GET /?cb=1754862722836 200 in 5137ms
- GET / 200 in 5064ms
-🔄 AppStateProvider initializing...
- GET / 200 in 115ms
- GET /favicon.ico 200 in 9ms
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
- GET /favicon.ico?cb=1754862730195 200 in 48ms
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
- GET /apple-touch-icon.png 404 in 312ms
- GET /favicon-32x32.png 404 in 311ms
-🔄 AppStateProvider initializing...
- GET /?cb=1754862730195 200 in 208ms
- GET /schedule?cb=1754862730195 404 in 208ms
- GET /teams?cb=1754862730195 404 in 170ms
- GET /analytics?cb=1754862730195 404 in 88ms
-🔄 AppStateProvider initializing...
- GET /executive 200 in 376ms
- GET /favicon.ico 200 in 6ms
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
- GET /apple-touch-icon.png 404 in 97ms
- GET /favicon-32x32.png 404 in 95ms
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
- GET /favicon.ico?cb=1754862735398 200 in 159ms
-🔄 AppStateProvider initializing...
- GET /teams?cb=1754862735398 404 in 191ms
- GET /?cb=1754862735398 200 in 198ms
- GET /analytics?cb=1754862735398 404 in 190ms
- GET /schedule?cb=1754862735398 404 in 192ms
-🔄 AppStateProvider initializing...
- GET /executive 200 in 251ms
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
-🔄 AppStateProvider initializing...
- GET /favicon.ico?cb=1754864859650 200 in 266ms
-🔄 AppStateProvider initializing...
- GET /analytics?cb=1754864859650 404 in 290ms
- GET /schedule?cb=1754864859650 404 in 320ms
- GET /teams?cb=1754864859650 404 in 314ms
- GET /?cb=1754864859649 200 in 369ms
- ○ Compiling /_error ...
- ✓ Compiled /_error in 2.4s (2608 modules)
- GET /executive 404 in 2918ms
- ✓ Compiled /favicon.ico in 340ms (1293 modules)
- GET /favicon.ico 200 in 436ms
- ✓ Compiled in 5.4s (2575 modules)
-<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/harel/team-availability-tracker/.next/cache/webpack/client-development/3.pack.gz_' -> '/Users/harel/team-availability-tracker/.next/cache/webpack/client-development/3.pack.gz'
- ✓ Compiled in 5.1s (2575 modules)
- ✓ Compiled in 1328ms (2575 modules)
- ✓ Compiled in 3.5s (2575 modules)
-<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/harel/team-availability-tracker/.next/cache/webpack/server-development/1.pack.gz_' -> '/Users/harel/team-availability-tracker/.next/cache/webpack/server-development/1.pack.gz'
- ✓ Compiled in 2.1s (1341 modules)
- ✓ Compiled in 984ms (1341 modules)
-<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/harel/team-availability-tracker/.next/cache/webpack/client-development/0.pack.gz_' -> '/Users/harel/team-availability-tracker/.next/cache/webpack/client-development/0.pack.gz'
- ✓ Compiled in 1947ms (1341 modules)
- ✓ Compiled in 2.4s (2575 modules)
- ✓ Compiled in 2.9s (2575 modules)
- ✓ Compiled in 834ms (1341 modules)
- ✓ Compiled in 577ms (1341 modules)
- ✓ Compiled in 1556ms (2575 modules)
- ✓ Compiled in 938ms (1341 modules)
- ✓ Compiled in 1562ms (2575 modules)
- ✓ Compiled in 1350ms (2575 modules)
- ✓ Compiled in 1020ms (2575 modules)
+ ✓ Ready in 1506ms
 [?25h

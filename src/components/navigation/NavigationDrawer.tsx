@@ -17,6 +17,7 @@ import {
 import { TeamMember, Team } from '@/types';
 import { DESIGN_SYSTEM, combineClasses, COMPONENT_PATTERNS } from '@/utils/designSystem';
 import { useMobileNavigation, useNavigationAnimation } from '@/hooks/useMobileNavigation';
+import { HydrationSafeWrapper } from '@/components/HydrationSafeWrapper';
 
 export interface NavigationItem {
   id: string;
@@ -81,12 +82,12 @@ const NavigationButton: React.FC<{
       onClick={handleClick}
       disabled={item.disabled}
       className={combineClasses(
+        'mobile-nav-button',
         baseClasses,
         variantClasses[item.variant || 'default'],
         item.disabled && disabledClasses
       )}
       aria-label={item.label}
-      style={{ touchAction: 'manipulation' }}
     >
       <div className="flex items-center gap-3">
         <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -239,21 +240,30 @@ export default function NavigationDrawer({
   if (!shouldRender) return null;
 
   return (
-    <>
-      {/* Backdrop */}
+    <HydrationSafeWrapper 
+      suppressHydrationWarning={true}
+      fallback={
+        <div className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white shadow-xl -translate-x-full transition-transform duration-300 ease-out" style={{ position: 'fixed', height: '100vh', zIndex: 51 }}>
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 animate-pulse">
+            <div className="h-6 bg-white/20 rounded mb-4" />
+            <div className="h-12 bg-white/20 rounded" />
+          </div>
+        </div>
+      }
+    >
+      {/* Emergency fixed backdrop - single backdrop only */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-50"
+          className="mobile-nav-backdrop-emergency fixed inset-0"
           onClick={onClose}
           aria-hidden="true"
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}
         />
       )}
       
-      {/* Drawer */}
+      {/* Drawer - Emergency z-index fix */}
       <div 
         className={combineClasses(
-          'fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white transform transition-transform duration-300 ease-out shadow-xl',
+          'mobile-nav-drawer-emergency fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white transform transition-transform duration-300 ease-out shadow-xl',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           className
         )}
@@ -262,11 +272,6 @@ export default function NavigationDrawer({
         aria-label="Navigation menu"
         aria-hidden={!isOpen}
         id="navigation-drawer"
-        style={{ 
-          position: 'fixed',
-          height: '100vh',
-          zIndex: 51
-        }}
       >
         {/* Drawer header */}
         <div className={combineClasses(
@@ -282,12 +287,8 @@ export default function NavigationDrawer({
             </h2>
             <button 
               onClick={onClose}
-              className={combineClasses(
-                'p-2 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors',
-                DESIGN_SYSTEM.buttons.touch
-              )}
+              className="mobile-nav-button p-2 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors"
               aria-label="Close menu"
-              style={{ touchAction: 'manipulation' }}
               type="button"
             >
               <X className="w-5 h-5" />
@@ -409,6 +410,6 @@ export default function NavigationDrawer({
           </div>
         )}
       </div>
-    </>
+    </HydrationSafeWrapper>
   );
 }

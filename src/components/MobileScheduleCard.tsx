@@ -191,12 +191,12 @@ export default function MobileScheduleCard({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border-2 mb-4 overflow-hidden transition-all duration-200 active:scale-[0.995] ${
+    <div className={`bg-white rounded-xl shadow-elevation-2 border-2 mb-4 overflow-hidden transition-all duration-300 active:scale-[0.995] hover:shadow-elevation-3 ${
       isCurrentUser ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
     }`}>
       {/* Card Header - Enhanced touch interaction */}
       <div 
-        className="p-4 cursor-pointer touch-manipulation min-h-[56px] active:bg-gray-100 transition-all duration-150 active:scale-[0.99]"
+        className="p-4 cursor-pointer touch-manipulation min-h-[56px] active:bg-gray-100 transition-all duration-200 active:scale-[0.98]">
         onClick={() => {
           // Add haptic feedback if supported
           if ('vibrate' in navigator) {
@@ -214,16 +214,16 @@ export default function MobileScheduleCard({
               <User className={`w-6 h-6 ${isCurrentUser ? 'text-blue-600' : 'text-gray-600'}`} />
             </div>
             <div>
-              <h3 className="font-medium text-gray-900 text-base">{member.name}</h3>
-              <p className="text-gray-500">{member.hebrew}</p>
+              <h3 className="font-semibold text-gray-900 text-base tracking-tight">{member.name}</h3>
+              <p className="text-gray-500 text-sm font-medium">{member.hebrew}</p>
               <div className="flex items-center gap-2 mt-1">
                 {member.isManager && (
-                  <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                  <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
                     Manager
                   </span>
                 )}
                 {isCurrentUser && (
-                  <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                  <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-medium">
                     You
                   </span>
                 )}
@@ -235,9 +235,9 @@ export default function MobileScheduleCard({
             <div className="text-right">
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4 text-gray-500" />
-                <span className="font-semibold text-gray-900 text-lg">{calculateSprintHours()}h</span>
+                <span className="font-bold text-gray-900 text-lg tracking-tight">{calculateSprintHours()}h</span>
               </div>
-              <div className="text-xs text-gray-500">this sprint</div>
+              <div className="text-xs text-gray-600 font-medium">this sprint</div>
             </div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
               isExpanded ? 'rotate-180' : ''
@@ -264,11 +264,11 @@ export default function MobileScheduleCard({
                   }
                   onFullSprintSet();
                 }}
-                className="w-full bg-green-50 text-green-700 border-2 border-green-200 rounded-xl py-5 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all duration-200 touch-manipulation min-h-[60px] shadow-md hover:shadow-lg transform hover:scale-[1.02]"
+                className="w-full bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-2 border-green-200 rounded-xl py-5 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all duration-200 touch-manipulation min-h-[60px] shadow-elevation-2 hover:shadow-elevation-3 transform hover:scale-[1.02]">
               >
                 <div className="flex items-center justify-center gap-3">
                   <CheckCircle className="w-6 h-6" />
-                  <span className="text-lg">Set Full Working Sprint</span>
+                  <span className="text-lg font-semibold">Set Full Working Sprint</span>
                 </div>
                 <div className="text-xs text-green-600 mt-1 opacity-75">
                   Sets all sprint working days to 7 hours each
@@ -286,7 +286,7 @@ export default function MobileScheduleCard({
               const past = isPastDate(date);
 
               return (
-                <div key={dateKey} className={`rounded-xl p-4 border-2 transition-all duration-200 ${
+                <div key={dateKey} className={`rounded-xl p-4 border-2 transition-all duration-300 ${
                   today 
                     ? 'bg-blue-50 border-blue-300 shadow-md' 
                     : past 

@@ -36,8 +36,15 @@ export const useTeamDailyStatus = ({
       
       // Get the current week dates
       const weekDays = TeamDailyCalculationService.getCurrentWeekDates(currentWeekOffset);
-      const startDate = weekDays[0].toISOString().split('T')[0];
-      const endDate = weekDays[6].toISOString().split('T')[0];
+      if (!weekDays || weekDays.length === 0) {
+        throw new Error('No week days available');
+      }
+      const startDate = weekDays[0]?.toISOString().split('T')[0];
+      const endDate = weekDays[6]?.toISOString().split('T')[0];
+      
+      if (!startDate || !endDate) {
+        throw new Error('Invalid start or end date');
+      }
 
       // Fetch schedule data for the week
       const scheduleEntries: WeekData = await DatabaseService.getScheduleEntries(
@@ -98,8 +105,12 @@ export const useTeamDailyStatus = ({
 
     // Get current week dates for subscription filter
     const weekDays = TeamDailyCalculationService.getCurrentWeekDates(currentWeekOffset);
-    const startDate = weekDays[0].toISOString().split('T')[0];
-    const endDate = weekDays[6].toISOString().split('T')[0];
+    if (!weekDays || weekDays.length === 0) return;
+    
+    const startDate = weekDays[0]?.toISOString().split('T')[0];
+    const endDate = weekDays[6]?.toISOString().split('T')[0];
+    
+    if (!startDate || !endDate) return;
 
     // Subscribe to schedule changes for this team and week
     const subscription = DatabaseService.subscribeToScheduleChanges(

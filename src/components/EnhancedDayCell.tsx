@@ -243,7 +243,7 @@ export default function EnhancedDayCell({
             <div className="flex justify-center">
               <button
                 onClick={handleCellClick}
-                className={`min-h-[48px] px-4 py-2 rounded-xl border-2 font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm ${
+                className={`status-card-responsive rounded-xl border-2 font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm ${
                   currentValue?.value
                     ? workOptions.find(opt => opt.value === currentValue.value)?.color + ' ring-2 ring-blue-400 ring-offset-1'
                     : 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-600 border-gray-300 hover:from-gray-100 hover:to-gray-200'
@@ -275,7 +275,7 @@ export default function EnhancedDayCell({
           ) : (
             /* Read-only display */
             <div className="flex justify-center">
-              <div className={`min-h-[48px] px-4 py-2 rounded-xl border-2 font-bold text-sm opacity-60 ${
+              <div className={`status-card-responsive rounded-xl border-2 font-bold text-sm opacity-60 ${
                 currentValue?.value
                   ? workOptions.find(opt => opt.value === currentValue.value)?.color
                   : 'bg-gray-100 text-gray-600 border-gray-300'
@@ -304,29 +304,7 @@ export default function EnhancedDayCell({
             </div>
           )}
           
-          {/* Legacy button row (smaller) */}
-          <div className="flex gap-1 justify-center opacity-50">
-            {workOptions.map(option => {
-              const isSelected = currentValue?.value === option.value;
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => canEdit && handleWorkOptionClick(option.value)}
-                  disabled={!canEdit}
-                  className={`min-h-[24px] w-6 px-1 py-0.5 rounded border font-medium text-xs transition-all ${
-                    canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'
-                  } ${
-                    isSelected 
-                      ? 'bg-gray-300 border-gray-400 text-gray-700' 
-                      : 'bg-gray-100 text-gray-400 border-gray-200'
-                  }`}
-                  title={canEdit ? `Legacy: ${option.description}` : 'Read only'}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* Legacy button row removed for cleaner UI */}
         </div>
       )}
 
@@ -347,7 +325,7 @@ export default function EnhancedDayCell({
                 </div>
                 <button
                   onClick={() => setShowQuickReasons(false)}
-                  className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation rounded-full hover:bg-gray-100"
+                  className="text-gray-400 hover:text-gray-600 btn-height-responsive flex items-center justify-center touch-manipulation rounded-full hover:bg-gray-100"
                 >
                   <span className="text-2xl">×</span>
                 </button>
@@ -384,7 +362,7 @@ export default function EnhancedDayCell({
                             }
                             handleQuickReasonSelect(reason.value);
                           }}
-                          className={`flex items-center gap-3 p-4 text-left rounded-xl transition-all duration-200 border min-h-[60px] lg:min-h-[44px] lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation ${
+                          className={`flex items-center gap-3 p-4 text-left rounded-xl transition-all duration-200 border btn-height-responsive lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation ${
                             isPrimary
                               ? 'bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border-blue-300 hover:border-blue-400 active:border-blue-500 ring-2 ring-blue-200'
                               : 'bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border-gray-200 hover:border-blue-300 active:border-blue-400'
@@ -421,7 +399,7 @@ export default function EnhancedDayCell({
                       }
                       handleCustomReason();
                     }}
-                    className="w-full flex items-center justify-center gap-3 p-4 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl transition-all duration-200 text-base lg:text-sm font-medium text-gray-700 min-h-[56px] lg:min-h-[44px] shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
+                    className="w-full flex items-center justify-center gap-3 p-4 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl transition-all duration-200 text-base lg:text-sm font-medium text-gray-700 btn-height-responsive shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
                   >
                     <MessageSquare className="w-5 h-5 lg:w-4 lg:h-4" />
                     <span>Custom Reason • סיבה מותאמת אישית</span>
@@ -434,7 +412,7 @@ export default function EnhancedDayCell({
             <div className="p-4 border-t border-gray-200 bg-gray-50 lg:bg-white">
               <button
                 onClick={() => setShowQuickReasons(false)}
-                className="w-full px-6 py-4 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 text-base lg:text-sm font-medium min-h-[56px] lg:min-h-[44px] shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
+                className="w-full px-6 py-4 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 active:bg-gray-300 transition-all duration-200 text-base lg:text-sm font-medium btn-height-responsive shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
               >
                 Cancel • ביטול
               </button>

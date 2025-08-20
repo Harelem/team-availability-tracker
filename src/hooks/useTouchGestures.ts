@@ -391,7 +391,12 @@ export function useTouchFriendly() {
     onClick: () => void,
     options: { hapticFeedback?: boolean } = {}
   ) => {
-    const handleClick = () => {
+    const handleInteraction = (event?: React.MouseEvent | React.TouchEvent) => {
+      // Prevent double firing on touch devices
+      if (event && event.type === 'touchend') {
+        event.preventDefault();
+      }
+      
       // Provide haptic feedback on supported devices
       if (options.hapticFeedback && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         try {
@@ -404,18 +409,26 @@ export function useTouchFriendly() {
       onClick();
     };
 
-    // Always return consistent structure to prevent hydration issues
-    // The behavior difference is handled internally
-    return {
-      onClick: handleClick,
-      onTouchEnd: isTouchDevice ? handleClick : undefined,
-      style: { 
-        cursor: 'pointer', 
-        touchAction: isTouchDevice ? 'manipulation' : 'auto' 
-      },
-      // Add data attribute for debugging
-      'data-touch-device': isTouchDevice
-    };
+    // Use different event handlers for touch vs mouse to prevent conflicts
+    if (isTouchDevice) {
+      return {
+        onTouchEnd: handleInteraction,
+        style: { 
+          cursor: 'pointer', 
+          touchAction: 'manipulation' 
+        },
+        'data-touch-device': true
+      };
+    } else {
+      return {
+        onClick: handleInteraction,
+        style: { 
+          cursor: 'pointer', 
+          touchAction: 'auto' 
+        },
+        'data-touch-device': false
+      };
+    }
   }, [isTouchDevice]);
 
   return {

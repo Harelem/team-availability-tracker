@@ -1,7 +1,27 @@
 import { createClient } from '@supabase/supabase-js'
+import { getValidatedEnvironment, validateEnvironmentOnStartup } from './env-validation'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Validate environment on module load
+if (typeof window === 'undefined') {
+  // Server-side validation
+  validateEnvironmentOnStartup();
+}
+
+let validatedEnv: ReturnType<typeof getValidatedEnvironment>;
+
+try {
+  validatedEnv = getValidatedEnvironment();
+} catch (error) {
+  console.error('Failed to validate environment:', error);
+  // Fallback for development
+  validatedEnv = {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  };
+}
+
+const supabaseUrl = validatedEnv.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = validatedEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const supabase = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_url_here' && supabaseAnonKey !== 'your_supabase_anon_key_here'
   ? createClient(supabaseUrl, supabaseAnonKey, {

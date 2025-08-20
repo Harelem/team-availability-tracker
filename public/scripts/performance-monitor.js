@@ -14,33 +14,52 @@
 
       // Monitor Core Web Vitals
       if ('PerformanceObserver' in window) {
-        // Largest Contentful Paint
-        new PerformanceObserver(function(list) {
-          list.getEntries().forEach(function(entry) {
-            console.log('LCP:', entry.startTime);
-            // Send to analytics if needed
-          });
-        }).observe({ type: 'largest-contentful-paint', buffered: true });
+        // Largest Contentful Paint (with error handling)
+        try {
+          new PerformanceObserver(function(list) {
+            list.getEntries().forEach(function(entry) {
+              console.log('LCP:', entry.startTime);
+              // Send to analytics if needed
+            });
+          }).observe({ type: 'largest-contentful-paint', buffered: true });
+        } catch (e) {
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('LCP monitoring not supported in this browser');
+          }
+        }
 
-        // First Input Delay
-        new PerformanceObserver(function(list) {
-          list.getEntries().forEach(function(entry) {
-            console.log('FID:', entry.processingStart - entry.startTime);
-            // Send to analytics if needed
-          });
-        }).observe({ type: 'first-input', buffered: true });
+        // First Input Delay (with error handling)
+        try {
+          new PerformanceObserver(function(list) {
+            list.getEntries().forEach(function(entry) {
+              console.log('FID:', entry.processingStart - entry.startTime);
+              // Send to analytics if needed
+            });
+          }).observe({ type: 'first-input', buffered: true });
+        } catch (e) {
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('FID monitoring not supported in this browser');
+          }
+        }
 
-        // Cumulative Layout Shift
-        new PerformanceObserver(function(list) {
-          var clsValue = 0;
-          list.getEntries().forEach(function(entry) {
-            if (!entry.hadRecentInput) {
-              clsValue += entry.value;
-            }
-          });
-          console.log('CLS:', clsValue);
-          // Send to analytics if needed
-        }).observe({ type: 'layout-shift', buffered: true });
+        // Cumulative Layout Shift (with error handling)
+        try {
+          new PerformanceObserver(function(list) {
+            var clsValue = 0;
+            list.getEntries().forEach(function(entry) {
+              if (!entry.hadRecentInput) {
+                clsValue += entry.value;
+              }
+            });
+            console.log('CLS:', clsValue);
+            // Send to analytics if needed
+          }).observe({ type: 'layout-shift', buffered: true });
+        } catch (e) {
+          // Silently handle unsupported layout-shift metric
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('Layout shift monitoring not supported in this browser');
+          }
+        }
       }
 
       // Monitor navigation timing

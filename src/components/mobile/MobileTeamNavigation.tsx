@@ -70,10 +70,9 @@ const DrawerButton: React.FC<DrawerButtonProps> = ({
     <button
       {...getInteractionProps(onClick, { hapticFeedback: true })}
       disabled={disabled}
-      className={`${baseClasses} ${variantClasses[variant]} ${disabled ? disabledClasses : ''}`}
+      className={`mobile-nav-button ${baseClasses} ${variantClasses[variant]} ${disabled ? disabledClasses : ''}`}
       style={{ 
-        minHeight: TOUCH_TARGETS.COMFORTABLE,
-        touchAction: 'manipulation' 
+        minHeight: TOUCH_TARGETS.COMFORTABLE
       }}
       aria-label={label}
     >
@@ -161,12 +160,11 @@ const NavigationDrawer: React.FC<{
             <h2 className="text-lg font-semibold">Navigation</h2>
             <button 
               {...getInteractionProps(onClose, { hapticFeedback: true })}
-              className="p-2 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation"
+              className="mobile-nav-button p-2 rounded-lg hover:bg-white/20 active:bg-white/30 transition-colors touch-manipulation"
               aria-label="Close menu"
               style={{ 
                 minWidth: TOUCH_TARGETS.COMFORTABLE, 
-                minHeight: TOUCH_TARGETS.COMFORTABLE, 
-                touchAction: 'manipulation' 
+                minHeight: TOUCH_TARGETS.COMFORTABLE
               }}
               type="button"
             >
@@ -303,11 +301,10 @@ const MobileTeamNavigation: React.FC<MobileTeamNavigationProps> = ({
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button 
               {...getInteractionProps(() => setMenuOpen(true), { hapticFeedback: true })}
-              className="p-3 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex-shrink-0 transition-all duration-200 active:scale-95"
+              className="mobile-nav-button p-3 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex-shrink-0 transition-all duration-200 active:scale-95"
               aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
               aria-expanded={menuOpen}
               style={{ 
-                touchAction: 'manipulation',
                 minWidth: TOUCH_TARGETS.COMFORTABLE,
                 minHeight: TOUCH_TARGETS.COMFORTABLE
               }}

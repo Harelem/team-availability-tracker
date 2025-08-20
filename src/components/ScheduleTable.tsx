@@ -52,7 +52,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   const [error, setError] = useState<string | null>(null);
   const [scheduleData, setScheduleData] = useState<any>({});
   const [currentSprintDates, setCurrentSprintDates] = useState<Date[]>([]);
-  const [sprintDays, setSprintDays] = useState<Date[]>([]);
+  // REMOVED: sprintDays state was causing circular dependency
   
   // Modal state
   const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
@@ -61,6 +61,16 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   
   // Navigation state 
   const [currentSprintOffset, setCurrentSprintOffset] = useState(0);
+  
+  // Week navigation state
+  const [currentWeek, setCurrentWeek] = useState<Date>(() => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
+    console.log('🔄 Initial currentWeek set to:', startOfWeek.toDateString());
+    return startOfWeek;
+  });
+  const [navigationMode, setNavigationMode] = useState<'sprint' | 'week'>('week'); // 🔧 CHANGED: Default to week mode for testing
   
   // Sprint data from GlobalSprintContext
   const { currentSprint } = useGlobalSprint();
@@ -93,6 +103,72 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   // Mock refresh function
   const refreshSchedules = () => {
     console.log('Refreshing schedules...');
+  };
+
+  // Week navigation functions
+  const goToPreviousWeek = () => {
+    console.log('🔄 goToPreviousWeek called, current week:', currentWeek.toDateString());
+    setLoading(true); // Add visual feedback
+    setCurrentWeek(prev => {
+      const newWeek = new Date(prev);
+      newWeek.setDate(prev.getDate() - 7);
+      console.log('✅ Previous week navigation - NEW week:', newWeek.toDateString());
+      return newWeek;
+    });
+    // Clear loading state after a brief delay to ensure data reloads
+    setTimeout(() => setLoading(false), 1000);
+  };
+
+  const goToNextWeek = () => {
+    console.log('🔄 goToNextWeek called, current week:', currentWeek.toDateString());
+    setLoading(true); // Add visual feedback
+    setCurrentWeek(prev => {
+      const newWeek = new Date(prev);
+      newWeek.setDate(prev.getDate() + 7);
+      console.log('✅ Next week navigation - NEW week:', newWeek.toDateString());
+      return newWeek;
+    });
+    // Clear loading state after a brief delay to ensure data reloads
+    setTimeout(() => setLoading(false), 1000);
+  };
+
+  const goToCurrentWeek = () => {
+    console.log('🔄 goToCurrentWeek called, current week:', currentWeek.toDateString());
+    setLoading(true); // Add visual feedback
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
+    setCurrentWeek(startOfWeek);
+    console.log('✅ Go to current week - NEW week:', startOfWeek.toDateString());
+    // Clear loading state after a brief delay to ensure data reloads
+    setTimeout(() => setLoading(false), 1000);
+  };
+
+  // Generate week days for current week
+  const getWeekDays = (startDate: Date): Date[] => {
+    const days: Date[] = [];
+    for (let i = 0; i < 5; i++) { // Sunday to Thursday
+      const day = new Date(startDate);
+      day.setDate(startDate.getDate() + i);
+      days.push(day);
+    }
+    return days;
+  };
+
+  // Get current week string for display
+  const getCurrentWeekString = (): string => {
+    const endOfWeek = new Date(currentWeek);
+    endOfWeek.setDate(currentWeek.getDate() + 4); // Thursday
+    
+    const formatDate = (date: Date) => {
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const day = date.getDate();
+      return `${month} ${day}`;
+    };
+    
+    const weekString = `${formatDate(currentWeek)} - ${formatDate(endOfWeek)}`;
+    console.log('📅 getCurrentWeekString called, currentWeek:', currentWeek.toDateString(), 'returning:', weekString);
+    return weekString;
   };
   
   // Modal state objects to match the old API
@@ -254,10 +330,19 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     return nextStart;
   };
 
-  // Get dates based on view mode (now defaulting to sprint)
+  // Get dates based on navigation mode
   const getViewDates = () => {
+    console.log('📅 getViewDates called - navigationMode:', navigationMode, 'viewMode:', viewMode);
+    
+    if (navigationMode === 'week') {
+      // Use week navigation with currentWeek state
+      const weekDates = getWeekDays(currentWeek);
+      console.log('📅 Week mode dates:', weekDates.map(d => d.toDateString()));
+      return weekDates;
+    }
+    
     if (viewMode === 'week') {
-      // Legacy week mode support
+      // Legacy week mode support with sprint offset
       const today = new Date();
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay() + (currentSprintOffset * 7));
@@ -268,11 +353,14 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         date.setDate(startOfWeek.getDate() + i);
         weekDays.push(date);
       }
+      console.log('📅 Legacy week mode dates:', weekDays.map(d => d.toDateString()));
       return weekDays;
     }
     
-    // Default to sprint mode
-    return sprintDays.length > 0 ? sprintDays : getCurrentSprintDates();
+    // Default to sprint mode - FIXED: Always calculate fresh dates
+    const sprintDates = getCurrentSprintDates();
+    console.log('📅 Sprint mode dates:', sprintDates.map(d => d.toDateString()));
+    return sprintDates;
   };
   
   // Use sprint-appropriate dates
@@ -285,8 +373,11 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       setSchedulesError(null);
       
       const viewDates = getViewDates();
+      console.log('🔄 Loading schedule data for dates:', viewDates.map(d => d.toDateString()));
+      
       if (viewDates.length === 0) {
         console.warn('No view dates available');
+        setSchedulesLoading(false);
         return;
       }
       const startDate = viewDates[0]?.toISOString().split('T')[0];
@@ -294,15 +385,19 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       
       if (!startDate || !endDate) {
         console.warn('Invalid start or end date');
+        setSchedulesLoading(false);
         return;
       }
+      
+      console.log('📡 Fetching schedule data from', startDate, 'to', endDate, 'for team', selectedTeam.id);
       
       try {
         const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
         setScheduleData(data);
         setCurrentSprintDates(viewDates);
-        setSprintDays(viewDates);
+        // REMOVED: setSprintDays(viewDates) - eliminated circular dependency
         
+        console.log('✅ Schedule data loaded successfully:', Object.keys(data).length, 'member entries');
         showSuccess('Schedule Loaded', 'Schedule data loaded successfully');
       } catch (error) {
         console.error('Error loading schedule data:', error);
@@ -317,7 +412,19 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     };
 
     loadScheduleData();
-  }, [currentSprintOffset, selectedTeam.id, viewMode, sprintDates]); // Include view mode and sprint dates
+  }, [
+    // CRITICAL FIX: Include all navigation state that affects date calculation
+    currentSprintOffset, 
+    currentWeek, 
+    navigationMode, 
+    selectedTeam.id, 
+    viewMode, 
+    sprintDates,
+    // FIXED: Add currentSprint dependency since it affects date calculation in getCurrentSprintDates()
+    currentSprint?.current_sprint_number,
+    currentSprint?.sprint_start_date,
+    currentSprint?.sprint_end_date
+  ]); // Enhanced dependency array to ensure data reloads on all navigation changes
 
   // Set up real-time subscription
   useEffect(() => {
@@ -329,16 +436,20 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     
     if (!startDate || !endDate) return;
     
+    console.log('🔔 Setting up real-time subscription for', startDate, 'to', endDate);
+    
     const subscription = DatabaseService.subscribeToScheduleChanges(
       startDate,
       endDate,
       selectedTeam.id,
       () => {
         // Reload data when changes occur
+        console.log('🔔 Real-time update received, reloading data');
         const loadScheduleData = async () => {
           try {
             const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
             setScheduleData(data);
+            console.log('✅ Real-time data reload successful');
           } catch (error) {
             console.error('Error reloading schedule data:', error);
           }
@@ -348,9 +459,22 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     );
 
     return () => {
+      console.log('🔔 Cleaning up real-time subscription');
       subscription.unsubscribe();
     };
-  }, [currentSprintOffset, selectedTeam.id, viewMode, sprintDates]);
+  }, [
+    // CRITICAL FIX: Same enhanced dependency array as data loading useEffect
+    currentSprintOffset, 
+    currentWeek, 
+    navigationMode, 
+    selectedTeam.id, 
+    viewMode, 
+    sprintDates,
+    // FIXED: Add currentSprint dependency to match data loading effect
+    currentSprint?.current_sprint_number,
+    currentSprint?.sprint_start_date,
+    currentSprint?.sprint_end_date
+  ]);
 
   const formatDate = (date: Date | undefined) => {
     // ✅ Add null/undefined safety checks
@@ -375,8 +499,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   };
 
   const getCurrentSprintString = () => {
-    // Enhanced fallback logic: Use smart sprint detection when sprintDays is empty
-    if (!sprintDays || sprintDays.length === 0) {
+    // Enhanced fallback logic: Use smart sprint detection when currentSprintDays is empty
+    if (!currentSprintDays || currentSprintDays.length === 0) {
       // IMPROVED: Use smart sprint detection instead of warnings
       try {
         // First priority: Use database sprint if available and valid
@@ -419,9 +543,9 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       }
     }
     
-    // Normal operation: sprintDays is available
-    const startDate = sprintDays[0];
-    const endDate = sprintDays[sprintDays.length - 1];
+    // Normal operation: currentSprintDays is available
+    const startDate = currentSprintDays[0];
+    const endDate = currentSprintDays[currentSprintDays.length - 1];
     
     const sprintLabel = currentSprint ? 
       `Sprint ${currentSprint.current_sprint_number}` : 
@@ -501,14 +625,10 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   };
 
   const handleReasonSave = (reason: string) => {
-    // The reasonDialog from centralized state should have the data
-    // This might need adjustment based on the modal implementation
-    if (reasonDialog.isOpen) {
-      // We'll need to get the data from the modal state
-      // For now, we'll handle this in a basic way
-      console.log('Reason saved:', reason);
-      reasonDialog.close();
+    if (reasonDialogData) {
+      updateSchedule(reasonDialogData.memberId, reasonDialogData.date, reasonDialogData.value, reason);
     }
+    reasonDialog.close();
   };
 
   const handleReasonRequired = (memberId: number, date: Date, value: '0.5' | 'X') => {
@@ -617,9 +737,9 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         getTeamTotalHours={getTeamTotalHours}
       />
 
-      {/* Desktop Table-First Layout */}
+      {/* Navigation and Table Layout - Desktop only */}
       <div className="hidden lg:block space-y-0">
-        {/* Compact Header Bar - Always visible, sticky */}
+        {/* Compact Header Bar - Desktop only, sticky */}
         <CompactHeaderBar
           currentUser={currentUser}
           selectedTeam={selectedTeam}
@@ -628,12 +748,26 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           currentSprintOffset={currentSprintOffset}
           currentSprintDays={currentSprintDays}
           onSprintChange={(offset) => {
+            console.log('🔄 Sprint change requested - current offset:', currentSprintOffset, 'new offset:', offset);
+            setLoading(true); // Add visual feedback
             setCurrentSprintOffset(offset);
-            console.log('Sprint changed to offset:', offset);
+            console.log('✅ Sprint changed to offset:', offset);
+            // Clear loading state after a brief delay to ensure data reloads
+            setTimeout(() => setLoading(false), 1000);
           }}
           onViewReasons={() => viewReasons.open()}
           getCurrentSprintString={getCurrentSprintString}
           getTeamTotalHours={getTeamTotalHours}
+          navigationMode={navigationMode}
+          onNavigationModeChange={(mode) => {
+            console.log('🔄 Navigation mode change requested - current mode:', navigationMode, 'new mode:', mode);
+            setNavigationMode(mode);
+            console.log('✅ Navigation mode changed to:', mode);
+          }}
+          onPreviousWeek={goToPreviousWeek}
+          onNextWeek={goToNextWeek}
+          onCurrentWeek={goToCurrentWeek}
+          getCurrentWeekString={getCurrentWeekString}
         />
 
         {/* Team Summary Overview - Only for Managers */}
@@ -754,7 +888,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         isOpen={reasonDialog.isOpen}
         onClose={() => reasonDialog.close()}
         onSave={handleReasonSave}
-        data={null} // We'll need to adjust this based on modal implementation
+        data={reasonDialogData}
       />
       
       <ViewReasonsModal

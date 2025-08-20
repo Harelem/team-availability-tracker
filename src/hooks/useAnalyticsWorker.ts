@@ -177,8 +177,8 @@ export function useAnalyticsWorker(
       
       const sorted = [...data].sort((a, b) => a - b);
       const median = sorted.length % 2 === 0 
-        ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
-        : sorted[Math.floor(sorted.length / 2)];
+        ? ((sorted[sorted.length / 2 - 1] ?? 0) + (sorted[sorted.length / 2] ?? 0)) / 2
+        : (sorted[Math.floor(sorted.length / 2)] ?? 0);
       
       return {
         mean,
@@ -197,7 +197,7 @@ export function useAnalyticsWorker(
 
       const sumX = xData.reduce((sum, x) => sum + x, 0);
       const sumY = yData.reduce((sum, y) => sum + y, 0);
-      const sumXY = xData.reduce((sum, x, i) => sum + x * yData[i], 0);
+      const sumXY = xData.reduce((sum, x, i) => sum + x * (yData[i] ?? 0), 0);
       const sumXX = xData.reduce((sum, x) => sum + x * x, 0);
 
       const denominator = n * sumXX - sumX * sumX;

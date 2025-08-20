@@ -550,10 +550,10 @@ export type ComponentSizeToken = keyof typeof componentSizes;
 
 export const getColorValue = (color: string): string => {
   const parts = color.split('.');
-  if (parts.length === 1) {
+  if (parts.length === 1 && parts[0]) {
     return (colors as any)[parts[0]] || color;
   }
-  if (parts.length === 2) {
+  if (parts.length === 2 && parts[0] && parts[1]) {
     return (colors as any)[parts[0]]?.[parts[1]] || color;
   }
   return color;

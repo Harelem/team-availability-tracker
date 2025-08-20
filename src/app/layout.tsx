@@ -7,6 +7,8 @@ import { PageErrorBoundary } from "@/components/ErrorBoundary";
 import { AppStateProvider } from "@/contexts/AppStateContext";
 import { MobileNavigationProvider } from "@/components/navigation/MobileNavigationProvider";
 import GlobalMobileNavigation from "@/components/navigation/GlobalMobileNavigation";
+import EmergencyMobileWrapper from "@/components/EmergencyMobileWrapper";
+import { HydrationProvider } from "@/components/HydrationSafeWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,6 +23,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3004'),
   title: {
     default: "Team Availability Tracker",
     template: "%s | Team Availability Tracker"
@@ -92,6 +95,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: "cover",
+  minimumScale: 1,
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#3b82f6" },
     { media: "(prefers-color-scheme: dark)", color: "#1e40af" },
@@ -126,10 +131,9 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//fonts.gstatic.com" />
         
-        {/* Aggressive Cache Control Meta Tags for Mobile */}
-        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <meta httpEquiv="Pragma" content="no-cache" />
-        <meta httpEquiv="Expires" content="0" />
+        {/* Optimized Cache Control for Performance */}
+        <meta httpEquiv="Cache-Control" content="public, max-age=3600, stale-while-revalidate=86400" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         
         {/* Service Worker registration script - external file for security */}
         <script src="/scripts/service-worker-init.js" defer></script>
@@ -156,18 +160,22 @@ export default function RootLayout({
         {/* Main application content with error boundary */}
         <div id="root" className="min-h-screen">
           <main id="main-content" role="main" tabIndex={-1}>
-            <AppStateProvider>
-              <MobileNavigationProvider>
-                <PageErrorBoundary>
-                  {children}
-                </PageErrorBoundary>
-                
-                {/* Global Mobile Navigation */}
-                <GlobalMobileNavigation 
-                  hideOnRoutes={['/login', '/signup', '/onboarding']}
-                />
-              </MobileNavigationProvider>
-            </AppStateProvider>
+            <HydrationProvider>
+              <AppStateProvider>
+                <MobileNavigationProvider>
+                  <PageErrorBoundary>
+                    <EmergencyMobileWrapper hideOnRoutes={['/login', '/signup', '/onboarding']}>
+                      {children}
+                    </EmergencyMobileWrapper>
+                  </PageErrorBoundary>
+                  
+                  {/* Global Mobile Navigation - Fallback for desktop */}
+                  <GlobalMobileNavigation 
+                    hideOnRoutes={['/login', '/signup', '/onboarding']}
+                  />
+                </MobileNavigationProvider>
+              </AppStateProvider>
+            </HydrationProvider>
           </main>
         </div>
         
@@ -182,6 +190,9 @@ export default function RootLayout({
         
         {/* Accessibility preferences initialization - external file for security */}
         <script src="/scripts/accessibility-init.js" defer></script>
+        
+        {/* Mobile touch and viewport optimization initialization */}
+        <script src="/scripts/mobile-touch-init.js" defer></script>
       </body>
     </html>
   );

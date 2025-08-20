@@ -155,10 +155,10 @@ export class PredictiveAnalyticsEngine {
       const forecast: CapacityForecast = {
         teamId: numTeamId,
         forecasts: {
-          sprint1: this.buildSprintPrediction(ensembledForecasts.predictions[0], historicalData, 1),
-          sprint2: this.buildSprintPrediction(ensembledForecasts.predictions[1], historicalData, 2),
-          sprint3: this.buildSprintPrediction(ensembledForecasts.predictions[2], historicalData, 3),
-          sprint4: this.buildSprintPrediction(ensembledForecasts.predictions[3], historicalData, 4)
+          sprint1: this.buildSprintPrediction(ensembledForecasts.predictions[0] || 0, historicalData, 1),
+          sprint2: this.buildSprintPrediction(ensembledForecasts.predictions[1] || 0, historicalData, 2),
+          sprint3: this.buildSprintPrediction(ensembledForecasts.predictions[2] || 0, historicalData, 3),
+          sprint4: this.buildSprintPrediction(ensembledForecasts.predictions[3] || 0, historicalData, 4)
         },
         confidence,
         basedOnSprints: sprintCapacities.length,

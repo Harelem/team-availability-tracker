@@ -310,11 +310,51 @@ export default function PersonalDashboard({
             team={team}
             sprintDates={sprintWorkingDays}
             scheduleData={scheduleData}
+            personalStats={{
+              hoursSubmitted: personalStats.hoursSubmitted,
+              sprintProgress: personalStats.sprintProgress
+            }}
             onDataChange={(newData) => {
               setScheduleData(newData);
-              // Trigger stats recalculation
+              
+              // Real-time stats recalculation
               const userSchedule = newData[user.id] || {};
-              // You could add real-time stats update here
+              let totalHours = 0;
+              let submittedDays = 0;
+              
+              sprintWorkingDays.forEach(date => {
+                const dateKey = date.toISOString().split('T')[0];
+                const entry = dateKey ? userSchedule[dateKey] : undefined;
+                
+                if (entry && entry.value) {
+                  submittedDays++;
+                  switch (entry.value) {
+                    case '1': totalHours += 7; break;
+                    case '0.5': totalHours += 3.5; break;
+                    case 'X': totalHours += 0; break;
+                  }
+                }
+              });
+              
+              const progressPercentage = sprintWorkingDays.length > 0 
+                ? Math.round((submittedDays / sprintWorkingDays.length) * 100) 
+                : 0;
+              
+              let completionStatus: PersonalStats['completionStatus'] = 'not-started';
+              if (progressPercentage === 100) {
+                completionStatus = 'completed';
+              } else if (progressPercentage > 0) {
+                completionStatus = 'partial';
+              }
+              
+              setPersonalStats({
+                hoursSubmitted: totalHours,
+                daysPresent: submittedDays,
+                sprintProgress: progressPercentage,
+                completionStatus,
+                totalSprintDays: sprintWorkingDays.length,
+                submittedDays
+              });
             }}
           />
         </div>

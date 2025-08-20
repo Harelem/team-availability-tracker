@@ -34,20 +34,25 @@ export function AppStateProvider({
 }: AppStateProviderProps) {
   // Prevent multiple initialization logging in development
   const initializationRef = React.useRef(false);
+  const [hasInitialized, setHasInitialized] = React.useState(false);
   
-  if (!initializationRef.current) {
-    console.log('🔄 AppStateProvider initializing...');
-    initializationRef.current = true;
-    
-    // Global initialization guard
-    if (typeof window !== 'undefined') {
-      if (window.__APP_STATE_PROVIDER_INITIALIZED__) {
-        console.warn('⚠️ Multiple AppStateProvider instances detected');
-      } else {
-        window.__APP_STATE_PROVIDER_INITIALIZED__ = true;
+  // Only log initialization once and avoid console.log in render
+  React.useEffect(() => {
+    if (!initializationRef.current && process.env.NODE_ENV === 'development') {
+      console.log('🔄 AppStateProvider initializing...');
+      initializationRef.current = true;
+      setHasInitialized(true);
+      
+      // Global initialization guard
+      if (typeof window !== 'undefined') {
+        if (window.__APP_STATE_PROVIDER_INITIALIZED__) {
+          console.warn('⚠️ Multiple AppStateProvider instances detected');
+        } else {
+          window.__APP_STATE_PROVIDER_INITIALIZED__ = true;
+        }
       }
     }
-  }
+  }, []);
   
   const {
     state,
@@ -62,7 +67,9 @@ export function AppStateProvider({
   
   React.useEffect(() => {
     setIsProviderReady(true);
-    if (!initializationRef.current || !window.__APP_STATE_PROVIDER_INITIALIZED__) {
+    
+    // Only log in development and once
+    if (process.env.NODE_ENV === 'development' && hasInitialized) {
       console.log('✅ AppStateProvider fully initialized');
     }
     
@@ -72,7 +79,7 @@ export function AppStateProvider({
         window.__APP_STATE_PROVIDER_INITIALIZED__ = false;
       }
     };
-  }, []);
+  }, [hasInitialized]);
 
   // Initialize app state on mount
   useEffect(() => {
@@ -153,9 +160,12 @@ export function AppStateProvider({
     }
   }, [selectors, state.ui.errors]);
 
-  // Auto-save user preferences to localStorage
+  // Auto-save user preferences to localStorage (debounced to prevent loops)
+  const preferencesRef = React.useRef(state.user.preferences);
   useEffect(() => {
-    if (state.initialized && state.user.currentUser) {
+    if (state.initialized && state.user.currentUser && 
+        JSON.stringify(preferencesRef.current) !== JSON.stringify(state.user.preferences)) {
+      preferencesRef.current = state.user.preferences;
       try {
         localStorage.setItem('userPreferences', JSON.stringify(state.user.preferences));
       } catch (error) {
@@ -164,9 +174,11 @@ export function AppStateProvider({
     }
   }, [state.initialized, state.user.currentUser, state.user.preferences]);
 
-  // Load user preferences from localStorage
+  // Load user preferences from localStorage (only once on mount)
+  const hasLoadedPreferences = React.useRef(false);
   useEffect(() => {
-    if (state.initialized && !state.user.currentUser) {
+    if (state.initialized && !hasLoadedPreferences.current) {
+      hasLoadedPreferences.current = true;
       try {
         const savedPreferences = localStorage.getItem('userPreferences');
         if (savedPreferences) {
@@ -180,7 +192,7 @@ export function AppStateProvider({
         console.warn('Failed to load user preferences:', error);
       }
     }
-  }, [state.initialized, state.user.currentUser, dispatch]);
+  }, [state.initialized, dispatch]);
 
   // Cache invalidation cleanup
   useEffect(() => {

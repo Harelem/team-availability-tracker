@@ -2,9 +2,38 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import COOExecutiveDashboard from '@/components/COOExecutiveDashboard';
+import dynamic from 'next/dynamic';
+
+// Dynamic imports for heavy dashboard components to improve initial bundle size
+const COOExecutiveDashboard = dynamic(
+  () => import('@/components/COOExecutiveDashboard'),
+  {
+    loading: () => (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Executive Dashboard...</p>
+        </div>
+      </div>
+    ),
+    ssr: false
+  }
+);
+
+const MobileCOODashboard = dynamic(
+  () => import('@/components/mobile/MobileCOODashboard'),
+  {
+    loading: () => (
+      <div className="animate-pulse p-4 space-y-4">
+        <div className="h-32 bg-gray-200 rounded"></div>
+        <div className="h-48 bg-gray-200 rounded"></div>
+      </div>
+    ),
+    ssr: false
+  }
+);
+
 import ExecutiveLoginScreen from '@/components/ExecutiveLoginScreen';
-import MobileCOODashboard from '@/components/mobile/MobileCOODashboard';
 import MobileHeader from '@/components/navigation/MobileHeader';
 import { COOUser, TeamDailyStatus } from '@/types';
 import { DatabaseService } from '@/lib/database';

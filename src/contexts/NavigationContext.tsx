@@ -96,7 +96,7 @@ export function NavigationProvider({ children, initialPage = '/' }: NavigationPr
       return {
         ...prevState,
         previousPage: prevState.currentPage,
-        currentPage: previousPage,
+        currentPage: previousPage || '',
         navigationHistory: newHistory,
         isNavigationOpen: false
       };

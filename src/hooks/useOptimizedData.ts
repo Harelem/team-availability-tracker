@@ -107,8 +107,8 @@ export function useOptimizedWeeklyAnalytics() {
         date,
         available: dayData?.availableCapacity || 0,
         total: dayData?.totalCapacity || 0,
-        percentage: dayData?.totalCapacity > 0 
-          ? (dayData.availableCapacity / dayData.totalCapacity) * 100 
+        percentage: (dayData?.totalCapacity || 0) > 0 
+          ? ((dayData?.availableCapacity || 0) / (dayData?.totalCapacity || 1)) * 100 
           : 0,
         absences: dayData?.absences || []
       }
@@ -164,7 +164,7 @@ export function useOptimizedTeamCapacity(dates: string[]) {
   // Prefetch next few days in the background
   useEffect(() => {
     const prefetchDates = []
-    const maxDate = dates.reduce((max, date) => date > max ? date : max, dates[0])
+    const maxDate = dates.length > 0 ? dates.reduce((max, date) => date > max ? date : max, dates[0]!) : new Date()
     
     // Prefetch next 3 days
     for (let i = 1; i <= 3; i++) {

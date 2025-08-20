@@ -15,6 +15,7 @@ import { TeamMember, Team } from '@/types';
 import { DESIGN_SYSTEM, combineClasses, COMPONENT_PATTERNS } from '@/utils/designSystem';
 import { useMobileNavigation } from '@/hooks/useMobileNavigation';
 import NavigationDrawer from './NavigationDrawer';
+import { HydrationSafeWrapper } from '@/components/HydrationSafeWrapper';
 
 export interface MobileHeaderProps {
   // Page info
@@ -101,8 +102,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, className 
           onFocus={() => setIsActive(true)}
           onBlur={() => setIsActive(false)}
           placeholder={placeholder}
-          className="flex-1 bg-transparent outline-none text-sm placeholder-gray-500 text-gray-900"
-          style={{ touchAction: 'manipulation' }}
+          className="flex-1 bg-transparent outline-none text-sm placeholder-gray-500 text-gray-900 mobile-touch-safe"
         />
         {query && (
           <button
@@ -174,9 +174,22 @@ export default function MobileHeader({
   };
 
   return (
-    <>
+    <HydrationSafeWrapper 
+      suppressHydrationWarning={true}
+      fallback={
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40 safe-area-top animate-pulse">
+          <div className="px-4 py-3 flex items-center justify-between min-h-[64px]">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-6 h-6 bg-gray-200 rounded" />
+              <div className="h-5 bg-gray-200 rounded w-32" />
+            </div>
+            <div className="w-6 h-6 bg-gray-200 rounded" />
+          </div>
+        </header>
+      }
+    >
       <header className={combineClasses(
-        'bg-white border-b border-gray-200 sticky top-0 z-40 safe-area-top',
+        'mobile-header-emergency bg-white border-b border-gray-200 sticky top-0 safe-area-top',
         className
       )}>
         <div className={combineClasses(
@@ -191,12 +204,8 @@ export default function MobileHeader({
             {showBack ? (
               <button 
                 onClick={handleBack}
-                className={combineClasses(
-                  'p-2 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex-shrink-0 transition-colors',
-                  DESIGN_SYSTEM.buttons.touch
-                )}
+                className="mobile-nav-button p-2 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex-shrink-0 transition-colors"
                 aria-label="Go back"
-                style={{ touchAction: 'manipulation' }}
                 type="button"
               >
                 <ArrowLeft className="w-6 h-6 text-gray-700" />
@@ -204,13 +213,9 @@ export default function MobileHeader({
             ) : showMenu && (
               <button 
                 onClick={handleMenuToggle}
-                className={combineClasses(
-                  'p-2 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex-shrink-0 transition-colors',
-                  DESIGN_SYSTEM.buttons.touch
-                )}
+                className="mobile-nav-button p-2 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex-shrink-0 transition-colors"
                 aria-label="Open navigation menu"
                 aria-expanded={isNavigationOpen}
-                style={{ touchAction: 'manipulation' }}
                 type="button"
               >
                 <Menu className="w-6 h-6 text-gray-700" />
@@ -266,12 +271,8 @@ export default function MobileHeader({
             {showNotifications && (
               <button
                 onClick={onNotificationClick}
-                className={combineClasses(
-                  'p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 relative transition-colors',
-                  DESIGN_SYSTEM.buttons.touch
-                )}
+                className="mobile-nav-button p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 relative transition-colors"
                 aria-label={`Notifications${notificationCount > 0 ? ` (${notificationCount})` : ''}`}
-                style={{ touchAction: 'manipulation' }}
                 type="button"
               >
                 <Bell className="w-5 h-5 text-gray-700" />
@@ -291,13 +292,9 @@ export default function MobileHeader({
               <div className="relative">
                 <button
                   onClick={() => setShowActionsMenu(!showActionsMenu)}
-                  className={combineClasses(
-                    'p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors',
-                    DESIGN_SYSTEM.buttons.touch
-                  )}
+                  className="mobile-nav-button p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
                   aria-label="More actions"
                   aria-expanded={showActionsMenu}
-                  style={{ touchAction: 'manipulation' }}
                   type="button"
                 >
                   <MoreVertical className="w-5 h-5 text-gray-700" />
@@ -316,11 +313,7 @@ export default function MobileHeader({
                           action.onClick();
                           setShowActionsMenu(false);
                         }}
-                        className={combineClasses(
-                          'w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-100 active:bg-gray-200 transition-colors',
-                          DESIGN_SYSTEM.buttons.touch
-                        )}
-                        style={{ touchAction: 'manipulation' }}
+                        className="mobile-nav-button w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-100 active:bg-gray-200 transition-colors"
                       >
                         <action.icon className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-700">{action.label}</span>
@@ -356,7 +349,7 @@ export default function MobileHeader({
           aria-hidden="true"
         />
       )}
-    </>
+    </HydrationSafeWrapper>
   );
 }
 
@@ -379,10 +372,7 @@ export function SimpleHeader({
         {onBack && (
           <button 
             onClick={onBack}
-            className={combineClasses(
-              'p-2 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors',
-              DESIGN_SYSTEM.buttons.touch
-            )}
+            className="mobile-nav-button p-2 -ml-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
             aria-label="Go back"
             type="button"
           >

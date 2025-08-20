@@ -69,8 +69,12 @@ export class LinearRegressionModel {
     let denominator = 0;
 
     for (let i = 0; i < n; i++) {
-      numerator += (x[i] - xMean) * (y[i] - yMean);
-      denominator += Math.pow(x[i] - xMean, 2);
+      const xi = x[i];
+      const yi = y[i];
+      if (xi !== undefined && yi !== undefined) {
+        numerator += (xi - xMean) * (yi - yMean);
+        denominator += Math.pow(xi - xMean, 2);
+      }
     }
 
     this.slope = denominator !== 0 ? numerator / denominator : 0;
@@ -79,7 +83,10 @@ export class LinearRegressionModel {
     // Calculate R-squared
     const predictions = x.map(xi => this.slope * xi + this.intercept);
     const totalSumSquares = y.reduce((sum, yi) => sum + Math.pow(yi - yMean, 2), 0);
-    const residualSumSquares = y.reduce((sum, yi, i) => sum + Math.pow(yi - predictions[i], 2), 0);
+    const residualSumSquares = y.reduce((sum, yi, i) => {
+      const pred = predictions[i];
+      return pred !== undefined ? sum + Math.pow(yi - pred, 2) : sum;
+    }, 0);
     
     this.rSquared = totalSumSquares !== 0 ? 1 - (residualSumSquares / totalSumSquares) : 0;
     this.trained = true;
@@ -213,10 +220,17 @@ export class MovingAverageModel {
   private exponentialMovingAverage(data: number[], alpha: number = 0.3): number[] {
     if (data.length === 0) return [];
     
-    const ema = [data[0]];
+    const firstValue = data[0];
+    if (firstValue === undefined) return [];
+    
+    const ema = [firstValue];
     for (let i = 1; i < data.length; i++) {
-      const newEma = alpha * data[i] + (1 - alpha) * ema[i - 1];
-      ema.push(newEma);
+      const dataValue = data[i];
+      const prevEma = ema[i - 1];
+      if (dataValue !== undefined && prevEma !== undefined) {
+        const newEma = alpha * dataValue + (1 - alpha) * prevEma;
+        ema.push(newEma);
+      }
     }
     return ema;
   }
@@ -277,6 +291,18 @@ export class AnomalyDetector {
     
     const q1 = sorted[q1Index];
     const q3 = sorted[q3Index];
+    
+    if (q1 === undefined || q3 === undefined) {
+      return data.map((_, index) => ({
+        value: data[index] || 0,
+        isAnomaly: false,
+        anomalyScore: 0,
+        expectedRange: { min: 0, max: 100 },
+        detectionMethod: 'iqr' as const,
+        severity: 'low' as const
+      }));
+    }
+    
     const iqr = q3 - q1;
     
     const lowerBound = q1 - this.iqr_multiplier * iqr;
@@ -312,7 +338,19 @@ export class AnomalyDetector {
     const results: AnomalyResult[] = [];
     
     // Calculate centroid and average distances
-    const dimensions = Object.keys(features[0].features);
+    const firstFeature = features[0];
+    if (!firstFeature) {
+      return features.map(f => ({
+        value: f.features.avgUtilization,
+        isAnomaly: false,
+        anomalyScore: 0,
+        expectedRange: { min: 0, max: 100 },
+        detectionMethod: 'multivariate',
+        severity: 'low' as const
+      }));
+    }
+    
+    const dimensions = Object.keys(firstFeature.features);
     const centroid: { [key: string]: number } = {};
     
     dimensions.forEach(dim => {
@@ -324,8 +362,11 @@ export class AnomalyDetector {
     const distances = features.map(feature => {
       let distanceSquared = 0;
       dimensions.forEach(dim => {
-        const diff = feature.features[dim as keyof typeof feature.features] - centroid[dim];
-        distanceSquared += diff * diff;
+        const centroidValue = centroid[dim];
+        if (centroidValue !== undefined) {
+          const diff = feature.features[dim as keyof typeof feature.features] - centroidValue;
+          distanceSquared += diff * diff;
+        }
       });
       return Math.sqrt(distanceSquared);
     });
@@ -380,28 +421,28 @@ export class RiskAssessmentModel {
     // Utilization risk (high utilization = higher risk)
     const utilizationRisk = Math.min(1, features.features.avgUtilization / 150);
     factors.utilizationRisk = utilizationRisk;
-    weightedScore += utilizationRisk * this.weights.avgUtilization;
+    weightedScore += utilizationRisk * (this.weights.avgUtilization || 0);
 
     // Variability risk (high variability = higher risk)
     const variabilityRisk = Math.min(1, features.features.workloadVariability);
     factors.variabilityRisk = variabilityRisk;
-    weightedScore += variabilityRisk * this.weights.workloadVariability;
+    weightedScore += variabilityRisk * (this.weights.workloadVariability || 0);
 
     // Stability risk (low stability = higher risk)
     const stabilityRisk = Math.max(0, 1 - features.features.teamStability);
     factors.stabilityRisk = stabilityRisk;
-    weightedScore += stabilityRisk * this.weights.teamStability;
+    weightedScore += stabilityRisk * (this.weights.teamStability || 0);
 
     // Turnover risk (high turnover = higher risk)
     const turnoverRisk = Math.min(1, features.features.memberTurnover * 2);
     factors.turnoverRisk = turnoverRisk;
-    weightedScore += turnoverRisk * this.weights.memberTurnover;
+    weightedScore += turnoverRisk * (this.weights.memberTurnover || 0);
 
     // Trend risk (declining velocity = higher risk)
     const trendRisk = features.features.velocityTrend < 0 ? 
       Math.min(1, Math.abs(features.features.velocityTrend) / 10) : 0;
     factors.trendRisk = trendRisk;
-    weightedScore += trendRisk * this.weights.velocityTrend;
+    weightedScore += trendRisk * (this.weights.velocityTrend || 0);
 
     const recommendations = this.generateBurnoutRecommendations(factors);
     const confidence = features.features.historicalAccuracy;
@@ -455,19 +496,19 @@ export class RiskAssessmentModel {
   private generateBurnoutRecommendations(factors: { [key: string]: number }): string[] {
     const recommendations: string[] = [];
 
-    if (factors.utilizationRisk > 0.7) {
+    if ((factors.utilizationRisk || 0) > 0.7) {
       recommendations.push('Consider reducing workload or adding team members');
     }
-    if (factors.variabilityRisk > 0.6) {
+    if ((factors.variabilityRisk || 0) > 0.6) {
       recommendations.push('Implement better workload planning and distribution');
     }
-    if (factors.stabilityRisk > 0.5) {
+    if ((factors.stabilityRisk || 0) > 0.5) {
       recommendations.push('Focus on team retention and stability initiatives');
     }
-    if (factors.turnoverRisk > 0.4) {
+    if ((factors.turnoverRisk || 0) > 0.4) {
       recommendations.push('Investigate causes of team member turnover');
     }
-    if (factors.trendRisk > 0.3) {
+    if ((factors.trendRisk || 0) > 0.3) {
       recommendations.push('Address factors causing declining team velocity');
     }
 
@@ -481,13 +522,13 @@ export class RiskAssessmentModel {
   private generateCapacityRecommendations(factors: { [key: string]: number }): string[] {
     const recommendations: string[] = [];
 
-    if (factors.overCommitmentRisk > 0.6) {
+    if ((factors.overCommitmentRisk || 0) > 0.6) {
       recommendations.push('Reduce sprint commitments or add capacity');
     }
-    if (factors.volatilityRisk > 0.5) {
+    if ((factors.volatilityRisk || 0) > 0.5) {
       recommendations.push('Improve capacity planning consistency');
     }
-    if (factors.accuracyRisk > 0.4) {
+    if ((factors.accuracyRisk || 0) > 0.4) {
       recommendations.push('Review and improve estimation processes');
     }
 
@@ -512,13 +553,13 @@ export class SeasonalDecompositionModel {
     const trend = this.calculateTrend(data, period);
     
     // Remove trend to get detrended data
-    const detrended = data.map((val, i) => val - trend[i]);
+    const detrended = data.map((val, i) => val - (trend[i] || 0));
     
     // Calculate seasonal component
     const seasonal = this.calculateSeasonal(detrended, period);
     
     // Calculate residual
-    const residual = data.map((val, i) => val - trend[i] - seasonal[i]);
+    const residual = data.map((val, i) => val - (trend[i] || 0) - (seasonal[i] || 0));
 
     return {
       timestamps,

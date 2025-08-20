@@ -439,6 +439,7 @@ export class PerformanceMetricsCalculator {
 
     const sprintVelocities: SprintVelocity[] = Array.from(sprintGroups.entries())
       .sort(([a], [b]) => a - b)
+      .filter(([, sprintData]) => sprintData.length > 0 && sprintData[0]?.date)
       .map(([sprintNumber, sprintData]) => {
         const velocity = sprintData.reduce((sum, d) => sum + d.actualHours, 0);
         const avgUtilization = sprintData.reduce((sum, d) => sum + d.utilization, 0) / sprintData.length;
@@ -446,8 +447,8 @@ export class PerformanceMetricsCalculator {
         
         return {
           sprintNumber,
-          startDate: sprintData[0].date,
-          endDate: sprintData[sprintData.length - 1].date,
+          startDate: sprintData[0]!.date!,
+          endDate: sprintData[sprintData.length - 1]!.date!,
           velocity,
           utilization: avgUtilization,
           teamSize
@@ -472,10 +473,10 @@ export class PerformanceMetricsCalculator {
     // Forecast next sprint
     const forecast = linearRegression.predict(1);
     const forecastedVelocity = {
-      nextSprint: forecast.predictions[0],
+      nextSprint: forecast.predictions[0] ?? 0,
       confidenceInterval: {
-        lower: forecast.confidenceIntervals.lower[0],
-        upper: forecast.confidenceIntervals.upper[0]
+        lower: forecast.confidenceIntervals.lower[0] ?? 0,
+        upper: forecast.confidenceIntervals.upper[0] ?? 0
       },
       accuracy: forecast.confidence
     };
@@ -522,11 +523,11 @@ export class PerformanceMetricsCalculator {
     ];
 
     utilizations.forEach(u => {
-      if (u < 60) utilizationDistribution[0].sprintCount++;
-      else if (u < 80) utilizationDistribution[1].sprintCount++;
-      else if (u < 95) utilizationDistribution[2].sprintCount++;
-      else if (u < 110) utilizationDistribution[3].sprintCount++;
-      else utilizationDistribution[4].sprintCount++;
+      if (u < 60) utilizationDistribution[0]!.sprintCount++;
+      else if (u < 80) utilizationDistribution[1]!.sprintCount++;
+      else if (u < 95) utilizationDistribution[2]!.sprintCount++;
+      else if (u < 110) utilizationDistribution[3]!.sprintCount++;
+      else utilizationDistribution[4]!.sprintCount++;
     });
 
     utilizationDistribution.forEach(bucket => {
@@ -534,7 +535,7 @@ export class PerformanceMetricsCalculator {
     });
 
     // Calculate capacity efficiency (how close to optimal)
-    const optimalCount = utilizationDistribution[2].sprintCount;
+    const optimalCount = utilizationDistribution[2]!.sprintCount;
     const capacityEfficiency = optimalCount / utilizations.length;
 
     return {
@@ -576,7 +577,7 @@ export class PerformanceMetricsCalculator {
 
       additions.forEach(memberId => {
         membershipChanges.push({
-          sprintNumber: currentSprint,
+          sprintNumber: currentSprint || 0,
           changeType: 'addition',
           memberId,
           memberName: `Member ${memberId}`,
@@ -586,7 +587,7 @@ export class PerformanceMetricsCalculator {
 
       removals.forEach(memberId => {
         membershipChanges.push({
-          sprintNumber: currentSprint,
+          sprintNumber: currentSprint || 0,
           changeType: 'removal',
           memberId,
           memberName: `Member ${memberId}`,
@@ -606,7 +607,7 @@ export class PerformanceMetricsCalculator {
     const turnoverRate = (turnoverCount / members.length) * (12 / (sprints.length * 2 / 4.33)); // Annualized
 
     // Determine trend
-    const recentChanges = membershipChanges.filter(c => c.sprintNumber >= sprints[Math.max(0, sprints.length - 3)]);
+    const recentChanges = membershipChanges.filter(c => c.sprintNumber >= (sprints[Math.max(0, sprints.length - 3)] || 0));
     const stabilityTrend = recentChanges.length <= 1 ? 'stable' : 
                           recentChanges.length <= 3 ? 'declining' : 'improving';
 

@@ -36,6 +36,7 @@ import { useErrorBoundary } from '@/hooks/useErrorBoundary';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';
 import { ErrorCategory } from '@/types/errors';
 import { ConsistentLoader, LoadingSkeleton } from '@/components/ui/ConsistentLoader';
+import { useLoadingDebugger } from '@/utils/loadingDebugger';
 import { dataConsistencyManager } from '@/utils/dataConsistencyManager';
 
 // Import centralized state management
@@ -59,6 +60,7 @@ interface COOExecutiveDashboardProps {
 }
 
 const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser, onBack, onTeamNavigate, className = '' }: COOExecutiveDashboardProps) {
+  console.log('🚨 COOExecutiveDashboard RENDERING - Component mounted');
   const isMobile = useMobileDetection();
   
   // Removed abortControllerRef to simplify state management
@@ -66,6 +68,10 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
   // Centralized state management
   const { dashboard: isLoading, setDashboardLoading } = useLoadingState();
   const { dashboard: error, setDashboardError } = useErrorState();
+  
+  // Log the actual loading state value
+  console.log('📊 Loading state values - isLoading:', isLoading, 'typeof:', typeof isLoading);
+  const { startLoading, completeLoading, forceComplete } = useLoadingDebugger('coo-executive-dashboard', 30000);
   const { teamDetail, workforceStatus } = useModalState();
   const [showSprintSettings, setShowSprintSettings] = useState(false);
   const { cooActiveTab: activeTab, setCOOActiveTab, selectedTeamId, selectTeam } = useNavigationState();
@@ -121,15 +127,37 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
     }
   });
 
+  // Failsafe: Force loading to false after 15 seconds
+  useEffect(() => {
+    const failsafeTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.error('⚠️ COO Dashboard loading failsafe triggered after 15s');
+        setDashboardLoading(false);
+        completeLoading();
+        forceComplete();
+        
+        // If we still don't have data, show an error
+        if (!dashboardData) {
+          setDashboardError('Dashboard loading timed out. Please refresh the page.');
+        }
+      }
+    }, 15000);
+    
+    return () => clearTimeout(failsafeTimeout);
+  }, [isLoading, dashboardData, setDashboardLoading, completeLoading, forceComplete, setDashboardError]);
+
   // Effect to load data on component mount - simplified to prevent infinite loops
   useEffect(() => {
+    console.log('🎬 useEffect running - isLoading before any changes:', isLoading);
     let mounted = true;
 
     const loadInitialData = async () => {
       try {
         if (!mounted) return;
         
+        console.log('🔴 About to set loading to TRUE');
         setDashboardLoading(true);
+        startLoading();
         setDashboardError(null);
         
         console.log('🔍 COO Dashboard: Starting initial data load...');
@@ -183,11 +211,13 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
         if (!mounted) return;
         
         // Update state
+        console.log('📝 Setting COO Dashboard Data:', !!data, 'Teams:', teamsWithMembers.length);
         setCOODashboardData(data);
         setAllTeamsWithMembers(teamsWithMembers);
         setTeams(teams);
         
         console.log(`✅ COO Dashboard: Successfully loaded ${teamsWithMembers.length} teams`);
+        console.log('📊 Dashboard data structure:', Object.keys(data || {}));
         
       } catch (err) {
         if (!mounted) return;
@@ -200,8 +230,20 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
         showError('Dashboard Loading Failed', 'Unable to load dashboard data. Please try refreshing the page.');
       } finally {
         if (mounted) {
+          console.log('🔴 BEFORE setDashboardLoading(false) - current isLoading:', isLoading);
           setDashboardLoading(false);
+          completeLoading();
           console.log('🏁 COO Dashboard: Initial data load completed (success or failure)');
+          
+          // Verify state actually changed
+          setTimeout(() => {
+            console.log('🟢 AFTER setDashboardLoading(false) - loading state should be false now');
+            // Force a re-render if still loading
+            if (isLoading) {
+              console.error('❌ Loading state STILL TRUE after setting to false! Force clearing...');
+              setDashboardLoading(false);
+            }
+          }, 0);
         }
       }
     };
@@ -327,6 +369,14 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
 
 
   // Mobile view with enhanced navigation
+  // Debug logging to understand loading state
+  console.log('🔍 COO Dashboard Render - isLoading:', isLoading, 'dashboardData:', !!dashboardData, 'error:', !!error);
+  
+  // Check if we're in an unexpected state
+  if (!isLoading && !dashboardData && !error) {
+    console.warn('⚠️ Unexpected state: Not loading, no data, no error. This might cause issues.');
+  }
+  
   if (isMobile && dashboardData) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -359,6 +409,7 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
     );
   }
 
+  // Show loading skeleton while data is loading
   if (isLoading) {
     return (
       <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
@@ -366,6 +417,13 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
           variant="skeleton"
           message="Loading COO dashboard..."
           testId="coo-dashboard-loading"
+          timeout={30000}
+          onTimeout={() => {
+            console.error('COO Dashboard loading timed out, forcing completion');
+            setDashboardLoading(false);
+            completeLoading();
+            setDashboardError('Loading timed out. Please try refreshing the page.');
+          }}
         />
         
         {/* Additional loading skeletons for dashboard sections */}
@@ -419,6 +477,18 @@ const COOExecutiveDashboard = memo(function COOExecutiveDashboard({ currentUser,
             >
               {isLoading ? 'Retrying...' : 'Try Again'}
             </button>
+            {process.env.NODE_ENV === 'development' && (
+              <button
+                onClick={() => {
+                  forceComplete();
+                  setDashboardLoading(false);
+                  setDashboardError(null);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors min-h-[44px] touch-manipulation"
+              >
+                Force Complete (Debug)
+              </button>
+            )}
             <button
               onClick={() => {
                 dataConsistencyManager.clearAll();

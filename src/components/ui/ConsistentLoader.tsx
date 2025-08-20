@@ -21,6 +21,8 @@ export interface ConsistentLoaderProps {
   message?: string;
   fullPage?: boolean;
   testId?: string;
+  timeout?: number; // Timeout in milliseconds (default 30 seconds)
+  onTimeout?: () => void; // Callback when timeout is reached
 }
 
 export interface LoadingSkeletonProps {
@@ -54,9 +56,30 @@ export const ConsistentLoader: React.FC<ConsistentLoaderProps> = ({
   className,
   message,
   fullPage = false,
-  testId
+  testId,
+  timeout = 30000, // Default 30 seconds
+  onTimeout
 }) => {
   const isMounted = useIsomorphicLoading();
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  const [timeoutMessage, setTimeoutMessage] = useState('');
+  
+  // Timeout effect
+  useEffect(() => {
+    if (timeout <= 0) return;
+    
+    const timer = setTimeout(() => {
+      console.warn(`Loading component timed out after ${timeout}ms`);
+      setIsTimedOut(true);
+      setTimeoutMessage(`Loading timed out after ${Math.round(timeout / 1000)} seconds`);
+      
+      if (onTimeout) {
+        onTimeout();
+      }
+    }, timeout);
+    
+    return () => clearTimeout(timer);
+  }, [timeout, onTimeout]);
   
   // Size mappings for consistent sizing
   const sizeClasses = {
@@ -77,6 +100,45 @@ export const ConsistentLoader: React.FC<ConsistentLoaderProps> = ({
     </div>
   );
 
+  // Show timeout error if loading timed out
+  if (isTimedOut) {
+    const timeoutContent = (
+      <div className="text-center space-y-4" data-testid={`${testId}-timeout`}>
+        <div className="text-red-500">
+          <div className="text-4xl mb-2">⏱️</div>
+          <h3 className="text-lg font-semibold">Loading Timeout</h3>
+          <p className="text-sm text-gray-600 mt-1">{timeoutMessage}</p>
+        </div>
+        <button
+          onClick={() => {
+            setIsTimedOut(false);
+            setTimeoutMessage('');
+            if (onTimeout) onTimeout();
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+    
+    if (fullPage) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full">
+            {timeoutContent}
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className={cx('p-4 border border-red-200 bg-red-50 rounded-lg', className)}>
+        {timeoutContent}
+      </div>
+    );
+  }
+  
   // Server-side rendering: Always use pulse animation
   if (!isMounted) {
     const content = <PulseContent />;

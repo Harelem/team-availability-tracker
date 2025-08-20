@@ -566,7 +566,7 @@ export class IntelligentAlertSystem {
             name: teamData.teamName
           },
           metrics: {
-            currentValue: recentAnomalies[0].anomalyScore,
+            currentValue: recentAnomalies[0]?.anomalyScore || 0,
             threshold: 0.7,
             historicalAverage: 0.1,
             trend: 'stable',

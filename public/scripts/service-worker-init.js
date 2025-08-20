@@ -6,7 +6,12 @@
 (function() {
   'use strict';
   
-  if ('serviceWorker' in navigator) {
+  // Only enable service worker in production to avoid development conflicts
+  var isProduction = window.location.hostname !== 'localhost' && 
+                     window.location.hostname !== '127.0.0.1' && 
+                     !window.location.hostname.includes('.local');
+  
+  if ('serviceWorker' in navigator && isProduction) {
     window.addEventListener('load', function() {
       try {
         // Force unregister existing service workers first
@@ -65,6 +70,8 @@
         window.location.reload();
       }
     });
+  } else if ('serviceWorker' in navigator) {
+    console.log('Service worker disabled in development mode');
   } else {
     console.log('Service workers are not supported');
   }

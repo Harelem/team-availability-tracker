@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNavigation, NAVIGATION_PAGES } from '@/contexts/NavigationContext';
+import { useHydrationSafeState } from '@/components/HydrationSafeWrapper';
 
 export interface MobileNavigationConfig {
   enableSwipeGestures?: boolean;
@@ -33,7 +34,7 @@ export function useMobileNavigation(config: MobileNavigationConfig = {}) {
   const navigation = useNavigation();
   const fullConfig = { ...defaultConfig, ...config };
   
-  // Swipe gesture state
+  // Swipe gesture state - client-only, so regular useState is fine
   const [swipeGesture, setSwipeGesture] = useState<SwipeGesture>({
     startX: 0,
     startY: 0,
@@ -48,8 +49,8 @@ export function useMobileNavigation(config: MobileNavigationConfig = {}) {
   const handleSwipeStart = useCallback((e: TouchEvent | MouseEvent) => {
     if (!fullConfig.enableSwipeGestures) return;
     
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = 'touches' in e ? e.touches[0]?.clientX ?? 0 : e.clientX ?? 0;
+    const clientY = 'touches' in e ? e.touches[0]?.clientY ?? 0 : e.clientY ?? 0;
     
     setSwipeGesture({
       startX: clientX,
@@ -66,8 +67,8 @@ export function useMobileNavigation(config: MobileNavigationConfig = {}) {
   const handleSwipeMove = useCallback((e: TouchEvent | MouseEvent) => {
     if (!fullConfig.enableSwipeGestures || !swipeGesture.isActive) return;
     
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = 'touches' in e ? e.touches[0]?.clientX ?? 0 : e.clientX ?? 0;
+    const clientY = 'touches' in e ? e.touches[0]?.clientY ?? 0 : e.clientY ?? 0;
     
     setSwipeGesture(prev => ({
       ...prev,
@@ -120,9 +121,12 @@ export function useMobileNavigation(config: MobileNavigationConfig = {}) {
     navigation
   ]);
 
-  // Keyboard navigation
+  // Keyboard navigation - client-only
   useEffect(() => {
     if (!fullConfig.enableKeyboardNavigation) return;
+    
+    // Only set up keyboard listeners on client-side
+    if (typeof window === 'undefined') return;
     
     const handleKeyDown = (e: KeyboardEvent) => {
       // Handle escape key to close navigation
@@ -160,9 +164,12 @@ export function useMobileNavigation(config: MobileNavigationConfig = {}) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [fullConfig.enableKeyboardNavigation, navigation]);
 
-  // Touch event listeners for swipe gestures
+  // Touch event listeners for swipe gestures - client-only
   useEffect(() => {
     if (!fullConfig.enableSwipeGestures) return;
+    
+    // Only set up touch listeners on client-side
+    if (typeof window === 'undefined') return;
     
     document.addEventListener('touchstart', handleSwipeStart, { passive: true });
     document.addEventListener('touchmove', handleSwipeMove, { passive: true });
