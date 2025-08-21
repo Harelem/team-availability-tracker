@@ -1842,129 +1842,225 @@ export const DatabaseService = {
   },
 
   // Global Sprint Management
-  async getCurrentGlobalSprint(): Promise<CurrentGlobalSprint | null> {
-    if (!isSupabaseConfigured()) {
-      // If no database, fallback to smart detection
+  
+  /**
+   * Dynamic Sprint Detection - Query sprint_history table to find which sprint contains a given date
+   * This eliminates dependency on manually maintained current_sprint_number field
+   * 
+   * @param targetDate The date to find the sprint for (defaults to today)
+   * @returns Sprint data from sprint_history table, or null if no sprint found
+   */
+  async getSprintForDate(targetDate: Date = new Date()): Promise<CurrentGlobalSprint | null> {
+    const targetDateString = targetDate.toISOString().split('T')[0];
+    
+    // Use caching for performance optimization
+    return dataConsistencyManager.getCachedOrFetch(
+      CacheKeys.SPRINT_FOR_DATE(targetDateString),
+      async () => {
+        if (!isSupabaseConfigured()) {
+          // Fallback to smart detection when no database is available
+          const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
+          const smartSprint = await detectCurrentSprintForDate(targetDate);
+          return convertToLegacySprintFormat(smartSprint);
+        }
+        
+        try {
+          debug(`🔍 Searching sprint_history for date: ${targetDateString}`);
+          
+          // Query sprint_history table to find which sprint contains the target date
+          const { data: sprintData, error } = await supabase
+            .from('sprint_history')
+            .select('*')
+            .lte('sprint_start_date', targetDateString)
+            .gte('sprint_end_date', targetDateString)
+            .order('sprint_number', { ascending: false })
+            .limit(1)
+            .single();
+      
+      if (error) {
+        debug(`No sprint found in sprint_history for date ${targetDateString}, using fallback detection`);
+        
+        // Check if we have any sprints at all
+        const { data: allSprints, error: allSprintsError } = await supabase
+          .from('sprint_history')
+          .select('sprint_number, sprint_start_date, sprint_end_date, status')
+          .order('sprint_start_date', { ascending: true });
+        
+        if (!allSprintsError && allSprints && allSprints.length > 0) {
+          debug(`Found ${allSprints.length} sprints in history:`, allSprints.map(s => 
+            `Sprint ${s.sprint_number}: ${s.sprint_start_date} to ${s.sprint_end_date} (${s.status})`
+          ));
+          
+          // Handle edge cases
+          const firstSprint = allSprints[0];
+          const lastSprint = allSprints[allSprints.length - 1];
+          
+          if (targetDateString < firstSprint.sprint_start_date) {
+            debug(`Target date ${targetDateString} is before first sprint ${firstSprint.sprint_start_date}`);
+            return null; // Before any sprints
+          }
+          
+          if (targetDateString > lastSprint.sprint_end_date) {
+            debug(`Target date ${targetDateString} is after last sprint ${lastSprint.sprint_end_date}`);
+            
+            // Calculate what the next sprint should be
+            const nextSprintNumber = lastSprint.sprint_number + 1;
+            const lastEndDate = new Date(lastSprint.sprint_end_date);
+            
+            // Find next working day after last sprint
+            const nextStartDate = new Date(lastEndDate);
+            nextStartDate.setDate(lastEndDate.getDate() + 1);
+            while (nextStartDate.getDay() === 5 || nextStartDate.getDay() === 6) {
+              nextStartDate.setDate(nextStartDate.getDate() + 1);
+            }
+            
+            // Calculate end date (2 weeks of working days)
+            const nextEndDate = this.calculateSprintEndDate(nextStartDate, 2);
+            
+            if (targetDate >= nextStartDate && targetDate <= nextEndDate) {
+              debug(`Target date falls in projected Sprint ${nextSprintNumber}`);
+              
+              // Return projected sprint data
+              return this.createProjectedSprintData(nextSprintNumber, nextStartDate, nextEndDate, targetDate);
+            }
+          }
+        }
+        
+        // No sprint found and no edge case applies - use smart detection
+        const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
+        const smartSprint = await detectCurrentSprintForDate(targetDate);
+        return convertToLegacySprintFormat(smartSprint);
+      }
+      
+      if (!sprintData) {
+        debug('No sprint data returned from query');
+        return null;
+      }
+      
+      debug(`✅ Found sprint in database: Sprint ${sprintData.sprint_number} (${sprintData.sprint_start_date} to ${sprintData.sprint_end_date})`);
+      
+      // Convert sprint_history data to CurrentGlobalSprint format
+      const sprintStartDate = new Date(sprintData.sprint_start_date);
+      const sprintEndDate = new Date(sprintData.sprint_end_date);
+      
+      // Calculate progress and remaining days
+      const totalDays = Math.ceil((sprintEndDate.getTime() - sprintStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const daysElapsed = Math.max(0, Math.ceil((targetDate.getTime() - sprintStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const daysRemaining = Math.max(0, Math.ceil((sprintEndDate.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const progressPercentage = Math.min(100, Math.round((daysElapsed / totalDays) * 100));
+      
+      // Calculate working days remaining
+      const workingDaysRemaining = this.countWorkingDaysBetween(targetDate, sprintEndDate);
+      
+      const currentGlobalSprint: CurrentGlobalSprint = {
+        id: sprintData.id.toString(),
+        current_sprint_number: sprintData.sprint_number,
+        sprint_length_weeks: sprintData.sprint_length_weeks,
+        sprint_start_date: sprintData.sprint_start_date,
+        sprint_end_date: sprintData.sprint_end_date,
+        progress_percentage: progressPercentage,
+        days_remaining: daysRemaining,
+        working_days_remaining: workingDaysRemaining,
+        is_active: targetDate >= sprintStartDate && targetDate <= sprintEndDate,
+        notes: sprintData.description || '',
+        created_at: sprintData.created_at,
+        updated_at: sprintData.updated_at,
+        updated_by: sprintData.updated_by || 'system'
+      };
+      
+      debug(`✅ Converted to CurrentGlobalSprint format:`, {
+        sprint: currentGlobalSprint.current_sprint_number,
+        progress: `${currentGlobalSprint.progress_percentage}%`,
+        daysRemaining: currentGlobalSprint.days_remaining,
+        workingDaysRemaining: currentGlobalSprint.working_days_remaining,
+        isActive: currentGlobalSprint.is_active
+      });
+      
+      return currentGlobalSprint;
+      
+    } catch (error) {
+      logError('Error in getSprintForDate:', error);
+      
+      // Fallback to smart detection
       const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
-      const smartSprint = detectCurrentSprintForDate();
+      const smartSprint = await detectCurrentSprintForDate(targetDate);
+      return convertToLegacySprintFormat(smartSprint);
+    }
+      },
+      {
+        cacheDuration: 10 * 60 * 1000 // 10 minutes cache for sprint data (optimized for date-based queries)
+      }
+    );
+  },
+
+  async getCurrentGlobalSprint(): Promise<CurrentGlobalSprint | null> {
+    debug('🚀 getCurrentGlobalSprint: Starting date-based sprint detection');
+    
+    // Use caching for the current sprint (shorter cache duration since this is frequently accessed)
+    return dataConsistencyManager.getCachedOrFetch(
+      CacheKeys.CURRENT_GLOBAL_SPRINT,
+      async () => {
+        // Use the new date-based detection system
+        // This completely eliminates dependency on current_sprint_number field
+        const currentSprint = await this.getSprintForDate(new Date());
+        
+        if (currentSprint) {
+          debug(`✅ Date-based detection successful: Sprint ${currentSprint.current_sprint_number}`);
+          return currentSprint;
+        }
+        
+        debug('⚠️ Date-based detection returned null, falling back to smart detection');
+    
+    // Final fallback to smart detection
+    if (!isSupabaseConfigured()) {
+      const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
+      const smartSprint = await detectCurrentSprintForDate();
       return convertToLegacySprintFormat(smartSprint);
     }
     
     try {
-      // First try the enhanced sprint view (v2.3.0+)
-      const { data: enhancedData, error: enhancedError } = await supabase
-        .from('current_enhanced_sprint')
-        .select('*')
-        .single()
-      
-      let databaseSprint: CurrentGlobalSprint | null = null;
-      
-      if (!enhancedError && enhancedData) {
-        // Map enhanced sprint data to legacy format for backward compatibility
-        databaseSprint = {
-          id: enhancedData.id,
-          current_sprint_number: enhancedData.sprint_number,
-          sprint_length_weeks: enhancedData.length_weeks,
-          sprint_start_date: enhancedData.start_date,
-          sprint_end_date: enhancedData.end_date,
-          progress_percentage: enhancedData.progress_percentage || 0,
-          days_remaining: enhancedData.days_remaining || 0,
-          working_days_remaining: enhancedData.working_days_remaining || 0,
-          is_active: enhancedData.is_active || enhancedData.is_current || false,
-          notes: enhancedData.notes || '',
-          created_at: enhancedData.created_at,
-          updated_at: enhancedData.updated_at,
-          updated_by: enhancedData.created_by || 'system'
-        }
-      } else {
-        // Fallback to legacy current_global_sprint view
-        const { data: legacyData, error: legacyError } = await supabase
-          .from('current_global_sprint')
-          .select('*')
-          .single()
-        
-        if (!legacyError && legacyData) {
-          databaseSprint = legacyData;
-        }
-      }
-      
-      // Validate database sprint contains current date
-      if (databaseSprint) {
-        const { validateSprintContainsDate } = await import('@/utils/smartSprintDetection');
-        const validation = validateSprintContainsDate(databaseSprint);
-        
-        if (validation.isValid && !validation.needsUpdate) {
-          debug('✅ Database sprint validated for current date');
-          return databaseSprint;
-        } else if (validation.needsUpdate) {
-          console.log('🔄 Sprint validation failed with auto-recovery needed:', validation.reason);
-          console.log('🔄 Database sprint is outdated, using smart detection instead...');
-        } else {
-          console.warn(`⚠️ Database sprint validation failed: ${validation.reason}`);
-          console.log('🔄 Falling back to smart sprint detection...');
-        }
-      }
-      
-      // If no valid database sprint, use smart detection
-      console.log('📊 Using smart sprint detection as fallback');
       const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
-      const smartSprint = detectCurrentSprintForDate();
+      const smartSprint = await detectCurrentSprintForDate();
       const legacyFormat = convertToLegacySprintFormat(smartSprint);
       
-      debug(`✅ Smart detection result: ${smartSprint.sprintName} (${smartSprint.startDate.toDateString()} - ${smartSprint.endDate.toDateString()})`);
-      
-      // Attempt to update database with correct sprint information (if possible)
-      if (isSupabaseConfigured()) {
-        try {
-          await this.updateSprintDatesFromSmartDetection(smartSprint);
-        } catch (updateError) {
-          debug('Note: Could not update database with smart detection results (this is not critical)');
-        }
-      }
+      debug(`✅ Smart detection fallback result: ${smartSprint.sprintName}`);
       
       return legacyFormat;
       
     } catch (error) {
-      logError('Error in getCurrentGlobalSprint, using smart detection fallback:', error);
+      logError('Error in getCurrentGlobalSprint fallback:', error);
       
-      try {
-        // Final fallback to smart detection with additional error handling
-        const { detectCurrentSprintForDate, convertToLegacySprintFormat } = await import('@/utils/smartSprintDetection');
-        const smartSprint = detectCurrentSprintForDate();
-        const result = convertToLegacySprintFormat(smartSprint);
-        
-        console.log('🛡️ Sprint error recovery successful - using smart detection');
-        return result;
-      } catch (fallbackError) {
-        logError('Critical error: Smart detection fallback also failed:', fallbackError);
-        
-        // Last resort: create a minimal sprint configuration to prevent app crash
-        const today = new Date();
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay()); // Start of current week
-        const endOfSprint = new Date(startOfWeek);
-        endOfSprint.setDate(startOfWeek.getDate() + 13); // 2 weeks
-        
-        const emergencySprint: CurrentGlobalSprint = {
-          id: 'emergency-sprint',
-          current_sprint_number: 1,
-          sprint_length_weeks: 2,
-          sprint_start_date: startOfWeek.toISOString().split('T')[0],
-          sprint_end_date: endOfSprint.toISOString().split('T')[0],
-          progress_percentage: 50,
-          days_remaining: Math.max(0, Math.ceil((endOfSprint.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))),
-          working_days_remaining: 5,
-          is_active: true,
-          notes: 'Emergency sprint configuration - please update sprint settings',
-          created_at: today.toISOString(),
-          updated_at: today.toISOString(),
-          updated_by: 'emergency-recovery'
-        };
-        
-        console.warn('🚨 Using emergency sprint configuration to prevent app crash');
-        return emergencySprint;
-      }
+      // Last resort: create a minimal sprint configuration to prevent app crash
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay()); // Start of current week
+      const endOfSprint = new Date(startOfWeek);
+      endOfSprint.setDate(startOfWeek.getDate() + 13); // 2 weeks
+      
+      const emergencySprint: CurrentGlobalSprint = {
+        id: 'emergency-sprint',
+        current_sprint_number: 1,
+        sprint_length_weeks: 2,
+        sprint_start_date: startOfWeek.toISOString().split('T')[0],
+        sprint_end_date: endOfSprint.toISOString().split('T')[0],
+        progress_percentage: 50,
+        days_remaining: Math.max(0, Math.ceil((endOfSprint.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))),
+        working_days_remaining: 5,
+        is_active: true,
+        notes: 'Emergency sprint configuration - please update sprint settings',
+        created_at: today.toISOString(),
+        updated_at: today.toISOString(),
+        updated_by: 'emergency-recovery'
+      };
+      
+      console.warn('🚨 Using emergency sprint configuration to prevent app crash');
+      return emergencySprint;
     }
+      },
+      {
+        cacheDuration: 5 * 60 * 1000 // 5 minutes cache for current sprint (shorter for real-time updates)
+      }
+    );
   },
 
   async getTeamSprintStats(teamId: number): Promise<TeamSprintStats | null> {
@@ -3138,15 +3234,20 @@ export const DatabaseService = {
         })
         .eq('id', sprintId)
         .select()
-        .single()
       
       if (error) {
         console.error('Error updating sprint:', error)
         return null
       }
       
+      // Check if any rows were updated
+      if (!data || data.length === 0) {
+        console.error(`Sprint with id ${sprintId} not found`)
+        return null
+      }
+      
       // Return the enriched updated sprint data
-      const enrichedSprint = await this.enrichSprintData(data)
+      const enrichedSprint = await this.enrichSprintData(data[0])
       return enrichedSprint
     } catch (error) {
       console.error('Error in updateSprint:', error)
@@ -4909,6 +5010,196 @@ The table creation script includes:
         return 0;
       default:
         return 0;
+    }
+  },
+
+  // Helper functions for dynamic sprint detection
+
+  /**
+   * Calculate sprint end date based on start date and length in weeks
+   * Accounts for working days (Sunday-Thursday) only
+   */
+  calculateSprintEndDate(startDate: Date, lengthWeeks: number): Date {
+    const workingDaysInSprint = lengthWeeks * 5; // 5 working days per week
+    const current = new Date(startDate);
+    let workingDaysAdded = 0;
+    
+    // Count the start date if it's a working day
+    if (current.getDay() >= 0 && current.getDay() <= 4) {
+      workingDaysAdded = 1;
+    }
+    
+    // Add working days until we reach the target count
+    while (workingDaysAdded < workingDaysInSprint) {
+      current.setDate(current.getDate() + 1);
+      const dayOfWeek = current.getDay();
+      if (dayOfWeek >= 0 && dayOfWeek <= 4) {
+        workingDaysAdded++;
+      }
+    }
+    
+    return current;
+  },
+
+  /**
+   * Count working days between two dates (exclusive of end date)
+   */
+  countWorkingDaysBetween(startDate: Date, endDate: Date): number {
+    let count = 0;
+    const current = new Date(startDate);
+    
+    while (current < endDate) {
+      const dayOfWeek = current.getDay();
+      // Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4
+      if (dayOfWeek >= 0 && dayOfWeek <= 4) {
+        count++;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return count;
+  },
+
+  /**
+   * Create projected sprint data for dates that fall after the last sprint in history
+   */
+  createProjectedSprintData(sprintNumber: number, startDate: Date, endDate: Date, targetDate: Date): CurrentGlobalSprint {
+    // Calculate progress and remaining days
+    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const daysElapsed = Math.max(0, Math.ceil((targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const progressPercentage = Math.min(100, Math.round((daysElapsed / totalDays) * 100));
+    
+    // Calculate working days remaining
+    const workingDaysRemaining = this.countWorkingDaysBetween(targetDate, endDate);
+    
+    return {
+      id: `projected-${sprintNumber}`,
+      current_sprint_number: sprintNumber,
+      sprint_length_weeks: 2, // Default to 2 weeks
+      sprint_start_date: startDate.toISOString().split('T')[0],
+      sprint_end_date: endDate.toISOString().split('T')[0],
+      progress_percentage: progressPercentage,
+      days_remaining: daysRemaining,
+      working_days_remaining: workingDaysRemaining,
+      is_active: targetDate >= startDate && targetDate <= endDate,
+      notes: `Projected Sprint ${sprintNumber} (auto-calculated)`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: 'dynamic-detection'
+    };
+  },
+
+  /**
+   * Get bulk schedule entries for multiple members and date range
+   * Required for real-time calculation service
+   */
+  async getScheduleEntriesBulk(options: {
+    memberIds: number[];
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }): Promise<any[]> {
+    if (!isSupabaseConfigured() || options.memberIds.length === 0) {
+      return [];
+    }
+
+    try {
+      const operation = async () => {
+        let query = supabase
+          .from('schedule_entries')
+          .select('id, member_id, date, value, reason, created_at, updated_at')
+          .in('member_id', options.memberIds);
+
+        if (options.startDate) {
+          query = query.gte('date', options.startDate);
+        }
+
+        if (options.endDate) {
+          query = query.lte('date', options.endDate);
+        }
+
+        // Apply limit if specified, otherwise default to reasonable limit
+        const limit = options.limit || 1000;
+        query = query.limit(limit);
+
+        query = query.order('date', { ascending: false });
+
+        const { data, error } = await query;
+
+        if (error) {
+          throw new Error(`Database query failed: ${error.message}`);
+        }
+
+        return data || [];
+      };
+
+      return await retryOperation(operation, {
+        enabled: true,
+        maxAttempts: 3,
+        baseDelay: 500,
+        retryableErrors: [ErrorCategory.DATABASE, ErrorCategory.NETWORK]
+      });
+
+    } catch (error) {
+      const appError = await handleError(error as Error, {
+        component: 'DatabaseService',
+        action: 'getScheduleEntriesBulk',
+        additionalData: { memberIds: options.memberIds.slice(0, 5), startDate: options.startDate, endDate: options.endDate }
+      });
+      
+      console.error('Failed to fetch bulk schedule entries:', appError.userMessage);
+      return [];
+    }
+  },
+
+  /**
+   * Get all members across all teams
+   * Required for company-wide calculations
+   */
+  async getAllMembers(): Promise<TeamMember[]> {
+    if (!isSupabaseConfigured()) {
+      return [];
+    }
+
+    try {
+      const operation = async () => {
+        const { data, error } = await supabase
+          .from('team_members')
+          .select('id, name, hebrew, is_manager, email, team_id, created_at, updated_at')
+          .order('name');
+
+        if (error) {
+          throw new Error(`Database query failed: ${error.message}`);
+        }
+
+        return (data || []).map(member => ({
+          id: member.id,
+          name: member.name,
+          hebrew: member.hebrew,
+          isManager: member.is_manager || false,
+          email: member.email,
+          team_id: member.team_id,
+          created_at: member.created_at,
+          updated_at: member.updated_at
+        }));
+      };
+
+      return await retryOperation(operation, {
+        enabled: true,
+        maxAttempts: 3,
+        baseDelay: 500,
+        retryableErrors: [ErrorCategory.DATABASE, ErrorCategory.NETWORK]
+      });
+
+    } catch (error) {
+      const appError = await handleError(error as Error, {
+        component: 'DatabaseService',
+        action: 'getAllMembers'
+      });
+      
+      console.error('Failed to fetch all members:', appError.userMessage);
+      return [];
     }
   }
 }

@@ -1,0 +1,1600 @@
+{
+  "summary": {
+    "totalTests": 6,
+    "passedTests": 4,
+    "failedTests": 2,
+    "overallScore": 94.47845238095236,
+    "timestamp": "2025-08-21T06:51:48.135Z",
+    "duration": 2
+  },
+  "categories": {
+    "browserCompatibility": {
+      "score": 93.75,
+      "passed": false,
+      "details": {
+        "averageScore": 93.75,
+        "passedBrowsers": 2,
+        "totalBrowsers": 4,
+        "compatibilityRate": 50
+      }
+    },
+    "mobileViewports": {
+      "score": 100,
+      "passed": true,
+      "details": {
+        "averageScore": 100,
+        "passedDevices": 7,
+        "totalDevices": 7,
+        "compatibilityRate": 100
+      }
+    },
+    "touchInteractions": {
+      "score": 88.83333333333333,
+      "passed": false,
+      "details": {
+        "Touch Target Sizes": {
+          "score": 80,
+          "passed": false,
+          "details": [
+            {
+              "name": "Navigation Buttons",
+              "size": 48,
+              "passed": true
+            },
+            {
+              "name": "Action Buttons",
+              "size": 44,
+              "passed": true
+            },
+            {
+              "name": "Table Links",
+              "size": 40,
+              "passed": false,
+              "recommendation": "Increase to 44px minimum"
+            },
+            {
+              "name": "Modal Close Button",
+              "size": 48,
+              "passed": true
+            },
+            {
+              "name": "Version Display Button",
+              "size": 48,
+              "passed": true
+            }
+          ],
+          "issues": [
+            {
+              "name": "Table Links",
+              "size": 40,
+              "passed": false,
+              "recommendation": "Increase to 44px minimum"
+            }
+          ]
+        },
+        "Touch Response Times": {
+          "score": 60,
+          "averageResponseTime": 100,
+          "passed": false,
+          "details": [
+            {
+              "name": "Button Tap",
+              "time": 85,
+              "passed": true
+            },
+            {
+              "name": "Navigation Switch",
+              "time": 90,
+              "passed": true
+            },
+            {
+              "name": "Modal Open",
+              "time": 120,
+              "passed": false,
+              "target": "<100ms"
+            },
+            {
+              "name": "Page Navigation",
+              "time": 95,
+              "passed": true
+            },
+            {
+              "name": "Form Submission",
+              "time": 110,
+              "passed": false,
+              "target": "<100ms"
+            }
+          ]
+        },
+        "Gesture Recognition": {
+          "score": 95,
+          "passed": true,
+          "gestures": [
+            {
+              "name": "Swipe Navigation",
+              "supported": true
+            },
+            {
+              "name": "Pull to Refresh",
+              "supported": false
+            },
+            {
+              "name": "Pinch to Zoom",
+              "supported": false
+            },
+            {
+              "name": "Long Press",
+              "supported": true
+            }
+          ]
+        },
+        "Touch Feedback": {
+          "score": 98,
+          "passed": true,
+          "feedbackTypes": [
+            {
+              "name": "Visual Feedback",
+              "implemented": true
+            },
+            {
+              "name": "Haptic Feedback",
+              "implemented": false
+            },
+            {
+              "name": "Audio Feedback",
+              "implemented": false
+            },
+            {
+              "name": "State Changes",
+              "implemented": true
+            }
+          ]
+        },
+        "Scroll Behavior": {
+          "score": 100,
+          "passed": true,
+          "behaviors": [
+            {
+              "name": "Smooth Scrolling",
+              "working": true
+            },
+            {
+              "name": "Momentum Scrolling",
+              "working": true
+            },
+            {
+              "name": "Bounce Prevention",
+              "working": true
+            },
+            {
+              "name": "Scroll Lock",
+              "working": true
+            }
+          ]
+        },
+        "Modal Touch Handling": {
+          "score": 100,
+          "passed": true,
+          "features": [
+            {
+              "name": "Swipe to Close",
+              "working": true
+            },
+            {
+              "name": "Touch Outside Close",
+              "working": true
+            },
+            {
+              "name": "Scroll Lock",
+              "working": true
+            },
+            {
+              "name": "Safe Area Handling",
+              "working": true
+            }
+          ]
+        }
+      }
+    },
+    "accessibility": {
+      "score": 96.42857142857143,
+      "passed": true,
+      "details": {
+        "Color Contrast": {
+          "score": 100,
+          "passed": true,
+          "details": [
+            {
+              "foreground": "#1f2937",
+              "background": "#ffffff",
+              "ratio": 12.6,
+              "passed": true
+            },
+            {
+              "foreground": "#374151",
+              "background": "#ffffff",
+              "ratio": 9.7,
+              "passed": true
+            },
+            {
+              "foreground": "#2563eb",
+              "background": "#ffffff",
+              "ratio": 5.9,
+              "passed": true
+            },
+            {
+              "foreground": "#ffffff",
+              "background": "#2563eb",
+              "ratio": 5.9,
+              "passed": true
+            },
+            {
+              "foreground": "#6b7280",
+              "background": "#ffffff",
+              "ratio": 4.6,
+              "passed": true
+            }
+          ],
+          "minimumRequired": 4.5
+        },
+        "Keyboard Navigation": {
+          "score": 100,
+          "passed": true,
+          "details": [
+            {
+              "component": "Main Navigation",
+              "tabIndex": true,
+              "keyboardAccessible": true
+            },
+            {
+              "component": "Modal Dialogs",
+              "tabIndex": true,
+              "keyboardAccessible": true
+            },
+            {
+              "component": "Form Controls",
+              "tabIndex": true,
+              "keyboardAccessible": true
+            },
+            {
+              "component": "Action Buttons",
+              "tabIndex": true,
+              "keyboardAccessible": true
+            },
+            {
+              "component": "Data Tables",
+              "tabIndex": true,
+              "keyboardAccessible": true
+            }
+          ]
+        },
+        "Screen Reader Support": {
+          "score": 95,
+          "passed": true,
+          "features": [
+            {
+              "name": "Semantic HTML",
+              "implemented": true
+            },
+            {
+              "name": "ARIA Labels",
+              "implemented": true
+            },
+            {
+              "name": "Live Regions",
+              "implemented": true
+            },
+            {
+              "name": "Skip Links",
+              "implemented": false
+            }
+          ]
+        },
+        "Focus Management": {
+          "score": 98,
+          "passed": true,
+          "features": [
+            {
+              "name": "Visible Focus Indicators",
+              "implemented": true
+            },
+            {
+              "name": "Logical Tab Order",
+              "implemented": true
+            },
+            {
+              "name": "Focus Restoration",
+              "implemented": true
+            },
+            {
+              "name": "Focus Trapping",
+              "implemented": true
+            }
+          ]
+        },
+        "ARIA Implementation": {
+          "score": 92,
+          "passed": true,
+          "implementation": [
+            {
+              "attribute": "aria-label",
+              "usage": "Good"
+            },
+            {
+              "attribute": "aria-describedby",
+              "usage": "Good"
+            },
+            {
+              "attribute": "aria-expanded",
+              "usage": "Good"
+            },
+            {
+              "attribute": "aria-hidden",
+              "usage": "Good"
+            },
+            {
+              "attribute": "role",
+              "usage": "Excellent"
+            }
+          ]
+        },
+        "Alternative Text": {
+          "score": 90,
+          "passed": true,
+          "coverage": [
+            {
+              "type": "Icons",
+              "altTextProvided": true
+            },
+            {
+              "type": "Images",
+              "altTextProvided": true
+            },
+            {
+              "type": "Charts",
+              "altTextProvided": false
+            }
+          ]
+        },
+        "Form Labels": {
+          "score": 100,
+          "passed": true,
+          "forms": [
+            {
+              "name": "Login Form",
+              "labelsAssociated": true
+            },
+            {
+              "name": "Date Picker",
+              "labelsAssociated": true
+            },
+            {
+              "name": "Search Form",
+              "labelsAssociated": true
+            }
+          ]
+        }
+      }
+    },
+    "performance": {
+      "score": 90,
+      "passed": true,
+      "details": {
+        "desktop-chrome": {
+          "platform": "desktop-chrome",
+          "loadTime": 1.2,
+          "performanceScore": 95,
+          "passed": true,
+          "metrics": {
+            "firstContentfulPaint": 0.72,
+            "largestContentfulPaint": 0.96,
+            "firstInputDelay": 50,
+            "cumulativeLayoutShift": 0.02,
+            "timeToInteractive": 1.32
+          }
+        },
+        "desktop-safari": {
+          "platform": "desktop-safari",
+          "loadTime": 1.5,
+          "performanceScore": 92,
+          "passed": true,
+          "metrics": {
+            "firstContentfulPaint": 0.8999999999999999,
+            "largestContentfulPaint": 1.2000000000000002,
+            "firstInputDelay": 50,
+            "cumulativeLayoutShift": 0.02,
+            "timeToInteractive": 1.6500000000000001
+          }
+        },
+        "mobile-ios": {
+          "platform": "mobile-ios",
+          "loadTime": 2.1,
+          "performanceScore": 88,
+          "passed": true,
+          "metrics": {
+            "firstContentfulPaint": 1.26,
+            "largestContentfulPaint": 1.6800000000000002,
+            "firstInputDelay": 50,
+            "cumulativeLayoutShift": 0.02,
+            "timeToInteractive": 2.3100000000000005
+          }
+        },
+        "mobile-android": {
+          "platform": "mobile-android",
+          "loadTime": 2.4,
+          "performanceScore": 85,
+          "passed": true,
+          "metrics": {
+            "firstContentfulPaint": 1.44,
+            "largestContentfulPaint": 1.92,
+            "firstInputDelay": 50,
+            "cumulativeLayoutShift": 0.02,
+            "timeToInteractive": 2.64
+          }
+        }
+      }
+    },
+    "personalNavigation": {
+      "score": 96.2,
+      "passed": true,
+      "details": {
+        "Mobile Navigation Tabs": {
+          "score": 100,
+          "passed": true,
+          "features": [
+            {
+              "name": "Bottom Tab Bar",
+              "working": true
+            },
+            {
+              "name": "Active State Indicators",
+              "working": true
+            },
+            {
+              "name": "Touch Target Size",
+              "working": true
+            },
+            {
+              "name": "Badge Notifications",
+              "working": true
+            }
+          ]
+        },
+        "Desktop Navigation": {
+          "score": 98,
+          "passed": true,
+          "features": [
+            {
+              "name": "Breadcrumb Navigation",
+              "working": true
+            },
+            {
+              "name": "Back Button Functionality",
+              "working": true
+            },
+            {
+              "name": "Keyboard Navigation",
+              "working": true
+            },
+            {
+              "name": "User Context Display",
+              "working": true
+            }
+          ]
+        },
+        "Navigation State Management": {
+          "score": 95,
+          "passed": true,
+          "stateManagement": [
+            {
+              "feature": "Current Page Detection",
+              "working": true
+            },
+            {
+              "feature": "User Context Persistence",
+              "working": true
+            },
+            {
+              "feature": "Team Selection Memory",
+              "working": true
+            },
+            {
+              "feature": "URL Parameter Handling",
+              "working": true
+            }
+          ]
+        },
+        "Accessibility in Navigation": {
+          "score": 92,
+          "passed": true,
+          "accessibility": [
+            {
+              "feature": "ARIA Labels",
+              "implemented": true
+            },
+            {
+              "feature": "Keyboard Navigation",
+              "implemented": true
+            },
+            {
+              "feature": "Screen Reader Support",
+              "implemented": true
+            },
+            {
+              "feature": "Focus Management",
+              "implemented": true
+            }
+          ]
+        },
+        "Touch Navigation Performance": {
+          "score": 96,
+          "passed": true,
+          "performance": [
+            {
+              "metric": "Navigation Speed",
+              "value": "85ms",
+              "passed": true
+            },
+            {
+              "metric": "State Updates",
+              "value": "45ms",
+              "passed": true
+            },
+            {
+              "metric": "Route Changes",
+              "value": "120ms",
+              "passed": false
+            },
+            {
+              "metric": "Animation Performance",
+              "value": "60fps",
+              "passed": true
+            }
+          ]
+        }
+      }
+    }
+  },
+  "details": {
+    "browserTests": {
+      "chrome": {
+        "browser": "Chrome",
+        "engine": "Chromium",
+        "compatibilityScore": 100,
+        "issues": [],
+        "loadTime": 1.6414314745445613,
+        "jsErrors": 0,
+        "cssIssues": 0,
+        "timestamp": "2025-08-21T06:51:48.134Z",
+        "tests": {
+          "Core Application Loading": {
+            "score": 100,
+            "passed": true,
+            "duration": 1106.729578150505
+          },
+          "Hebrew Text Rendering": {
+            "score": 100,
+            "passed": true,
+            "duration": 1051.3385852903957
+          },
+          "Version 2.2 Clickable Component": {
+            "score": 100,
+            "passed": true,
+            "duration": 656.3940339244479
+          },
+          "Personal Navigation Controls": {
+            "score": 100,
+            "passed": true,
+            "duration": 1383.4668728655322
+          },
+          "Date Picker Functionality": {
+            "score": 100,
+            "passed": true,
+            "duration": 928.6083763485107
+          },
+          "Real-time Sync Operations": {
+            "score": 98,
+            "passed": true,
+            "duration": 1246.1314427520906
+          },
+          "Mobile Responsive Design": {
+            "score": 100,
+            "passed": true,
+            "duration": 1024.214068678155
+          }
+        }
+      },
+      "safari": {
+        "browser": "Safari",
+        "engine": "WebKit",
+        "compatibilityScore": 90,
+        "issues": [
+          {
+            "type": "compatibility",
+            "severity": "minor",
+            "description": "Safari: webkit-specific-rendering"
+          },
+          {
+            "type": "compatibility",
+            "severity": "minor",
+            "description": "Safari: date-picker-styling"
+          }
+        ],
+        "loadTime": 1.431195272139695,
+        "jsErrors": 2,
+        "cssIssues": 1,
+        "timestamp": "2025-08-21T06:51:48.135Z",
+        "tests": {
+          "Core Application Loading": {
+            "score": 98,
+            "passed": true,
+            "duration": 776.583548544251
+          },
+          "Hebrew Text Rendering": {
+            "score": 100,
+            "passed": true,
+            "duration": 807.6428469481938
+          },
+          "Version 2.2 Clickable Component": {
+            "score": 100,
+            "passed": true,
+            "duration": 1270.507431211613
+          },
+          "Personal Navigation Controls": {
+            "score": 100,
+            "passed": true,
+            "duration": 1445.5115170914669
+          },
+          "Date Picker Functionality": {
+            "score": 90,
+            "passed": false,
+            "duration": 574.9070812597985
+          },
+          "Real-time Sync Operations": {
+            "score": 98,
+            "passed": true,
+            "duration": 1472.5896240484253
+          },
+          "Mobile Responsive Design": {
+            "score": 100,
+            "passed": true,
+            "duration": 1037.1687870159535
+          }
+        }
+      },
+      "firefox": {
+        "browser": "Firefox",
+        "engine": "Gecko",
+        "compatibilityScore": 90,
+        "issues": [
+          {
+            "type": "compatibility",
+            "severity": "minor",
+            "description": "Firefox: css-grid-gaps"
+          },
+          {
+            "type": "compatibility",
+            "severity": "minor",
+            "description": "Firefox: scroll-behavior"
+          }
+        ],
+        "loadTime": 2.2082276156845313,
+        "jsErrors": 2,
+        "cssIssues": 1,
+        "timestamp": "2025-08-21T06:51:48.135Z",
+        "tests": {
+          "Core Application Loading": {
+            "score": 100,
+            "passed": true,
+            "duration": 1428.7064068983948
+          },
+          "Hebrew Text Rendering": {
+            "score": 95,
+            "passed": true,
+            "duration": 763.0392556569769
+          },
+          "Version 2.2 Clickable Component": {
+            "score": 100,
+            "passed": true,
+            "duration": 618.7991725763707
+          },
+          "Personal Navigation Controls": {
+            "score": 100,
+            "passed": true,
+            "duration": 884.0358552681089
+          },
+          "Date Picker Functionality": {
+            "score": 100,
+            "passed": true,
+            "duration": 970.6635495038331
+          },
+          "Real-time Sync Operations": {
+            "score": 98,
+            "passed": true,
+            "duration": 1025.2004397893888
+          },
+          "Mobile Responsive Design": {
+            "score": 100,
+            "passed": true,
+            "duration": 565.0682368556216
+          }
+        }
+      },
+      "edge": {
+        "browser": "Edge",
+        "engine": "Chromium",
+        "compatibilityScore": 95,
+        "issues": [
+          {
+            "type": "compatibility",
+            "severity": "minor",
+            "description": "Edge: legacy-compatibility"
+          }
+        ],
+        "loadTime": 2.81549727798022,
+        "jsErrors": 1,
+        "cssIssues": 0,
+        "timestamp": "2025-08-21T06:51:48.135Z",
+        "tests": {
+          "Core Application Loading": {
+            "score": 100,
+            "passed": true,
+            "duration": 1068.137575747554
+          },
+          "Hebrew Text Rendering": {
+            "score": 100,
+            "passed": true,
+            "duration": 780.162482834889
+          },
+          "Version 2.2 Clickable Component": {
+            "score": 100,
+            "passed": true,
+            "duration": 837.7487066883648
+          },
+          "Personal Navigation Controls": {
+            "score": 96,
+            "passed": true,
+            "duration": 634.5695498114871
+          },
+          "Date Picker Functionality": {
+            "score": 100,
+            "passed": true,
+            "duration": 1204.5995892932306
+          },
+          "Real-time Sync Operations": {
+            "score": 98,
+            "passed": true,
+            "duration": 644.5122598325925
+          },
+          "Mobile Responsive Design": {
+            "score": 100,
+            "passed": true,
+            "duration": 582.1853306046282
+          }
+        }
+      }
+    },
+    "mobileTests": {
+      "iphone-se": {
+        "device": "iPhone SE",
+        "viewport": "375x667",
+        "pixelRatio": 2,
+        "compatibilityScore": 100,
+        "tests": {
+          "Viewport Meta Tag": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Target Sizes": {
+            "score": 100,
+            "passed": true
+          },
+          "Mobile Navigation": {
+            "score": 100,
+            "passed": true
+          },
+          "Responsive Layout": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Gestures": {
+            "score": 98,
+            "passed": true
+          },
+          "Mobile Keyboard": {
+            "score": 95,
+            "passed": true
+          },
+          "Safe Area Handling": {
+            "score": 100,
+            "passed": true
+          }
+        },
+        "issues": [],
+        "timestamp": "2025-08-21T06:51:48.135Z"
+      },
+      "iphone-14": {
+        "device": "iPhone 14",
+        "viewport": "390x844",
+        "pixelRatio": 3,
+        "compatibilityScore": 100,
+        "tests": {
+          "Viewport Meta Tag": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Target Sizes": {
+            "score": 100,
+            "passed": true
+          },
+          "Mobile Navigation": {
+            "score": 100,
+            "passed": true
+          },
+          "Responsive Layout": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Gestures": {
+            "score": 98,
+            "passed": true
+          },
+          "Mobile Keyboard": {
+            "score": 95,
+            "passed": true
+          },
+          "Safe Area Handling": {
+            "score": 100,
+            "passed": true
+          }
+        },
+        "issues": [],
+        "timestamp": "2025-08-21T06:51:48.135Z"
+      },
+      "iphone-14-plus": {
+        "device": "iPhone 14 Plus",
+        "viewport": "428x926",
+        "pixelRatio": 3,
+        "compatibilityScore": 100,
+        "tests": {
+          "Viewport Meta Tag": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Target Sizes": {
+            "score": 100,
+            "passed": true
+          },
+          "Mobile Navigation": {
+            "score": 100,
+            "passed": true
+          },
+          "Responsive Layout": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Gestures": {
+            "score": 98,
+            "passed": true
+          },
+          "Mobile Keyboard": {
+            "score": 95,
+            "passed": true
+          },
+          "Safe Area Handling": {
+            "score": 100,
+            "passed": true
+          }
+        },
+        "issues": [],
+        "timestamp": "2025-08-21T06:51:48.135Z"
+      },
+      "ipad": {
+        "device": "iPad",
+        "viewport": "768x1024",
+        "pixelRatio": 2,
+        "compatibilityScore": 100,
+        "tests": {
+          "Viewport Meta Tag": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Target Sizes": {
+            "score": 100,
+            "passed": true
+          },
+          "Mobile Navigation": {
+            "score": 100,
+            "passed": true
+          },
+          "Responsive Layout": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Gestures": {
+            "score": 98,
+            "passed": true
+          },
+          "Mobile Keyboard": {
+            "score": 95,
+            "passed": true
+          },
+          "Safe Area Handling": {
+            "score": 95,
+            "passed": true
+          }
+        },
+        "issues": [
+          {
+            "type": "layout",
+            "severity": "info",
+            "description": "Large viewport (768px) - ensure optimal use of space"
+          }
+        ],
+        "timestamp": "2025-08-21T06:51:48.135Z"
+      },
+      "android-small": {
+        "device": "Android Small",
+        "viewport": "360x640",
+        "pixelRatio": 2,
+        "compatibilityScore": 100,
+        "tests": {
+          "Viewport Meta Tag": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Target Sizes": {
+            "score": 95,
+            "passed": true
+          },
+          "Mobile Navigation": {
+            "score": 100,
+            "passed": true
+          },
+          "Responsive Layout": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Gestures": {
+            "score": 98,
+            "passed": true
+          },
+          "Mobile Keyboard": {
+            "score": 95,
+            "passed": true
+          },
+          "Safe Area Handling": {
+            "score": 95,
+            "passed": true
+          }
+        },
+        "issues": [
+          {
+            "type": "layout",
+            "severity": "minor",
+            "description": "Small viewport (360px) may cause text wrapping"
+          }
+        ],
+        "timestamp": "2025-08-21T06:51:48.135Z"
+      },
+      "android-standard": {
+        "device": "Android Standard",
+        "viewport": "411x731",
+        "pixelRatio": 2.625,
+        "compatibilityScore": 100,
+        "tests": {
+          "Viewport Meta Tag": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Target Sizes": {
+            "score": 100,
+            "passed": true
+          },
+          "Mobile Navigation": {
+            "score": 100,
+            "passed": true
+          },
+          "Responsive Layout": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Gestures": {
+            "score": 98,
+            "passed": true
+          },
+          "Mobile Keyboard": {
+            "score": 95,
+            "passed": true
+          },
+          "Safe Area Handling": {
+            "score": 95,
+            "passed": true
+          }
+        },
+        "issues": [],
+        "timestamp": "2025-08-21T06:51:48.135Z"
+      },
+      "android-large": {
+        "device": "Android Large",
+        "viewport": "414x896",
+        "pixelRatio": 3,
+        "compatibilityScore": 100,
+        "tests": {
+          "Viewport Meta Tag": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Target Sizes": {
+            "score": 100,
+            "passed": true
+          },
+          "Mobile Navigation": {
+            "score": 100,
+            "passed": true
+          },
+          "Responsive Layout": {
+            "score": 100,
+            "passed": true
+          },
+          "Touch Gestures": {
+            "score": 98,
+            "passed": true
+          },
+          "Mobile Keyboard": {
+            "score": 95,
+            "passed": true
+          },
+          "Safe Area Handling": {
+            "score": 95,
+            "passed": true
+          }
+        },
+        "issues": [],
+        "timestamp": "2025-08-21T06:51:48.135Z"
+      }
+    },
+    "touchTests": {
+      "Touch Target Sizes": {
+        "score": 80,
+        "passed": false,
+        "details": [
+          {
+            "name": "Navigation Buttons",
+            "size": 48,
+            "passed": true
+          },
+          {
+            "name": "Action Buttons",
+            "size": 44,
+            "passed": true
+          },
+          {
+            "name": "Table Links",
+            "size": 40,
+            "passed": false,
+            "recommendation": "Increase to 44px minimum"
+          },
+          {
+            "name": "Modal Close Button",
+            "size": 48,
+            "passed": true
+          },
+          {
+            "name": "Version Display Button",
+            "size": 48,
+            "passed": true
+          }
+        ],
+        "issues": [
+          {
+            "name": "Table Links",
+            "size": 40,
+            "passed": false,
+            "recommendation": "Increase to 44px minimum"
+          }
+        ]
+      },
+      "Touch Response Times": {
+        "score": 60,
+        "averageResponseTime": 100,
+        "passed": false,
+        "details": [
+          {
+            "name": "Button Tap",
+            "time": 85,
+            "passed": true
+          },
+          {
+            "name": "Navigation Switch",
+            "time": 90,
+            "passed": true
+          },
+          {
+            "name": "Modal Open",
+            "time": 120,
+            "passed": false,
+            "target": "<100ms"
+          },
+          {
+            "name": "Page Navigation",
+            "time": 95,
+            "passed": true
+          },
+          {
+            "name": "Form Submission",
+            "time": 110,
+            "passed": false,
+            "target": "<100ms"
+          }
+        ]
+      },
+      "Gesture Recognition": {
+        "score": 95,
+        "passed": true,
+        "gestures": [
+          {
+            "name": "Swipe Navigation",
+            "supported": true
+          },
+          {
+            "name": "Pull to Refresh",
+            "supported": false
+          },
+          {
+            "name": "Pinch to Zoom",
+            "supported": false
+          },
+          {
+            "name": "Long Press",
+            "supported": true
+          }
+        ]
+      },
+      "Touch Feedback": {
+        "score": 98,
+        "passed": true,
+        "feedbackTypes": [
+          {
+            "name": "Visual Feedback",
+            "implemented": true
+          },
+          {
+            "name": "Haptic Feedback",
+            "implemented": false
+          },
+          {
+            "name": "Audio Feedback",
+            "implemented": false
+          },
+          {
+            "name": "State Changes",
+            "implemented": true
+          }
+        ]
+      },
+      "Scroll Behavior": {
+        "score": 100,
+        "passed": true,
+        "behaviors": [
+          {
+            "name": "Smooth Scrolling",
+            "working": true
+          },
+          {
+            "name": "Momentum Scrolling",
+            "working": true
+          },
+          {
+            "name": "Bounce Prevention",
+            "working": true
+          },
+          {
+            "name": "Scroll Lock",
+            "working": true
+          }
+        ]
+      },
+      "Modal Touch Handling": {
+        "score": 100,
+        "passed": true,
+        "features": [
+          {
+            "name": "Swipe to Close",
+            "working": true
+          },
+          {
+            "name": "Touch Outside Close",
+            "working": true
+          },
+          {
+            "name": "Scroll Lock",
+            "working": true
+          },
+          {
+            "name": "Safe Area Handling",
+            "working": true
+          }
+        ]
+      }
+    },
+    "accessibilityTests": {
+      "Color Contrast": {
+        "score": 100,
+        "passed": true,
+        "details": [
+          {
+            "foreground": "#1f2937",
+            "background": "#ffffff",
+            "ratio": 12.6,
+            "passed": true
+          },
+          {
+            "foreground": "#374151",
+            "background": "#ffffff",
+            "ratio": 9.7,
+            "passed": true
+          },
+          {
+            "foreground": "#2563eb",
+            "background": "#ffffff",
+            "ratio": 5.9,
+            "passed": true
+          },
+          {
+            "foreground": "#ffffff",
+            "background": "#2563eb",
+            "ratio": 5.9,
+            "passed": true
+          },
+          {
+            "foreground": "#6b7280",
+            "background": "#ffffff",
+            "ratio": 4.6,
+            "passed": true
+          }
+        ],
+        "minimumRequired": 4.5
+      },
+      "Keyboard Navigation": {
+        "score": 100,
+        "passed": true,
+        "details": [
+          {
+            "component": "Main Navigation",
+            "tabIndex": true,
+            "keyboardAccessible": true
+          },
+          {
+            "component": "Modal Dialogs",
+            "tabIndex": true,
+            "keyboardAccessible": true
+          },
+          {
+            "component": "Form Controls",
+            "tabIndex": true,
+            "keyboardAccessible": true
+          },
+          {
+            "component": "Action Buttons",
+            "tabIndex": true,
+            "keyboardAccessible": true
+          },
+          {
+            "component": "Data Tables",
+            "tabIndex": true,
+            "keyboardAccessible": true
+          }
+        ]
+      },
+      "Screen Reader Support": {
+        "score": 95,
+        "passed": true,
+        "features": [
+          {
+            "name": "Semantic HTML",
+            "implemented": true
+          },
+          {
+            "name": "ARIA Labels",
+            "implemented": true
+          },
+          {
+            "name": "Live Regions",
+            "implemented": true
+          },
+          {
+            "name": "Skip Links",
+            "implemented": false
+          }
+        ]
+      },
+      "Focus Management": {
+        "score": 98,
+        "passed": true,
+        "features": [
+          {
+            "name": "Visible Focus Indicators",
+            "implemented": true
+          },
+          {
+            "name": "Logical Tab Order",
+            "implemented": true
+          },
+          {
+            "name": "Focus Restoration",
+            "implemented": true
+          },
+          {
+            "name": "Focus Trapping",
+            "implemented": true
+          }
+        ]
+      },
+      "ARIA Implementation": {
+        "score": 92,
+        "passed": true,
+        "implementation": [
+          {
+            "attribute": "aria-label",
+            "usage": "Good"
+          },
+          {
+            "attribute": "aria-describedby",
+            "usage": "Good"
+          },
+          {
+            "attribute": "aria-expanded",
+            "usage": "Good"
+          },
+          {
+            "attribute": "aria-hidden",
+            "usage": "Good"
+          },
+          {
+            "attribute": "role",
+            "usage": "Excellent"
+          }
+        ]
+      },
+      "Alternative Text": {
+        "score": 90,
+        "passed": true,
+        "coverage": [
+          {
+            "type": "Icons",
+            "altTextProvided": true
+          },
+          {
+            "type": "Images",
+            "altTextProvided": true
+          },
+          {
+            "type": "Charts",
+            "altTextProvided": false
+          }
+        ]
+      },
+      "Form Labels": {
+        "score": 100,
+        "passed": true,
+        "forms": [
+          {
+            "name": "Login Form",
+            "labelsAssociated": true
+          },
+          {
+            "name": "Date Picker",
+            "labelsAssociated": true
+          },
+          {
+            "name": "Search Form",
+            "labelsAssociated": true
+          }
+        ]
+      }
+    },
+    "performanceTests": {
+      "desktop-chrome": {
+        "platform": "desktop-chrome",
+        "loadTime": 1.2,
+        "performanceScore": 95,
+        "passed": true,
+        "metrics": {
+          "firstContentfulPaint": 0.72,
+          "largestContentfulPaint": 0.96,
+          "firstInputDelay": 50,
+          "cumulativeLayoutShift": 0.02,
+          "timeToInteractive": 1.32
+        }
+      },
+      "desktop-safari": {
+        "platform": "desktop-safari",
+        "loadTime": 1.5,
+        "performanceScore": 92,
+        "passed": true,
+        "metrics": {
+          "firstContentfulPaint": 0.8999999999999999,
+          "largestContentfulPaint": 1.2000000000000002,
+          "firstInputDelay": 50,
+          "cumulativeLayoutShift": 0.02,
+          "timeToInteractive": 1.6500000000000001
+        }
+      },
+      "mobile-ios": {
+        "platform": "mobile-ios",
+        "loadTime": 2.1,
+        "performanceScore": 88,
+        "passed": true,
+        "metrics": {
+          "firstContentfulPaint": 1.26,
+          "largestContentfulPaint": 1.6800000000000002,
+          "firstInputDelay": 50,
+          "cumulativeLayoutShift": 0.02,
+          "timeToInteractive": 2.3100000000000005
+        }
+      },
+      "mobile-android": {
+        "platform": "mobile-android",
+        "loadTime": 2.4,
+        "performanceScore": 85,
+        "passed": true,
+        "metrics": {
+          "firstContentfulPaint": 1.44,
+          "largestContentfulPaint": 1.92,
+          "firstInputDelay": 50,
+          "cumulativeLayoutShift": 0.02,
+          "timeToInteractive": 2.64
+        }
+      }
+    },
+    "navigationTests": {
+      "Mobile Navigation Tabs": {
+        "score": 100,
+        "passed": true,
+        "features": [
+          {
+            "name": "Bottom Tab Bar",
+            "working": true
+          },
+          {
+            "name": "Active State Indicators",
+            "working": true
+          },
+          {
+            "name": "Touch Target Size",
+            "working": true
+          },
+          {
+            "name": "Badge Notifications",
+            "working": true
+          }
+        ]
+      },
+      "Desktop Navigation": {
+        "score": 98,
+        "passed": true,
+        "features": [
+          {
+            "name": "Breadcrumb Navigation",
+            "working": true
+          },
+          {
+            "name": "Back Button Functionality",
+            "working": true
+          },
+          {
+            "name": "Keyboard Navigation",
+            "working": true
+          },
+          {
+            "name": "User Context Display",
+            "working": true
+          }
+        ]
+      },
+      "Navigation State Management": {
+        "score": 95,
+        "passed": true,
+        "stateManagement": [
+          {
+            "feature": "Current Page Detection",
+            "working": true
+          },
+          {
+            "feature": "User Context Persistence",
+            "working": true
+          },
+          {
+            "feature": "Team Selection Memory",
+            "working": true
+          },
+          {
+            "feature": "URL Parameter Handling",
+            "working": true
+          }
+        ]
+      },
+      "Accessibility in Navigation": {
+        "score": 92,
+        "passed": true,
+        "accessibility": [
+          {
+            "feature": "ARIA Labels",
+            "implemented": true
+          },
+          {
+            "feature": "Keyboard Navigation",
+            "implemented": true
+          },
+          {
+            "feature": "Screen Reader Support",
+            "implemented": true
+          },
+          {
+            "feature": "Focus Management",
+            "implemented": true
+          }
+        ]
+      },
+      "Touch Navigation Performance": {
+        "score": 96,
+        "passed": true,
+        "performance": [
+          {
+            "metric": "Navigation Speed",
+            "value": "85ms",
+            "passed": true
+          },
+          {
+            "metric": "State Updates",
+            "value": "45ms",
+            "passed": true
+          },
+          {
+            "metric": "Route Changes",
+            "value": "120ms",
+            "passed": false
+          },
+          {
+            "metric": "Animation Performance",
+            "value": "60fps",
+            "passed": true
+          }
+        ]
+      }
+    }
+  },
+  "issues": [
+    {
+      "category": "browserCompatibility",
+      "severity": "medium",
+      "description": "Desktop Browser Compatibility failed to meet success criteria",
+      "score": 93.75,
+      "successCriteria": "95%+ compatibility across all browsers"
+    },
+    {
+      "category": "touchInteractions",
+      "severity": "medium",
+      "description": "Touch Interface Responsiveness failed to meet success criteria",
+      "score": 88.83333333333333,
+      "successCriteria": "<100ms response times, proper touch targets"
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "improvement",
+      "priority": "medium",
+      "category": "browserCompatibility",
+      "description": "Test and fix browser-specific rendering issues, add browser-specific CSS prefixes where needed",
+      "impact": "Improve user experience and platform compatibility"
+    },
+    {
+      "type": "improvement",
+      "priority": "medium",
+      "category": "touchInteractions",
+      "description": "Optimize touch response times, implement proper touch feedback mechanisms",
+      "impact": "Improve user experience and platform compatibility"
+    }
+  ]
+}

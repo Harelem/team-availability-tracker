@@ -317,10 +317,18 @@ const MobileTeamNavigation: React.FC<MobileTeamNavigationProps> = ({
               <p className="text-base font-semibold text-gray-900 truncate leading-tight">
                 {currentUser.name}
               </p>
-              <p className="text-xs text-gray-500 truncate leading-tight mt-0.5">
-                {team.name}
-                {currentUser.isManager && ' • Manager'}
-              </p>
+              <div className="flex items-center gap-2 text-xs text-gray-500 truncate leading-tight mt-0.5">
+                <span>{team.name}</span>
+                {currentUser.isManager && (
+                  <>
+                    <span className="opacity-50">•</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1 h-1 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="font-medium">Manager</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           

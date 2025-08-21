@@ -1,6 +1,34 @@
 @import "tailwindcss";
 @import "../styles/mobile-fixes.css";
 
+/* ============================================================================
+   OPTIMIZED HEBREW FONT LOADING FOR PERFORMANCE
+   ============================================================================ */
+
+/* Hebrew font stack with system fallbacks for performance */
+@font-face {
+  font-family: 'Hebrew-System';
+  src: local('Arial Hebrew'), 
+       local('Tahoma'), 
+       local('David'),
+       local('Frank Ruehl CLM'),
+       local('SFHebrew-Regular'),
+       local('Arial Unicode MS');
+  font-display: swap; /* Optimize font loading */
+  unicode-range: U+0590-05FF, U+FB1D-FB4F; /* Hebrew Unicode ranges */
+}
+
+/* Optimized Hebrew text rendering */
+.hebrew-text, [dir="rtl"], [lang="he"] {
+  font-family: 'Hebrew-System', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-feature-settings: "liga" 1, "calt" 1; /* Enable ligatures for Hebrew */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  direction: rtl;
+  text-align: right;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

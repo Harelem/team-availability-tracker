@@ -1,0 +1,114 @@
+{
+  "timestamp": "2025-08-21T07:12:46.083Z",
+  "systemTests": [
+    {
+      "test": "Module: src/lib/performance/index.ts",
+      "passed": true,
+      "details": {
+        "size": 5789
+      }
+    },
+    {
+      "test": "Module: src/lib/performance/performanceValidator.ts",
+      "passed": true,
+      "details": {
+        "size": 21052
+      }
+    },
+    {
+      "test": "Module: src/lib/performance/calculationCache.ts",
+      "passed": true,
+      "details": {
+        "size": 15776
+      }
+    },
+    {
+      "test": "Module: src/lib/performance/databaseOptimization.ts",
+      "passed": true,
+      "details": {
+        "size": 17408
+      }
+    },
+    {
+      "test": "Module: src/lib/realTimeSyncManager.ts",
+      "passed": true,
+      "details": {
+        "size": 20172
+      }
+    },
+    {
+      "test": "Module: src/lib/unifiedCalculationService.ts",
+      "passed": true,
+      "details": {
+        "size": 23312
+      }
+    },
+    {
+      "test": "Performance Configuration",
+      "passed": true,
+      "details": {
+        "hasConfig": true,
+        "hasCacheDurations": true,
+        "hasThresholds": true,
+        "hasOptimizationSettings": true
+      }
+    },
+    {
+      "test": "Cache Implementation: src/lib/performance/calculationCache.ts",
+      "passed": true,
+      "details": {
+        "hasCacheManager": true,
+        "hasInvalidation": true,
+        "hasMetrics": true
+      }
+    },
+    {
+      "test": "Cache Implementation: src/utils/enhancedCacheManager.ts",
+      "passed": true,
+      "details": {
+        "hasCacheManager": true,
+        "hasInvalidation": true,
+        "hasMetrics": true
+      }
+    },
+    {
+      "test": "Real-time Sync Implementation",
+      "passed": true,
+      "details": {
+        "hasSupabaseIntegration": true,
+        "hasEventProcessing": true,
+        "hasBroadcast": true,
+        "hasWebSocket": true,
+        "hasHealthMonitoring": true
+      }
+    },
+    {
+      "test": "Unified Calculation Service",
+      "passed": true,
+      "details": {
+        "hasTeamCalculations": true,
+        "hasCOODashboard": true,
+        "hasSprintData": true,
+        "hasCaching": true,
+        "hasOptimization": true
+      }
+    },
+    {
+      "test": "Optimized Data Hooks",
+      "passed": true,
+      "details": {
+        "hasOptimizedHooks": true,
+        "hasCacheIntegration": true,
+        "hasPerformanceMonitoring": true,
+        "hasErrorHandling": true
+      }
+    }
+  ],
+  "recommendations": [],
+  "overall": {
+    "healthScore": 100,
+    "status": "excellent",
+    "passedTests": 12,
+    "totalTests": 12
+  }
+}

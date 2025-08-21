@@ -33,7 +33,7 @@ export default function SprintDetectionDebug() {
       const currentDate = new Date();
       
       // Test smart detection
-      const smartResult = detectCurrentSprintForDate(currentDate);
+      const smartResult = await detectCurrentSprintForDate(currentDate);
       
       // Test enhanced date utils
       const enhancedResult = await getCurrentSprintInfo();
@@ -42,7 +42,7 @@ export default function SprintDetectionDebug() {
       const databaseResult = await DatabaseService.getCurrentGlobalSprint();
       
       // Generate detailed report
-      const report = createSprintDetectionReport(currentDate);
+      const report = await createSprintDetectionReport(currentDate);
       
       setDebugData({
         currentDate: currentDate.toDateString(),

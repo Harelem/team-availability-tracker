@@ -2,10 +2,10 @@
 > team-availability-tracker@2.2.0 dev
 > next dev
 
- ⚠ Port 3000 is in use, using available port 3002 instead.
+ ⚠ Port 3000 is in use, using available port 3003 instead.
    ▲ Next.js 15.3.5
-   - Local:        http://localhost:3002
-   - Network:      http://192.168.2.1:3002
+   - Local:        http://localhost:3003
+   - Network:      http://192.168.1.152:3003
    - Environments: .env.local
    - Experiments (use with caution):
      ✓ optimizeCss
@@ -13,5 +13,5 @@
      ✓ memoryBasedWorkersCount
 
  ✓ Starting...
- ✓ Ready in 1506ms
+ ✓ Ready in 1187ms
 [?25h

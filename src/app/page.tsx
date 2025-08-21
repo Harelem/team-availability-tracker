@@ -29,7 +29,6 @@ function HomeContent() {
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isClientMounted, setIsClientMounted] = useState(false);
   const searchParams = useSearchParams();
   
   const [teams, setTeams] = useState<Team[]>([]);
@@ -40,7 +39,6 @@ function HomeContent() {
     if (backgroundDataLoaded) return;
     
     try {
-      console.log('🔄 Loading background data...');
       
       // Load non-critical data in background
       const backgroundTasks = [
@@ -58,25 +56,15 @@ function HomeContent() {
         }
       }
       
-      if (dbState && dbState.status === 'fulfilled' && dbState.value && 'totalScheduleEntries' in dbState.value) {
-        const dbData = dbState.value as any;
-        if (dbData.totalScheduleEntries > 0) {
-          console.log(`📊 Background: Protecting ${dbData.totalScheduleEntries} schedule entries, ${dbData.totalTeamMembers} members`);
-        }
-      }
-      
       setBackgroundDataLoaded(true);
-      console.log('✅ Background data loading completed');
       
     } catch (error) {
       console.warn('⚠️ Background data loading failed (non-critical):', error);
     }
   }, [backgroundDataLoaded]);
 
-  // Client-side mounting detection for hydration safety
+  // Client-side initialization for offline mode
   useEffect(() => {
-    setIsClientMounted(true);
-    
     // Initialize offline mode listeners
     initializeOfflineMode();
   }, []);
@@ -91,22 +79,18 @@ function HomeContent() {
         if (!mounted) return;
         setLoading(true);
         
-        console.log('🚀 Starting application with SAFE data preservation...');
         
         // Add 15-second timeout for initial load
         // PROGRESSIVE LOADING: First validate schema, then load critical data
         const initPromise = safeInitializeWithValidation(
           async () => {
-            console.log('🔍 Step 1: Schema validation...');
             const schemaValidation = await validateDatabaseSchema();
             if (!schemaValidation.isValid) {
               const errorMsg = `Schema validation failed: ${schemaValidation.errors.join(', ')}`;
               console.error('🚨 CRITICAL SCHEMA ERRORS:', schemaValidation.errors);
               throw new Error(errorMsg);
             }
-            console.log('✅ Schema validation passed');
 
-            console.log('🔍 Step 2: Environment verification...');
             const envVerification = verifyEnvironmentConfiguration();
             if (!envVerification.isConfigValid) {
               console.error('🚨 Environment configuration issues detected!');
@@ -114,8 +98,6 @@ function HomeContent() {
                 console.warn(`⚠️ ${warning}`);
               });
             }
-
-            console.log('🔍 Step 3: Critical data loading...');
             // Load teams with offline fallback
             const teamsResult = await loadTeamsWithFallback(() => DatabaseService.getTeams());
             
@@ -128,7 +110,6 @@ function HomeContent() {
             // Save to offline storage for future use
             saveOfflineData(teamsData);
             
-            console.log(`✅ Critical initialization completed with ${teamsData.length} teams`);
             return teamsData;
           },
           'Critical App Initialization',
@@ -146,7 +127,6 @@ function HomeContent() {
         clearTimeout(timeoutId);
         
         setTeams(teamsData);
-        console.log(`✅ Critical initialization completed with ${teamsData.length} teams`);
         
         // BACKGROUND LOADING: Start non-critical data loading after UI is shown
         setTimeout(() => {
@@ -163,7 +143,6 @@ function HomeContent() {
         
         // FALLBACK: Try offline mode
         try {
-          console.log('📱 Attempting offline mode...');
           const offlineResult = await loadTeamsWithFallback(async () => {
             // This will throw, but loadTeamsWithFallback will catch and use offline data
             throw error;
@@ -171,7 +150,6 @@ function HomeContent() {
           
           if (offlineResult.success && offlineResult.data) {
             setTeams(offlineResult.data);
-            console.log(`📱 Offline mode successful: ${offlineResult.data.length} teams loaded`);
             
             // Show user-friendly message about offline mode
             if (offlineResult.fromOfflineMode) {
@@ -263,9 +241,8 @@ function HomeContent() {
       const targetTeam = teams.find(team => team.id === teamId);
       
       if (targetTeam) {
-        console.log(`🔗 Auto-selecting team from URL: ${targetTeam.name} (ID: ${teamId})`);
         if (executiveParam === 'true') {
-          console.log('🏢 Executive context maintained');
+          // Executive context maintained
         }
         setSelectedTeam(targetTeam);
       } else {
@@ -284,7 +261,6 @@ function HomeContent() {
     
     // If coming from executive context, return to COO dashboard
     if (executiveParam === 'true') {
-      console.log('🏢 Returning to COO Executive Dashboard');
       router.push('/executive');
       return;
     }
@@ -313,7 +289,7 @@ function HomeContent() {
         <div className="flex items-center justify-center p-4 min-h-screen">
           <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
             {/* Consistent loading structure for both server and client */}
-            <div className={isClientMounted ? "animate-pulse" : ""}>
+            <div className="animate-pulse">
               <div className="h-8 bg-gray-200 rounded mb-4"></div>
               <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
               <div className="space-y-2">

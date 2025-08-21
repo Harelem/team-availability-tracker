@@ -1,0 +1,34 @@
+{
+  "timestamp": "2025-08-21T07:10:14.827Z",
+  "version": "2.2",
+  "overall": {
+    "score": 68,
+    "status": "critical",
+    "totalTests": 13,
+    "passedTests": 7,
+    "recommendations": [
+      "Optimize API response times and improve endpoint reliability",
+      "Improve real-time sync performance and reduce latency"
+    ],
+    "categoryScores": {
+      "apiPerformance": 20,
+      "loadTesting": 100,
+      "realTimeCapability": 50,
+      "systemStability": 100
+    }
+  },
+  "keyMetrics": {
+    "apiResponseTime": 1063,
+    "apiSuccessRate": 25,
+    "concurrentCapacity": 10,
+    "throughput": 42.16,
+    "syncLatency": 0,
+    "systemUptime": 100
+  },
+  "performanceTargets": {
+    "pageLoadTime": 3000,
+    "autoSaveTime": 2000,
+    "syncTime": 3000,
+    "dbQueryTime": 500
+  }
+}

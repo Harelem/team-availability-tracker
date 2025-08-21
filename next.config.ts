@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
     webVitalsAttribution: ['CLS', 'LCP', 'FID', 'FCP', 'TTFB'],
     
     // Hydration optimization features - optimize imports for key packages
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-tooltip', '@supabase/supabase-js', 'date-fns', 'recharts', 'zustand'],
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-tooltip', '@supabase/supabase-js', 'date-fns', 'recharts', 'zustand', 'clsx', 'tailwind-merge'],
     
     // Enhanced webpack build cache for faster builds
     webpackBuildWorker: true,
@@ -261,6 +261,23 @@ const nextConfig: NextConfig = {
               name: 'dashboard',
               chunks: 'all',
               priority: 18,
+              minChunks: 1,
+            },
+            // Mobile components for lazy loading
+            mobile: {
+              test: /[\\/]src[\\/]components[\\/]mobile[\\/]/,
+              name: 'mobile',
+              chunks: 'async',
+              priority: 19,
+              minChunks: 1,
+              enforce: true,
+            },
+            // Version display for lazy loading (Hebrew content)
+            versionDisplay: {
+              test: /[\\/]src[\\/]components[\\/]VersionDisplay/,
+              name: 'version-display',
+              chunks: 'async',
+              priority: 17,
               minChunks: 1,
             },
             // Vendor libraries

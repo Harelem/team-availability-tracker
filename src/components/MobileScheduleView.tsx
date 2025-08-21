@@ -58,6 +58,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
   const [refreshing, setRefreshing] = useState(false);
   const [isSwipeEnabled, setIsSwipeEnabled] = useState(false); // DISABLED: Swipe navigation conflicts with button navigation
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -72,6 +73,20 @@ const MobileScheduleView = memo(function MobileScheduleView({
     // Simulate refresh - in real app this would reload data
     await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
+  };
+
+  // Enhanced navigation handler with loading state
+  const handleNavigation = async (action: () => void) => {
+    setIsNavigating(true);
+    try {
+      // Add haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate([20]);
+      }
+      await action();
+    } finally {
+      setTimeout(() => setIsNavigating(false), 300); // Brief loading state
+    }
   };
 
   const handlePullRefresh = async () => {
@@ -227,38 +242,97 @@ const MobileScheduleView = memo(function MobileScheduleView({
         {/* Week Navigation */}
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() => onWeekChange(currentWeekOffset - 1)}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 active:scale-95 transition-all duration-200 text-sm min-h-[44px] touch-manipulation font-medium"
+            onClick={() => handleNavigation(() => onWeekChange(currentWeekOffset - 1))}
+            disabled={isNavigating}
+            className={`
+              flex items-center gap-2 px-3 py-2 rounded-lg text-sm min-h-[44px] 
+              touch-manipulation font-medium transition-all duration-200
+              active:scale-95 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              shadow-sm hover:shadow-md cursor-pointer select-none
+              ${isNavigating 
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-200'
+              }
+            `}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            aria-label="Previous week"
           >
-            <ChevronLeft className="w-4 h-4" />
+            {isNavigating ? (
+              <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
             <span>Previous</span>
           </button>
           
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
-              disabled={refreshing}
-              className="p-2 text-gray-600 hover:text-gray-900 active:scale-95 transition-all duration-200 min-h-[44px] min-w-[44px] touch-manipulation rounded-lg hover:bg-gray-100"
+              disabled={refreshing || isNavigating}
+              className={`
+                p-2 min-h-[44px] min-w-[44px] rounded-lg
+                touch-manipulation transition-all duration-200
+                active:scale-95 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                shadow-sm hover:shadow-md cursor-pointer select-none
+                ${refreshing || isNavigating 
+                  ? 'text-gray-400 cursor-not-allowed opacity-50 bg-gray-100' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }
+              `}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Refresh data"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             {currentWeekOffset !== 0 && (
               <button
-                onClick={() => onWeekChange(0)}
-                className="flex items-center gap-1 bg-blue-600 text-white px-3 py-2 rounded-lg active:bg-blue-700 active:scale-95 transition-all duration-200 text-sm min-h-[44px] touch-manipulation font-medium shadow-brand-glow"
+                onClick={() => handleNavigation(() => onWeekChange(0))}
+                disabled={isNavigating}
+                className={`
+                  flex items-center gap-1 px-3 py-2 rounded-lg text-sm min-h-[44px]
+                  touch-manipulation font-medium transition-all duration-200
+                  active:scale-95 focus:ring-2 focus:ring-offset-2
+                  shadow-md hover:shadow-lg cursor-pointer select-none
+                  ${isNavigating
+                    ? 'bg-blue-400 text-blue-200 cursor-not-allowed opacity-50'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 focus:ring-blue-500 shadow-blue-200'
+                  }
+                `}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+                aria-label="Go to current week"
               >
-                <Calendar className="w-4 h-4" />
+                {isNavigating ? (
+                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-200 border-t-white" />
+                ) : (
+                  <Calendar className="w-4 h-4" />
+                )}
                 <span>Current</span>
               </button>
             )}
           </div>
           
           <button
-            onClick={() => onWeekChange(currentWeekOffset + 1)}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 active:scale-95 transition-all duration-200 text-sm min-h-[44px] touch-manipulation font-medium"
+            onClick={() => handleNavigation(() => onWeekChange(currentWeekOffset + 1))}
+            disabled={isNavigating}
+            className={`
+              flex items-center gap-2 px-3 py-2 rounded-lg text-sm min-h-[44px]
+              touch-manipulation font-medium transition-all duration-200
+              active:scale-95 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              shadow-sm hover:shadow-md cursor-pointer select-none
+              ${isNavigating 
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-200'
+              }
+            `}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            aria-label="Next week"
           >
             <span>Next</span>
-            <ChevronRight className="w-4 h-4" />
+            {isNavigating ? (
+              <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
           </button>
         </div>
 
@@ -314,14 +388,31 @@ const MobileScheduleView = memo(function MobileScheduleView({
 
         {/* Manager Actions */}
         {currentUser.isManager && (
-          <div className="flex gap-2">
-            <button 
-              onClick={onViewReasons}
-              className="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg active:bg-gray-200 active:scale-95 transition-all duration-200 text-sm min-h-[44px] touch-manipulation font-medium"
-            >
-              <Eye className="w-4 h-4" />
-              <span>View Reasons</span>
-            </button>
+          <div className="mb-4">
+            {/* Manager Mode Indicator */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg border border-blue-200 mb-3">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">Manager Mode</span>
+              <span className="text-xs opacity-75">• Tap cells to edit</span>
+            </div>
+            
+            <div className="flex gap-2">
+              <button 
+                onClick={onViewReasons}
+                className={`
+                  flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg 
+                  text-sm min-h-[44px] touch-manipulation font-medium
+                  transition-all duration-200 active:scale-95
+                  focus:ring-2 focus:ring-gray-500 focus:ring-offset-2
+                  shadow-sm hover:shadow-md cursor-pointer select-none
+                  bg-gray-100 text-gray-700 hover:bg-gray-50 active:bg-gray-200
+                `}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+                aria-label="View team member reasons"
+              >
+                <Eye className="w-4 h-4" />
+                <span>View Reasons</span>
+              </button>
             <div className="flex-1">
               <EnhancedManagerExportButton
                 currentUser={currentUser}
@@ -331,6 +422,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
                 currentSprintDays={weekDays}
               />
             </div>
+          </div>
           </div>
         )}
       </div>

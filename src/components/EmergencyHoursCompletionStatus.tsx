@@ -207,7 +207,7 @@ export default function EmergencyHoursCompletionStatus() {
         <Building2 className="w-6 h-6 text-blue-600" />
         <div>
           <h2 className="text-xl font-bold text-gray-900">📊 Hours Completion Status</h2>
-          <p className="text-sm text-gray-600">Track sprint completion across all teams</p>
+          <p className="text-sm text-gray-600">Real-time sprint completion tracking across all teams</p>
         </div>
       </div>
 
@@ -303,7 +303,7 @@ export default function EmergencyHoursCompletionStatus() {
       </div>
       
       <div className="mt-4 text-xs text-gray-500 text-center">
-        Emergency fallback mode - simplified data display
+        {error?.includes('fallback') ? 'Fallback mode - basic data display' : 'Real-time data from schedule entries'}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { GlobalLiveRegions } from "@/components/accessibility/ScreenReaderAnnouncements";
-import VersionDisplay from "@/components/VersionDisplay";
+import LazyVersionDisplay from "@/components/LazyVersionDisplay";
 import { PageErrorBoundary } from "@/components/ErrorBoundary";
 import { AppStateProvider } from "@/contexts/AppStateContext";
 import { MobileNavigationProvider } from "@/components/navigation/MobileNavigationProvider";
@@ -183,7 +183,7 @@ export default function RootLayout({
         <GlobalLiveRegions />
         
         {/* Version display for mobile emergency debugging */}
-        <VersionDisplay />
+        <LazyVersionDisplay />
         
         {/* Performance monitoring initialization script - external file for security */}
         <script src="/scripts/performance-monitor.js" defer></script>

@@ -36,6 +36,7 @@ const MobileTeamDashboard = memo(function MobileTeamDashboard({
   getTeamTotalHours
 }: MobileTeamDashboardProps) {
   const [refreshing, setRefreshing] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Memoized handlers to prevent re-renders
   const handleRefresh = useCallback(async () => {
@@ -51,6 +52,20 @@ const MobileTeamDashboard = memo(function MobileTeamDashboard({
       onWeekChange(offset);
     });
   }, [onWeekChange]);
+
+  // Enhanced navigation handler with loading state
+  const handleNavigation = useCallback(async (action: () => void) => {
+    setIsNavigating(true);
+    try {
+      // Add haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate([20]);
+      }
+      await action();
+    } finally {
+      setTimeout(() => setIsNavigating(false), 300); // Brief loading state
+    }
+  }, []);
 
   const handleWorkOptionClick = useCallback((memberId: number, date: Date, value: string) => {
     React.startTransition(() => {
@@ -121,15 +136,34 @@ const MobileTeamDashboard = memo(function MobileTeamDashboard({
       {/* Team stats header - simplified since navigation is handled separately */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-600 truncate">
-            {teamMembers.length} team members • {selectedTeam?.name || 'Team Dashboard'}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-gray-600 truncate">
+              {teamMembers.length} team members • {selectedTeam?.name || 'Team Dashboard'}
+            </p>
+            {currentUser.isManager && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-200">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                <span className="text-xs font-medium">Manager Mode</span>
+              </div>
+            )}
+          </div>
         </div>
         <button
           onClick={handleRefresh}
-          disabled={refreshing}
-          className="p-2 text-gray-400 hover:text-gray-600 transition-colors min-w-[44px] min-h-[44px] rounded-lg hover:bg-gray-100"
+          disabled={refreshing || isNavigating}
+          className={`
+            p-2 min-w-[44px] min-h-[44px] rounded-lg
+            touch-manipulation transition-all duration-200
+            active:scale-95 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+            shadow-sm hover:shadow-md cursor-pointer select-none
+            ${refreshing || isNavigating 
+              ? 'text-gray-400 cursor-not-allowed opacity-50 bg-gray-100' 
+              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            }
+          `}
+          style={{ WebkitTapHighlightColor: 'transparent' }}
           title="Refresh data"
+          aria-label="Refresh team data"
         >
           <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
         </button>
@@ -170,11 +204,26 @@ const MobileTeamDashboard = memo(function MobileTeamDashboard({
       <div className="mobile-card">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => handleWeekChange(currentWeekOffset - 1)}
-            className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            disabled={loading}
+            onClick={() => handleNavigation(() => handleWeekChange(currentWeekOffset - 1))}
+            disabled={loading || isNavigating}
+            className={`
+              p-3 rounded-full transition-all duration-200
+              touch-manipulation active:scale-95 cursor-pointer select-none
+              focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              shadow-sm hover:shadow-md
+              ${loading || isNavigating 
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50' 
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }
+            `}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            aria-label="Previous sprint"
           >
-            <ChevronLeft className="h-5 w-5" />
+            {isNavigating ? (
+              <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+            ) : (
+              <ChevronLeft className="h-5 w-5" />
+            )}
           </button>
           
           <div className="text-center flex-1">
@@ -187,11 +236,26 @@ const MobileTeamDashboard = memo(function MobileTeamDashboard({
           </div>
           
           <button
-            onClick={() => handleWeekChange(currentWeekOffset + 1)}
-            className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            disabled={loading}
+            onClick={() => handleNavigation(() => handleWeekChange(currentWeekOffset + 1))}
+            disabled={loading || isNavigating}
+            className={`
+              p-3 rounded-full transition-all duration-200
+              touch-manipulation active:scale-95 cursor-pointer select-none
+              focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              shadow-sm hover:shadow-md
+              ${loading || isNavigating 
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50' 
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }
+            `}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
+            aria-label="Next sprint"
           >
-            <ChevronRight className="h-5 w-5" />
+            {isNavigating ? (
+              <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+            ) : (
+              <ChevronRight className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>
@@ -287,19 +351,52 @@ const MobileTeamDashboard = memo(function MobileTeamDashboard({
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleWorkOptionClick(currentUser.id, date, '1')}
-                      className="flex-1 bg-green-100 text-green-700 py-2 px-3 rounded-lg text-sm font-medium"
+                      className={`
+                        flex-1 py-2 px-3 rounded-lg text-sm font-medium
+                        touch-manipulation transition-all duration-200
+                        active:scale-95 focus:ring-2 focus:ring-offset-2
+                        shadow-sm hover:shadow-md cursor-pointer select-none
+                        bg-green-100 text-green-700 border border-green-200
+                        hover:bg-green-50 hover:border-green-300
+                        active:bg-green-200 active:border-green-400
+                        focus:ring-green-500
+                      `}
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
+                      aria-label="סמן יום מלא"
                     >
                       יום מלא
                     </button>
                     <button
                       onClick={() => handleWorkOptionClick(currentUser.id, date, '0.5')}
-                      className="flex-1 bg-yellow-100 text-yellow-700 py-2 px-3 rounded-lg text-sm font-medium"
+                      className={`
+                        flex-1 py-2 px-3 rounded-lg text-sm font-medium
+                        touch-manipulation transition-all duration-200
+                        active:scale-95 focus:ring-2 focus:ring-offset-2
+                        shadow-sm hover:shadow-md cursor-pointer select-none
+                        bg-yellow-100 text-yellow-700 border border-yellow-200
+                        hover:bg-yellow-50 hover:border-yellow-300
+                        active:bg-yellow-200 active:border-yellow-400
+                        focus:ring-yellow-500
+                      `}
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
+                      aria-label="סמן חצי יום"
                     >
                       חצי יום
                     </button>
                     <button
                       onClick={() => handleWorkOptionClick(currentUser.id, date, 'X')}
-                      className="flex-1 bg-red-100 text-red-700 py-2 px-3 rounded-lg text-sm font-medium"
+                      className={`
+                        flex-1 py-2 px-3 rounded-lg text-sm font-medium
+                        touch-manipulation transition-all duration-200
+                        active:scale-95 focus:ring-2 focus:ring-offset-2
+                        shadow-sm hover:shadow-md cursor-pointer select-none
+                        bg-red-100 text-red-700 border border-red-200
+                        hover:bg-red-50 hover:border-red-300
+                        active:bg-red-200 active:border-red-400
+                        focus:ring-red-500
+                      `}
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
+                      aria-label="סמן לא זמין"
                     >
                       לא זמין
                     </button>

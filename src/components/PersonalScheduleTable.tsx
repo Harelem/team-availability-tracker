@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { TeamMember, Team, WorkOption } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import ReasonDialog from './ReasonDialog';
-import { MessageSquare, Info, Clock } from 'lucide-react';
+import { MessageSquare, Info, Clock, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { canAccessManagerQuickReasons } from '@/utils/permissions';
 
 interface PersonalScheduleTableProps {
@@ -82,8 +82,83 @@ export default function PersonalScheduleTable({
   const [showReasonTooltips, setShowReasonTooltips] = useState<{[key: string]: boolean}>({});
   const reasonTooltipRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
   
+  // Navigation state for week/sprint navigation
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+  const [displayDates, setDisplayDates] = useState<Date[]>(sprintDates);
+  const [navigationMode, setNavigationMode] = useState<'sprint' | 'week'>('week');
+  
   // All users (including managers) use the same work options: 1, 0.5, X
   const workOptions = allWorkOptions;
+  
+  // Calculate week dates based on offset
+  const getWeekDates = (offset: number): Date[] => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay() + (offset * 7));
+    
+    const dates: Date[] = [];
+    // Sunday to Thursday (Israeli work week)
+    for (let i = 0; i < 5; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  };
+  
+  // Calculate sprint dates based on offset
+  const getSprintDates = (offset: number): Date[] => {
+    // If we have sprint dates, calculate based on sprint length
+    if (sprintDates && sprintDates.length > 0) {
+      const firstDate = new Date(sprintDates[0]);
+      const lastDate = new Date(sprintDates[sprintDates.length - 1]);
+      const sprintLength = Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      const newFirstDate = new Date(firstDate);
+      newFirstDate.setDate(firstDate.getDate() + (offset * sprintLength));
+      
+      const dates: Date[] = [];
+      let currentDate = new Date(newFirstDate);
+      
+      // Add working days (Sunday-Thursday)
+      for (let i = 0; i < sprintLength; i++) {
+        if (currentDate.getDay() >= 0 && currentDate.getDay() <= 4) { // Sunday to Thursday
+          dates.push(new Date(currentDate));
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      return dates;
+    }
+    
+    // Fallback to week calculation
+    return getWeekDates(offset);
+  };
+  
+  // Handle week/sprint navigation
+  const handleWeekChange = (offset: number) => {
+    setCurrentWeekOffset(offset);
+    const newDates = navigationMode === 'sprint' 
+      ? getSprintDates(offset) 
+      : getWeekDates(offset);
+    setDisplayDates(newDates);
+  };
+  
+  // Go to current week/sprint
+  const goToCurrentWeek = () => {
+    handleWeekChange(0);
+  };
+  
+  // Update display dates when navigation changes
+  useEffect(() => {
+    if (currentWeekOffset === 0) {
+      setDisplayDates(sprintDates);
+    } else {
+      const newDates = navigationMode === 'sprint' 
+        ? getSprintDates(currentWeekOffset) 
+        : getWeekDates(currentWeekOffset);
+      setDisplayDates(newDates);
+    }
+  }, [sprintDates, currentWeekOffset, navigationMode]);
   
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
@@ -287,7 +362,7 @@ export default function PersonalScheduleTable({
   let currentWeek: Date[] = [];
   let currentWeekStart: Date | null = null;
 
-  sprintDates.forEach(date => {
+  displayDates.forEach(date => {
     const weekStart = new Date(date);
     weekStart.setDate(date.getDate() - date.getDay());
     
@@ -312,17 +387,17 @@ export default function PersonalScheduleTable({
     });
   }
 
-  if (sprintDates.length === 0) {
+  if (displayDates.length === 0) {
     return (
       <div className="p-6 text-center text-gray-500">
-        <p>No sprint data available</p>
+        <p>No data available</p>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-2xl shadow-elevation-3 overflow-hidden border-2 border-gray-100">
-      {/* Enhanced Statistics Header - Matching Team Schedule Style */
+      {/* Enhanced Statistics Header - Matching Team Schedule Style */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 px-6 py-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
@@ -331,7 +406,14 @@ export default function PersonalScheduleTable({
             </div>
             <div>
               <h3 className="font-bold text-gray-900 text-lg">Personal Sprint Schedule</h3>
-              <p className="text-blue-700 text-sm">{user.name} • {sprintDates.length} working days</p>
+              <p className="text-blue-700 text-sm">
+                {user.name} • {displayDates.length} working days
+                {currentWeekOffset !== 0 && (
+                  <span className="ml-2 px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs">
+                    {currentWeekOffset > 0 ? `+${currentWeekOffset} weeks` : `${currentWeekOffset} weeks`}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -346,7 +428,47 @@ export default function PersonalScheduleTable({
           </div>
         </div>
       </div>
-      }
+      
+      {/* Week Navigation Controls - Desktop */}
+      <div className="hidden md:flex items-center justify-between px-6 py-4 bg-gray-50 border-b">
+        <button
+          onClick={() => handleWeekChange(currentWeekOffset - 1)}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px] shadow-sm hover:shadow-md active:scale-95"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Previous Week</span>
+        </button>
+        
+        <div className="flex items-center gap-3">
+          <Calendar className="w-5 h-5 text-gray-500" />
+          <span className="text-sm font-medium text-gray-600">
+            {displayDates[0] && displayDates[displayDates.length - 1] && (
+              <>
+                {displayDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - 
+                {displayDates[displayDates.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </>
+            )}
+          </span>
+          {currentWeekOffset !== 0 && (
+            <button
+              onClick={goToCurrentWeek}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg 
+                         hover:bg-blue-600 transition-colors min-h-[44px]
+                         shadow-sm hover:shadow-md active:scale-95"
+            >
+              Current Week
+            </button>
+          )}
+        </div>
+        
+        <button
+          onClick={() => handleWeekChange(currentWeekOffset + 1)}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px] shadow-sm hover:shadow-md active:scale-95"
+        >
+          <span>Next Week</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
 
       {/* Desktop View - Enhanced Table Design */}
       <div className="hidden md:block overflow-x-auto scrollbar-hide">
@@ -357,17 +479,19 @@ export default function PersonalScheduleTable({
                 <th className="sticky left-0 z-20 bg-gray-50 text-left py-3 px-2 sm:py-4 sm:px-6 font-semibold text-gray-900 border-r min-w-[180px] lg:min-w-[220px] xl:min-w-[240px]">
                   <div className="text-xs sm:text-sm">Team Member</div>
                 </th>
-                {sprintDates.map(date => {
+                {displayDates.map(date => {
                   const today = isToday(date);
                   const past = isPastDate(date);
                   return (
-                    <th key={date.toISOString()} className={`text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold border-r table-day-column min-w-[140px] ${
-                      today 
-                        ? 'bg-blue-100 text-blue-900 border-blue-300' 
-                        : past
-                        ? 'bg-gray-50 text-gray-600'
-                        : 'bg-gray-50 text-gray-900'
-                    }`}>
+                    <th key={date.toISOString()} className={
+                      `text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold border-r table-day-column min-w-[140px] ${
+                        today 
+                          ? 'bg-blue-100 text-blue-900 border-blue-300' 
+                          : past
+                          ? 'bg-gray-50 text-gray-600'
+                          : 'bg-gray-50 text-gray-900'
+                      }`
+                    }>
                       <div className="flex flex-col">
                         <div className="flex items-center justify-center gap-1">
                           <span className="text-xs sm:text-sm font-medium">
@@ -377,9 +501,9 @@ export default function PersonalScheduleTable({
                             <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                           )}
                         </div>
-                        <span className={`text-xs mt-0.5 sm:mt-1 ${
-                          today ? 'text-blue-700 font-medium' : 'text-gray-500'
-                        }`}>
+                        <span className={
+                          `text-xs mt-0.5 sm:mt-1 ${today ? 'text-blue-700 font-medium' : 'text-gray-500'}`
+                        }>
                           {formatDate(date)}
                           {today && <span className="block text-xs font-medium">Today</span>}
                         </span>
@@ -408,17 +532,19 @@ export default function PersonalScheduleTable({
                     </div>
                   </div>
                 </td>
-                {sprintDates.map(date => {
+                {displayDates.map(date => {
                   const dateKey = date.toISOString().split('T')[0];
                   const value = getValueForDate(date);
                   const reason = getReasonForDate(date);
                   const isPast = isPastDate(date);
                   
                   return (
-                    <td key={date.toISOString()} className={`relative py-3 px-1 sm:py-4 sm:px-4 text-center border-r ${
-                      isToday(date) ? 'bg-blue-50 border-blue-200' :
-                      isPast ? 'bg-gray-50' : 'bg-white'
-                    }`}>
+                    <td key={date.toISOString()} className={
+                      `relative py-3 px-1 sm:py-4 sm:px-4 text-center border-r ${
+                        isToday(date) ? 'bg-blue-50 border-blue-200' :
+                        isPast ? 'bg-gray-50' : 'bg-white'
+                      }`
+                    }>
                       {/* Reason Indicator */}
                       {reason && (
                         <div className="absolute top-1 right-1 group" ref={(el) => {
@@ -463,13 +589,15 @@ export default function PersonalScheduleTable({
                                     }
                                   }}
                                   disabled={isPast && !value}
-                                  className={`flex-1 py-3 px-2 rounded-xl border-2 font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm min-h-[60px] ${
-                                    isSelected 
-                                      ? option.color + ' ring-2 ring-blue-500 ring-offset-1 shadow-md'
-                                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
-                                  } ${
-                                    isPast && !value ? 'opacity-50 cursor-not-allowed' : ''
-                                  }`}
+                                  className={
+                                    `flex-1 py-3 px-2 rounded-xl border-2 font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm min-h-[60px] ${
+                                      isSelected 
+                                        ? option.color + ' ring-2 ring-blue-500 ring-offset-1 shadow-md'
+                                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                                    } ${
+                                      isPast && !value ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`
+                                  }
                                   title={option.description}
                                 >
                                   <div className="flex flex-col items-center gap-1">
@@ -496,11 +624,13 @@ export default function PersonalScheduleTable({
                               return (
                                 <div
                                   key={option.value}
-                                  className={`flex-1 py-3 px-2 rounded-xl border-2 font-bold text-sm opacity-60 min-h-[60px] ${
-                                    isSelected 
-                                      ? option.color
-                                      : 'bg-gray-100 text-gray-600 border-gray-300'
-                                  }`}
+                                  className={
+                                    `flex-1 py-3 px-2 rounded-xl border-2 font-bold text-sm opacity-60 min-h-[60px] ${
+                                      isSelected 
+                                        ? option.color
+                                        : 'bg-gray-100 text-gray-600 border-gray-300'
+                                    }`
+                                  }
                                 >
                                   <div className="flex flex-col items-center gap-1">
                                     <span className="text-lg">
@@ -536,7 +666,48 @@ export default function PersonalScheduleTable({
       </div>
 
       {/* Mobile View - Enhanced Touch-Friendly Design */}
-      <div className="md:hidden space-y-4 p-4">
+      <div className="md:hidden">
+        {/* Mobile Navigation Bar */}
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 p-3 mb-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => handleWeekChange(currentWeekOffset - 1)}
+              className="p-2 rounded-lg bg-gray-100 active:bg-gray-200 min-h-[44px] min-w-[44px]
+                         shadow-sm hover:shadow-md active:scale-95 transition-all duration-200"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <div className="text-center">
+              <div className="font-medium text-gray-900 text-sm">
+                {displayDates[0] && displayDates[displayDates.length - 1] && (
+                  <>
+                    {displayDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - 
+                    {displayDates[displayDates.length - 1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </>
+                )}
+              </div>
+              {currentWeekOffset !== 0 && (
+                <button
+                  onClick={goToCurrentWeek}
+                  className="text-sm text-blue-600 font-medium mt-1 min-h-[32px] px-2"
+                >
+                  Go to Current Week
+                </button>
+              )}
+            </div>
+            
+            <button
+              onClick={() => handleWeekChange(currentWeekOffset + 1)}
+              className="p-2 rounded-lg bg-gray-100 active:bg-gray-200 min-h-[44px] min-w-[44px]
+                         shadow-sm hover:shadow-md active:scale-95 transition-all duration-200"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="space-y-4 p-4">
         {weekGroups.map((week, weekIndex) => (
           <div key={weekIndex} className="bg-gray-50 rounded-xl p-4 shadow-sm border border-gray-200">
             <h3 className="font-medium text-gray-900 mb-3">
@@ -579,13 +750,15 @@ export default function PersonalScheduleTable({
                                   }
                                 }}
                                 disabled={isPast && !value}
-                                className={`flex-1 py-4 px-2 rounded-xl border-2 font-bold text-base transition-all duration-200 active:scale-95 cursor-pointer shadow-sm touch-manipulation min-h-[72px] ${
-                                  isSelected 
-                                    ? option.color + ' ring-2 ring-blue-500 ring-offset-1 shadow-md'
-                                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
-                                } ${
-                                  isPast && !value ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
+                                className={
+                                  `flex-1 py-4 px-2 rounded-xl border-2 font-bold text-base transition-all duration-200 active:scale-95 cursor-pointer shadow-sm touch-manipulation min-h-[72px] ${
+                                    isSelected 
+                                      ? option.color + ' ring-2 ring-blue-500 ring-offset-1 shadow-md'
+                                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                                  } ${
+                                    isPast && !value ? 'opacity-50 cursor-not-allowed' : ''
+                                  }`
+                                }
                                 title={option.description}
                               >
                                 <div className="flex flex-col items-center gap-2">
@@ -615,11 +788,13 @@ export default function PersonalScheduleTable({
                             return (
                               <div
                                 key={option.value}
-                                className={`flex-1 py-4 px-2 rounded-xl border-2 font-bold text-base opacity-60 min-h-[72px] ${
-                                  isSelected 
-                                    ? option.color
-                                    : 'bg-gray-100 text-gray-600 border-gray-300'
-                                }`}
+                                className={
+                                  `flex-1 py-4 px-2 rounded-xl border-2 font-bold text-base opacity-60 min-h-[72px] ${
+                                    isSelected 
+                                      ? option.color
+                                      : 'bg-gray-100 text-gray-600 border-gray-300'
+                                  }`
+                                }
                               >
                                 <div className="flex flex-col items-center gap-2">
                                   <span className="text-2xl">
@@ -662,6 +837,7 @@ export default function PersonalScheduleTable({
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       {/* Quick Reasons Modal */}
@@ -718,21 +894,25 @@ export default function PersonalScheduleTable({
                             }
                             handleQuickReasonSelect(reason.value);
                           }}
-                          className={`flex items-center gap-3 p-4 text-left rounded-xl transition-all duration-200 border min-h-[56px] lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation ${
-                            isPrimary
-                              ? 'bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border-blue-300 hover:border-blue-400 active:border-blue-500 ring-2 ring-blue-200'
-                              : 'bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border-gray-200 hover:border-blue-300 active:border-blue-400'
-                          }`}
+                          className={
+                            `flex items-center gap-3 p-4 text-left rounded-xl transition-all duration-200 border min-h-[56px] lg:p-3 shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation ${
+                              isPrimary
+                                ? 'bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border-blue-300 hover:border-blue-400 active:border-blue-500 ring-2 ring-blue-200'
+                                : 'bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border-gray-200 hover:border-blue-300 active:border-blue-400'
+                            }`
+                          }
                         >
-                          <span className={`text-2xl lg:text-lg ${
-                            isPrimary ? 'animate-pulse' : ''
-                          }`}>
+                          <span className={
+                            `text-2xl lg:text-lg ${isPrimary ? 'animate-pulse' : ''}`
+                          }>
                             {reason.emoji}
                           </span>
                           <div className="flex-1">
-                            <span className={`text-base lg:text-sm font-medium flex-1 ${
-                              isPrimary ? 'text-blue-900' : 'text-gray-900'
-                            }`}>
+                            <span className={
+                              `text-base lg:text-sm font-medium flex-1 ${
+                                isPrimary ? 'text-blue-900' : 'text-gray-900'
+                              }`
+                            }>
                               {reason.text}
                               {isPrimary && (
                                 <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
@@ -792,7 +972,9 @@ export default function PersonalScheduleTable({
               <div key={option.value} className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-md transition-all">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{emojis[index]}</span>
-                  <span className={`px-4 py-2 rounded-xl border-2 font-bold text-center min-w-[44px] min-h-[44px] flex items-center justify-center ${option.color} shadow-sm`}>
+                  <span className={
+                    `px-4 py-2 rounded-xl border-2 font-bold text-center min-w-[44px] min-h-[44px] flex items-center justify-center ${option.color} shadow-sm`
+                  }>
                     {option.label}
                   </span>
                 </div>

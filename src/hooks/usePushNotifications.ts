@@ -42,8 +42,10 @@ interface PushNotificationHookReturn {
   clearError: () => void;
 }
 
-// VAPID public key (should match the server-side key)
-const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa40HcCWLrRBhN_j8NfKY6FZ0KtM7DEOz1LV5nSc9-NjMQm5rbz4QQhfIGj1tY';
+// VAPID public key - MUST be set as environment variable in production
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || (() => {
+  throw new Error('NEXT_PUBLIC_VAPID_PUBLIC_KEY environment variable is required');
+})();
 
 /**
  * Convert VAPID key to Uint8Array

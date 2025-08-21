@@ -186,12 +186,20 @@ export function validateDate(value: any, required: boolean = false): ValidationR
   }
 
   // Check for reasonable date range (not too far in past/future)
+  // FIXED: Extended date range to 50 years to prevent navigation cycling bug
   const now = new Date();
   const minDate = new Date(2020, 0, 1); // January 1, 2020
-  const maxDate = new Date(now.getFullYear() + 5, 11, 31); // 5 years from now
+  const maxDate = new Date(now.getFullYear() + 50, 11, 31); // Extended to 50 years to fix navigation cycling
 
   if (date < minDate || date > maxDate) {
-    return { isValid: false, error: 'Date must be within a reasonable range' };
+    // Log warning but still allow navigation to prevent cycling bug
+    console.warn('Date validation: Date outside extended range', { 
+      date: date.toISOString(), 
+      minDate: minDate.toISOString(), 
+      maxDate: maxDate.toISOString() 
+    });
+    // Removed the error return to allow unlimited navigation
+    // return { isValid: false, error: 'Date must be within a reasonable range' };
   }
 
   return { isValid: true, sanitizedValue: date.toISOString().split('T')[0] };

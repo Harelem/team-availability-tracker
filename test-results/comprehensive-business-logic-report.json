@@ -1,0 +1,227 @@
+{
+  "timestamp": "2025-08-21T05:15:18.613Z",
+  "version": "2.2",
+  "totalTests": 28,
+  "passedTests": 5,
+  "failedTests": 23,
+  "criticalFailures": [
+    {
+      "test": "CRITICAL - Team 1 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.235Z"
+    },
+    {
+      "test": "CRITICAL - Team 2 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.263Z"
+    },
+    {
+      "test": "CRITICAL - Team 3 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.278Z"
+    },
+    {
+      "test": "CRITICAL - Team 4 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.294Z"
+    },
+    {
+      "test": "CRITICAL - Team 5 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.308Z"
+    },
+    {
+      "test": "CRITICAL - Sprint Date Accuracy",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.323Z"
+    },
+    {
+      "test": "MISSION CRITICAL - COO Dashboard Access",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.417Z"
+    }
+  ],
+  "performanceMetrics": {
+    "hours_completion_status": 96,
+    "coo_dashboard_load": 11
+  },
+  "testDetails": [
+    {
+      "test": "Team Management System",
+      "status": "FAIL",
+      "details": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "timestamp": "2025-08-21T05:15:21.212Z"
+    },
+    {
+      "test": "CRITICAL - Team 1 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.235Z"
+    },
+    {
+      "test": "CRITICAL - Team 2 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.263Z"
+    },
+    {
+      "test": "CRITICAL - Team 3 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.278Z"
+    },
+    {
+      "test": "CRITICAL - Team 4 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.294Z"
+    },
+    {
+      "test": "CRITICAL - Team 5 Completion Status",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.308Z"
+    },
+    {
+      "test": "CRITICAL - Sprint Date Accuracy",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.323Z"
+    },
+    {
+      "test": "CRITICAL - Completion Status Performance",
+      "status": "PASS",
+      "details": "Load time 96ms within acceptable range",
+      "timestamp": "2025-08-21T05:15:21.323Z"
+    },
+    {
+      "test": "Team 1 Manager Detection",
+      "status": "FAIL",
+      "details": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "timestamp": "2025-08-21T05:15:21.339Z"
+    },
+    {
+      "test": "Team 2 Manager Detection",
+      "status": "FAIL",
+      "details": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "timestamp": "2025-08-21T05:15:21.359Z"
+    },
+    {
+      "test": "Team 3 Manager Detection",
+      "status": "FAIL",
+      "details": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "timestamp": "2025-08-21T05:15:21.374Z"
+    },
+    {
+      "test": "Team 4 Manager Detection",
+      "status": "FAIL",
+      "details": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "timestamp": "2025-08-21T05:15:21.389Z"
+    },
+    {
+      "test": "Team 5 Manager Detection",
+      "status": "FAIL",
+      "details": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+      "timestamp": "2025-08-21T05:15:21.405Z"
+    },
+    {
+      "test": "Excel Export Feature",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test Excel generation with Hebrew encoding",
+      "timestamp": "2025-08-21T05:15:21.405Z"
+    },
+    {
+      "test": "Team Member Management",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test add/edit/remove member functions",
+      "timestamp": "2025-08-21T05:15:21.405Z"
+    },
+    {
+      "test": "MISSION CRITICAL - COO Dashboard Access",
+      "status": "FAIL",
+      "details": "HTTP 404",
+      "timestamp": "2025-08-21T05:15:21.417Z"
+    },
+    {
+      "test": "MISSION CRITICAL - COO Dashboard Performance",
+      "status": "PASS",
+      "details": "Load time 11ms within acceptable range",
+      "timestamp": "2025-08-21T05:15:21.417Z"
+    },
+    {
+      "test": "Navigation - Home Page",
+      "status": "PASS",
+      "details": "HTTP 200",
+      "timestamp": "2025-08-21T05:15:22.564Z"
+    },
+    {
+      "test": "Navigation - COO Dashboard",
+      "status": "PASS",
+      "details": "HTTP 200",
+      "timestamp": "2025-08-21T05:15:24.059Z"
+    },
+    {
+      "test": "Navigation - Mobile Test Page",
+      "status": "PASS",
+      "details": "HTTP 200",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    },
+    {
+      "test": "Deep Linking Support",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test ?team=X&executive=true parameters",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    },
+    {
+      "test": "Mobile Navigation",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test hamburger menu and mobile responsiveness",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    },
+    {
+      "test": "Version Component Display",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test version number clickability and responsiveness",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    },
+    {
+      "test": "Release Notes Modal",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test modal open/close and Hebrew content display",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    },
+    {
+      "test": "Accessibility Features",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test keyboard navigation and screen reader compatibility",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    },
+    {
+      "test": "Auto-Save Performance",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test that changes save within 2000ms threshold",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    },
+    {
+      "test": "Auto-Save Data Integrity",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Test that auto-saved data persists correctly across page refreshes",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    },
+    {
+      "test": "Console Error Detection",
+      "status": "MANUAL_TEST_REQUIRED",
+      "details": "Open browser dev tools and verify no JavaScript errors on all pages",
+      "timestamp": "2025-08-21T05:15:24.316Z"
+    }
+  ],
+  "totalExecutionTime": 5702,
+  "successRate": 18
+}

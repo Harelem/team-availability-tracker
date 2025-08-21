@@ -208,11 +208,23 @@ export interface CurrentGlobalSprint {
   working_days_remaining?: number; // Enhanced sprint system
   progress_percentage: number;
   is_active: boolean;
+  status?: 'upcoming' | 'active' | 'completed'; // Enhanced: automatic status management
   notes?: string; // Enhanced sprint system
   created_at: string;
   updated_at: string;
   updated_by: string;
 }
+
+// Re-export enhanced sprint detection types for consistency
+export type {
+  SmartSprintInfo,
+  SprintDetectionConfig,
+  DatabaseIntegratedSprintConfig,
+  SprintDetectionResult,
+  SprintValidationResult,
+  SprintStatusInfo,
+  SprintDiscoveryService
+} from '@/utils/smartSprintDetection';
 
 export interface TeamSprintAnalytics {
   team_id: number;

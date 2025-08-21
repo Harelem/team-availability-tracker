@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { detectCurrentSprintForDate } from '@/utils/smartSprintDetection';
+import { detectCurrentSprintForDateSync } from '@/utils/smartSprintDetection';
 import { Clock, MessageSquare } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
 import EnhancedDayCell from './EnhancedDayCell';
@@ -40,6 +40,16 @@ export default function EnhancedAvailabilityTable({
   isPastDate,
   formatDate
 }: EnhancedAvailabilityTableProps) {
+  
+  // Debug logging to track table rendering
+  console.log('📊 EnhancedAvailabilityTable: Rendering attempt', {
+    currentUser: !!currentUser,
+    teamMembers: teamMembers?.length || 0,
+    scheduleData: !!scheduleData,
+    workOptions: workOptions?.length || 0,
+    sprintDays: sprintDays?.length || 0,
+    timestamp: new Date().toISOString()
+  });
 
   // Helper function for comprehensive date validation
   const validateSprintDate = (date: any): date is Date => {
@@ -110,7 +120,7 @@ export default function EnhancedAvailabilityTable({
     
     // Priority 2: Generate smart fallback using smart sprint detection
     try {
-      const smartSprint = detectCurrentSprintForDate();
+      const smartSprint = detectCurrentSprintForDateSync();
       if (smartSprint && smartSprint.workingDays && smartSprint.workingDays.length > 0) {
         if (process.env.NODE_ENV === 'development') {
           console.info('📅 EnhancedAvailabilityTable: Using smart sprint detection fallback', {
@@ -156,29 +166,47 @@ export default function EnhancedAvailabilityTable({
     });
   }
 
-  // Defensive checks for required props - now using validatedSprintDays
+  // Enhanced defensive checks with better debugging
   if (!currentUser || !Array.isArray(teamMembers) || !scheduleData || !Array.isArray(workOptions) || !Array.isArray(validatedSprintDays)) {
-    console.warn('EnhancedAvailabilityTable: Missing required props', {
+    console.error('❌ EnhancedAvailabilityTable: Missing required props - TABLE HIDDEN', {
       currentUser: !!currentUser,
-      teamMembers: Array.isArray(teamMembers),
+      teamMembers: Array.isArray(teamMembers) ? teamMembers.length : 'NOT_ARRAY',
       scheduleData: !!scheduleData,
-      workOptions: Array.isArray(workOptions),
-      sprintDays: Array.isArray(sprintDays)
+      workOptions: Array.isArray(workOptions) ? workOptions.length : 'NOT_ARRAY',
+      validatedSprintDays: Array.isArray(validatedSprintDays) ? validatedSprintDays.length : 'NOT_ARRAY',
+      originalSprintDays: Array.isArray(sprintDays) ? sprintDays.length : 'NOT_ARRAY'
     });
+    
+    // More informative error display
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
-        <p className="text-gray-500">Unable to load availability table - missing data</p>
+      <div className="bg-red-50 border border-red-200 rounded-lg shadow-md p-8 text-center">
+        <p className="text-red-700 font-medium">⚠️ Table Loading Issue Detected</p>
+        <p className="text-red-600 text-sm mt-2">
+          Missing: {[
+            !currentUser && 'User',
+            !Array.isArray(teamMembers) && 'Team Members',
+            !scheduleData && 'Schedule Data',
+            !Array.isArray(workOptions) && 'Work Options',
+            !Array.isArray(validatedSprintDays) && 'Sprint Days'
+          ].filter(Boolean).join(', ')}
+        </p>
+        <p className="text-red-500 text-xs mt-1">Check console for detailed debugging info</p>
       </div>
     );
   }
 
-  // ENHANCED: Validation check for validated arrays
+  // ENHANCED: Validation check for validated arrays with better debugging
   if (validatedSprintDays.length === 0) {
-    console.error('EnhancedAvailabilityTable: All fallback systems failed to generate valid sprint days');
+    console.error('❌ EnhancedAvailabilityTable: All fallback systems failed - TABLE HIDDEN', {
+      originalSprintDays: sprintDays?.length || 0,
+      validatedSprintDays: validatedSprintDays?.length || 0,
+      fallbackAttempted: true
+    });
     return (
       <div className="p-4 bg-yellow-100 border border-yellow-400 rounded-lg">
-        <p className="text-yellow-800">Unable to load availability table: No valid sprint days could be generated</p>
-        <p className="text-yellow-600 text-sm mt-2">Please check sprint configuration or contact support.</p>
+        <p className="text-yellow-800 font-medium">⚠️ Sprint Days Generation Failed</p>
+        <p className="text-yellow-600 text-sm mt-2">Table hidden due to invalid sprint date configuration</p>
+        <p className="text-yellow-500 text-xs mt-1">Check console for detailed debugging info</p>
       </div>
     );
   }
@@ -342,6 +370,14 @@ export default function EnhancedAvailabilityTable({
   };
 
   const reasonStats = getSprintReasonStats();
+
+  // Log successful rendering preparation
+  console.log('✅ EnhancedAvailabilityTable: About to render table successfully', {
+    teamMembers: teamMembers?.length || 0,
+    validatedSprintDays: validatedSprintDays?.length || 0,
+    hasScheduleData: Object.keys(scheduleData || {}).length > 0,
+    timestamp: new Date().toISOString()
+  });
 
   return (
     <ComponentErrorBoundary>
@@ -602,7 +638,7 @@ export default function EnhancedAvailabilityTable({
           <div className="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
             <h3 className="font-semibold text-gray-900 mb-3">Team Summary</h3>
             <div className="grid grid-cols-2 gap-3">
-              {validatedSprintDays.map((date, index) => {
+              {validatedSprintDays.map((date) => {
                 if (!date || typeof date.toISOString !== 'function') {
                   console.warn('EnhancedAvailabilityTable: Invalid date object:', date);
                   return null;
@@ -628,7 +664,7 @@ export default function EnhancedAvailabilityTable({
       </div>
 
       {/* Desktop Table View (hidden on mobile) */}
-      <div className="hidden md:block overflow-x-auto scrollbar-hide">
+      <div className="hidden md:block overflow-auto scrollbar-hide max-h-[calc(100vh-120px)]">
         <table className="schedule-table-optimized min-w-[1200px]">
           {/* Table Header */}
           <thead className="bg-gray-50 sticky top-0 z-10">

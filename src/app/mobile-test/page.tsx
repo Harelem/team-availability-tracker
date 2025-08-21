@@ -251,7 +251,7 @@ export default function MobileTestPage() {
         <MobilePerformanceMonitor 
           showDebugInfo 
           logMetrics 
-          onMetricsUpdate={(metrics) => console.log('Performance update:', metrics)}
+          onMetricsUpdate={(metrics) => {}}
         />
       )}
 
@@ -346,8 +346,7 @@ export default function MobileTestPage() {
               variant="outline"
               onClick={() => {
                 const report = tester.generateReport();
-                console.log(report);
-                alert('Report generated - check console');
+                alert('Report generated');
               }}
               className="touch-target-comfortable"
             >

@@ -1,0 +1,89 @@
+{
+  "summary": {
+    "totalSuites": 5,
+    "passed": 0,
+    "failed": 5,
+    "criticalFailures": 2,
+    "totalDuration": 9738,
+    "timestamp": "2025-08-20T20:57:40.254Z",
+    "productionReady": false
+  },
+  "testSuites": [
+    {
+      "suite": "Navigation Cycling Bug Tests",
+      "file": "comprehensive-navigation-validation.test.tsx",
+      "status": "FAILED",
+      "duration": 1431,
+      "error": "Command failed: npx jest comprehensive-navigation-validation.test.tsx --verbose --no-cache --detectOpenHandles --forceExit\nFAIL __tests__/comprehensive-navigation-validation.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.386 s\nRan all test suites matching comprehensive-navigation-validation.test.tsx.\n",
+      "output": "",
+      "stderr": "FAIL __tests__/comprehensive-navigation-validation.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.386 s\nRan all test suites matching comprehensive-navigation-validation.test.tsx.\n",
+      "priority": "CRITICAL",
+      "timestamp": "2025-08-20T20:57:31.948Z"
+    },
+    {
+      "suite": "Table Visibility & Layout Tests",
+      "file": "table-visibility-layout.test.tsx",
+      "status": "FAILED",
+      "duration": 844,
+      "error": "Command failed: npx jest table-visibility-layout.test.tsx --verbose --no-cache --detectOpenHandles --forceExit\nFAIL __tests__/table-visibility-layout.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.218 s\nRan all test suites matching table-visibility-layout.test.tsx.\n",
+      "output": "",
+      "stderr": "FAIL __tests__/table-visibility-layout.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.218 s\nRan all test suites matching table-visibility-layout.test.tsx.\n",
+      "priority": "HIGH",
+      "timestamp": "2025-08-20T20:57:33.795Z"
+    },
+    {
+      "suite": "UI Polish & Accessibility Tests",
+      "file": "ui-polish-accessibility.test.tsx",
+      "status": "FAILED",
+      "duration": 803,
+      "error": "Command failed: npx jest ui-polish-accessibility.test.tsx --verbose --no-cache --detectOpenHandles --forceExit\nFAIL __tests__/ui-polish-accessibility.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.214 s\nRan all test suites matching ui-polish-accessibility.test.tsx.\n",
+      "output": "",
+      "stderr": "FAIL __tests__/ui-polish-accessibility.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.214 s\nRan all test suites matching ui-polish-accessibility.test.tsx.\n",
+      "priority": "HIGH",
+      "timestamp": "2025-08-20T20:57:35.599Z"
+    },
+    {
+      "suite": "Core Functionality Regression Tests",
+      "file": "core-functionality-regression.test.tsx",
+      "status": "FAILED",
+      "duration": 841,
+      "error": "Command failed: npx jest core-functionality-regression.test.tsx --verbose --no-cache --detectOpenHandles --forceExit\nFAIL __tests__/core-functionality-regression.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.229 s\nRan all test suites matching core-functionality-regression.test.tsx.\n",
+      "output": "",
+      "stderr": "FAIL __tests__/core-functionality-regression.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.229 s\nRan all test suites matching core-functionality-regression.test.tsx.\n",
+      "priority": "CRITICAL",
+      "timestamp": "2025-08-20T20:57:37.442Z"
+    },
+    {
+      "suite": "Performance & Stability Tests",
+      "file": "performance-stability.test.tsx",
+      "status": "FAILED",
+      "duration": 807,
+      "error": "Command failed: npx jest performance-stability.test.tsx --verbose --no-cache --detectOpenHandles --forceExit\nFAIL __tests__/performance-stability.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.217 s\nRan all test suites matching performance-stability.test.tsx.\n",
+      "output": "",
+      "stderr": "FAIL __tests__/performance-stability.test.tsx\n  ● Test suite failed to run\n\n    Cannot find module './__tests__/utils/testHelpers' from 'jest.setup.enhanced.js'\n\n      186 |     const pass = received >= floor && received <= ceiling;\n      187 |     if (pass) {\n    > 188 |       return {\n          |               ^\n      189 |         message: () =>\n      190 |           `expected ${received} not to be within range ${floor} - ${ceiling}`,\n      191 |         pass: true,\n\n      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)\n      at Object.<anonymous> (jest.setup.enhanced.js:188:22)\n\nTest Suites: 1 failed, 1 total\nTests:       0 total\nSnapshots:   0 total\nTime:        0.217 s\nRan all test suites matching performance-stability.test.tsx.\n",
+      "priority": "HIGH",
+      "timestamp": "2025-08-20T20:57:39.251Z"
+    }
+  ],
+  "recommendations": [
+    {
+      "level": "CRITICAL",
+      "message": "2 CRITICAL test failures must be resolved before production deployment",
+      "suites": [
+        "Navigation Cycling Bug Tests",
+        "Core Functionality Regression Tests"
+      ]
+    },
+    {
+      "level": "HIGH",
+      "message": "5 test suites failed - review and fix issues",
+      "suites": [
+        "Navigation Cycling Bug Tests",
+        "Table Visibility & Layout Tests",
+        "UI Polish & Accessibility Tests",
+        "Core Functionality Regression Tests",
+        "Performance & Stability Tests"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,639 @@
+{
+  "realTimeValidation": {
+    "timestamp": "2025-08-21T06:53:49.793Z",
+    "version": "2.2.0",
+    "testEnvironment": "development",
+    "results": {
+      "mobileOptimizations": {
+        "touchTargets": {
+          "src/components/VersionDisplay.tsx": {
+            "totalTargets": 8,
+            "compliantTargets": 8,
+            "complianceRate": 100,
+            "findings": [
+              {
+                "type": "iOS minimum",
+                "size": 44,
+                "count": 1,
+                "compliant": true
+              },
+              {
+                "type": "Android minimum",
+                "size": 48,
+                "count": 1,
+                "compliant": true
+              },
+              {
+                "type": "iOS minimum width",
+                "size": 44,
+                "count": 1,
+                "compliant": true
+              },
+              {
+                "type": "Android minimum width",
+                "size": 48,
+                "count": 1,
+                "compliant": true
+              },
+              {
+                "type": "Touch optimization",
+                "size": null,
+                "count": 4,
+                "compliant": true
+              }
+            ],
+            "passed": true
+          },
+          "src/components/navigation/MobileAppNavigation.tsx": {
+            "totalTargets": 0,
+            "compliantTargets": 0,
+            "complianceRate": 100,
+            "findings": [],
+            "passed": true
+          },
+          "src/components/EnhancedAvailabilityTable.tsx": {
+            "totalTargets": 7,
+            "compliantTargets": 7,
+            "complianceRate": 100,
+            "findings": [
+              {
+                "type": "iOS minimum",
+                "size": 44,
+                "count": 3,
+                "compliant": true
+              },
+              {
+                "type": "iOS minimum width",
+                "size": 44,
+                "count": 1,
+                "compliant": true
+              },
+              {
+                "type": "Touch optimization",
+                "size": null,
+                "count": 3,
+                "compliant": true
+              }
+            ],
+            "passed": true
+          },
+          "src/app/page.tsx": {
+            "totalTargets": 8,
+            "compliantTargets": 8,
+            "complianceRate": 100,
+            "findings": [
+              {
+                "type": "iOS minimum",
+                "size": 44,
+                "count": 3,
+                "compliant": true
+              },
+              {
+                "type": "Comfortable touch",
+                "size": 60,
+                "count": 1,
+                "compliant": true
+              },
+              {
+                "type": "Touch optimization",
+                "size": null,
+                "count": 3,
+                "compliant": true
+              },
+              {
+                "type": "Extra large touch target",
+                "size": null,
+                "count": 1,
+                "compliant": true
+              }
+            ],
+            "passed": true
+          }
+        },
+        "responsiveDesign": {
+          "src/app/globals.css": {
+            "totalResponsiveElements": 36,
+            "findings": [
+              {
+                "type": "Mobile breakpoint",
+                "count": 12
+              },
+              {
+                "type": "Small mobile breakpoint",
+                "count": 3
+              },
+              {
+                "type": "Tailwind small breakpoint",
+                "count": 4
+              },
+              {
+                "type": "Tailwind medium breakpoint",
+                "count": 3
+              },
+              {
+                "type": "Tailwind large breakpoint",
+                "count": 4
+              },
+              {
+                "type": "Tailwind extra large breakpoint",
+                "count": 10
+              }
+            ],
+            "hasResponsiveDesign": true,
+            "complexity": "high"
+          },
+          "src/components/MobileTeamDashboard.tsx": {
+            "totalResponsiveElements": 0,
+            "findings": [],
+            "hasResponsiveDesign": false,
+            "complexity": "low"
+          },
+          "src/components/ScheduleTable.tsx": {
+            "totalResponsiveElements": 3,
+            "findings": [
+              {
+                "type": "Tailwind medium breakpoint",
+                "count": 3
+              }
+            ],
+            "hasResponsiveDesign": true,
+            "complexity": "low"
+          }
+        },
+        "touchInteractions": {
+          "src/components/VersionDisplay.tsx": {
+            "totalInteractions": 29,
+            "advancedInteractions": 14,
+            "sophistication": "advanced",
+            "findings": [
+              {
+                "type": "Touch start handler",
+                "count": 1
+              },
+              {
+                "type": "Touch move handler",
+                "count": 1
+              },
+              {
+                "type": "Touch end handler",
+                "count": 1
+              },
+              {
+                "type": "Touch position tracking",
+                "count": 11
+              },
+              {
+                "type": "Gesture recognition",
+                "count": 5
+              },
+              {
+                "type": "Touch feedback animation",
+                "count": 3
+              },
+              {
+                "type": "Touch feedback background",
+                "count": 2
+              },
+              {
+                "type": "Smooth animations",
+                "count": 4
+              },
+              {
+                "type": "Touch event prevention",
+                "count": 1
+              }
+            ],
+            "hasTouchSupport": true
+          },
+          "src/components/SwipeableNavigation.tsx": {
+            "totalInteractions": 63,
+            "advancedInteractions": 12,
+            "sophistication": "advanced",
+            "findings": [
+              {
+                "type": "Touch start handler",
+                "count": 4
+              },
+              {
+                "type": "Touch move handler",
+                "count": 4
+              },
+              {
+                "type": "Touch end handler",
+                "count": 4
+              },
+              {
+                "type": "Gesture recognition",
+                "count": 48
+              },
+              {
+                "type": "Touch event prevention",
+                "count": 3
+              }
+            ],
+            "hasTouchSupport": true
+          }
+        },
+        "mobileNavigation": {},
+        "accessibilityFeatures": {
+          "src/components/VersionDisplay.tsx": {
+            "totalFeatures": 25,
+            "criticalFeatures": 17,
+            "accessibilityScore": 68,
+            "complianceLevel": "good",
+            "findings": [
+              {
+                "type": "ARIA labels",
+                "count": 4,
+                "critical": true
+              },
+              {
+                "type": "ARIA descriptions",
+                "count": 3,
+                "critical": true
+              },
+              {
+                "type": "ARIA states",
+                "count": 1,
+                "critical": true
+              },
+              {
+                "type": "ARIA hidden decorative",
+                "count": 6,
+                "critical": false
+              },
+              {
+                "type": "Semantic roles",
+                "count": 4,
+                "critical": true
+              },
+              {
+                "type": "Focus indicators",
+                "count": 5,
+                "critical": true
+              },
+              {
+                "type": "Screen reader only content",
+                "count": 2,
+                "critical": false
+              }
+            ],
+            "isWCAGCompliant": false
+          },
+          "src/components/navigation/MobileAppNavigation.tsx": {
+            "totalFeatures": 15,
+            "criticalFeatures": 15,
+            "accessibilityScore": 100,
+            "complianceLevel": "excellent",
+            "findings": [
+              {
+                "type": "ARIA labels",
+                "count": 4,
+                "critical": true
+              },
+              {
+                "type": "ARIA descriptions",
+                "count": 1,
+                "critical": true
+              },
+              {
+                "type": "ARIA states",
+                "count": 4,
+                "critical": true
+              },
+              {
+                "type": "Semantic roles",
+                "count": 4,
+                "critical": true
+              },
+              {
+                "type": "Keyboard navigation",
+                "count": 1,
+                "critical": true
+              },
+              {
+                "type": "Focus indicators",
+                "count": 1,
+                "critical": true
+              }
+            ],
+            "isWCAGCompliant": true
+          },
+          "src/app/page.tsx": {
+            "totalFeatures": 0,
+            "criticalFeatures": 0,
+            "accessibilityScore": 0,
+            "complianceLevel": "needs improvement",
+            "findings": [],
+            "isWCAGCompliant": false
+          }
+        }
+      },
+      "version22Features": {
+        "clickableVersionComponent": {
+          "exists": true,
+          "validated": true,
+          "complianceRate": 100,
+          "results": [
+            {
+              "feature": "Clickable functionality",
+              "implemented": true,
+              "required": true,
+              "matchCount": 1
+            },
+            {
+              "feature": "Touch target size",
+              "implemented": true,
+              "required": true,
+              "matchCount": 1
+            },
+            {
+              "feature": "Hebrew language support",
+              "implemented": true,
+              "required": true,
+              "matchCount": 3
+            },
+            {
+              "feature": "Touch gesture support",
+              "implemented": true,
+              "required": false,
+              "matchCount": 7
+            },
+            {
+              "feature": "Accessibility support",
+              "implemented": true,
+              "required": true,
+              "matchCount": 8
+            },
+            {
+              "feature": "Animation effects",
+              "implemented": true,
+              "required": false,
+              "matchCount": 10
+            }
+          ],
+          "passed": true,
+          "issues": []
+        },
+        "personalNavigation": {
+          "exists": true,
+          "validated": true,
+          "complianceRate": 100,
+          "results": [
+            {
+              "feature": "Tab navigation pattern",
+              "implemented": true,
+              "required": true,
+              "matchCount": 1
+            },
+            {
+              "feature": "Current page indication",
+              "implemented": true,
+              "required": true,
+              "matchCount": 4
+            },
+            {
+              "feature": "Navigation tab components",
+              "implemented": true,
+              "required": true,
+              "matchCount": 7
+            },
+            {
+              "feature": "Active state management",
+              "implemented": true,
+              "required": true,
+              "matchCount": 12
+            },
+            {
+              "feature": "Comfortable touch targets",
+              "implemented": true,
+              "required": true,
+              "matchCount": 1
+            },
+            {
+              "feature": "Safe area handling",
+              "implemented": true,
+              "required": true,
+              "matchCount": 2
+            }
+          ],
+          "passed": true,
+          "issues": []
+        },
+        "hebrewSupport": {
+          "averageSupport": 70,
+          "filesWithSupport": 2,
+          "totalFiles": 2,
+          "supportRate": 100,
+          "details": {
+            "src/components/VersionDisplay.tsx": {
+              "supportScore": 80,
+              "results": [
+                {
+                  "feature": "RTL direction support",
+                  "implemented": true,
+                  "matchCount": 1
+                },
+                {
+                  "feature": "Hebrew language declaration",
+                  "implemented": true,
+                  "matchCount": 1
+                },
+                {
+                  "feature": "Hebrew text content",
+                  "implemented": true,
+                  "matchCount": 985
+                },
+                {
+                  "feature": "Hebrew font support",
+                  "implemented": false,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Right-aligned text",
+                  "implemented": true,
+                  "matchCount": 5
+                }
+              ],
+              "hasHebrewSupport": true
+            },
+            "src/app/globals.css": {
+              "supportScore": 60,
+              "results": [
+                {
+                  "feature": "RTL direction support",
+                  "implemented": true,
+                  "matchCount": 1
+                },
+                {
+                  "feature": "Hebrew language declaration",
+                  "implemented": true,
+                  "matchCount": 1
+                },
+                {
+                  "feature": "Hebrew text content",
+                  "implemented": false,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Hebrew font support",
+                  "implemented": true,
+                  "matchCount": 2
+                },
+                {
+                  "feature": "Right-aligned text",
+                  "implemented": false,
+                  "matchCount": 0
+                }
+              ],
+              "hasHebrewSupport": true
+            }
+          },
+          "passed": true
+        },
+        "touchOptimizations": {
+          "averageOptimization": 55.55555555555555,
+          "filesWithOptimizations": 3,
+          "totalFiles": 3,
+          "optimizationRate": 100,
+          "details": {
+            "src/components/VersionDisplay.tsx": {
+              "optimizationScore": 83.33333333333334,
+              "criticalScore": 100,
+              "results": [
+                {
+                  "feature": "Touch manipulation CSS",
+                  "implemented": true,
+                  "critical": true,
+                  "matchCount": 4
+                },
+                {
+                  "feature": "Tap highlight removal",
+                  "implemented": false,
+                  "critical": false,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Touch feedback",
+                  "implemented": true,
+                  "critical": true,
+                  "matchCount": 5
+                },
+                {
+                  "feature": "Minimum touch targets",
+                  "implemented": true,
+                  "critical": true,
+                  "matchCount": 2
+                },
+                {
+                  "feature": "Touch event handlers",
+                  "implemented": true,
+                  "critical": false,
+                  "matchCount": 3
+                },
+                {
+                  "feature": "Smooth animations",
+                  "implemented": true,
+                  "critical": false,
+                  "matchCount": 14
+                }
+              ],
+              "hasTouchOptimizations": true,
+              "criticalOptimizationsComplete": true
+            },
+            "src/components/navigation/MobileAppNavigation.tsx": {
+              "optimizationScore": 16.666666666666664,
+              "criticalScore": 0,
+              "results": [
+                {
+                  "feature": "Touch manipulation CSS",
+                  "implemented": false,
+                  "critical": true,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Tap highlight removal",
+                  "implemented": false,
+                  "critical": false,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Touch feedback",
+                  "implemented": false,
+                  "critical": true,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Minimum touch targets",
+                  "implemented": false,
+                  "critical": true,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Touch event handlers",
+                  "implemented": false,
+                  "critical": false,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Smooth animations",
+                  "implemented": true,
+                  "critical": false,
+                  "matchCount": 12
+                }
+              ],
+              "hasTouchOptimizations": true,
+              "criticalOptimizationsComplete": false
+            },
+            "src/app/page.tsx": {
+              "optimizationScore": 66.66666666666666,
+              "criticalScore": 100,
+              "results": [
+                {
+                  "feature": "Touch manipulation CSS",
+                  "implemented": true,
+                  "critical": true,
+                  "matchCount": 3
+                },
+                {
+                  "feature": "Tap highlight removal",
+                  "implemented": false,
+                  "critical": false,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Touch feedback",
+                  "implemented": true,
+                  "critical": true,
+                  "matchCount": 4
+                },
+                {
+                  "feature": "Minimum touch targets",
+                  "implemented": true,
+                  "critical": true,
+                  "matchCount": 3
+                },
+                {
+                  "feature": "Touch event handlers",
+                  "implemented": false,
+                  "critical": false,
+                  "matchCount": 0
+                },
+                {
+                  "feature": "Smooth animations",
+                  "implemented": true,
+                  "critical": false,
+                  "matchCount": 4
+                }
+              ],
+              "hasTouchOptimizations": true,
+              "criticalOptimizationsComplete": true
+            }
+          },
+          "passed": false
+        }
+      }
+    },
+    "overallScore": 92.55555555555556
+  }
+}

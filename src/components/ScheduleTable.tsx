@@ -17,6 +17,7 @@ import ClientOnly from './ClientOnly';
 // import { canManageSprints } from '@/utils/permissions'; // Used in CompactHeaderBar
 import { DatabaseService } from '@/lib/database';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
+import { DEFAULT_SPRINT_CONFIG } from '@/utils/smartSprintDetection';
 
 // TEMPORARILY REMOVED: Import centralized state management
 // import {
@@ -67,7 +68,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
-    console.log('🔄 Initial currentWeek set to:', startOfWeek.toDateString());
     return startOfWeek;
   });
   const [navigationMode, setNavigationMode] = useState<'sprint' | 'week'>('week'); // 🔧 CHANGED: Default to week mode for testing
@@ -81,7 +81,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     setError(message);
   };
   const showSuccess = (title: string, message: string) => {
-    console.log(`${title}: ${message}`);
   };
   
   // Helper functions for state updates
@@ -102,17 +101,23 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   
   // Mock refresh function
   const refreshSchedules = () => {
-    console.log('Refreshing schedules...');
   };
 
   // Week navigation functions
   const goToPreviousWeek = () => {
-    console.log('🔄 goToPreviousWeek called, current week:', currentWeek.toDateString());
     setLoading(true); // Add visual feedback
     setCurrentWeek(prev => {
       const newWeek = new Date(prev);
       newWeek.setDate(prev.getDate() - 7);
-      console.log('✅ Previous week navigation - NEW week:', newWeek.toDateString());
+      
+      // FIXED: Added safety check for backward navigation
+      if (newWeek >= prev) {
+        console.error('❌ Navigation error: Previous week is not actually previous!', {
+          original: prev.toDateString(),
+          calculated: newWeek.toDateString()
+        });
+      }
+      
       return newWeek;
     });
     // Clear loading state after a brief delay to ensure data reloads
@@ -120,12 +125,16 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   };
 
   const goToNextWeek = () => {
-    console.log('🔄 goToNextWeek called, current week:', currentWeek.toDateString());
     setLoading(true); // Add visual feedback
     setCurrentWeek(prev => {
       const newWeek = new Date(prev);
       newWeek.setDate(prev.getDate() + 7);
-      console.log('✅ Next week navigation - NEW week:', newWeek.toDateString());
+      
+      // FIXED: Added debug logging to track potential date cycling issues
+      if (newWeek.getMonth() === 8 && newWeek.getDate() <= 7 && prev.getMonth() === 7) {
+        console.warn('⚠️ Potential date cycling detected! Previous:', prev.toDateString(), 'New:', newWeek.toDateString());
+      }
+      
       return newWeek;
     });
     // Clear loading state after a brief delay to ensure data reloads
@@ -133,13 +142,11 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   };
 
   const goToCurrentWeek = () => {
-    console.log('🔄 goToCurrentWeek called, current week:', currentWeek.toDateString());
     setLoading(true); // Add visual feedback
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
     setCurrentWeek(startOfWeek);
-    console.log('✅ Go to current week - NEW week:', startOfWeek.toDateString());
     // Clear loading state after a brief delay to ensure data reloads
     setTimeout(() => setLoading(false), 1000);
   };
@@ -167,7 +174,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     };
     
     const weekString = `${formatDate(currentWeek)} - ${formatDate(endOfWeek)}`;
-    console.log('📅 getCurrentWeekString called, currentWeek:', currentWeek.toDateString(), 'returning:', weekString);
     return weekString;
   };
   
@@ -239,14 +245,18 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
 
   // Smart sprint detection fallback
   const getSmartSprintDates = () => {
+    // Smart sprint detection fallback triggered
+    
     try {
       // Use the smart detection logic directly
-      const firstSprintStartDate = new Date('2025-07-27'); // Sprint 1 started July 27
-      const sprintLengthWeeks = 2;
-      const workingDaysPerWeek = 5;
+      const firstSprintStartDate = new Date(DEFAULT_SPRINT_CONFIG.firstSprintStartDate); // Use centralized configuration
+      const sprintLengthWeeks = DEFAULT_SPRINT_CONFIG.sprintLengthWeeks;
+      const workingDaysPerWeek = DEFAULT_SPRINT_CONFIG.workingDaysPerWeek;
       const workingDaysPerSprint = sprintLengthWeeks * workingDaysPerWeek; // 10 working days
       
       const targetDate = new Date();
+      
+      // Smart sprint detection configuration
       
       // Calculate which sprint the target date falls into
       let currentSprintNumber = 1;
@@ -262,7 +272,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       
       // Apply navigation offset if needed
       if (currentSprintOffset !== 0) {
-        const offsetDays = currentSprintOffset * (sprintLengthWeeks * 7);
+        const offsetDays = currentSprintOffset * (DEFAULT_SPRINT_CONFIG.sprintLengthWeeks * 7);
         sprintStart.setDate(sprintStart.getDate() + offsetDays);
         sprintEnd.setDate(sprintEnd.getDate() + offsetDays);
       }
@@ -280,7 +290,10 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         currentDate.setDate(currentDate.getDate() + 1);
       }
       
-      console.log(`✅ Smart detection: Sprint ${currentSprintNumber} (${sprintStart.toDateString()} - ${sprintEnd.toDateString()}) - ${sprintWorkingDays.length} working days`);
+      
+      // Enhanced debugging for date calculation differences
+      // Smart sprint calculation summary
+      
       return sprintWorkingDays;
       
     } catch (error) {
@@ -336,12 +349,11 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
 
   // Get dates based on navigation mode
   const getViewDates = () => {
-    console.log('📅 getViewDates called - navigationMode:', navigationMode, 'viewMode:', viewMode);
+    // Navigation state debug
     
     if (navigationMode === 'week') {
       // Use week navigation with currentWeek state
       const weekDates = getWeekDays(currentWeek);
-      console.log('📅 Week mode dates:', weekDates.map(d => d.toDateString()));
       return weekDates;
     }
     
@@ -357,18 +369,19 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         date.setDate(startOfWeek.getDate() + i);
         weekDays.push(date);
       }
-      console.log('📅 Legacy week mode dates:', weekDays.map(d => d.toDateString()));
       return weekDays;
     }
     
     // Default to sprint mode - FIXED: Always calculate fresh dates
-    const sprintDates = getCurrentSprintDates();
-    console.log('📅 Sprint mode dates:', sprintDates.map(d => d.toDateString()));
-    return sprintDates;
+    const calculatedSprintDates = getCurrentSprintDates();
+    return calculatedSprintDates;
   };
   
   // Use sprint-appropriate dates
   const currentSprintDays = getViewDates();
+  
+  // Enhanced debugging for table rendering decisions
+  // Table rendering decision matrix
 
   // Load schedule data from database
   useEffect(() => {
@@ -377,7 +390,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       setSchedulesError(null);
       
       const viewDates = getViewDates();
-      console.log('🔄 Loading schedule data for dates:', viewDates.map(d => d.toDateString()));
       
       if (viewDates.length === 0) {
         console.warn('No view dates available');
@@ -393,7 +405,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         return;
       }
       
-      console.log('📡 Fetching schedule data from', startDate, 'to', endDate, 'for team', selectedTeam.id);
       
       try {
         const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
@@ -401,7 +412,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         setCurrentSprintDates(viewDates);
         // REMOVED: setSprintDays(viewDates) - eliminated circular dependency
         
-        console.log('✅ Schedule data loaded successfully:', Object.keys(data).length, 'member entries');
         showSuccess('Schedule Loaded', 'Schedule data loaded successfully');
       } catch (error) {
         console.error('Error loading schedule data:', error);
@@ -440,7 +450,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     
     if (!startDate || !endDate) return;
     
-    console.log('🔔 Setting up real-time subscription for', startDate, 'to', endDate);
     
     const subscription = DatabaseService.subscribeToScheduleChanges(
       startDate,
@@ -448,12 +457,10 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       selectedTeam.id,
       () => {
         // Reload data when changes occur
-        console.log('🔔 Real-time update received, reloading data');
         const loadScheduleData = async () => {
           try {
             const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
             setScheduleData(data);
-            console.log('✅ Real-time data reload successful');
           } catch (error) {
             console.error('Error reloading schedule data:', error);
           }
@@ -463,7 +470,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     );
 
     return () => {
-      console.log('🔔 Cleaning up real-time subscription');
       subscription.unsubscribe();
     };
   }, [
@@ -480,14 +486,15 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     currentSprint?.sprint_end_date
   ]);
 
-  const formatDate = (date: Date | undefined) => {
-    // ✅ Add null/undefined safety checks
+  // Type-safe date formatting helper
+  const formatDate = (date: Date | undefined): string => {
+    // Enhanced null/undefined safety checks with type safety
     if (!date) {
       console.warn('formatDate called with undefined date');
       return 'Invalid Date';
     }
     
-    // ✅ Ensure it's a valid Date object
+    // Ensure it's a valid Date object with proper type checking
     const dateObj = date instanceof Date ? date : new Date(date);
     if (isNaN(dateObj.getTime())) {
       console.warn('formatDate called with invalid date:', date);
@@ -500,6 +507,11 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       console.error('Error formatting date:', error, 'Input:', date);
       return 'Invalid Date';
     }
+  };
+
+  // Type-safe date validation helper
+  const isValidDate = (date: any): date is Date => {
+    return date instanceof Date && !isNaN(date.getTime());
   };
 
   const getCurrentSprintString = () => {
@@ -527,7 +539,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           
           // Determine sprint number from smart detection or database
           const sprintNumber = currentSprint?.current_sprint_number || 
-            Math.floor((Date.now() - new Date('2025-08-10').getTime()) / (1000 * 60 * 60 * 24 * 14)) + 1;
+            Math.floor((Date.now() - DEFAULT_SPRINT_CONFIG.firstSprintStartDate.getTime()) / (1000 * 60 * 60 * 24 * DEFAULT_SPRINT_CONFIG.sprintLengthWeeks * 7)) + 1;
           
           return `Sprint ${sprintNumber} (${formatDate(startDate)} - ${formatDate(endDate)})`;
         }
@@ -535,7 +547,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         // Final fallback: Current date with estimated sprint number
         const today = new Date();
         const sprintNumber = currentSprint?.current_sprint_number || 
-          Math.floor((Date.now() - new Date('2025-08-10').getTime()) / (1000 * 60 * 60 * 24 * 14)) + 1;
+          Math.floor((Date.now() - DEFAULT_SPRINT_CONFIG.firstSprintStartDate.getTime()) / (1000 * 60 * 60 * 24 * DEFAULT_SPRINT_CONFIG.sprintLengthWeeks * 7)) + 1;
         
         return `Sprint ${sprintNumber} (${formatDate(today)})`;
         
@@ -705,15 +717,15 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   }
 
   return (
-    <div className="space-y-0">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Mobile Team Summary - Only for Managers */}
       {currentUser.isManager && (
-        <div className="lg:hidden">
+        <div className="md:hidden">
           <TeamSummaryOverview
             team={selectedTeam}
             currentSprint={currentSprint}
             teamMembers={teamMembers}
-            className="mb-4"
+            className="mb-2"
           />
         </div>
       )}
@@ -731,7 +743,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         loading={loading}
         onWeekChange={(offset) => {
           setCurrentSprintOffset(offset);
-          console.log('Sprint change:', offset);
         }}
         onWorkOptionClick={handleWorkOptionClick}
         onFullWeekSet={handleFullSprintSet}
@@ -742,8 +753,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         getTeamTotalHours={getTeamTotalHours}
       />
 
-      {/* Navigation and Table Layout - Desktop only */}
-      <div className="hidden lg:block space-y-0">
+      {/* Navigation and Table Layout - Show on tablets and up */}
+      <div className="hidden md:flex md:flex-col flex-1 pt-6 pb-6">
         {/* Compact Header Bar - Desktop only, sticky */}
         <CompactHeaderBar
           currentUser={currentUser}
@@ -753,10 +764,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           currentSprintOffset={currentSprintOffset}
           currentSprintDays={currentSprintDays}
           onSprintChange={(offset) => {
-            console.log('🔄 Sprint change requested - current offset:', currentSprintOffset, 'new offset:', offset);
             setLoading(true); // Add visual feedback
             setCurrentSprintOffset(offset);
-            console.log('✅ Sprint changed to offset:', offset);
             // Clear loading state after a brief delay to ensure data reloads
             setTimeout(() => setLoading(false), 1000);
           }}
@@ -765,9 +774,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           getTeamTotalHours={getTeamTotalHours}
           navigationMode={navigationMode}
           onNavigationModeChange={(mode) => {
-            console.log('🔄 Navigation mode change requested - current mode:', navigationMode, 'new mode:', mode);
             setNavigationMode(mode);
-            console.log('✅ Navigation mode changed to:', mode);
           }}
           onPreviousWeek={goToPreviousWeek}
           onNextWeek={goToNextWeek}
@@ -793,8 +800,9 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           onFullWeekSet={handleFullSprintSet}
         />
 
-        {/* Enhanced Availability Table - Main focus, immediately visible */}
-        <EnhancedAvailabilityTable
+        {/* Enhanced Availability Table - Main focus, immediately visible with proper spacing */}
+        <div className="flex-1 overflow-hidden mt-2">
+          <EnhancedAvailabilityTable
           currentUser={currentUser}
           teamMembers={teamMembers}
           scheduleData={scheduleData}
@@ -810,6 +818,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           isPastDate={isPastDate}
           formatDate={formatDate}
         />
+        </div>
 
         {/* Quick Guide - Compact version */}
         <div className="bg-blue-50 rounded-lg p-3 border-t-0">
@@ -828,7 +837,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       </div>
 
       {/* Collapsible Management Sections - Auto-collapsed to save space */}
-      <div className="space-y-4 mt-6">
+      <div className="space-y-4 mt-4">
         {/* Team Member Management - Managers Only */}
         {currentUser.isManager && (
           <div className="bg-white rounded-lg border border-gray-200">

@@ -257,15 +257,6 @@ export default function EmergencyMobileMenu() {
                 </div>
               </div>
               
-              {/* Emergency Info */}
-              <div className="pt-4 border-t border-gray-200">
-                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <p className="text-xs text-orange-700">
-                    <strong>Emergency Mobile Menu</strong><br/>
-                    Simplified navigation for mobile recovery mode.
-                  </p>
-                </div>
-              </div>
               
             </div>
           </div>

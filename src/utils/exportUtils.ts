@@ -172,8 +172,8 @@ export const generateSprintCSV = (
     lines.push(''); // Empty line
   }
   
-  // For now, use the same format as week export
-  // TODO: Add weekly breakdown if provided
+  // Use week export format for custom ranges
+  // NOTE: Weekly breakdown feature deferred to future release
   const csvContent = generateWeekCSV(exportData);
   const csvLines = csvContent.split('\n');
   

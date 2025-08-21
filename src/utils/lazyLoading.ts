@@ -137,14 +137,10 @@ export const LazyComponents = {
   ),
 
   // Chart components (heavy dependencies)
-  // SprintCapacityBarChart: Chart components use named exports
-  // TODO: Implement lazy loading for chart components with named exports
-  
-  // TeamUtilizationPieChart: Chart components use named exports
-  // TODO: Implement lazy loading for chart components with named exports
-  
-  // CapacityTrendAreaChart: Chart components use named exports
-  // TODO: Implement lazy loading for chart components with named exports
+  // NOTE: Chart components use named exports - requires different lazy loading approach
+  // SprintCapacityBarChart: Deferred for future optimization
+  // TeamUtilizationPieChart: Deferred for future optimization  
+  // CapacityTrendAreaChart: Deferred for future optimization
 
   // Modal components
   TeamDetailModal: createLazyComponent(
@@ -260,8 +256,9 @@ export class IntelligentPreloader {
       this.preloadOnHover('MobileScheduleView');
     } else {
       // Desktop users might need charts more often
-      // this.preloadOnIntersection('SprintCapacityBarChart'); // TODO: Chart components use named exports
-      // this.preloadOnIntersection('TeamUtilizationPieChart'); // TODO: Chart components use named exports
+      // Chart preloading deferred - requires named export handling
+      // this.preloadOnIntersection('SprintCapacityBarChart');
+      // this.preloadOnIntersection('TeamUtilizationPieChart');
     }
   }
 

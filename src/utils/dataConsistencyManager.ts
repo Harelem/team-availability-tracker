@@ -397,7 +397,9 @@ export const CacheKeys = {
     `schedule_entries_${startDate}_${endDate}${teamId ? `_team_${teamId}` : ''}`,
   COMPANY_HOURS_STATUS: (sprintId: number) => `company_hours_status_${sprintId}`,
   TEAM_SPRINT_STATUS: (teamId: number, sprintOffset: number) => `team_sprint_status_${teamId}_${sprintOffset}`,
-  DAILY_COMPANY_STATUS: (date: string) => `daily_company_status_${date}`
+  DAILY_COMPANY_STATUS: (date: string) => `daily_company_status_${date}`,
+  SPRINT_FOR_DATE: (date: string) => `sprint_for_date_${date}`,
+  CURRENT_GLOBAL_SPRINT: 'current_global_sprint'
 };
 
 export default dataConsistencyManager;

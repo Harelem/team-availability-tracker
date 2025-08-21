@@ -72,11 +72,17 @@ interface NotificationPreferences {
   };
 }
 
-// VAPID keys configuration (should be environment variables in production)
+// VAPID keys configuration - MUST be set as environment variables in production
 const VAPID_KEYS = {
-  publicKey: process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa40HcCWLrRBhN_j8NfKY6FZ0KtM7DEOz1LV5nSc9-NjMQm5rbz4QQhfIGj1tY',
-  privateKey: process.env.VAPID_PRIVATE_KEY || 'nGmiF2j8bMzZs7JJ9q0KdP8JE5LdPvN7u-X1QzRpTgQ',
-  email: process.env.VAPID_EMAIL || 'mailto:admin@teamtracker.com'
+  publicKey: process.env.VAPID_PUBLIC_KEY || (() => {
+    throw new Error('VAPID_PUBLIC_KEY environment variable is required');
+  })(),
+  privateKey: process.env.VAPID_PRIVATE_KEY || (() => {
+    throw new Error('VAPID_PRIVATE_KEY environment variable is required');
+  })(),
+  email: process.env.VAPID_EMAIL || (() => {
+    throw new Error('VAPID_EMAIL environment variable is required');
+  })()
 };
 
 // Configure web-push

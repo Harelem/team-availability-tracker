@@ -186,7 +186,11 @@ export const getCurrentSprintInfo = async (): Promise<SprintInfo | null> => {
     
     // Fallback to smart sprint detection
     const { detectCurrentSprintForDate } = await import('@/utils/smartSprintDetection');
-    const smartSprint = detectCurrentSprintForDate();
+    const smartSprint = await detectCurrentSprintForDate();
+    
+    if (!smartSprint) {
+      throw new Error('Unable to detect current sprint information');
+    }
     
     console.log(`✅ Smart detection activated: ${smartSprint.sprintName} for ${new Date().toDateString()}`);
     

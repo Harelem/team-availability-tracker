@@ -5,7 +5,6 @@ import {
   Home, 
   Users, 
   BarChart3, 
-  Settings, 
   Calendar,
   User
 } from 'lucide-react';
@@ -24,8 +23,8 @@ export interface MobileAppNavigationProps {
   onNavigateHome?: () => void;
   onNavigateTeams?: () => void;
   onNavigateExecutive?: () => void;
-  onNavigateSettings?: () => void;
   onNavigateProfile?: () => void;
+  // Note: Settings navigation removed in v2.2 for cleaner mobile experience
 }
 
 interface NavTabProps {
@@ -54,14 +53,18 @@ const NavTab: React.FC<NavTabProps> = ({
         DESIGN_SYSTEM.buttons.touchComfortable,
         DESIGN_SYSTEM.mobile.touchFeedback,
         'min-h-[64px]', // Increased for better mobile experience
+        'focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2',
         isActive 
           ? 'text-blue-600' 
           : disabled 
           ? 'text-gray-400 cursor-not-allowed' 
           : 'text-gray-600 hover:text-blue-500 active:text-blue-700'
       )}
-      aria-label={label}
+      aria-label={`${label}${isActive ? ' (current page)' : ''}${badge ? `, ${badge} notifications` : ''}`}
       aria-current={isActive ? 'page' : undefined}
+      aria-describedby={badge ? `${label.toLowerCase()}-badge` : undefined}
+      role="tab"
+      tabIndex={disabled ? -1 : 0}
     >
       <div className="relative">
         <Icon className={combineClasses(
@@ -76,10 +79,15 @@ const NavTab: React.FC<NavTabProps> = ({
         
         {/* Badge */}
         {badge && !disabled && (
-          <span className={combineClasses(
-            COMPONENT_PATTERNS.badge,
-            'absolute -top-2 -right-2 bg-red-500 text-white text-xs min-w-[18px] h-[18px] flex items-center justify-center'
-          )}>
+          <span 
+            id={`${label.toLowerCase()}-badge`}
+            className={combineClasses(
+              COMPONENT_PATTERNS.badge,
+              'absolute -top-2 -right-2 bg-red-500 text-white text-xs min-w-[18px] h-[18px] flex items-center justify-center'
+            )}
+            aria-label={`${badge} notifications`}
+            role="status"
+          >
             {badge}
           </span>
         )}
@@ -104,20 +112,19 @@ export default function MobileAppNavigation({
   onNavigateHome,
   onNavigateTeams,
   onNavigateExecutive,
-  onNavigateSettings,
   onNavigateProfile
+  // onNavigateSettings removed in v2.2
 }: MobileAppNavigationProps) {
   const { 
     navigateToHome,
     navigateToTeamSelection,
-    navigateToExecutive,
-    navigateToSettings
+    navigateToExecutive
+    // navigateToSettings removed in v2.2 for cleaner mobile experience
   } = useMobileNavigation();
 
   // Determine active tab based on current page
   const getActiveTab = () => {
     if (currentPage.includes('/executive')) return 'executive';
-    if (currentPage.includes('/settings')) return 'settings';
     if (currentPage.includes('/profile')) return 'profile';
     if (currentPage.includes('/team')) return 'teams';
     return 'home';
@@ -150,13 +157,14 @@ export default function MobileAppNavigation({
     }
   };
 
-  const handleNavigateSettings = () => {
-    if (onNavigateSettings) {
-      onNavigateSettings();
-    } else {
-      navigateToSettings();
-    }
-  };
+  // Settings navigation removed in v2.2 for cleaner mobile experience
+  // const handleNavigateSettings = () => {
+  //   if (onNavigateSettings) {
+  //     onNavigateSettings();
+  //   } else {
+  //     navigateToSettings();
+  //   }
+  // };
 
   const handleNavigateProfile = () => {
     if (onNavigateProfile) {
@@ -174,8 +182,9 @@ export default function MobileAppNavigation({
         'shadow-lg backdrop-blur-md bg-white/95',
         className
       )}
-      role="navigation"
+      role="tablist"
       aria-label="Main navigation"
+      aria-orientation="horizontal"
     >
       <div className={combineClasses(
         'flex items-center justify-around px-2',
@@ -207,14 +216,6 @@ export default function MobileAppNavigation({
             onClick={handleNavigateExecutive}
           />
         )}
-        
-        {/* Settings */}
-        <NavTab
-          icon={Settings}
-          label="Settings"
-          isActive={activeTab === 'settings'}
-          onClick={handleNavigateSettings}
-        />
         
         {/* Profile (show user initial if logged in) */}
         {currentUser && (
