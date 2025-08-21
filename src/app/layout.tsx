@@ -135,8 +135,8 @@ export default function RootLayout({
         <meta httpEquiv="Cache-Control" content="public, max-age=3600, stale-while-revalidate=86400" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         
-        {/* Service Worker registration script - external file for security */}
-        <script src="/scripts/service-worker-init.js" defer></script>
+        {/* Service Worker temporarily disabled to fix production JS loading conflicts */}
+        {/* <script src="/scripts/service-worker-init.js" defer></script> */}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

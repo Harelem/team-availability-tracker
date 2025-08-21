@@ -4,8 +4,8 @@
     "passedTests": 4,
     "failedTests": 2,
     "overallScore": 94.47845238095236,
-    "timestamp": "2025-08-21T06:51:48.135Z",
-    "duration": 2
+    "timestamp": "2025-08-21T08:01:45.676Z",
+    "duration": 3
   },
   "categories": {
     "browserCompatibility": {
@@ -562,45 +562,45 @@
         "engine": "Chromium",
         "compatibilityScore": 100,
         "issues": [],
-        "loadTime": 1.6414314745445613,
+        "loadTime": 1.0672022536873556,
         "jsErrors": 0,
         "cssIssues": 0,
-        "timestamp": "2025-08-21T06:51:48.134Z",
+        "timestamp": "2025-08-21T08:01:45.675Z",
         "tests": {
           "Core Application Loading": {
             "score": 100,
             "passed": true,
-            "duration": 1106.729578150505
+            "duration": 1382.8975254357442
           },
           "Hebrew Text Rendering": {
             "score": 100,
             "passed": true,
-            "duration": 1051.3385852903957
+            "duration": 778.4989689612803
           },
           "Version 2.2 Clickable Component": {
             "score": 100,
             "passed": true,
-            "duration": 656.3940339244479
+            "duration": 1271.1258382313795
           },
           "Personal Navigation Controls": {
             "score": 100,
             "passed": true,
-            "duration": 1383.4668728655322
+            "duration": 1115.6535296323432
           },
           "Date Picker Functionality": {
             "score": 100,
             "passed": true,
-            "duration": 928.6083763485107
+            "duration": 843.5732196226036
           },
           "Real-time Sync Operations": {
             "score": 98,
             "passed": true,
-            "duration": 1246.1314427520906
+            "duration": 1065.567535651096
           },
           "Mobile Responsive Design": {
             "score": 100,
             "passed": true,
-            "duration": 1024.214068678155
+            "duration": 993.6202435654052
           }
         }
       },
@@ -620,45 +620,45 @@
             "description": "Safari: date-picker-styling"
           }
         ],
-        "loadTime": 1.431195272139695,
+        "loadTime": 1.6313812120552584,
         "jsErrors": 2,
         "cssIssues": 1,
-        "timestamp": "2025-08-21T06:51:48.135Z",
+        "timestamp": "2025-08-21T08:01:45.675Z",
         "tests": {
           "Core Application Loading": {
             "score": 98,
             "passed": true,
-            "duration": 776.583548544251
+            "duration": 815.7268158967356
           },
           "Hebrew Text Rendering": {
             "score": 100,
             "passed": true,
-            "duration": 807.6428469481938
+            "duration": 1267.139168633279
           },
           "Version 2.2 Clickable Component": {
             "score": 100,
             "passed": true,
-            "duration": 1270.507431211613
+            "duration": 1312.8338179775026
           },
           "Personal Navigation Controls": {
             "score": 100,
             "passed": true,
-            "duration": 1445.5115170914669
+            "duration": 1015.3711548074123
           },
           "Date Picker Functionality": {
             "score": 90,
             "passed": false,
-            "duration": 574.9070812597985
+            "duration": 621.9447016725388
           },
           "Real-time Sync Operations": {
             "score": 98,
             "passed": true,
-            "duration": 1472.5896240484253
+            "duration": 1484.134960527762
           },
           "Mobile Responsive Design": {
             "score": 100,
             "passed": true,
-            "duration": 1037.1687870159535
+            "duration": 547.1417796043869
           }
         }
       },
@@ -678,45 +678,45 @@
             "description": "Firefox: scroll-behavior"
           }
         ],
-        "loadTime": 2.2082276156845313,
+        "loadTime": 2.6526959281575078,
         "jsErrors": 2,
         "cssIssues": 1,
-        "timestamp": "2025-08-21T06:51:48.135Z",
+        "timestamp": "2025-08-21T08:01:45.675Z",
         "tests": {
           "Core Application Loading": {
             "score": 100,
             "passed": true,
-            "duration": 1428.7064068983948
+            "duration": 1430.190109521263
           },
           "Hebrew Text Rendering": {
             "score": 95,
             "passed": true,
-            "duration": 763.0392556569769
+            "duration": 1225.1803297805266
           },
           "Version 2.2 Clickable Component": {
             "score": 100,
             "passed": true,
-            "duration": 618.7991725763707
+            "duration": 1221.689097243465
           },
           "Personal Navigation Controls": {
             "score": 100,
             "passed": true,
-            "duration": 884.0358552681089
+            "duration": 1470.2352252873234
           },
           "Date Picker Functionality": {
             "score": 100,
             "passed": true,
-            "duration": 970.6635495038331
+            "duration": 515.0163487886967
           },
           "Real-time Sync Operations": {
             "score": 98,
             "passed": true,
-            "duration": 1025.2004397893888
+            "duration": 1293.5568320676707
           },
           "Mobile Responsive Design": {
             "score": 100,
             "passed": true,
-            "duration": 565.0682368556216
+            "duration": 948.3301314670729
           }
         }
       },
@@ -731,45 +731,45 @@
             "description": "Edge: legacy-compatibility"
           }
         ],
-        "loadTime": 2.81549727798022,
+        "loadTime": 2.9306216975584416,
         "jsErrors": 1,
         "cssIssues": 0,
-        "timestamp": "2025-08-21T06:51:48.135Z",
+        "timestamp": "2025-08-21T08:01:45.675Z",
         "tests": {
           "Core Application Loading": {
             "score": 100,
             "passed": true,
-            "duration": 1068.137575747554
+            "duration": 1209.6896397218113
           },
           "Hebrew Text Rendering": {
             "score": 100,
             "passed": true,
-            "duration": 780.162482834889
+            "duration": 601.372522889571
           },
           "Version 2.2 Clickable Component": {
             "score": 100,
             "passed": true,
-            "duration": 837.7487066883648
+            "duration": 1467.6170777095358
           },
           "Personal Navigation Controls": {
             "score": 96,
             "passed": true,
-            "duration": 634.5695498114871
+            "duration": 648.3564133460826
           },
           "Date Picker Functionality": {
             "score": 100,
             "passed": true,
-            "duration": 1204.5995892932306
+            "duration": 1025.3585969092046
           },
           "Real-time Sync Operations": {
             "score": 98,
             "passed": true,
-            "duration": 644.5122598325925
+            "duration": 566.6222211607399
           },
           "Mobile Responsive Design": {
             "score": 100,
             "passed": true,
-            "duration": 582.1853306046282
+            "duration": 782.9216565551731
           }
         }
       }
@@ -811,7 +811,7 @@
           }
         },
         "issues": [],
-        "timestamp": "2025-08-21T06:51:48.135Z"
+        "timestamp": "2025-08-21T08:01:45.675Z"
       },
       "iphone-14": {
         "device": "iPhone 14",
@@ -849,7 +849,7 @@
           }
         },
         "issues": [],
-        "timestamp": "2025-08-21T06:51:48.135Z"
+        "timestamp": "2025-08-21T08:01:45.675Z"
       },
       "iphone-14-plus": {
         "device": "iPhone 14 Plus",
@@ -887,7 +887,7 @@
           }
         },
         "issues": [],
-        "timestamp": "2025-08-21T06:51:48.135Z"
+        "timestamp": "2025-08-21T08:01:45.675Z"
       },
       "ipad": {
         "device": "iPad",
@@ -931,7 +931,7 @@
             "description": "Large viewport (768px) - ensure optimal use of space"
           }
         ],
-        "timestamp": "2025-08-21T06:51:48.135Z"
+        "timestamp": "2025-08-21T08:01:45.675Z"
       },
       "android-small": {
         "device": "Android Small",
@@ -975,7 +975,7 @@
             "description": "Small viewport (360px) may cause text wrapping"
           }
         ],
-        "timestamp": "2025-08-21T06:51:48.135Z"
+        "timestamp": "2025-08-21T08:01:45.675Z"
       },
       "android-standard": {
         "device": "Android Standard",
@@ -1013,7 +1013,7 @@
           }
         },
         "issues": [],
-        "timestamp": "2025-08-21T06:51:48.135Z"
+        "timestamp": "2025-08-21T08:01:45.675Z"
       },
       "android-large": {
         "device": "Android Large",
@@ -1051,7 +1051,7 @@
           }
         },
         "issues": [],
-        "timestamp": "2025-08-21T06:51:48.135Z"
+        "timestamp": "2025-08-21T08:01:45.676Z"
       }
     },
     "touchTests": {

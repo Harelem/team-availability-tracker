@@ -22,23 +22,11 @@ const nextConfig: NextConfig = {
     // Hydration optimization features - optimize imports for key packages
     optimizePackageImports: ['lucide-react', '@radix-ui/react-tooltip', '@supabase/supabase-js', 'date-fns', 'recharts', 'zustand', 'clsx', 'tailwind-merge'],
     
-    // Enhanced webpack build cache for faster builds
+    // Simplified experimental features for production stability
     webpackBuildWorker: true,
-    
-    // Optimize CSS for better performance
     optimizeCss: true,
-    
-    // React strict mode enforcement for better hydration consistency
     strictNextHead: true,
-    
-    // Optimize server-side rendering
     serverMinification: true,
-    
-    // Memory optimization for better build performance
-    memoryBasedWorkersCount: true,
-    
-    // Enable TypeScript plugin for better development experience
-    typedRoutes: false,
   },
   
   // Turbopack configuration (moved from experimental.turbo)
@@ -95,13 +83,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Main application routes - optimized caching for better performance
-        source: '/((?!api|_next/static|_next/image|favicon.ico|sw.js|manifest.json).*)',
+        // Main application routes - simplified caching for production stability
+        source: '/((?!api|_next/static|_next/image|favicon.ico|manifest.json).*)',
         headers: [
-          // Optimized cache control for HTML pages
+          // Simplified cache control for HTML pages
           {
             key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
+            value: 'no-cache',
           },
         ],
       },
@@ -130,19 +118,6 @@ const nextConfig: NextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      {
-        source: '/sw.js',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
-          },
-          {
-            key: 'Service-Worker-Allowed',
-            value: '/',
           },
         ],
       },
@@ -191,25 +166,19 @@ const nextConfig: NextConfig = {
       })
     );
 
-    // Enhanced bundle splitting for optimal hydration and performance
+    // Simplified bundle splitting for production stability
     if (!dev && !isServer) {
       config.optimization = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
-          minSize: 20000,
-          maxSize: 244000,
-          minChunks: 1,
-          maxAsyncRequests: 30,
-          maxInitialRequests: 30,
           cacheGroups: {
-            // React framework - highest priority for hydration consistency
+            // Essential framework chunks only
             react: {
               test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
               name: 'react',
               chunks: 'all',
-              priority: 50,
-              enforce: true,
+              priority: 30,
               reuseExistingChunk: true,
             },
             // Next.js framework
@@ -217,71 +186,10 @@ const nextConfig: NextConfig = {
               test: /[\\/]node_modules[\\/]next[\\/]/,
               name: 'nextjs',
               chunks: 'all',
-              priority: 45,
-              enforce: true,
-            },
-            // Supabase and database libraries
-            database: {
-              test: /[\\/]node_modules[\\/](@supabase|postgres)[\\/]/,
-              name: 'database',
-              chunks: 'all',
-              priority: 40,
-            },
-            // UI and design system libraries
-            ui: {
-              test: /[\\/]node_modules[\\/](lucide-react|@radix-ui|clsx|tailwind-merge)[\\/]/,
-              name: 'ui',
-              chunks: 'all',
-              priority: 35,
-            },
-            // Date and utility libraries
-            utils: {
-              test: /[\\/]node_modules[\\/](date-fns|lodash)[\\/]/,
-              name: 'utils',
-              chunks: 'all',
-              priority: 30,
-            },
-            // Charts and visualization
-            charts: {
-              test: /[\\/]node_modules[\\/](recharts|d3)[\\/]/,
-              name: 'charts',
-              chunks: 'all',
               priority: 25,
             },
-            // Application-specific chunks
-            navigation: {
-              test: /[\\/]src[\\/]components[\\/]navigation[\\/]/,
-              name: 'navigation',
-              chunks: 'all',
-              priority: 20,
-              minChunks: 1,
-            },
-            dashboard: {
-              test: /[\\/]src[\\/]components[\\/].*Dashboard/,
-              name: 'dashboard',
-              chunks: 'all',
-              priority: 18,
-              minChunks: 1,
-            },
-            // Mobile components for lazy loading
-            mobile: {
-              test: /[\\/]src[\\/]components[\\/]mobile[\\/]/,
-              name: 'mobile',
-              chunks: 'async',
-              priority: 19,
-              minChunks: 1,
-              enforce: true,
-            },
-            // Version display for lazy loading (Hebrew content)
-            versionDisplay: {
-              test: /[\\/]src[\\/]components[\\/]VersionDisplay/,
-              name: 'version-display',
-              chunks: 'async',
-              priority: 17,
-              minChunks: 1,
-            },
-            // Vendor libraries
-            vendor: {
+            // Main vendor libraries
+            vendors: {
               test: /[\\/]node_modules[\\/]/,
               name: 'vendors',
               chunks: 'all',
@@ -298,10 +206,6 @@ const nextConfig: NextConfig = {
             },
           },
         },
-        // Optimize module concatenation for better performance
-        concatenateModules: true,
-        // Optimize side effects
-        sideEffects: false,
       };
     }
 
