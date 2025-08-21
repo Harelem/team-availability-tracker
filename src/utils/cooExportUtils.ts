@@ -5,6 +5,7 @@
 
 import * as XLSX from 'xlsx';
 import { COOExportData, TeamCapacityStatus } from '@/types';
+import { CALCULATION_CONSTANTS } from '@/lib/calculationService';
 
 /**
  * Generate comprehensive COO executive Excel workbook with multiple sheets
@@ -57,7 +58,8 @@ const generateExecutiveSummarySheet = (
   data.push(['Metric', 'Value', 'Status']);
   data.push(['Total Teams', companyData.companyOverview.totalTeams, '']);
   data.push(['Total Members', companyData.companyOverview.totalMembers, '']);
-  data.push(['Weekly Potential', `${companyData.companyOverview.weeklyPotential}h`, '']);
+  data.push(['Sprint Max', `${companyData.companyOverview.sprintMax}h`, 'Theoretical Maximum']);
+  data.push(['Sprint Potential', `${companyData.companyOverview.sprintPotential}h`, 'After Absences']);
   data.push(['Current Utilization', `${companyData.companyOverview.currentUtilization}%`, 
     getUtilizationStatus(companyData.companyOverview.currentUtilization)]);
   data.push(['Capacity Gap', `${companyData.companyOverview.capacityGap}h`, 
@@ -211,7 +213,7 @@ const generateTeamBreakdownSheet = (
   data.push(['COMPANY SUMMARY']);
   data.push(['Total Members:', detailedScheduleData.companyTotals.totalMembers]);
   data.push(['Total Actual Hours:', `${detailedScheduleData.companyTotals.totalActualHours}h`]);
-  data.push(['Total Potential Hours:', `${detailedScheduleData.companyTotals.totalPotentialHours}h`]);
+  data.push(['Total Max Capacity Hours:', `${detailedScheduleData.companyTotals.totalPotentialHours}h`]);
   data.push(['Overall Utilization:', `${detailedScheduleData.companyTotals.overallUtilization}%`]);
   
   const ws = XLSX.utils.aoa_to_sheet(data);
@@ -232,7 +234,7 @@ const generateSummaryTeamBreakdownSheet = (
   // Header
   data.push(['TEAM CAPACITY SUMMARY']);
   data.push(['']);
-  data.push(['Team Name', 'Members', 'Weekly Potential', 'Actual Hours', 'Utilization %', 'Capacity Gap', 'Status', 'Risk Level']);
+  data.push(['Team Name', 'Members', 'Weekly Max Capacity', 'Actual Hours', 'Utilization %', 'Capacity Gap', 'Status', 'Risk Level']);
   
   // Team data
   companyData.teamComparison.forEach(team => {
@@ -280,7 +282,7 @@ const generateSprintAnalyticsSheet = (
   
   // Weekly Breakdown
   data.push(['WEEKLY BREAKDOWN']);
-  data.push(['Week', 'Potential Hours', 'Actual Hours', 'Utilization %', 'Efficiency']);
+  data.push(['Week', 'Max Capacity Hours', 'Actual Hours', 'Utilization %', 'Efficiency']);
   companyData.sprintAnalytics.weeklyBreakdown.forEach(week => {
     data.push([
       `Week ${week.week}`,
@@ -293,7 +295,7 @@ const generateSprintAnalyticsSheet = (
   
   data.push(['']);
   data.push(['CAPACITY FORECAST']);
-  data.push(['Period', 'Projected Potential', 'Projected Actual', 'Expected Utilization', 'Confidence']);
+  data.push(['Period', 'Projected Max Capacity', 'Projected Actual', 'Expected Utilization', 'Confidence']);
   data.push(['Next Week', 
     `${companyData.capacityForecast.nextWeekProjection.potentialHours}h`,
     `${companyData.capacityForecast.nextWeekProjection.projectedActual}h`,
@@ -425,8 +427,8 @@ const applyCOOSheetFormatting = (ws: XLSX.WorkSheet, data: unknown[][]): void =>
  */
 const getUtilizationStatus = (utilization: number): string => {
   if (utilization >= 100) return 'Over-capacity';
-  if (utilization >= 85) return 'Optimal';
-  if (utilization >= 70) return 'Good';
+  if (utilization >= CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MAX) return 'Optimal';
+  if (utilization >= CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MIN) return 'Good';
   return 'Under-utilized';
 };
 
@@ -441,16 +443,16 @@ const getCapacityStatusText = (status: 'optimal' | 'under' | 'over'): string => 
 
 const getTeamRiskLevel = (team: TeamCapacityStatus): string => {
   if (team.utilization > 100) return 'High';
-  if (team.utilization < 70) return 'Medium';
+  if (team.utilization < CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MIN) return 'Medium';
   return 'Low';
 };
 
 const getHighPerformingTeams = (teams: TeamCapacityStatus[]): TeamCapacityStatus[] => {
-  return teams.filter(team => team.utilization >= 85 && team.utilization <= 100);
+  return teams.filter(team => team.utilization >= CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MIN && team.utilization <= 100);
 };
 
 const getUnderperformingTeams = (teams: TeamCapacityStatus[]): TeamCapacityStatus[] => {
-  return teams.filter(team => team.utilization < 85);
+  return teams.filter(team => team.utilization < CALCULATION_CONSTANTS.OPTIMAL_UTILIZATION_MIN);
 };
 
 const getOverCapacityTeams = (teams: TeamCapacityStatus[]): TeamCapacityStatus[] => {

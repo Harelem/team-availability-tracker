@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-08-12T06:37:31.861Z",
+  "tests": {},
+  "summary": {
+    "passed": 0,
+    "failed": 1,
+    "errors": [
+      "Global error: puppeteer is not defined"
+    ]
+  }
+}

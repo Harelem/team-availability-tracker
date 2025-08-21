@@ -57,8 +57,33 @@ export const getUserRole = (user: TeamMember | null): string => {
   if (!user) return 'User';
   if (user.name === COO_NAME) return 'COO';
   if (user.name === SPRINT_ADMIN_NAME) return 'Admin';
+  if (user.id === -1) return 'COO'; // Virtual COO user
   if (user.isManager) return 'Manager';
   return 'Member';
+};
+
+/**
+ * Check if user is COO (including virtual COO users)
+ */
+export const isCOOUser = (user: TeamMember | null): boolean => {
+  if (!user) return false;
+  return user.name === COO_NAME || user.id === -1; // Virtual COO user has ID -1
+};
+
+/**
+ * Check if user has manager-level permissions (including COO)
+ */
+export const hasManagerPermissions = (user: TeamMember | null): boolean => {
+  if (!user) return false;
+  return user.isManager || isCOOUser(user);
+};
+
+/**
+ * Check if user can access manager-specific quick reasons
+ */
+export const canAccessManagerQuickReasons = (user: TeamMember | null): boolean => {
+  if (!user) return false;
+  return user.isManager || user.is_manager || user.role === 'manager' || isCOOUser(user);
 };
 
 /**
@@ -84,4 +109,59 @@ export const validateCOOPermissions = (cooUser: COOUser | null, action: 'export'
     default:
       return false;
   }
+};
+
+/**
+ * URL-based permission validation for route access
+ */
+export const validateRouteAccess = (route: string, user?: TeamMember | COOUser | null): boolean => {
+  switch (route) {
+    case '/executive':
+      // Only COO users can access executive dashboard
+      if (!user) return false;
+      return 'title' in user || // COOUser has title property
+             user.name === COO_NAME || 
+             user.name === SPRINT_ADMIN_NAME;
+    
+    case '/':
+      // Team routes are open to all authenticated users
+      return true;
+    
+    default:
+      // Allow access to other routes by default
+      return true;
+  }
+};
+
+/**
+ * Redirect logic for unauthorized route access
+ */
+export const getRedirectForUnauthorizedAccess = (
+  attemptedRoute: string, 
+  user?: TeamMember | COOUser | null
+): string | null => {
+  if (!validateRouteAccess(attemptedRoute, user)) {
+    switch (attemptedRoute) {
+      case '/executive':
+        // Redirect to team selection if trying to access executive without permission
+        return '/';
+      default:
+        return null;
+    }
+  }
+  return null;
+};
+
+/**
+ * Check if current user should be redirected based on their role and current route
+ */
+export const shouldRedirectBasedOnRole = (
+  currentRoute: string,
+  user: TeamMember | COOUser | null
+): string | null => {
+  if (!user) return null;
+  
+  // No automatic redirects - let users choose their preferred access
+  // This allows COO users to access both team and executive dashboards
+  return null;
 };

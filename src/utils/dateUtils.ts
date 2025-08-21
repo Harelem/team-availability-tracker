@@ -166,3 +166,32 @@ export const generateExportFilename = (
     return `${teamSlug}-custom-${startStr}-${endStr}.${extension}`;
   }
 };
+
+/**
+ * Get current week date range (Sunday to Thursday)
+ */
+export const getCurrentWeekDateRange = (): { startDate: string; endDate: string } => {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  const day = now.getDay();
+  const diff = now.getDate() - day; // Start from Sunday
+  startOfWeek.setDate(diff);
+  
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 4); // Sunday + 4 = Thursday
+  
+  return {
+    startDate: startOfWeek.toISOString().split('T')[0],
+    endDate: endOfWeek.toISOString().split('T')[0]
+  };
+};
+
+/**
+ * Get sprint date range from sprint object
+ */
+export const getCurrentSprintDateRange = (sprint: any): { startDate: string; endDate: string } => {
+  return {
+    startDate: new Date(sprint.sprint_start_date).toISOString().split('T')[0],
+    endDate: new Date(sprint.sprint_end_date).toISOString().split('T')[0]
+  };
+};

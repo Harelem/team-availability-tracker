@@ -1,0 +1,153 @@
+{
+  "summary": {
+    "totalComponents": 7,
+    "databaseUsers": 3,
+    "realTimeCalcUsers": 2,
+    "cacheUsers": 0,
+    "hardcodedDataComponents": 0,
+    "consistencyScore": 0,
+    "timestamp": "2025-08-21T00:51:17.732Z"
+  },
+  "componentAnalysis": [
+    {
+      "component": "ManagerDashboard",
+      "usesDatabase": false,
+      "usesRealTimeCalc": true,
+      "usesSprintDetection": false,
+      "usesCacheManager": false,
+      "hasHardcodedData": false,
+      "hasComplexState": true
+    },
+    {
+      "component": "TeamSummaryOverview",
+      "usesDatabase": true,
+      "usesRealTimeCalc": true,
+      "usesSprintDetection": false,
+      "usesCacheManager": false,
+      "hasHardcodedData": false,
+      "hasComplexState": true
+    },
+    {
+      "component": "EnhancedAvailabilityTable",
+      "usesDatabase": false,
+      "usesRealTimeCalc": false,
+      "usesSprintDetection": true,
+      "usesCacheManager": false,
+      "hasHardcodedData": false,
+      "hasComplexState": false
+    },
+    {
+      "component": "ScheduleTable",
+      "usesDatabase": true,
+      "usesRealTimeCalc": false,
+      "usesSprintDetection": true,
+      "usesCacheManager": false,
+      "hasHardcodedData": false,
+      "hasComplexState": true
+    },
+    {
+      "component": "FullSprintTable",
+      "usesDatabase": true,
+      "usesRealTimeCalc": false,
+      "usesSprintDetection": false,
+      "usesCacheManager": false,
+      "hasHardcodedData": false,
+      "hasComplexState": true
+    },
+    {
+      "component": "MobileTeamDashboard",
+      "usesDatabase": false,
+      "usesRealTimeCalc": false,
+      "usesSprintDetection": false,
+      "usesCacheManager": false,
+      "hasHardcodedData": false,
+      "hasComplexState": false
+    },
+    {
+      "component": "MobileScheduleView",
+      "usesDatabase": false,
+      "usesRealTimeCalc": false,
+      "usesSprintDetection": false,
+      "usesCacheManager": false,
+      "hasHardcodedData": false,
+      "hasComplexState": false
+    }
+  ],
+  "serviceAnalysis": [
+    {
+      "service": "database",
+      "hasCacheIntegration": false,
+      "hasErrorHandling": true,
+      "hasTypeScript": true,
+      "hasAsyncPatterns": true
+    },
+    {
+      "service": "realTimeCalculationService",
+      "hasCacheIntegration": false,
+      "hasErrorHandling": true,
+      "hasTypeScript": true,
+      "hasAsyncPatterns": true
+    },
+    {
+      "service": "smartSprintDetection",
+      "hasCacheIntegration": true,
+      "hasErrorHandling": true,
+      "hasTypeScript": true,
+      "hasAsyncPatterns": true
+    },
+    {
+      "service": "enhancedCacheManager",
+      "hasCacheIntegration": true,
+      "hasErrorHandling": true,
+      "hasTypeScript": true,
+      "hasAsyncPatterns": true
+    },
+    {
+      "service": "realTimeSyncManager",
+      "hasCacheIntegration": true,
+      "hasErrorHandling": true,
+      "hasTypeScript": true,
+      "hasAsyncPatterns": true
+    }
+  ],
+  "sprintDetectionAnalysis": [
+    {
+      "file": "smartSprintDetection.ts",
+      "hasAsync": true,
+      "hasSync": true,
+      "hasDatabase": true,
+      "hasSmartDetection": true
+    },
+    {
+      "file": "database.ts",
+      "hasAsync": true,
+      "hasSync": false,
+      "hasDatabase": true,
+      "hasSmartDetection": true
+    },
+    {
+      "file": "ManagerDashboard.tsx",
+      "hasAsync": false,
+      "hasSync": false,
+      "hasDatabase": false,
+      "hasSmartDetection": false
+    }
+  ],
+  "inconsistencies": [
+    {
+      "component": "ManagerDashboard",
+      "issue": "Major component not using DatabaseService",
+      "severity": "high"
+    },
+    {
+      "component": "EnhancedAvailabilityTable",
+      "issue": "Major component not using DatabaseService",
+      "severity": "high"
+    },
+    {
+      "component": "MobileTeamDashboard",
+      "issue": "Major component not using DatabaseService",
+      "severity": "high"
+    }
+  ]
+}

@@ -1,0 +1,221 @@
+name: Semgrep Security Analysis
+
+on:
+  push:
+    branches: [ main, develop, 'release/*' ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 02:00 UTC to catch new vulnerability rules
+    - cron: '0 2 * * *'
+
+jobs:
+  semgrep:
+    name: Static Security Analysis
+    runs-on: ubuntu-latest
+    
+    permissions:
+      # Required for uploading SARIF results to GitHub Security
+      security-events: write
+      # Required for checking out private repositories
+      contents: read
+      
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run Semgrep Security Analysis
+        id: semgrep
+        run: |
+          # Install uvx if not available
+          if ! command -v uvx &> /dev/null; then
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          fi
+          
+          # Run comprehensive security analysis
+          echo "🔍 Running Semgrep security analysis..."
+          
+          # Create reports directory
+          mkdir -p semgrep/reports
+          
+          # Run security rules and generate SARIF output for GitHub
+          uvx semgrep \
+            --config=.semgrep.yml \
+            --sarif \
+            --output=semgrep/reports/semgrep-results.sarif \
+            .
+          
+          # Also generate JSON report for artifacts
+          uvx semgrep \
+            --config=.semgrep.yml \
+            --json \
+            --output=semgrep/reports/semgrep-results.json \
+            .
+          
+          # Run custom business logic rules
+          uvx semgrep \
+            --config=semgrep/custom-rules/ \
+            --json \
+            --output=semgrep/reports/semgrep-custom-results.json \
+            . || echo "Custom rules completed with warnings"
+          
+          echo "✅ Semgrep analysis completed"
+          
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep/reports/semgrep-results.sarif
+          category: semgrep-security
+          
+      - name: Process Semgrep Results
+        id: process-results
+        if: always()
+        run: |
+          # Process results and set outputs for PR comments
+          if [ -f "semgrep/reports/semgrep-results.json" ]; then
+            TOTAL_FINDINGS=$(jq '.results | length' semgrep/reports/semgrep-results.json)
+            ERROR_FINDINGS=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' semgrep/reports/semgrep-results.json)
+            WARNING_FINDINGS=$(jq '[.results[] | select(.extra.severity == "WARNING")] | length' semgrep/reports/semgrep-results.json)
+            
+            echo "total_findings=$TOTAL_FINDINGS" >> $GITHUB_OUTPUT
+            echo "error_findings=$ERROR_FINDINGS" >> $GITHUB_OUTPUT
+            echo "warning_findings=$WARNING_FINDINGS" >> $GITHUB_OUTPUT
+            
+            echo "📊 Semgrep Results Summary:"
+            echo "- Total findings: $TOTAL_FINDINGS"
+            echo "- Critical/High (ERROR): $ERROR_FINDINGS"
+            echo "- Medium/Low (WARNING): $WARNING_FINDINGS"
+            
+            # Fail job if critical errors found
+            if [ "$ERROR_FINDINGS" -gt 0 ]; then
+              echo "❌ Critical security issues found! Review required."
+              echo "critical_issues_found=true" >> $GITHUB_OUTPUT
+              exit 1
+            else
+              echo "✅ No critical security issues found"
+              echo "critical_issues_found=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "⚠️ No results file found"
+            echo "total_findings=0" >> $GITHUB_OUTPUT
+            echo "error_findings=0" >> $GITHUB_OUTPUT
+            echo "warning_findings=0" >> $GITHUB_OUTPUT
+            echo "critical_issues_found=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Upload Security Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-security-reports
+          path: semgrep/reports/
+          retention-days: 30
+          
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { total_findings, error_findings, warning_findings, critical_issues_found } = 
+              ${{ toJson(steps.process-results.outputs) }};
+            
+            const status = critical_issues_found === 'true' ? '❌' : '✅';
+            const statusText = critical_issues_found === 'true' ? 'FAILED' : 'PASSED';
+            
+            const comment = `## ${status} Semgrep Security Analysis ${statusText}
+            
+            **Security Scan Results:**
+            - 🔍 Total findings: ${total_findings}
+            - 🚨 Critical/High: ${error_findings}
+            - ⚠️ Medium/Low: ${warning_findings}
+            
+            ${critical_issues_found === 'true' ? 
+              '**❌ Action Required:** Critical security issues found. Please review and fix before merging.' : 
+              '**✅ All Clear:** No critical security issues detected.'}
+            
+            📋 **Full Report:** Check the [Security tab](https://github.com/${context.repo.owner}/${context.repo.repo}/security/code-scanning) for detailed findings.
+            
+            <details>
+            <summary>📖 About Semgrep Analysis</summary>
+            
+            This automated security analysis uses Semgrep to detect:
+            - OWASP Top 10 vulnerabilities
+            - Common Web Application Security Project (CWE) issues  
+            - Custom business logic security patterns
+            - TypeScript/JavaScript security anti-patterns
+            - Next.js/React security best practices
+            
+            The analysis includes both community rules and custom rules tailored to our application.
+            </details>`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+            
+  # Daily security monitoring job
+  security-monitoring:
+    name: Daily Security Monitoring
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js  
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Run Enhanced Security Monitoring
+        run: |
+          # Install uvx
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          
+          # Run extended security analysis
+          mkdir -p semgrep/reports
+          
+          # Run with latest rule updates
+          uvx semgrep \
+            --config=auto \
+            --config=.semgrep.yml \
+            --json \
+            --output=semgrep/reports/daily-security-scan.json \
+            .
+            
+      - name: Process Daily Results
+        run: |
+          if [ -f "semgrep/reports/daily-security-scan.json" ]; then
+            NEW_ISSUES=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' semgrep/reports/daily-security-scan.json)
+            
+            if [ "$NEW_ISSUES" -gt 0 ]; then
+              echo "🚨 New security issues detected in daily scan: $NEW_ISSUES"
+              # Could integrate with Slack/email notifications here
+            else
+              echo "✅ Daily security scan clean"
+            fi
+          fi
+          
+      - name: Upload Daily Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-security-scan
+          path: semgrep/reports/daily-security-scan.json
+          retention-days: 90

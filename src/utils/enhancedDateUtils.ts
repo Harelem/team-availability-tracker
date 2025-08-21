@@ -155,28 +155,53 @@ export const getCurrentWeekRange = (): { start: string; end: string } => {
 };
 
 /**
- * Get current sprint information from database
+ * Get current sprint information from database with smart detection fallback
  */
 export const getCurrentSprintInfo = async (): Promise<SprintInfo | null> => {
   try {
+    // First try to get sprint from database
     const sprint = await DatabaseService.getCurrentGlobalSprint();
     
-    if (!sprint) {
-      return null;
+    // If we got a sprint from database, validate it contains current date
+    if (sprint) {
+      const today = new Date();
+      const sprintStart = new Date(sprint.sprint_start_date);
+      const sprintEnd = new Date(sprint.sprint_end_date);
+      
+      // Check if current date falls within sprint range
+      if (today >= sprintStart && today <= sprintEnd) {
+        console.log('✅ Database sprint is valid for current date');
+        return {
+          sprintNumber: sprint.current_sprint_number,
+          startDate: sprint.sprint_start_date,
+          endDate: sprint.sprint_end_date,
+          lengthWeeks: sprint.sprint_length_weeks,
+          isActive: true
+        };
+      } else {
+        console.warn(`⚠️ Database sprint (${sprint.current_sprint_number}) does not contain current date. Start: ${sprintStart.toDateString()}, End: ${sprintEnd.toDateString()}, Today: ${today.toDateString()}`);
+        console.log('🔄 Falling back to smart sprint detection...');
+      }
     }
     
-    // Calculate sprint end date based on length
-    const startDate = new Date(sprint.sprint_start_date);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + (sprint.sprint_length_weeks * 7) - 1);
+    // Fallback to smart sprint detection
+    const { detectCurrentSprintForDate } = await import('@/utils/smartSprintDetection');
+    const smartSprint = await detectCurrentSprintForDate();
+    
+    if (!smartSprint) {
+      throw new Error('Unable to detect current sprint information');
+    }
+    
+    console.log(`✅ Smart detection activated: ${smartSprint.sprintName} for ${new Date().toDateString()}`);
     
     return {
-      sprintNumber: sprint.current_sprint_number,
-      startDate: sprint.sprint_start_date,
-      endDate: endDate.toISOString().split('T')[0],
-      lengthWeeks: sprint.sprint_length_weeks,
-      isActive: true
+      sprintNumber: smartSprint.sprintNumber,
+      startDate: smartSprint.startDate.toISOString().split('T')[0],
+      endDate: smartSprint.endDate.toISOString().split('T')[0],
+      lengthWeeks: smartSprint.lengthWeeks,
+      isActive: smartSprint.isActive
     };
+    
   } catch (error) {
     console.error('Error fetching current sprint info:', error);
     return null;

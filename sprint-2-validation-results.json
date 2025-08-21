@@ -1,0 +1,47 @@
+{
+  "sprintDetection": "PASS",
+  "hardcodedPercentages": "REVIEW_NEEDED",
+  "workingDaysCalculation": "PASS",
+  "typeScriptCompilation": "TESTED_SEPARATELY",
+  "timestamp": "2025-08-21T00:50:12.649Z",
+  "details": {
+    "sprint2DateRange": {
+      "start": "2025-08-10T00:00:00.000Z",
+      "end": "2025-08-23T00:00:00.000Z",
+      "workingDays": 10,
+      "includesCurrentDate": true
+    },
+    "hardcodedFindings": [
+      {
+        "file": "src/lib/realTimeCalculationService.ts",
+        "line": 427,
+        "content": "const isComplete = submittedDays.size >= workingDays.length * 0.8; // 80% of days submitted",
+        "pattern": "/80%/g"
+      },
+      {
+        "file": "src/lib/realTimeCalculationService.ts",
+        "line": 427,
+        "content": "const isComplete = submittedDays.size >= workingDays.length * 0.8; // 80% of days submitted",
+        "pattern": "/0\\.8[^0-9]/g"
+      },
+      {
+        "file": "src/lib/database.ts",
+        "line": 2846,
+        "content": "{ week: 2, potential: companyMetrics.currentWeek.potentialHours, actual: companyMetrics.currentWeek.actualHours * 0.9, utilization: companyMetrics.currentWeek.utilizationPercent * 0.9 },",
+        "pattern": "/0\\.9[^0-9]/g"
+      }
+    ],
+    "workingDaysList": [
+      "Sun Aug 10 2025",
+      "Mon Aug 11 2025",
+      "Tue Aug 12 2025",
+      "Wed Aug 13 2025",
+      "Thu Aug 14 2025",
+      "Sun Aug 17 2025",
+      "Mon Aug 18 2025",
+      "Tue Aug 19 2025",
+      "Wed Aug 20 2025",
+      "Thu Aug 21 2025"
+    ]
+  }
+}

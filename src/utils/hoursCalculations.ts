@@ -2,6 +2,98 @@ import { supabase } from '@/lib/supabase';
 import { HoursViewType, DateRange, TeamHoursData } from '@/types';
 import { Team, TeamMember, CurrentGlobalSprint } from '@/types';
 
+/**
+ * Convert schedule entry value to hours
+ * '1' = 7 hours (full day)
+ * '0.5' = 3.5 hours (half day)
+ * 'X' = 0 hours (absent)
+ */
+export function valueToHours(value: '1' | '0.5' | 'X' | string | null | undefined): number {
+  if (!value) {
+    console.warn('valueToHours: Received null/undefined value, defaulting to 0 hours');
+    return 0;
+  }
+  
+  switch (value) {
+    case '1':
+      return 7;
+    case '0.5':
+      return 3.5;
+    case 'X':
+      return 0;
+    default:
+      console.warn(`valueToHours: Unknown value "${value}", defaulting to 0 hours`);
+      return 0;
+  }
+}
+
+/**
+ * Convert hours to schedule entry value
+ * 7 hours = '1'
+ * 3.5 hours = '0.5'
+ * 0 hours = 'X'
+ */
+export function hoursToValue(hours: number): '1' | '0.5' | 'X' {
+  if (hours >= 7) return '1';
+  if (hours >= 3.5) return '0.5';
+  return 'X';
+}
+
+/**
+ * Validate team member object has required fields for new schema
+ */
+export function validateTeamMemberSchema(member: any): boolean {
+  const requiredFields = ['id', 'name', 'team_id'];
+  const missingFields = requiredFields.filter(field => !(field in member) || member[field] === undefined);
+  
+  if (missingFields.length > 0) {
+    console.error(`validateTeamMemberSchema: Missing required fields: ${missingFields.join(', ')}`, member);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Validate schedule entry object has required fields
+ */
+export function validateScheduleEntrySchema(entry: any): boolean {
+  const requiredFields = ['member_id', 'date', 'value'];
+  const missingFields = requiredFields.filter(field => !(field in entry) || entry[field] === undefined);
+  
+  if (missingFields.length > 0) {
+    console.error(`validateScheduleEntrySchema: Missing required fields: ${missingFields.join(', ')}`, entry);
+    return false;
+  }
+  
+  // Validate value is one of the expected types
+  const validValues = ['1', '0.5', 'X'];
+  if (!validValues.includes(entry.value)) {
+    console.error(`validateScheduleEntrySchema: Invalid value "${entry.value}", expected one of: ${validValues.join(', ')}`);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Safely get hours from a schedule entry, with fallback handling
+ */
+export function safeGetHoursFromEntry(entry: any): number {
+  // If entry has pre-computed hours field (from enhanced view), use it
+  if (entry && typeof entry.hours === 'number') {
+    return entry.hours;
+  }
+  
+  // Otherwise, convert from value field
+  if (entry && entry.value) {
+    return valueToHours(entry.value);
+  }
+  
+  // Fallback: no entry or invalid entry
+  return 0;
+}
+
 export class HoursCalculationService {
   /**
    * Get date range based on hours view type
@@ -95,11 +187,12 @@ export class HoursCalculationService {
         .gte('date', dateRange.start)
         .lte('date', dateRange.end);
 
-      // Calculate actual hours
+      // Calculate actual hours using safe conversion utility
       let actualHours = 0;
       entries?.forEach(entry => {
-        if (entry.value === '1') actualHours += 7;
-        else if (entry.value === '0.5') actualHours += 3.5;
+        if (validateScheduleEntrySchema(entry)) {
+          actualHours += safeGetHoursFromEntry(entry);
+        }
       });
 
       // Calculate potential hours
@@ -214,8 +307,9 @@ export class HoursCalculationService {
 
       let totalHours = 0;
       entries?.forEach(entry => {
-        if (entry.value === '1') totalHours += 7;
-        else if (entry.value === '0.5') totalHours += 3.5;
+        if (validateScheduleEntrySchema(entry)) {
+          totalHours += safeGetHoursFromEntry(entry);
+        }
       });
 
       return totalHours;
@@ -255,8 +349,9 @@ export class HoursCalculationService {
           breakdown[entry.date] = 0;
         }
         
-        if (entry.value === '1') breakdown[entry.date] += 7;
-        else if (entry.value === '0.5') breakdown[entry.date] += 3.5;
+        if (validateScheduleEntrySchema(entry)) {
+          breakdown[entry.date] += safeGetHoursFromEntry(entry);
+        }
       });
 
       return breakdown;

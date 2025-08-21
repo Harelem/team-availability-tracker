@@ -19,7 +19,7 @@ interface ManagerSafeExportDropdownProps {
   teamMembers: TeamMember[];
   selectedTeam: Team;
   scheduleData: WeekData;
-  currentWeekDays: Date[];
+  currentSprintDays: Date[];
 }
 
 export default function ManagerSafeExportDropdown({
@@ -27,7 +27,7 @@ export default function ManagerSafeExportDropdown({
   teamMembers,
   selectedTeam,
   scheduleData,
-  currentWeekDays
+  currentSprintDays
 }: ManagerSafeExportDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -95,8 +95,12 @@ export default function ManagerSafeExportDropdown({
       let dateRangeText: string;
       
       if (type === 'current-week') {
-        weekDays = currentWeekDays;
-        dateRangeText = formatDateRange(currentWeekDays[0], currentWeekDays[4]);
+        weekDays = currentSprintDays;
+        if (currentSprintDays.length > 0 && currentSprintDays[0] && currentSprintDays[currentSprintDays.length - 1]) {
+          dateRangeText = formatDateRange(currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!);
+        } else {
+          dateRangeText = 'No sprint data available';
+        }
       } else {
         const { startDate, endDate } = calculateWeekRange(type);
         weekDays = getWeekDays(startDate);
@@ -150,11 +154,11 @@ export default function ManagerSafeExportDropdown({
 
   const getExportTypeName = (type: WeekExportType): string => {
     switch (type) {
-      case 'current-week': return 'Current Week';
-      case 'previous-week': return 'Previous Week';
-      case 'next-week': return 'Next Week';
-      case 'specific-week': return 'Specific Week';
-      default: return 'Week Export';
+      case 'current-week': return 'Current Sprint';
+      case 'previous-week': return 'Previous Sprint';
+      case 'next-week': return 'Next Sprint';
+      case 'specific-week': return 'Specific Sprint';
+      default: return 'Sprint Export';
     }
   };
 
@@ -190,9 +194,11 @@ export default function ManagerSafeExportDropdown({
             >
               <Calendar className="w-4 h-4 text-blue-600" />
               <div>
-                <div className="font-medium text-gray-900">Export This Week</div>
+                <div className="font-medium text-gray-900">Export Current Sprint</div>
                 <div className="text-xs text-gray-500">
-                  {formatDateRange(currentWeekDays[0], currentWeekDays[4])}
+                  {currentSprintDays.length > 0 && currentSprintDays[0] && currentSprintDays[currentSprintDays.length - 1]
+                    ? formatDateRange(currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!)
+                    : 'No sprint data available'}
                 </div>
                 <div className="text-xs text-green-600 font-medium">
                   ✅ Using Working COO Logic
@@ -202,9 +208,9 @@ export default function ManagerSafeExportDropdown({
 
             <hr className="my-1 border-gray-200" />
 
-            {/* Week Options */}
+            {/* Sprint Options */}
             <div className="px-3 py-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Week Options</div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sprint Options</div>
             </div>
             
             <button
@@ -213,7 +219,7 @@ export default function ManagerSafeExportDropdown({
             >
               <ArrowLeft className="w-4 h-4 text-gray-400" />
               <div>
-                <span className="text-gray-700">Previous Week</span>
+                <span className="text-gray-700">Previous Sprint</span>
                 <div className="text-xs text-green-600">Safe Export</div>
               </div>
             </button>
@@ -224,7 +230,7 @@ export default function ManagerSafeExportDropdown({
             >
               <Clock className="w-4 h-4 text-gray-400" />
               <div>
-                <span className="text-gray-700">Next Week</span>
+                <span className="text-gray-700">Next Sprint</span>
                 <div className="text-xs text-green-600">Safe Export</div>
               </div>
             </button>

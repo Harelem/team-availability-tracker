@@ -57,7 +57,7 @@ export default function BreadcrumbNavigation({
             <ChevronRight className="w-4 h-4 mx-2 text-gray-400" />
           )}
           <div
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors touch-target ${
               breadcrumb.isActive
                 ? 'bg-blue-100 text-blue-700 font-medium'
                 : breadcrumb.onClick

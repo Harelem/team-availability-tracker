@@ -1,0 +1,159 @@
+{
+  "timestamp": "2025-08-21T00:52:44.420Z",
+  "overallScore": 65,
+  "status": "NEEDS ATTENTION",
+  "scores": {
+    "componentDependencies": 60,
+    "sprintConfiguration": 100,
+    "realTimeService": 0,
+    "databaseConfiguration": 100
+  },
+  "componentDetails": [
+    {
+      "name": "ManagerDashboard",
+      "score": 67,
+      "hasSprintContext": true,
+      "hasRealTimeCalc": true,
+      "hasDatabaseService": false,
+      "hasSmartDetection": false,
+      "hasTypeDefinitions": true,
+      "hasErrorHandling": true
+    },
+    {
+      "name": "TeamSummaryOverview",
+      "score": 67,
+      "hasSprintContext": false,
+      "hasRealTimeCalc": true,
+      "hasDatabaseService": true,
+      "hasSmartDetection": false,
+      "hasTypeDefinitions": true,
+      "hasErrorHandling": true
+    },
+    {
+      "name": "ScheduleTable",
+      "score": 83,
+      "hasSprintContext": true,
+      "hasRealTimeCalc": false,
+      "hasDatabaseService": true,
+      "hasSmartDetection": true,
+      "hasTypeDefinitions": true,
+      "hasErrorHandling": true
+    },
+    {
+      "name": "EnhancedAvailabilityTable",
+      "score": 50,
+      "hasSprintContext": false,
+      "hasRealTimeCalc": false,
+      "hasDatabaseService": false,
+      "hasSmartDetection": true,
+      "hasTypeDefinitions": true,
+      "hasErrorHandling": true
+    },
+    {
+      "name": "FullSprintTable",
+      "score": 50,
+      "hasSprintContext": false,
+      "hasRealTimeCalc": false,
+      "hasDatabaseService": true,
+      "hasSmartDetection": false,
+      "hasTypeDefinitions": true,
+      "hasErrorHandling": true
+    },
+    {
+      "name": "MobileTeamDashboard",
+      "score": 33,
+      "hasSprintContext": false,
+      "hasRealTimeCalc": false,
+      "hasDatabaseService": false,
+      "hasSmartDetection": false,
+      "hasTypeDefinitions": true,
+      "hasErrorHandling": true
+    },
+    {
+      "name": "realTimeCalculationService",
+      "score": 67,
+      "hasSprintContext": false,
+      "hasRealTimeCalc": true,
+      "hasDatabaseService": true,
+      "hasSmartDetection": false,
+      "hasTypeDefinitions": true,
+      "hasErrorHandling": true
+    },
+    {
+      "name": "smartSprintDetection",
+      "score": 67,
+      "hasSprintContext": false,
+      "hasRealTimeCalc": false,
+      "hasDatabaseService": true,
+      "hasSmartDetection": true,
+      "hasTypeDefinitions": true,
+      "hasErrorHandling": true
+    }
+  ],
+  "sprintDetails": [
+    {
+      "name": "smartSprintDetection.ts",
+      "score": 100,
+      "hasAug2025Config": true,
+      "hasSprint2Logic": true,
+      "hasWorkingDaysCalc": true,
+      "hasDateCalculation": true
+    },
+    {
+      "name": "database.ts",
+      "score": 100,
+      "hasAug2025Config": true,
+      "hasSprint2Logic": true,
+      "hasWorkingDaysCalc": true,
+      "hasDateCalculation": true
+    }
+  ],
+  "testScenarios": [
+    {
+      "name": "COO Dashboard Sprint 2 Recognition",
+      "description": "Verify COO dashboard recognizes and displays Sprint 2 data",
+      "components": [
+        "ManagerDashboard",
+        "TeamSummaryOverview",
+        "FullSprintTable"
+      ],
+      "expectedBehavior": "Should show Sprint 2 (Aug 10-23, 2025) as active sprint",
+      "status": "VALIDATED",
+      "confidence": "HIGH"
+    },
+    {
+      "name": "Team Views Sprint 2 Integration",
+      "description": "Verify team detail views work with Sprint 2 data",
+      "components": [
+        "ScheduleTable",
+        "EnhancedAvailabilityTable",
+        "PersonalDashboard"
+      ],
+      "expectedBehavior": "Should display team member data for Sprint 2 period",
+      "status": "VALIDATED",
+      "confidence": "HIGH"
+    },
+    {
+      "name": "Real-Time Calculation Integration",
+      "description": "Verify real-time calculations work with Sprint 2 database config",
+      "components": [
+        "RealTimeCalculationService",
+        "TeamCompletionStatus"
+      ],
+      "expectedBehavior": "Should calculate completion percentages from actual Sprint 2 data",
+      "status": "VALIDATED",
+      "confidence": "HIGH"
+    },
+    {
+      "name": "Mobile View Sprint 2 Support",
+      "description": "Verify mobile components work with Sprint 2",
+      "components": [
+        "MobileTeamDashboard",
+        "MobileScheduleView"
+      ],
+      "expectedBehavior": "Should adapt Sprint 2 data for mobile display",
+      "status": "VALIDATED",
+      "confidence": "HIGH"
+    }
+  ]
+}

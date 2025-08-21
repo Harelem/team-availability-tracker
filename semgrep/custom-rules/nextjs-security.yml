@@ -1,0 +1,226 @@
+rules:
+  - id: nextjs-unsafe-redirect
+    message: |
+      Potential open redirect vulnerability in Next.js.
+      User-controlled input is passed directly to redirect without validation.
+      This can lead to phishing attacks or malicious redirects.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          router.push($USER_INPUT)
+      - pattern: |
+          router.replace($USER_INPUT)
+      - pattern: |
+          redirect($USER_INPUT)
+      - pattern: |
+          res.redirect($USER_INPUT)
+    pattern-not-inside:
+      - pattern: |
+          if (isValidUrl($USER_INPUT)) {
+            ...
+          }
+      - pattern: |
+          if ($USER_INPUT.startsWith('/')) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: web
+      cwe: "CWE-601: Open Redirect"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+      impact: MEDIUM
+
+  - id: nextjs-unsafe-api-route
+    message: |
+      API route accepts user input without validation.
+      This can lead to injection attacks or unexpected behavior.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-inside: |
+          export default function handler($REQ, $RES) {
+            ...
+          }
+      - pattern-either:
+        - pattern: |
+            $REQ.query.$FIELD
+        - pattern: |
+            $REQ.body.$FIELD
+        - pattern: |
+            $REQ.params.$FIELD
+      - pattern-not-inside: |
+          if (...) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: api
+      cwe: "CWE-20: Improper Input Validation"
+      confidence: MEDIUM
+      impact: HIGH
+
+  - id: nextjs-sensitive-data-in-client
+    message: |
+      Sensitive data may be exposed to the client side.
+      Server-side only data should not be passed to client components.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          return {
+            props: {
+              ...,
+              $KEY: process.env.$ENV_VAR,
+              ...
+            }
+          }
+      - pattern: |
+          return {
+            props: {
+              ...,
+              password: $VAL,
+              ...
+            }
+          }
+      - pattern: |
+          return {
+            props: {
+              ...,
+              token: $VAL,
+              ...
+            }
+          }
+      - pattern: |
+          return {
+            props: {
+              ...,
+              secret: $VAL,
+              ...
+            }
+          }
+    metadata:
+      category: security
+      subcategory: data-exposure
+      cwe: "CWE-200: Information Exposure"
+      confidence: HIGH
+      impact: HIGH
+
+  - id: react-unsafe-dangerouslysetinnerhtml
+    message: |
+      Using dangerouslySetInnerHTML with user-controlled content can lead to XSS.
+      Ensure the content is properly sanitized before use.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          <$ELEMENT dangerouslySetInnerHTML={{__html: $USER_INPUT}} />
+      - pattern: |
+          dangerouslySetInnerHTML: {__html: $USER_INPUT}
+    pattern-not-inside:
+      - pattern: |
+          const $VAR = DOMPurify.sanitize($USER_INPUT);
+          ...
+      - pattern: |
+          sanitize($USER_INPUT)
+    metadata:
+      category: security
+      subcategory: xss
+      cwe: "CWE-79: Cross-site Scripting"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+      impact: HIGH
+
+  - id: react-unsafe-href-javascript
+    message: |
+      Using javascript: URLs in href attributes can lead to XSS.
+      Use event handlers instead.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-either:
+      - pattern: |
+          <a href={`javascript:${$CODE}`}>
+      - pattern: |
+          href="javascript:..."
+      - pattern: |
+          href={`javascript:${...}`}
+    metadata:
+      category: security
+      subcategory: xss
+      cwe: "CWE-79: Cross-site Scripting"
+      confidence: HIGH
+      impact: HIGH
+
+  - id: nextjs-unsafe-dynamic-import
+    message: |
+      Dynamic imports with user-controlled paths can lead to code injection.
+      Validate and sanitize the import path.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern: |
+          import($USER_INPUT)
+      - pattern-not-inside: |
+          if (ALLOWED_MODULES.includes($USER_INPUT)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: injection
+      cwe: "CWE-94: Code Injection"
+      confidence: MEDIUM
+      impact: HIGH
+
+  - id: react-missing-key-prop
+    message: |
+      Missing key prop in list rendering can cause React reconciliation issues
+      and potential security problems with state preservation.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-inside: |
+          $ARRAY.map(($ITEM, $INDEX) => {
+            return <$ELEMENT>...</$ELEMENT>
+          })
+      - pattern-not: |
+          <$ELEMENT key={...}>...</$ELEMENT>
+    metadata:
+      category: security
+      subcategory: logic
+      confidence: MEDIUM
+      impact: LOW
+
+  - id: nextjs-insecure-cookie-settings
+    message: |
+      Cookies should be configured with secure flags in production.
+      Missing httpOnly, secure, or sameSite flags can lead to security vulnerabilities.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-inside: |
+          res.setHeader('Set-Cookie', ...)
+      - pattern-not-inside: |
+          'HttpOnly; Secure; SameSite=...'
+    metadata:
+      category: security
+      subcategory: cookies
+      cwe: "CWE-614: Sensitive Cookie Without 'Secure' Flag"
+      confidence: MEDIUM
+      impact: MEDIUM

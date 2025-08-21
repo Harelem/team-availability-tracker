@@ -1,52 +1,48 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Calendar, 
   ChevronRight, 
   Loader2, 
-  Building2,
-  BarChart3,
-  TrendingUp,
-  Zap,
   Crown
 } from 'lucide-react';
-import { Team, TeamStats, COOUser, TeamSelectionScreenProps } from '@/types';
+import { Team, TeamStats, TeamSelectionScreenProps } from '@/types';
 import { DatabaseService } from '@/lib/database';
 
-export default function TeamSelectionScreen({ 
+export default React.memo(function TeamSelectionScreen({ 
   teams, 
-  cooUsers, 
-  onTeamSelect, 
-  onCOOAccess 
+  onTeamSelect 
 }: TeamSelectionScreenProps) {
   const [teamStats, setTeamStats] = useState<TeamStats[]>([]);
+  const [currentSprint, setCurrentSprint] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadTeamStats = async () => {
+    const loadTeamStatsAndSprint = async () => {
       try {
-        const statsData = await DatabaseService.getTeamStats();
+        // Load both team stats and current sprint in parallel
+        const [statsData, sprintData] = await Promise.all([
+          DatabaseService.getTeamStats(),
+          DatabaseService.getCurrentGlobalSprint()
+        ]);
+        
         setTeamStats(statsData);
+        setCurrentSprint(sprintData);
       } catch (error) {
-        console.error('Error loading team stats:', error);
+        console.error('Error loading team stats and sprint:', error);
         setTeamStats([]);
+        setCurrentSprint(null);
       } finally {
         setLoading(false);
       }
     };
 
-    loadTeamStats();
+    loadTeamStatsAndSprint();
   }, []);
 
-  const handleCOOAccess = (cooUser: COOUser) => {
-    setSelectedId(`coo-${cooUser.id}`);
-    setTimeout(() => {
-      onCOOAccess(cooUser);
-    }, 150);
-  };
 
   const handleTeamSelect = (team: Team) => {
     setSelectedId(`team-${team.id}`);
@@ -57,6 +53,18 @@ export default function TeamSelectionScreen({
 
   const getTeamStats = (teamId: number) => {
     return teamStats.find(stat => stat.id === teamId) || { member_count: 0, manager_count: 0 };
+  };
+
+  // Calculate sprint hours potential for a team
+  const calculateSprintHoursPotential = (memberCount: number) => {
+    if (!currentSprint || !memberCount) return 0;
+    
+    // Calculate working days in sprint (assuming 10 working days for a typical 2-week sprint)
+    // This is a simplified calculation - in reality, you'd calculate based on sprint dates
+    const workingDaysInSprint = 10;
+    const hoursPerDay = 7;
+    
+    return memberCount * workingDaysInSprint * hoursPerDay;
   };
 
   if (loading) {
@@ -75,115 +83,33 @@ export default function TeamSelectionScreen({
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-5xl w-full">
         {/* Header */}
-        <div className="text-center mb-8">
-          <Calendar className="text-blue-600 w-12 h-12 mx-auto mb-4" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+        <div className="text-center mb-10">
+          <Calendar className="text-blue-600 w-16 h-16 mx-auto mb-6" />
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
             Team Availability Tracker
           </h1>
-          <p className="text-gray-600 text-sm sm:text-base">
-            Choose your access level to continue
+          <p className="text-gray-600 text-base sm:text-lg">
+            Select your team to continue
           </p>
+          
+          {/* Executive Dashboard Link */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <a 
+              href="/executive" 
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+            >
+              <Crown className="w-4 h-4" />
+              Executive Dashboard Access
+            </a>
+          </div>
         </div>
 
-        {/* Executive Section */}
-        {cooUsers.length > 0 && (
-          <section className="mb-8">
-            <div className="executive-section p-6 rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 text-white mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Crown className="w-6 h-6 text-yellow-300" />
-                <h2 className="text-xl font-bold">Executive Dashboard</h2>
-              </div>
-              
-              <div className="space-y-4">
-                {cooUsers.map((cooUser) => {
-                  const isSelected = selectedId === `coo-${cooUser.id}`;
-                  
-                  return (
-                    <button
-                      key={cooUser.id}
-                      onClick={() => handleCOOAccess(cooUser)}
-                      disabled={isSelected}
-                      className={`
-                        w-full group relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6 text-left transition-all duration-200 hover:bg-white/20 hover:scale-[1.02] active:scale-95 touch-manipulation
-                        ${isSelected ? 'bg-white/20 scale-95' : ''}
-                      `}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-                            <Building2 className="w-6 h-6 text-white" />
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-semibold text-white mb-1">
-                              {cooUser.name}
-                            </h3>
-                            <p className="text-white/80 text-sm mb-2">
-                              {cooUser.hebrew} • {cooUser.title}
-                            </p>
-                            <p className="text-white/70 text-sm mb-3">
-                              {cooUser.description}
-                            </p>
-                            
-                            {/* Executive Features Preview */}
-                            <div className="flex flex-wrap gap-3 text-xs">
-                              <div className="flex items-center gap-1 text-white/80">
-                                <BarChart3 className="w-3 h-3" />
-                                <span>Company-wide analytics</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-white/80">
-                                <TrendingUp className="w-3 h-3" />
-                                <span>Cross-team insights</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-white/80">
-                                <Zap className="w-3 h-3" />
-                                <span>Strategic planning</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="ml-4 shrink-0">
-                          {isSelected ? (
-                            <Loader2 className="w-5 h-5 text-white animate-spin" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5 text-white/60 group-hover:text-white transition-colors" />
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Executive Metrics Preview */}
-                      <div className="mt-4 pt-4 border-t border-white/20">
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <div className="text-lg font-bold text-white">{teams.length}</div>
-                            <div className="text-xs text-white/70">Teams</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-bold text-white">
-                              {teamStats.reduce((sum, stat) => sum + stat.member_count, 0)}
-                            </div>
-                            <div className="text-xs text-white/70">Members</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-bold text-white">Real-time</div>
-                            <div className="text-xs text-white/70">Analytics</div>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* Teams Section */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
+        <section className="mt-12">
+          <div className="flex items-center gap-3 mb-8">
             <Users className="w-6 h-6 text-gray-600" />
-            <h2 className="text-xl font-bold text-gray-900">Team Dashboards</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Team Dashboards</h2>
           </div>
           
           {teams.length === 0 ? (
@@ -195,7 +121,7 @@ export default function TeamSelectionScreen({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {teams.map((team) => {
                 const stats = getTeamStats(team.id);
                 const isSelected = selectedId === `team-${team.id}`;
@@ -206,28 +132,28 @@ export default function TeamSelectionScreen({
                     onClick={() => handleTeamSelect(team)}
                     disabled={isSelected}
                     className={`
-                      group relative bg-white border-2 rounded-lg p-6 text-left transition-all duration-200 min-h-[140px] touch-manipulation hover:shadow-md
+                      group relative bg-white border-2 rounded-xl p-5 text-left transition-all duration-200 w-full hover:shadow-lg hover:-translate-y-1
                       ${isSelected 
-                        ? 'border-blue-500 bg-blue-50 scale-95' 
-                        : 'border-gray-200 hover:border-blue-300 active:scale-95'
+                        ? 'border-blue-500 bg-blue-50 shadow-md' 
+                        : 'border-gray-200 hover:border-blue-300 active:scale-[0.98]'
                       }
                     `}
                     style={{
                       borderColor: isSelected ? team.color : undefined
                     }}
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0 pr-2">
                         <h3 className="font-semibold text-gray-900 text-lg mb-1 truncate">
                           {team.name}
                         </h3>
                         {team.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                          <p className="text-sm text-gray-600 line-clamp-2">
                             {team.description}
                           </p>
                         )}
                       </div>
-                      <div className="ml-2 shrink-0">
+                      <div className="flex-shrink-0">
                         {isSelected ? (
                           <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
                         ) : (
@@ -236,23 +162,27 @@ export default function TeamSelectionScreen({
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center gap-3 text-sm text-gray-600 mb-2">
                         <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          <span>{stats.member_count} members</span>
+                          <Users className="w-4 h-4 flex-shrink-0" />
+                          <span className="whitespace-nowrap">{stats.member_count} members</span>
                         </div>
                         {stats.manager_count > 0 && (
                           <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <span>{stats.manager_count} manager{stats.manager_count > 1 ? 's' : ''}</span>
+                            <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                            <span className="whitespace-nowrap">{stats.manager_count} manager{stats.manager_count > 1 ? 's' : ''}</span>
                           </div>
                         )}
                       </div>
                       
                       {/* Team Metrics Preview */}
                       <div className="text-xs text-gray-500">
-                        Weekly capacity: {stats.member_count * 35}h
+                        {currentSprint ? (
+                          <span className="block truncate">Sprint capacity: {calculateSprintHoursPotential(stats.member_count)}h</span>
+                        ) : (
+                          <span className="block truncate">Weekly capacity: {stats.member_count * 35}h</span>
+                        )}
                       </div>
                     </div>
                     
@@ -270,4 +200,4 @@ export default function TeamSelectionScreen({
       </div>
     </div>
   );
-}
+});

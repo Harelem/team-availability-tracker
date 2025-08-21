@@ -24,7 +24,7 @@ interface ExportDropdownProps {
   teamMembers: TeamMember[];
   selectedTeam: Team;
   scheduleData: WeekData;
-  currentWeekDays: Date[];
+  currentSprintDays: Date[];
 }
 
 export default function ExportDropdown({
@@ -32,7 +32,7 @@ export default function ExportDropdown({
   teamMembers,
   selectedTeam,
   scheduleData,
-  currentWeekDays
+  currentSprintDays
 }: ExportDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -66,8 +66,8 @@ export default function ExportDropdown({
       }
       
       // Fetch data for the specific week
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
+      const startDateStr = startDate.toISOString().split('T')[0] || '' || '';
+      const endDateStr = endDate.toISOString().split('T')[0] || '' || '';
       const weekData = await DatabaseService.getScheduleEntries(startDateStr, endDateStr, selectedTeam.id);
       
       // Handle case where no data is returned
@@ -127,8 +127,8 @@ export default function ExportDropdown({
       const sprintEndDate = new Date(currentSprint.sprint_end_date);
       
       // Fetch data for the sprint period
-      const startDateStr = sprintStartDate.toISOString().split('T')[0];
-      const endDateStr = sprintEndDate.toISOString().split('T')[0];
+      const startDateStr = sprintStartDate.toISOString().split('T')[0] || '';
+      const endDateStr = sprintEndDate.toISOString().split('T')[0] || '';
       const sprintData = await DatabaseService.getScheduleEntries(startDateStr, endDateStr, selectedTeam.id);
       
       // Get all days in sprint period
@@ -173,14 +173,14 @@ export default function ExportDropdown({
     }
   };
 
-  const handleCurrentWeekExport = () => {
-    // Use existing schedule data for current week
-    const statistics = calculateExportStatistics(teamMembers, scheduleData, currentWeekDays);
+  const handleCurrentSprintExport = () => {
+    // Use existing schedule data for current sprint
+    const statistics = calculateExportStatistics(teamMembers, scheduleData, currentSprintDays);
     
     const exportData = {
       teamName: selectedTeam.name,
-      exportType: 'Current Week',
-      dateRange: formatDateRange(currentWeekDays[0], currentWeekDays[4]),
+      exportType: 'Current Sprint',
+      dateRange: currentSprintDays.length > 0 ? formatDateRange(currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!) : '',
       generatedBy: currentUser.name,
       generatedAt: new Date(),
       members: teamMembers,
@@ -189,18 +189,18 @@ export default function ExportDropdown({
     };
     
     const csvContent = generateWeekCSV(exportData);
-    const filename = generateExportFilename('week', selectedTeam.name, currentWeekDays[0], currentWeekDays[4], 'excel');
+    const filename = generateExportFilename('week', selectedTeam.name, currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!, 'excel');
     downloadFile(csvContent, filename, 'excel');
     setIsOpen(false);
   };
 
   const getWeekExportTypeName = (type: WeekExportType): string => {
     switch (type) {
-      case 'current-week': return 'Current Week';
-      case 'previous-week': return 'Previous Week';
-      case 'next-week': return 'Next Week';
-      case 'specific-week': return 'Specific Week';
-      default: return 'Week Export';
+      case 'current-week': return 'Current Sprint';
+      case 'previous-week': return 'Previous Sprint';
+      case 'next-week': return 'Next Sprint';
+      case 'specific-week': return 'Specific Sprint';
+      default: return 'Sprint Export';
     }
   };
 
@@ -228,16 +228,16 @@ export default function ExportDropdown({
           
           {/* Dropdown Menu */}
           <div className="absolute right-0 sm:right-0 top-full mt-1 w-64 sm:w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 max-h-96 overflow-y-auto transform-gpu">
-            {/* Current Week - Quick Option */}
+            {/* Current Sprint - Quick Option */}
             <button
-              onClick={handleCurrentWeekExport}
+              onClick={handleCurrentSprintExport}
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
             >
               <Calendar className="w-4 h-4 text-blue-600" />
               <div>
-                <div className="font-medium text-gray-900">Export This Week</div>
+                <div className="font-medium text-gray-900">Export Current Sprint</div>
                 <div className="text-xs text-gray-500">
-                  {formatDateRange(currentWeekDays[0], currentWeekDays[4])}
+                  {currentSprintDays.length > 0 ? formatDateRange(currentSprintDays[0]!, currentSprintDays[currentSprintDays.length - 1]!) : 'No dates available'}
                 </div>
               </div>
             </button>
@@ -260,9 +260,9 @@ export default function ExportDropdown({
 
             <hr className="my-1 border-gray-200" />
 
-            {/* Week Options */}
+            {/* Sprint Period Options */}
             <div className="px-3 py-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Week Options</div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sprint Period Options</div>
             </div>
             
             <button
@@ -270,7 +270,7 @@ export default function ExportDropdown({
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
             >
               <ArrowLeft className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-700">Previous Week</span>
+              <span className="text-gray-700">Previous Sprint</span>
             </button>
 
             <button
@@ -278,7 +278,7 @@ export default function ExportDropdown({
               className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation"
             >
               <Clock className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-700">Next Week</span>
+              <span className="text-gray-700">Next Sprint</span>
             </button>
 
             <hr className="my-1 border-gray-200" />

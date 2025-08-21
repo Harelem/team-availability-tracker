@@ -11,7 +11,7 @@ interface EnhancedManagerExportButtonProps {
   teamMembers: TeamMember[];
   selectedTeam: Team;
   scheduleData?: WeekData;
-  currentWeekDays?: Date[];
+  currentSprintDays?: Date[];
 }
 
 export default function EnhancedManagerExportButton({
@@ -94,13 +94,11 @@ export default function EnhancedManagerExportButton({
       <button
         onClick={() => setShowModal(true)}
         disabled={isExporting}
-        className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm min-h-[44px] touch-manipulation disabled:opacity-50 w-full sm:w-auto justify-center sm:justify-start"
+        className="flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] p-2 disabled:opacity-50 touch-manipulation"
+        aria-label={isExporting ? 'Exporting...' : 'Export Enhanced Report'}
+        title={isExporting ? 'Exporting...' : 'Export Enhanced Report'}
       >
-        <Download className="w-4 h-4" />
-        <span className="hidden sm:inline">
-          {isExporting ? 'Exporting...' : 'Export'}
-        </span>
-        <span className="sm:hidden text-xs">Enhanced</span>
+        <Download className={`w-4 h-4 ${isExporting ? 'animate-pulse' : ''}`} />
       </button>
 
       <EnhancedExportModal

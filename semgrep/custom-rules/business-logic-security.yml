@@ -1,0 +1,300 @@
+rules:
+  - id: unauthorized-coo-access
+    message: |
+      COO-specific functionality accessed without proper authorization check.
+      Ensure user has COO permissions before accessing sensitive operations.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern-inside: |
+            function $COO_FUNC(...) {
+              ...
+            }
+        - pattern-inside: |
+            const $COO_FUNC = (...) => {
+              ...
+            }
+      - pattern-either:
+        - pattern: |
+            DatabaseService.getCOODashboardData()
+        - pattern: |
+            DatabaseService.getOperationalTeams()
+        - pattern: |
+            COOExecutiveDashboard
+        - pattern: |
+            COODashboard
+      - pattern-not-inside: |
+          if (validateCOOPermissions($USER)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (currentUser?.role === 'COO') {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: authorization
+      cwe: "CWE-862: Missing Authorization"
+      confidence: HIGH
+      impact: HIGH
+      business_context: "COO dashboard access control"
+
+  - id: team-data-cross-access
+    message: |
+      Potential unauthorized access to team data across teams.
+      Ensure users can only access data from their assigned teams.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            DatabaseService.getTeamMembers($TEAM_ID)
+        - pattern: |
+            DatabaseService.getTeamStats($TEAM_ID)
+        - pattern: |
+            supabase.from('team_members').select().eq('team_id', $TEAM_ID)
+      - pattern-not-inside: |
+          if (userBelongsToTeam($USER, $TEAM_ID)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (canAccessTeam($USER, $TEAM_ID)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: authorization
+      cwe: "CWE-639: Insecure Direct Object Reference"
+      confidence: MEDIUM
+      impact: HIGH
+      business_context: "Team data isolation"
+
+  - id: unsafe-schedule-modification
+    message: |
+      Schedule modification without proper validation or authorization.
+      Ensure users can only modify their own schedules or have manager permissions.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            updateSchedule($MEMBER_ID, ...)
+        - pattern: |
+            DatabaseService.updateSchedule($MEMBER_ID, ...)
+        - pattern: |
+            supabase.from('schedules').update(...).eq('member_id', $MEMBER_ID)
+      - pattern-not-inside: |
+          if ($CURRENT_USER.id === $MEMBER_ID || $CURRENT_USER.isManager) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: authorization
+      confidence: MEDIUM
+      impact: MEDIUM
+      business_context: "Schedule data integrity"
+
+  - id: export-without-data-sanitization
+    message: |
+      Data export functionality without proper sanitization.
+      Sensitive data may be exposed in exports. Ensure data is sanitized.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-inside: |
+          function $EXPORT_FUNC(...) {
+            ...
+          }
+      - pattern-either:
+        - pattern: |
+            exportService.$METHOD(...)
+        - pattern: |
+            XLSX.utils.json_to_sheet($DATA)
+        - pattern: |
+            generateExcel($DATA)
+      - pattern-not-inside: |
+          const sanitizedData = sanitize($DATA)
+          ...
+    metadata:
+      category: security
+      subcategory: data-exposure
+      cwe: "CWE-200: Information Exposure"
+      confidence: MEDIUM
+      impact: MEDIUM
+      business_context: "Export data sanitization"
+
+  - id: missing-sprint-validation
+    message: |
+      Sprint calculations performed without proper input validation.
+      Invalid sprint data can lead to incorrect business calculations.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-inside: |
+          function calculate$SPRINT(...) {
+            ...
+          }
+      - pattern-either:
+        - pattern: |
+            calculateSprintCapacity($DATA)
+        - pattern: |
+            sprintCalculations.$METHOD($INPUT)
+        - pattern: |
+            $HOURS * $WEEKS * $MEMBERS
+      - pattern-not-inside: |
+          if (isValidSprintData($INPUT)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: validation
+      confidence: MEDIUM
+      impact: MEDIUM
+      business_context: "Sprint calculation integrity"
+
+  - id: unsafe-member-role-assignment
+    message: |
+      User role assignment without proper authorization check.
+      Only authorized users should be able to assign or modify user roles.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $USER.role = $ROLE
+        - pattern: |
+            $USER.isManager = $BOOL
+        - pattern: |
+            updateUserRole($USER_ID, $ROLE)
+        - pattern: |
+            supabase.from('team_members').update({role: $ROLE})
+      - pattern-not-inside: |
+          if (canAssignRoles($CURRENT_USER)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: authorization
+      cwe: "CWE-269: Improper Privilege Management"
+      confidence: HIGH
+      impact: HIGH
+      business_context: "Role management security"
+
+  - id: insecure-team-creation
+    message: |
+      Team creation without proper validation or authorization.
+      Ensure only authorized users can create teams and team data is validated.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            DatabaseService.createTeam($TEAM_DATA)
+        - pattern: |
+            supabase.from('teams').insert($TEAM_DATA)
+      - pattern-not-inside: |
+          if (validateTeamData($TEAM_DATA) && canCreateTeam($USER)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: validation
+      confidence: MEDIUM
+      impact: MEDIUM
+      business_context: "Team management security"
+
+  - id: unsafe-availability-template-access
+    message: |
+      Availability template access without proper permission check.
+      Templates may contain sensitive scheduling patterns.
+    severity: WARNING
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            getAvailabilityTemplate($TEMPLATE_ID)
+        - pattern: |
+            DatabaseService.getTemplate($TEMPLATE_ID)
+        - pattern: |
+            useAvailabilityTemplates()
+      - pattern-not-inside: |
+          if (canAccessTemplate($USER, $TEMPLATE_ID)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: authorization
+      confidence: MEDIUM
+      impact: LOW
+      business_context: "Template access control"
+
+  - id: missing-data-retention-check
+    message: |
+      Data processing without considering data retention policies.
+      Ensure old data is handled according to retention policies.
+    severity: INFO
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            DatabaseService.getScheduleData()
+        - pattern: |
+            DatabaseService.getHistoricalData()
+        - pattern: |
+            supabase.from($TABLE).select().lt('created_at', $OLD_DATE)
+      - pattern-not-inside: |
+          if (withinRetentionPeriod($DATE)) {
+            ...
+          }
+    metadata:
+      category: security
+      subcategory: privacy
+      confidence: LOW
+      impact: LOW
+      business_context: "Data retention compliance"
+
+  - id: unsafe-error-message-exposure
+    message: |
+      Error messages may expose sensitive system information.
+      Sanitize error messages before showing to users.
+    severity: INFO
+    languages:
+      - typescript
+      - javascript
+    patterns:
+      - pattern-either:
+        - pattern: |
+            console.error($ERROR.message, $ERROR.stack)
+        - pattern: |
+            throw new Error($DATABASE_ERROR.message)
+        - pattern: |
+            showError($ERROR.message)
+      - pattern-not-inside: |
+          const sanitizedError = sanitizeError($ERROR)
+          ...
+    metadata:
+      category: security
+      subcategory: information-disclosure
+      cwe: "CWE-209: Information Exposure Through Error Messages"
+      confidence: LOW
+      impact: LOW
+      business_context: "Error message sanitization"

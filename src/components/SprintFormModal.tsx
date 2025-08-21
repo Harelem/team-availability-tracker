@@ -125,8 +125,8 @@ export default function SprintFormModal({
         
         setFormData({
           sprint_name: '',
-          sprint_start_date: nextSunday.toISOString().split('T')[0],
-          sprint_end_date: endDate.toISOString().split('T')[0],
+          sprint_start_date: nextSunday.toISOString().split('T')[0] || '',
+          sprint_end_date: endDate.toISOString().split('T')[0] || '' || '',
           sprint_length_weeks: 2,
           description: '',
           created_by: 'System'
@@ -234,7 +234,7 @@ export default function SprintFormModal({
       
       setFormData(prev => ({
         ...prev,
-        sprint_end_date: endDate.toISOString().split('T')[0],
+        sprint_end_date: endDate.toISOString().split('T')[0] || '' || '',
         sprint_length_weeks: template.lengthWeeks
       }));
     }
@@ -249,7 +249,7 @@ export default function SprintFormModal({
       return {
         ...prev,
         sprint_start_date: newStartDate,
-        sprint_end_date: endDate.toISOString().split('T')[0]
+        sprint_end_date: endDate.toISOString().split('T')[0] || ''
       };
     });
   };
@@ -263,7 +263,7 @@ export default function SprintFormModal({
     e.preventDefault();
     
     if (validationErrors.length > 0) {
-      setError(validationErrors[0]);
+      setError(validationErrors[0] || null);
       return;
     }
     
@@ -308,7 +308,7 @@ export default function SprintFormModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">

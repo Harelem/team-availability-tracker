@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, ChevronDown, Loader2 } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { COOUser } from '@/types';
 import COOExportModal from './COOExportModal';
 import { validateCOOPermissions } from '@/utils/permissions';
@@ -58,24 +58,18 @@ export default function COOExportButton({
         onClick={handleExportClick}
         disabled={disabled || isExporting}
         className={`
-          flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg 
-          hover:from-indigo-700 hover:to-purple-700 active:from-indigo-800 active:to-purple-800 
-          transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg
-          disabled:opacity-50 disabled:cursor-not-allowed
+          flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg 
+          transition-colors min-h-[44px] min-w-[44px] p-2 disabled:opacity-50 disabled:cursor-not-allowed
+          touch-manipulation
           ${className}
         `}
+        aria-label={isExporting ? 'Exporting executive report...' : 'Export Executive Report'}
+        title={isExporting ? 'Exporting executive report...' : 'Export Executive Report'}
       >
         {isExporting ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Exporting...</span>
-          </>
+          <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          <>
-            <Download className="w-4 h-4" />
-            <span>Export Report</span>
-            <ChevronDown className="w-3 h-3" />
-          </>
+          <Download className="w-4 h-4" />
         )}
       </button>
 

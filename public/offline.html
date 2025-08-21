@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Offline - Team Availability Tracker</title>
+  <meta name="description" content="You are currently offline. Please check your internet connection." />
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .offline-container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+    }
+    
+    .offline-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 30px;
+      border-radius: 50%;
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .offline-icon svg {
+      width: 40px;
+      height: 40px;
+      color: #6b7280;
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #1f2937;
+    }
+    
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #6b7280;
+      margin-bottom: 24px;
+    }
+    
+    .offline-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 32px;
+    }
+    
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 44px;
+    }
+    
+    button:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .secondary-button {
+      background: #f3f4f6;
+      color: #374151;
+    }
+    
+    .secondary-button:hover {
+      background: #e5e7eb;
+    }
+    
+    .connection-status {
+      margin-top: 24px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .online {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    
+    .offline {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    
+    .features-list {
+      text-align: left;
+      margin-top: 24px;
+      padding: 20px;
+      background: #f9fafb;
+      border-radius: 8px;
+    }
+    
+    .features-list h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #1f2937;
+    }
+    
+    .features-list ul {
+      list-style: none;
+    }
+    
+    .features-list li {
+      padding: 6px 0;
+      color: #6b7280;
+      position: relative;
+      padding-left: 20px;
+    }
+    
+    .features-list li:before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+    }
+    
+    @media (max-width: 640px) {
+      .offline-container {
+        padding: 24px;
+        margin: 20px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      .offline-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18.364 5.636l-12.728 12.728"></path>
+        <path d="M12 2C8.5 2 5.5 4 4 7c-1.5 3-1.5 7 0 10 1.5 3 4.5 5 8 5s6.5-2 8-5c.75-1.5 1.125-3.25 1.125-5"></path>
+        <path d="M12 2c3.5 0 6.5 2 8 5 .375 1.75.375 3.75-.125 5.5"></path>
+      </svg>
+    </div>
+    
+    <h1>You're Offline</h1>
+    <p>
+      It looks like you've lost your internet connection. Don't worry - some features 
+      are still available while you're offline, and your data will sync when you're back online.
+    </p>
+    
+    <div class="connection-status offline" id="connectionStatus">
+      <span id="statusText">No internet connection</span>
+    </div>
+    
+    <div class="offline-actions">
+      <button onclick="tryReconnect()" id="reconnectBtn">
+        Try Again
+      </button>
+      <button onclick="goHome()" class="secondary-button">
+        Go to Home
+      </button>
+    </div>
+    
+    <div class="features-list">
+      <h3>Available Offline:</h3>
+      <ul>
+        <li>View cached schedule data</li>
+        <li>Browse team information</li>
+        <li>Access recent analytics</li>
+        <li>Use accessibility features</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Connection status monitoring
+    function updateConnectionStatus() {
+      const statusEl = document.getElementById('connectionStatus');
+      const statusText = document.getElementById('statusText');
+      const reconnectBtn = document.getElementById('reconnectBtn');
+      
+      if (navigator.onLine) {
+        statusEl.className = 'connection-status online';
+        statusText.textContent = 'Connection restored!';
+        reconnectBtn.textContent = 'Continue';
+        
+        // Auto-redirect after showing success message
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        statusEl.className = 'connection-status offline';
+        statusText.textContent = 'No internet connection';
+        reconnectBtn.textContent = 'Try Again';
+      }
+    }
+    
+    // Try to reconnect
+    function tryReconnect() {
+      const btn = document.getElementById('reconnectBtn');
+      btn.textContent = 'Checking...';
+      btn.disabled = true;
+      
+      // Test connection with a simple fetch
+      fetch('/', { method: 'HEAD', cache: 'no-cache' })
+        .then(() => {
+          window.location.reload();
+        })
+        .catch(() => {
+          setTimeout(() => {
+            btn.textContent = 'Try Again';
+            btn.disabled = false;
+            updateConnectionStatus();
+          }, 1000);
+        });
+    }
+    
+    // Go to home page
+    function goHome() {
+      window.location.href = '/';
+    }
+    
+    // Listen for connection changes
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+    
+    // Initial status check
+    updateConnectionStatus();
+    
+    // Check connection periodically
+    setInterval(() => {
+      if (!navigator.onLine) {
+        // Try a lightweight request to check actual connectivity
+        fetch('/', { method: 'HEAD', cache: 'no-cache' })
+          .then(() => {
+            if (!navigator.onLine) {
+              // Browser thinks we're offline but we can reach the server
+              window.dispatchEvent(new Event('online'));
+            }
+          })
+          .catch(() => {
+            // Still offline
+          });
+      }
+    }, 5000);
+    
+    // Service Worker messaging
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((registration) => {
+        // Request cache status or other SW information
+        navigator.serviceWorker.controller?.postMessage({
+          type: 'CACHE_STATUS_REQUEST'
+        });
+      });
+    }
+  </script>
+</body>
+</html>

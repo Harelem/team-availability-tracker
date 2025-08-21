@@ -1,0 +1,55 @@
+{
+  "timestamp": "2025-08-21T07:06:11.391Z",
+  "error": "Could not find Chrome (ver. 139.0.7258.138). This can occur if either\n 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or\n 2. your cache path is incorrectly configured (which is: /Users/harel/.cache/puppeteer).\nFor (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.",
+  "stack": "Error: Could not find Chrome (ver. 139.0.7258.138). This can occur if either\n 1. you did not perform an installation before running the script (e.g. `npx puppeteer browsers install chrome`) or\n 2. your cache path is incorrectly configured (which is: /Users/harel/.cache/puppeteer).\nFor (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.\n    at ChromeLauncher.resolveExecutablePath (/Users/harel/team-availability-tracker/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserLauncher.js:312:27)\n    at ChromeLauncher.computeLaunchArguments (/Users/harel/team-availability-tracker/node_modules/puppeteer-core/lib/cjs/puppeteer/node/ChromeLauncher.js:93:24)\n    at async ChromeLauncher.launch (/Users/harel/team-availability-tracker/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserLauncher.js:84:28)\n    at async testRealTimeSyncValidation (/Users/harel/team-availability-tracker/v2.2-comprehensive-performance-test.js:100:19)\n    at async runComprehensivePerformanceTests (/Users/harel/team-availability-tracker/v2.2-comprehensive-performance-test.js:794:5)",
+  "testResults": {
+    "realTimeSync": {
+      "tests": [],
+      "overall": {
+        "passed": 0,
+        "failed": 0,
+        "avgSyncTime": 0
+      }
+    },
+    "performance": {
+      "tests": [],
+      "overall": {
+        "passed": 0,
+        "failed": 0,
+        "avgLoadTime": 0
+      }
+    },
+    "autoSave": {
+      "tests": [],
+      "overall": {
+        "passed": 0,
+        "failed": 0,
+        "avgSaveTime": 0
+      }
+    },
+    "database": {
+      "tests": [],
+      "overall": {
+        "passed": 0,
+        "failed": 0,
+        "avgQueryTime": 0
+      }
+    },
+    "loadTesting": {
+      "tests": [],
+      "overall": {
+        "passed": 0,
+        "failed": 0,
+        "concurrentUserCapacity": 0
+      }
+    },
+    "memory": {
+      "tests": [],
+      "overall": {
+        "passed": 0,
+        "failed": 0,
+        "memoryLeaks": false
+      }
+    }
+  }
+}

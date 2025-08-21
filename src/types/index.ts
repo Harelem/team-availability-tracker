@@ -3,7 +3,6 @@ export interface Team {
   name: string;
   description?: string;
   color?: string;
-  sprint_length_weeks?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -13,8 +12,11 @@ export interface TeamMember {
   name: string;
   hebrew: string;
   isManager?: boolean;
+  is_manager?: boolean; // Database column name compatibility
   email?: string;
   team_id: number;
+  manager_max_hours?: number; // Enhanced sprint system - custom hours for managers
+  role?: 'member' | 'manager' | 'coo'; // Enhanced sprint system - role-based permissions
   created_at?: string;
   updated_at?: string;
 }
@@ -38,8 +40,15 @@ export interface WorkOption {
 }
 
 export interface ScheduleEntry {
+  id?: number;
+  member_id?: number;
+  date?: string;
   value: '1' | '0.5' | 'X';
+  hours?: number; // Computed hours field from enhanced schema
   reason?: string;
+  sprint_id?: string; // Enhanced sprint system - links entries to sprints (UUID)
+  is_weekend?: boolean; // Enhanced sprint system - auto-calculated weekend flag
+  calculated_hours?: number; // Enhanced sprint system - auto-calculated hours (7.0, 3.5, 0.0)
   created_at?: string;
   updated_at?: string;
 }
@@ -86,39 +95,160 @@ export interface TeamContextType {
 // Access mode for the application
 export type AccessMode = 'coo' | 'team' | null;
 
+// Daily Company Status Types
+export interface DailyMemberStatus {
+  id: number;
+  name: string;
+  teamId: number;
+  teamName: string;
+  role?: string;
+  hours: number; // 0, 0.5, or 1
+  reason?: string;
+  isCritical: boolean;
+}
+
+export interface TeamDailyStatus {
+  id: number;
+  name: string;
+  manager: string;
+  total: number;
+  available: number;
+  halfDay: number;
+  unavailable: number;
+  reserveDuty: DailyMemberStatus[];
+  criticalAbsences: DailyMemberStatus[];
+}
+
+export interface DailyStatusSummary {
+  available: number;
+  halfDay: number;
+  unavailable: number;
+  reserve: number;
+}
+
+export interface DailyCompanyStatusData {
+  summary: DailyStatusSummary;
+  total: number;
+  members: DailyMemberStatus[];
+  teams: TeamDailyStatus[];
+  selectedDate: Date;
+  usedFallback?: boolean; // Indicates if fallback mechanism was used for monitoring
+}
+
 // Team selection screen props
 export interface TeamSelectionScreenProps {
   teams: Team[];
-  cooUsers: COOUser[];
   onTeamSelect: (team: Team) => void;
-  onCOOAccess: (cooUser: COOUser) => void;
 }
 
-// Global Sprint System Types
+// Enhanced Sprint System Types
+export interface EnhancedSprintConfig {
+  id: string; // UUID
+  sprint_number: number;
+  start_date: string;
+  end_date: string;
+  length_weeks: number;
+  working_days_count: number; // Auto-calculated working days (Sun-Thu only)
+  is_active: boolean;
+  created_by: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SprintWorkingDay {
+  id: string; // UUID
+  sprint_id: string; // References enhanced_sprint_configs(id)
+  work_date: string;
+  day_of_week: number; // 0=Sunday, 6=Saturday
+  is_working_day: boolean; // Auto-calculated (Sun-Thu = true)
+  is_holiday: boolean;
+  holiday_name?: string;
+}
+
+export interface CurrentEnhancedSprint {
+  id: string;
+  sprint_number: number;
+  start_date: string;
+  end_date: string;
+  length_weeks: number;
+  working_days_count: number;
+  is_active: boolean;
+  notes?: string;
+  days_elapsed: number;
+  days_remaining: number;
+  total_days: number;
+  progress_percentage: number;
+  working_days_remaining: number;
+  is_current: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+// Legacy interface for backward compatibility
 export interface GlobalSprintSettings {
   id: number;
   sprint_length_weeks: number;
   current_sprint_number: number;
   sprint_start_date: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
   updated_by: string;
 }
 
 export interface CurrentGlobalSprint {
-  id: number;
+  id: number | string; // Can be number (legacy) or string (enhanced UUID)
   sprint_length_weeks: number;
   current_sprint_number: number;
   sprint_start_date: string;
   sprint_end_date: string;
   days_remaining: number;
+  working_days_remaining?: number; // Enhanced sprint system
   progress_percentage: number;
   is_active: boolean;
+  status?: 'upcoming' | 'active' | 'completed'; // Enhanced: automatic status management
+  notes?: string; // Enhanced sprint system
   created_at: string;
   updated_at: string;
   updated_by: string;
 }
 
+// Re-export enhanced sprint detection types for consistency
+export type {
+  SmartSprintInfo,
+  SprintDetectionConfig,
+  DatabaseIntegratedSprintConfig,
+  SprintDetectionResult,
+  SprintValidationResult,
+  SprintStatusInfo,
+  SprintDiscoveryService
+} from '@/utils/smartSprintDetection';
+
+export interface TeamSprintAnalytics {
+  team_id: number;
+  team_name: string;
+  description?: string;
+  color?: string;
+  sprint_id: string; // Enhanced sprint system - UUID reference
+  sprint_number: number;
+  start_date: string;
+  end_date: string;
+  working_days_count: number;
+  progress_percentage: number;
+  days_remaining: number;
+  total_members: number;
+  manager_count: number;
+  regular_member_count: number;
+  max_capacity_hours: number; // Total theoretical capacity
+  actual_hours: number; // Actual logged hours
+  current_week_hours: number; // Current week hours (Sun-Thu)
+  utilization_percentage: number;
+  completion_percentage: number; // How many working days are filled
+}
+
+// Legacy interface for backward compatibility  
 export interface TeamSprintStats {
   team_id: number;
   team_name: string;
@@ -134,10 +264,24 @@ export interface TeamSprintStats {
   is_active: boolean;
   sprint_hours: number;
   current_week_hours: number;
-  total_capacity_hours: number;
+  potential_hours: number;
   capacity_utilization: number;
 }
 
+export interface EnhancedSprintContextType {
+  currentSprint: CurrentEnhancedSprint | null;
+  teamAnalytics: TeamSprintAnalytics | null;
+  workingDays: SprintWorkingDay[];
+  isLoading: boolean;
+  error: string | null;
+  refreshSprint: () => Promise<void>;
+  createSprint: (config: Omit<EnhancedSprintConfig, 'id' | 'working_days_count' | 'created_at' | 'updated_at'>) => Promise<boolean>;
+  updateSprintConfig: (id: string, updates: Partial<EnhancedSprintConfig>) => Promise<boolean>;
+  activateSprint: (id: string) => Promise<boolean>;
+  calculateMemberCapacity: (memberId: number, sprintId: string) => Promise<MemberSprintCapacity | null>;
+}
+
+// Legacy interface for backward compatibility
 export interface GlobalSprintContextType {
   currentSprint: CurrentGlobalSprint | null;
   teamStats: TeamSprintStats | null;
@@ -147,6 +291,15 @@ export interface GlobalSprintContextType {
   updateSprintSettings: (settings: Partial<GlobalSprintSettings>) => Promise<boolean>;
   startNewSprint: (lengthWeeks: number) => Promise<boolean>;
   updateSprintDates: (startDate: string, endDate?: string) => Promise<boolean>;
+}
+
+// Sprint Capacity Calculation Types
+export interface MemberSprintCapacity {
+  max_possible_hours: number;
+  actual_hours: number;
+  utilization_percentage: number;
+  working_days_filled: number;
+  total_working_days: number;
 }
 
 // COO Hours View Toggle Types
@@ -263,7 +416,8 @@ export interface TeamCapacityStatus {
   teamId: number;
   teamName: string;
   memberCount: number;
-  weeklyPotential: number;
+  weeklyPotential: number; // Keep for backwards compatibility - now represents "Potential" (Max minus absences)
+  maxCapacity: number; // New field: team size × work days × 7 hours (theoretical maximum)
   actualHours: number;
   utilization: number;
   capacityGap: number;
@@ -317,9 +471,11 @@ export interface COODashboardData {
   companyOverview: {
     totalTeams: number;
     totalMembers: number;
-    weeklyPotential: number;
+    sprintMax: number;
+    sprintPotential: number;
     currentUtilization: number;
     capacityGap: number;
+    capacityGapPercentage: number;
   };
   teamComparison: TeamCapacityStatus[];
   sprintAnalytics: {
@@ -334,6 +490,14 @@ export interface COODashboardData {
       actual: number;
       utilization: number;
     }[];
+  };
+  // Enhanced sprint system integration
+  enhancedSprintData?: {
+    sprintId: string;
+    workingDaysCount: number;
+    workingDaysRemaining: number;
+    autoWeekendHandling: boolean;
+    teamAnalytics: TeamSprintAnalytics[];
   };
   optimizationRecommendations: string[];
   capacityForecast: CapacityForecast;
@@ -510,4 +674,113 @@ export interface EnhancedExportData {
   userRole: 'coo' | 'manager';
   generatedBy: string;
   generatedAt: Date;
+}
+
+// Sprint Notes and Navigation Types
+export interface SprintNotes {
+  id: number;
+  sprint_number: number;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by: string;
+}
+
+export interface SprintNavigationData {
+  sprint_number: number;
+  sprint_start_date: string;
+  sprint_end_date: string;
+  sprint_length_weeks: number;
+  is_current: boolean;
+  is_past: boolean;
+  is_future: boolean;
+  status: 'current' | 'completed' | 'planned';
+}
+
+export interface SprintHistoryContext {
+  current: SprintNavigationData;
+  previous: SprintNavigationData | null;
+  next: SprintNavigationData | null;
+  position: {
+    current: number;
+    total: number;
+    index: number;
+  };
+}
+
+export interface EnhancedUnifiedSprintData {
+  // Core sprint data
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  timeProgress: number;
+  totalDays: number;
+  daysElapsed: number;
+  daysRemaining: number;
+  workingDaysRemaining: number;
+  isOnTrack: boolean;
+  settingsId: number;
+  lastUpdated: string;
+  sprintNumber: number;
+  sprintWeeks: number;
+  
+  // Enhanced features
+  notes: string;
+  navigation: {
+    hasPrevious: boolean;
+    hasNext: boolean;
+    previousSprint: SprintNavigationData | null;
+    nextSprint: SprintNavigationData | null;
+    position: {
+      current: number;
+      total: number;
+      index: number;
+    };
+  };
+}
+
+// Team Dashboard Types (similar to COO but for single team)
+export interface TeamDashboardData {
+  teamOverview: {
+    teamId: number;
+    teamName: string;
+    memberCount: number;
+    managerCount: number;
+    maxCapacity: number;
+    sprintPotential: number;
+    currentUtilization: number;
+    capacityGap: number;
+    capacityGapPercentage: number;
+  };
+  memberBreakdown: TeamMemberCapacityStatus[];
+  currentWeekMetrics: {
+    potentialHours: number;
+    actualHours: number;
+    utilization: number;
+    absentMembers: number;
+    halfDayMembers: number;
+  };
+  sprintProgress?: {
+    sprintNumber: number;
+    sprintWeeks: number;
+    sprintPotential: number;
+    sprintActual: number;
+    sprintUtilization: number;
+    daysRemaining: number;
+  };
+}
+
+export interface TeamMemberCapacityStatus {
+  memberId: number;
+  memberName: string;
+  isManager: boolean;
+  weeklyPotential: number;
+  actualHours: number;
+  utilization: number;
+  status: 'available' | 'half-day' | 'unavailable';
+  reason?: string;
 }

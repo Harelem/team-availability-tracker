@@ -100,9 +100,19 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
     refreshSprint();
   }, [teamId]);
 
-  // Auto-refresh every 5 minutes to keep data current
+  // Auto-refresh every 10 minutes to reduce server load (optimized for performance)
   useEffect(() => {
-    const interval = setInterval(refreshSprint, 5 * 60 * 1000);
+    // Only enable auto-refresh when page is visible and not in development
+    if (process.env.NODE_ENV === 'development') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      if (!document.hidden) { // Only refresh when tab is active
+        refreshSprint();
+      }
+    }, 10 * 60 * 1000); // Reduced frequency from 5 to 10 minutes
+    
     return () => clearInterval(interval);
   }, [teamId]);
 

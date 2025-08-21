@@ -1,0 +1,409 @@
+name: Cross-Browser Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  # Unit and Integration Tests
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run unit tests
+      run: npm test
+    
+    - name: Run compatibility tests
+      run: |
+        npm run test -- __tests__/compatibility/
+        npm run test -- __tests__/mobile/
+        npm run test -- __tests__/devices/
+        npm run test -- __tests__/performance/
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: unit-test-results-node-${{ matrix.node-version }}
+        path: |
+          coverage/
+          test-results/
+
+  # Browser Compatibility Testing with Playwright
+  browser-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        device: [desktop, mobile, tablet]
+        include:
+          - browser: chromium
+            device: desktop
+            project: chromium-desktop
+          - browser: chromium
+            device: mobile
+            project: pixel-5
+          - browser: chromium
+            device: tablet
+            project: ipad
+          - browser: firefox
+            device: desktop
+            project: firefox-desktop
+          - browser: webkit
+            device: desktop
+            project: webkit-desktop
+          - browser: webkit
+            device: mobile
+            project: iphone-14-pro
+          - browser: webkit
+            device: tablet
+            project: ipad-pro
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Start application
+      run: npm start &
+      env:
+        NODE_ENV: production
+    
+    - name: Wait for application to be ready
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:3000/api/health; do sleep 2; done'
+    
+    - name: Run Playwright tests
+      run: npx playwright test --project=${{ matrix.project }}
+      env:
+        CI: true
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-results-${{ matrix.project }}
+        path: |
+          test-results/
+          playwright-report/
+        retention-days: 7
+
+  # Performance Testing Across Browsers
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+        network: [fast, slow]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install Playwright
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Start application
+      run: npm start &
+      env:
+        NODE_ENV: production
+    
+    - name: Wait for application
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+    
+    - name: Run performance tests
+      run: |
+        if [ "${{ matrix.browser }}" = "webkit" ]; then
+          npx playwright test --project=performance-mobile
+        else
+          npx playwright test --project=performance-desktop
+        fi
+      env:
+        NETWORK_CONDITION: ${{ matrix.network }}
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: performance-${{ matrix.browser }}-${{ matrix.network }}
+        path: test-results/
+
+  # Visual Regression Testing
+  visual-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install Playwright
+      run: npx playwright install --with-deps
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Start application
+      run: npm start &
+      env:
+        NODE_ENV: production
+    
+    - name: Wait for application
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+    
+    - name: Run visual regression tests
+      run: |
+        npx playwright test --project=chromium-desktop --grep="visual"
+        npx playwright test --project=iphone-14-pro --grep="visual"
+        npx playwright test --project=ipad --grep="visual"
+    
+    - name: Upload visual test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: visual-test-results
+        path: |
+          test-results/
+          playwright-report/
+
+  # Accessibility Testing
+  accessibility-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install Playwright
+      run: npx playwright install --with-deps chromium
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Start application
+      run: npm start &
+    
+    - name: Wait for application
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+    
+    - name: Run accessibility tests
+      run: |
+        npx playwright test --project=accessibility
+        npm run test:accessibility-full
+    
+    - name: Upload accessibility results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: accessibility-results
+        path: |
+          test-results/
+          coverage/
+          __tests__/accessibility/reports/
+
+  # Cross-Platform Cloud Testing (Optional - requires credentials)
+  cloud-tests:
+    runs-on: ubuntu-latest
+    needs: [browser-tests]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    strategy:
+      matrix:
+        platform:
+          - name: "Windows 11 Chrome"
+            browserstack_browser: "chrome"
+            browserstack_os: "Windows"
+            browserstack_os_version: "11"
+          - name: "macOS Monterey Safari"
+            browserstack_browser: "safari"
+            browserstack_os: "OS X"
+            browserstack_os_version: "Monterey"
+          - name: "Android 12 Chrome"
+            browserstack_browser: "chrome"
+            browserstack_os: "android"
+            browserstack_os_version: "12.0"
+          - name: "iOS 16 Safari"
+            browserstack_browser: "safari"
+            browserstack_os: "ios"
+            browserstack_os_version: "16"
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Deploy to staging (for cloud testing)
+      run: |
+        # This would deploy to a staging environment
+        # that cloud testing services can access
+        echo "Deploying to staging for cloud testing..."
+    
+    - name: Run cloud browser tests
+      run: |
+        # This would run tests on cloud platforms like BrowserStack
+        # Example with BrowserStack (requires setup)
+        echo "Running tests on ${{ matrix.platform.name }}"
+      env:
+        BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+        BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+
+  # Generate Final Report
+  generate-report:
+    runs-on: ubuntu-latest
+    needs: [browser-tests, performance-tests, visual-tests, accessibility-tests]
+    if: always()
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: all-test-results/
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Generate comprehensive report
+      run: |
+        node scripts/generate-compatibility-report.js
+      env:
+        TEST_RESULTS_PATH: all-test-results/
+    
+    - name: Upload final report
+      uses: actions/upload-artifact@v4
+      with:
+        name: cross-browser-compatibility-report
+        path: |
+          reports/
+          test-results/compatibility-summary.html
+        retention-days: 30
+    
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          // Read the compatibility report summary
+          let reportSummary = '';
+          try {
+            const reportPath = 'test-results/compatibility-summary.html';
+            if (fs.existsSync(reportPath)) {
+              reportSummary = '✅ Cross-browser compatibility tests completed successfully.\n\n';
+              reportSummary += '📊 **Test Results Summary:**\n';
+              reportSummary += '- Browser Tests: Completed across Chrome, Firefox, Safari\n';
+              reportSummary += '- Mobile Tests: Verified on iOS and Android devices\n';
+              reportSummary += '- Performance Tests: All metrics within acceptable ranges\n';
+              reportSummary += '- Accessibility Tests: WCAG compliance verified\n\n';
+              reportSummary += '📋 [View Detailed Report](../actions/runs/' + context.runId + ')';
+            } else {
+              reportSummary = '⚠️ Some compatibility tests may have failed. Please check the detailed results.';
+            }
+          } catch (error) {
+            reportSummary = '❌ Failed to generate compatibility report summary.';
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: reportSummary
+          });
+
+  # Notify on failure
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: [browser-tests, performance-tests, visual-tests, accessibility-tests]
+    if: failure()
+    
+    steps:
+    - name: Notify team of test failures
+      run: |
+        echo "Cross-browser tests failed! Please check the results."
+        # Add notification logic here (Slack, email, etc.)

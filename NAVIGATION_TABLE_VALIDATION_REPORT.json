@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "timestamp": "2025-08-20T20:35:28.846Z",
+    "testDuration": "17716ms",
+    "totalTests": 14,
+    "passed": 12,
+    "failed": 2,
+    "successRate": "85.7%",
+    "criticalIssues": []
+  },
+  "testResults": {
+    "navigationCycling": {
+      "September Forward Navigation": {
+        "passed": true,
+        "details": "September forward navigation: Mon Sep 01 2025 → Mon Sep 08 2025",
+        "issues": []
+      },
+      "Unlimited Forward Navigation": {
+        "passed": true,
+        "details": "Forward navigation to 2035 - allowed up to 2075",
+        "issues": []
+      },
+      "Unlimited Backward Navigation": {
+        "passed": true,
+        "details": "Backward navigation to 2020 - min allowed is 2020",
+        "issues": []
+      },
+      "Week vs Sprint Mode Consistency": {
+        "passed": true,
+        "details": "Navigation mode consistency check - requires browser testing for full validation",
+        "issues": []
+      }
+    },
+    "sprintConfiguration": {
+      "Date Consistency": {
+        "passed": null,
+        "details": "firstSprintStartDate found in both files: null",
+        "issues": [
+          "firstSprintStartDate mismatch between files"
+        ]
+      }
+    },
+    "tableVisibility": {
+      "Header Z-index Fix": {
+        "passed": true,
+        "details": "Pattern 'z-30' found in: src/components/CompactHeaderBar.tsx",
+        "issues": []
+      },
+      "Table Spacing Fix": {
+        "passed": true,
+        "details": "Pattern 'mt-6 mb-4' found in: src/components/ScheduleTable.tsx",
+        "issues": []
+      },
+      "Responsive Design": {
+        "passed": false,
+        "details": "Pattern 'sm:|md:|lg:' found in: ",
+        "issues": [
+          "Pattern 'sm:|md:|lg:' not found in components"
+        ]
+      }
+    },
+    "coreFunctionality": {
+      "Critical Files": {
+        "passed": true,
+        "details": "4 critical files checked",
+        "issues": []
+      }
+    },
+    "edgeCases": {
+      "Year Transition": {
+        "passed": true,
+        "details": "Edge case test executed successfully",
+        "issues": []
+      },
+      "Leap Year Handling": {
+        "passed": true,
+        "details": "Edge case test executed successfully",
+        "issues": []
+      },
+      "Sprint Boundary Crossing": {
+        "passed": true,
+        "details": "Edge case test executed successfully",
+        "issues": []
+      }
+    },
+    "performance": {
+      "TypeScript Compilation": {
+        "passed": true,
+        "details": "TypeScript compilation successful",
+        "issues": []
+      },
+      "Build Process": {
+        "passed": true,
+        "details": "Build process completed successfully",
+        "issues": []
+      }
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "area": "General",
+      "issue": "2 tests failed",
+      "recommendation": "Review failed tests and implement fixes"
+    }
+  ],
+  "nextSteps": [
+    {
+      "category": "sprintConfiguration",
+      "action": "Fix Date Consistency",
+      "details": "firstSprintStartDate mismatch between files"
+    },
+    {
+      "category": "tableVisibility",
+      "action": "Fix Responsive Design",
+      "details": "Pattern 'sm:|md:|lg:' not found in components"
+    }
+  ]
+}

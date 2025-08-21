@@ -1,84 +1,148 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
+
+// SSR-safe useLayoutEffect that falls back to useEffect on server
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 /**
- * Custom hook to detect mobile screen size
+ * SSR-Safe Custom hook to detect mobile screen size
  * Returns true for screens smaller than 768px
+ * Handles server-side rendering by defaulting to false (desktop)
  */
 export const useMobileDetection = (): boolean => {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(false); // Default to desktop during SSR
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Hydration effect
+  useIsomorphicLayoutEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
+    // Skip during SSR
+    if (typeof window === 'undefined') return;
+
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      try {
+        setIsMobile(window.innerWidth < 768);
+      } catch (error) {
+        console.warn('Error checking mobile detection:', error);
+        setIsMobile(false);
+      }
     };
 
-    // Check initial screen size
-    checkMobile();
-
-    // Add resize listener
-    window.addEventListener('resize', checkMobile);
+    // Only run after hydration
+    if (isHydrated) {
+      checkMobile();
+      // Add resize listener
+      window.addEventListener('resize', checkMobile);
+    }
 
     // Cleanup listener on unmount
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', checkMobile);
+      }
+    };
+  }, [isHydrated]);
 
   return isMobile;
 };
 
 /**
- * Custom hook for tablet detection (768px - 1024px)
+ * SSR-Safe Custom hook for tablet detection (768px - 1024px)
  */
 export const useTabletDetection = (): boolean => {
-  const [isTablet, setIsTablet] = useState(false);
+  const [isTablet, setIsTablet] = useState(false); // Default to desktop during SSR
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Hydration effect
+  useIsomorphicLayoutEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
+    // Skip during SSR
+    if (typeof window === 'undefined') return;
+
     const checkTablet = () => {
-      const width = window.innerWidth;
-      setIsTablet(width >= 768 && width < 1024);
+      try {
+        const width = window.innerWidth;
+        setIsTablet(width >= 768 && width < 1024);
+      } catch (error) {
+        console.warn('Error checking tablet detection:', error);
+        setIsTablet(false);
+      }
     };
 
-    checkTablet();
-    window.addEventListener('resize', checkTablet);
+    // Only run after hydration
+    if (isHydrated) {
+      checkTablet();
+      window.addEventListener('resize', checkTablet);
+    }
 
-    return () => window.removeEventListener('resize', checkTablet);
-  }, []);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', checkTablet);
+      }
+    };
+  }, [isHydrated]);
 
   return isTablet;
 };
 
 /**
- * Custom hook for comprehensive screen size detection
+ * SSR-Safe Custom hook for comprehensive screen size detection
  */
 export const useScreenSize = () => {
   const [screenSize, setScreenSize] = useState({
-    width: 0,
-    height: 0,
+    width: 1024, // Default to desktop width during SSR
+    height: 768, // Default to desktop height during SSR
     isMobile: false,
     isTablet: false,
-    isDesktop: false
+    isDesktop: true // Default to desktop during SSR
   });
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  useEffect(() => {
-    const updateScreenSize = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      
-      setScreenSize({
-        width,
-        height,
-        isMobile: width < 768,
-        isTablet: width >= 768 && width < 1024,
-        isDesktop: width >= 1024
-      });
-    };
-
-    updateScreenSize();
-    window.addEventListener('resize', updateScreenSize);
-
-    return () => window.removeEventListener('resize', updateScreenSize);
+  // Hydration effect
+  useIsomorphicLayoutEffect(() => {
+    setIsHydrated(true);
   }, []);
 
-  return screenSize;
+  useEffect(() => {
+    // Skip during SSR
+    if (typeof window === 'undefined') return;
+
+    const updateScreenSize = () => {
+      try {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        setScreenSize({
+          width,
+          height,
+          isMobile: width < 768,
+          isTablet: width >= 768 && width < 1024,
+          isDesktop: width >= 1024
+        });
+      } catch (error) {
+        console.warn('Error updating screen size:', error);
+      }
+    };
+
+    // Only run after hydration
+    if (isHydrated) {
+      updateScreenSize();
+      window.addEventListener('resize', updateScreenSize);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', updateScreenSize);
+      }
+    };
+  }, [isHydrated]);
+
+  return { ...screenSize, isHydrated };
 };

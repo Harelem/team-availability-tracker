@@ -1,0 +1,215 @@
+{
+  "timestamp": "2025-08-21T07:10:14.827Z",
+  "version": "2.2",
+  "configuration": {
+    "TARGET_PAGE_LOAD_TIME": 3000,
+    "TARGET_AUTO_SAVE_TIME": 2000,
+    "TARGET_SYNC_TIME": 3000,
+    "TARGET_DB_QUERY_TIME": 500,
+    "CONCURRENT_REQUESTS": 10,
+    "TEST_DURATION": 30000,
+    "BASE_URL": "http://localhost:3000"
+  },
+  "results": {
+    "apiPerformance": {
+      "tests": [
+        {
+          "testName": "Home Page Load Time",
+          "passed": true,
+          "timestamp": "2025-08-21T07:10:14.864Z",
+          "metrics": {
+            "responseTime": 14,
+            "targetTime": 3000,
+            "statusCode": 200
+          },
+          "details": {}
+        },
+        {
+          "testName": "API /api/teams",
+          "passed": false,
+          "timestamp": "2025-08-21T07:10:14.877Z",
+          "metrics": {
+            "responseTime": 13,
+            "targetTime": 500,
+            "statusCode": 404
+          },
+          "details": {}
+        },
+        {
+          "testName": "API /api/schedule",
+          "passed": false,
+          "timestamp": "2025-08-21T07:10:14.889Z",
+          "metrics": {
+            "responseTime": 12,
+            "targetTime": 500,
+            "statusCode": 404
+          },
+          "details": {}
+        },
+        {
+          "testName": "API /api/sprints",
+          "passed": false,
+          "timestamp": "2025-08-21T07:10:14.901Z",
+          "metrics": {
+            "responseTime": 12,
+            "targetTime": 500,
+            "statusCode": 404
+          },
+          "details": {}
+        },
+        {
+          "testName": "API /api/health",
+          "passed": false,
+          "timestamp": "2025-08-21T07:10:15.964Z",
+          "metrics": {
+            "responseTime": 1063,
+            "targetTime": 500,
+            "statusCode": 200
+          },
+          "details": {}
+        }
+      ],
+      "metrics": {
+        "avgResponseTime": 1063,
+        "successRate": 25
+      },
+      "status": "failed"
+    },
+    "loadTesting": {
+      "tests": [
+        {
+          "testName": "Concurrent Request Handling",
+          "passed": true,
+          "timestamp": "2025-08-21T07:10:16.206Z",
+          "metrics": {
+            "successfulRequests": 10,
+            "totalRequests": 10,
+            "throughput": 42.16,
+            "totalTimeMs": 237
+          },
+          "details": {}
+        },
+        {
+          "testName": "Sustained Load Performance",
+          "passed": true,
+          "timestamp": "2025-08-21T07:10:46.238Z",
+          "metrics": {
+            "duration": 30032,
+            "requestsProcessed": 29,
+            "avgResponseTime": 166,
+            "errorRate": 0
+          },
+          "details": {}
+        }
+      ],
+      "metrics": {
+        "concurrentCapacity": 10,
+        "throughput": 42.16
+      },
+      "status": "passed"
+    },
+    "realTimeCapability": {
+      "tests": [
+        {
+          "testName": "WebSocket Connection",
+          "passed": true,
+          "timestamp": "2025-08-21T07:10:46.341Z",
+          "metrics": {
+            "connectionTime": 101,
+            "stable": true
+          },
+          "details": {
+            "error": null
+          }
+        },
+        {
+          "testName": "Real-time /api/realtime/status",
+          "passed": false,
+          "timestamp": "2025-08-21T07:10:46.373Z",
+          "metrics": {
+            "responseTime": 32,
+            "targetTime": 3000,
+            "statusCode": 404
+          },
+          "details": {}
+        },
+        {
+          "testName": "Real-time /api/sync/health",
+          "passed": false,
+          "timestamp": "2025-08-21T07:10:46.386Z",
+          "metrics": {
+            "responseTime": 13,
+            "targetTime": 3000,
+            "statusCode": 404
+          },
+          "details": {}
+        },
+        {
+          "testName": "Sync Latency Performance",
+          "passed": true,
+          "timestamp": "2025-08-21T07:10:47.793Z",
+          "metrics": {
+            "avgLatency": 141,
+            "maxLatency": 159,
+            "targetLatency": 3000
+          },
+          "details": {}
+        }
+      ],
+      "metrics": {
+        "syncLatency": 0,
+        "connectionStability": 100
+      },
+      "status": "passed"
+    },
+    "systemStability": {
+      "tests": [
+        {
+          "testName": "System Uptime and Stability",
+          "passed": true,
+          "timestamp": "2025-08-21T07:11:47.795Z",
+          "metrics": {
+            "uptime": 100,
+            "errorRate": 0,
+            "totalChecks": 11,
+            "testDurationMs": 60000
+          },
+          "details": {}
+        },
+        {
+          "testName": "Error Recovery Capability",
+          "passed": true,
+          "timestamp": "2025-08-21T07:11:48.042Z",
+          "metrics": {
+            "recoveryTime": 246,
+            "recovered": true
+          },
+          "details": {
+            "error": null
+          }
+        }
+      ],
+      "metrics": {
+        "errorRate": 0,
+        "uptime": 100
+      },
+      "status": "passed"
+    }
+  },
+  "overall": {
+    "score": 68,
+    "status": "critical",
+    "totalTests": 13,
+    "passedTests": 7,
+    "recommendations": [
+      "Optimize API response times and improve endpoint reliability",
+      "Improve real-time sync performance and reduce latency"
+    ],
+    "categoryScores": {
+      "apiPerformance": 20,
+      "loadTesting": 100,
+      "realTimeCapability": 50,
+      "systemStability": 100
+    }
+  }
+}

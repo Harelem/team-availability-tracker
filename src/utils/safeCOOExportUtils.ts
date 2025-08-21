@@ -92,7 +92,7 @@ const generateSafeExecutiveSummarySheet = (
     data.push(['Metric', 'Value', 'Status']);
     data.push(['Total Teams', companyData.companyOverview.totalTeams || 0, 'Active']);
     data.push(['Total Members', companyData.companyOverview.totalMembers || 0, 'Active']);
-    data.push(['Weekly Potential', `${companyData.companyOverview.weeklyPotential || 0}h`, 'Calculated']);
+    data.push(['Sprint Potential', `${companyData.companyOverview.sprintPotential || 0}h`, 'Calculated']);
     data.push(['Current Utilization', `${companyData.companyOverview.currentUtilization || 0}%`, getUtilizationStatus(companyData.companyOverview.currentUtilization || 0)]);
     data.push(['Capacity Gap', `${Math.abs(companyData.companyOverview.capacityGap || 0)}h`, companyData.companyOverview.capacityGap && companyData.companyOverview.capacityGap > 0 ? 'Under-utilized' : 'Over-capacity']);
     data.push(['']);
