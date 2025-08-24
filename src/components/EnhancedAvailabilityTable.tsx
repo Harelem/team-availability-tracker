@@ -664,13 +664,14 @@ export default function EnhancedAvailabilityTable({
       </div>
 
       {/* Desktop Table View (hidden on mobile) */}
-      <div className="hidden md:block overflow-auto scrollbar-hide max-h-[calc(100vh-120px)]">
-        <table className="schedule-table-optimized min-w-[1200px]">
+      <div className="hidden md:block overflow-x-auto overflow-y-auto scrollbar-hide max-h-[calc(100vh-120px)]">
+        <div className="min-w-0 w-full">
+          <table className="schedule-table-optimized w-full table-auto">
           {/* Table Header */}
           <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
-              <th className="sticky left-0 z-20 bg-gray-50 text-left py-3 px-2 sm:py-4 sm:px-6 font-semibold text-gray-900 border-r min-w-[180px] lg:min-w-[220px] xl:min-w-[240px]">
-                <div className="text-xs sm:text-sm">Team Member</div>
+              <th className="sticky left-0 z-20 bg-gray-50 text-left py-3 px-2 sm:py-4 sm:px-4 font-semibold text-gray-900 border-r w-48 max-w-48">
+                <div className="text-xs sm:text-sm truncate">Team Member</div>
               </th>
               {enhancedSprintCalendar.map((dayInfo, index) => {
                 // CRITICAL: Defensive check for valid date objects
@@ -685,9 +686,9 @@ export default function EnhancedAvailabilityTable({
                 const past = typeof isPastDate === 'function' ? isPastDate(dayDate) : false;
                 
                 return (
-                  <th key={`${dayDate.toISOString().split('T')[0]}-${dayInfo.type}`} className={`text-center py-3 px-1 sm:py-4 sm:px-4 font-semibold border-r table-day-column ${
+                  <th key={`${dayDate.toISOString().split('T')[0]}-${dayInfo.type}`} className={`text-center py-3 px-1 sm:py-4 sm:px-2 font-semibold border-r w-16 sm:w-20 max-w-20 ${
                     isWeekendRef 
-                      ? 'min-w-[60px] sm:min-w-[80px] bg-gray-100 text-gray-400' 
+                      ? 'bg-gray-100 text-gray-400' 
                       : ''
                   } ${
                     !isWeekendRef && today 
@@ -859,7 +860,8 @@ export default function EnhancedAvailabilityTable({
               </td>
             </tr>
           </tfoot>
-        </table>
+          </table>
+        </div>
       </div>
 
       {/* Enhanced Legend - Mobile and Desktop */}

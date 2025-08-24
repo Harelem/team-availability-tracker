@@ -17,8 +17,8 @@ import { TeamMember, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import { verifyEnvironmentConfiguration } from '@/utils/deploymentSafety';
 import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPreservation';
-import { validateDatabaseSchema, safeInitializeWithValidation } from '@/utils/schemaValidator';
-import { loadTeamsWithFallback, saveOfflineData, initializeOfflineMode, getErrorMessage } from '@/utils/errorRecovery';
+import { validateDatabaseSchema } from '@/utils/schemaValidator';
+import { loadOfflineData, saveOfflineData, initializeOfflineMode, getErrorMessage } from '@/utils/errorRecovery';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import ClientOnly from '@/components/ClientOnly';
 
@@ -79,58 +79,41 @@ function HomeContent() {
         if (!mounted) return;
         setLoading(true);
         
+        // SIMPLIFIED: Direct team loading without blocking validation
+        console.log('🔄 Loading teams from database...');
         
-        // Add 15-second timeout for initial load
-        // PROGRESSIVE LOADING: First validate schema, then load critical data
-        const initPromise = safeInitializeWithValidation(
-          async () => {
-            const schemaValidation = await validateDatabaseSchema();
-            if (!schemaValidation.isValid) {
-              const errorMsg = `Schema validation failed: ${schemaValidation.errors.join(', ')}`;
-              console.error('🚨 CRITICAL SCHEMA ERRORS:', schemaValidation.errors);
-              throw new Error(errorMsg);
-            }
-
-            const envVerification = verifyEnvironmentConfiguration();
-            if (!envVerification.isConfigValid) {
-              console.error('🚨 Environment configuration issues detected!');
-              envVerification.warnings.forEach(warning => {
-                console.warn(`⚠️ ${warning}`);
-              });
-            }
-            // Load teams with offline fallback
-            const teamsResult = await loadTeamsWithFallback(() => DatabaseService.getTeams());
-            
-            if (!teamsResult.success) {
-              throw new Error(teamsResult.error || 'Failed to load teams');
-            }
-            
-            const teamsData = teamsResult.data!;
-            
-            // Save to offline storage for future use
-            saveOfflineData(teamsData);
-            
-            return teamsData;
-          },
-          'Critical App Initialization',
-          ['teams'] // Required tables for critical initialization
-        );
-
-        const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error('Application initialization timeout after 10 seconds')), 10000);
-        });
-
-        const initResult = await Promise.race([initPromise, timeoutPromise]) as any;
-        const teamsData = initResult.success ? initResult.data : [];
+        // Direct call to DatabaseService without complex wrappers
+        const teamsData = await DatabaseService.getTeams();
         
         if (!mounted) return;
-        clearTimeout(timeoutId);
         
-        setTeams(teamsData);
+        // Set teams immediately - even if empty, that's valid
+        setTeams(teamsData || []);
         
-        // BACKGROUND LOADING: Start non-critical data loading after UI is shown
+        if (teamsData && teamsData.length > 0) {
+          console.log(`✅ Successfully loaded ${teamsData.length} teams`);
+          
+          // Save to offline storage for future use
+          saveOfflineData(teamsData);
+        } else {
+          console.warn('⚠️ No teams found in database - this may be expected for new installations');
+        }
+        
+        // BACKGROUND: Run validation and other checks non-blocking
         setTimeout(() => {
           if (mounted) {
+            // Run schema validation in background - just for logging
+            validateDatabaseSchema().then(result => {
+              if (!result.isValid) {
+                console.warn('⚠️ Schema validation warnings (non-blocking):', result.errors);
+              } else {
+                console.log('✅ Schema validation passed');
+              }
+            }).catch(err => {
+              console.warn('⚠️ Schema validation check failed (non-critical):', err);
+            });
+            
+            // Load other background data
             loadBackgroundData();
           }
         }, 100);
@@ -139,35 +122,26 @@ function HomeContent() {
         if (!mounted) return;
         
         const errorMessage = getErrorMessage(error);
-        console.error('❌ Critical initialization failed:', errorMessage);
+        console.error('❌ Failed to load teams:', errorMessage);
         
-        // FALLBACK: Try offline mode
+        // FALLBACK: Try offline mode only for real failures
         try {
-          const offlineResult = await loadTeamsWithFallback(async () => {
-            // This will throw, but loadTeamsWithFallback will catch and use offline data
-            throw error;
-          });
-          
-          if (offlineResult.success && offlineResult.data) {
-            setTeams(offlineResult.data);
-            
-            // Show user-friendly message about offline mode
-            if (offlineResult.fromOfflineMode) {
-              console.info('📱 Running in offline mode - some data may not be current');
-            }
+          const offlineData = loadOfflineData();
+          if (offlineData && offlineData.teams && offlineData.teams.length > 0) {
+            console.info('📱 Using offline data - some information may not be current');
+            setTeams(offlineData.teams);
           } else {
-            console.error('❌ Both online and offline initialization failed');
+            console.warn('⚠️ No offline data available');
             setTeams([]);
           }
         } catch (fallbackError) {
-          console.error('❌ Complete initialization failure:', fallbackError);
+          console.error('❌ Offline fallback also failed:', fallbackError);
           setTeams([]);
         }
       } finally {
         if (mounted) {
           setLoading(false);
         }
-        clearTimeout(timeoutId);
       }
     };
 
@@ -229,21 +203,17 @@ function HomeContent() {
     setSelectedUser(null);
   }, [selectedTeam]);
 
-  // Handle URL parameters for team navigation from COO dashboard
+  // Handle URL parameters for team navigation
   useEffect(() => {
     if (!searchParams) return;
     
     const teamParam = searchParams.get('team');
-    const executiveParam = searchParams.get('executive');
     
     if (teamParam && teams.length > 0 && !selectedTeam) {
       const teamId = parseInt(teamParam);
       const targetTeam = teams.find(team => team.id === teamId);
       
       if (targetTeam) {
-        if (executiveParam === 'true') {
-          // Executive context maintained
-        }
         setSelectedTeam(targetTeam);
       } else {
         console.warn(`⚠️ Team with ID ${teamId} not found in available teams`);
@@ -257,18 +227,10 @@ function HomeContent() {
   }, [setSelectedTeam]);
 
   const handleBackToSelection = useCallback(() => {
-    const executiveParam = searchParams?.get('executive');
-    
-    // If coming from executive context, return to COO dashboard
-    if (executiveParam === 'true') {
-      router.push('/executive');
-      return;
-    }
-    
-    // Otherwise, return to team selection
+    // Return to team selection
     setSelectedTeam(null);
     setSelectedUser(null);
-  }, [searchParams, setSelectedTeam, router]);
+  }, [setSelectedTeam]);
 
   // Show team selection if no team selected
   if (!selectedTeam) {

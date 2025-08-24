@@ -194,9 +194,9 @@ export default function MobileScheduleCard({
     <div className={`bg-white rounded-xl shadow-elevation-2 border-2 mb-4 overflow-hidden transition-all duration-300 active:scale-[0.995] hover:shadow-elevation-3 ${
       isCurrentUser ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
     }`}>
-      {/* Card Header - Enhanced touch interaction */}
+      {/* Card Header - Enhanced touch interaction with larger touch targets */}
       <div 
-        className="p-4 cursor-pointer touch-manipulation min-h-[56px] active:bg-gray-100 transition-all duration-200 active:scale-[0.98]"
+        className="p-6 cursor-pointer touch-manipulation min-h-[72px] active:bg-gray-100 transition-all duration-200 active:scale-[0.98] rounded-t-xl"
         onClick={() => {
           // Add haptic feedback if supported
           if ('vibrate' in navigator) {
@@ -205,6 +205,7 @@ export default function MobileScheduleCard({
           setIsExpanded(!isExpanded);
         }}
         onTouchStart={() => {}} // Enable better touch response
+        style={{ touchAction: 'manipulation' }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -253,9 +254,9 @@ export default function MobileScheduleCard({
       {/* Expanded Card Content */}
       {isExpanded && (
         <div className="border-t border-gray-200 p-4">
-          {/* Full Sprint Button - Enhanced mobile design */}
+          {/* Full Sprint Button - Enhanced mobile design with better touch targets */}
           {canEdit && (
-            <div className="mb-6">
+            <div className="mb-8">
               <button
                 onClick={() => {
                   // Add haptic feedback
@@ -264,7 +265,8 @@ export default function MobileScheduleCard({
                   }
                   onFullSprintSet();
                 }}
-                className="w-full bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-2 border-green-200 rounded-xl py-5 px-6 font-semibold hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all duration-200 touch-manipulation min-h-[60px] shadow-elevation-2 hover:shadow-elevation-3 transform hover:scale-[1.02]"
+                className="w-full bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border-3 border-green-200 rounded-2xl py-6 px-8 font-bold text-lg hover:bg-green-100 active:bg-green-200 active:scale-[0.98] transition-all duration-200 touch-manipulation min-h-[72px] shadow-elevation-3 hover:shadow-elevation-4 transform hover:scale-[1.01]"
+                style={{ touchAction: 'manipulation' }}
               >
                 <div className="flex items-center justify-center gap-3">
                   <CheckCircle className="w-6 h-6" />
@@ -286,15 +288,15 @@ export default function MobileScheduleCard({
               const past = isPastDate(date);
 
               return (
-                <div key={dateKey} className={`rounded-xl p-4 border-2 transition-all duration-300 ${
+                <div key={dateKey} className={`rounded-2xl p-6 border-3 transition-all duration-300 min-h-[140px] ${
                   today 
-                    ? 'bg-blue-50 border-blue-300 shadow-md' 
+                    ? 'bg-blue-50 border-blue-400 shadow-lg ring-2 ring-blue-200 ring-offset-2' 
                     : past 
-                    ? 'bg-gray-50 border-gray-200' 
-                    : 'bg-white border-gray-200 hover:border-gray-300'
+                    ? 'bg-gray-50 border-gray-300 shadow-sm' 
+                    : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'
                 }`}>
-                  {/* Day Header */}
-                  <div className="flex items-center justify-between mb-4">
+                  {/* Day Header - Enhanced for better visibility */}
+                  <div className="flex items-center justify-between mb-6 p-2 rounded-xl bg-white/70">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{getStatusEmoji(currentValue?.value)}</span>
@@ -327,23 +329,24 @@ export default function MobileScheduleCard({
                     )}
                   </div>
                   
-                  {/* Enhanced Status Button with Swipe Support */}
-                  <div className="space-y-3">
+                  {/* Enhanced Status Button with Swipe Support and Improved Touch Targets */}
+                  <div className="space-y-4">
                     <div className="text-center">
                       <button
                         onTouchStart={(e) => handleTouchStart(e, date, currentValue?.value)}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={(e) => handleTouchEnd(e, date, currentValue?.value)}
                         disabled={!canEdit}
-                        className={`w-full py-6 px-6 rounded-2xl border-3 font-bold text-lg transition-all duration-300 touch-manipulation min-h-[80px] shadow-lg transform ${
+                        className={`w-full py-8 px-8 rounded-3xl border-4 font-bold text-xl transition-all duration-300 touch-manipulation min-h-[100px] shadow-xl transform ${
                           canEdit 
-                            ? 'active:scale-95 cursor-pointer hover:scale-102 hover:shadow-xl' 
+                            ? 'active:scale-95 cursor-pointer hover:scale-[1.02] hover:shadow-2xl' 
                             : 'cursor-not-allowed opacity-60'
                         } ${
                           currentValue?.value
-                            ? workOptions.find(opt => opt.value === currentValue.value)?.color + ' ring-4 ring-blue-300 ring-offset-2 scale-105'
+                            ? workOptions.find(opt => opt.value === currentValue.value)?.color + ' ring-4 ring-blue-400 ring-offset-4 scale-[1.02] shadow-2xl'
                             : 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-600 border-gray-300 hover:from-gray-100 hover:to-gray-200'
                         }`}
+                        style={{ touchAction: 'manipulation' }}
                       >
                         <div className="flex flex-col items-center gap-2">
                           <div className="flex items-center gap-3">
@@ -377,20 +380,20 @@ export default function MobileScheduleCard({
                       </button>
                     </div>
 
-                    {/* Quick Status Preview */}
+                    {/* Quick Status Preview - Enhanced for better touch targets */}
                     {canEdit && (
-                      <div className="flex justify-center gap-2">
+                      <div className="flex justify-center gap-3 mt-4">
                         {workOptions.map((option, index) => (
                           <div
                             key={option.value}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all ${
+                            className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all min-h-[48px] ${
                               currentValue?.value === option.value
-                                ? 'bg-blue-100 text-blue-700 font-medium'
-                                : 'bg-gray-100 text-gray-500'
+                                ? 'bg-blue-100 text-blue-800 font-bold ring-2 ring-blue-300 shadow-lg'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                           >
-                            <span className="text-sm">{getStatusEmoji(option.value)}</span>
-                            <span>{option.label}</span>
+                            <span className="text-lg">{getStatusEmoji(option.value)}</span>
+                            <span className="font-medium">{option.label}</span>
                           </div>
                         ))}
                       </div>

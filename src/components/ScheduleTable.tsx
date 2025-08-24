@@ -52,6 +52,9 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scheduleData, setScheduleData] = useState<any>({});
+  const [connectionError, setConnectionError] = useState(false);
+  const [authError, setAuthError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [currentSprintDates, setCurrentSprintDates] = useState<Date[]>([]);
   // REMOVED: sprintDays state was causing circular dependency
   
@@ -103,9 +106,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   const refreshSchedules = () => {
   };
 
-  // Week navigation functions
+  // FIXED: Week navigation functions - NO DATA REFETCH, only change display
   const goToPreviousWeek = () => {
-    setLoading(true); // Add visual feedback
     setCurrentWeek(prev => {
       const newWeek = new Date(prev);
       newWeek.setDate(prev.getDate() - 7);
@@ -118,14 +120,13 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         });
       }
       
+      console.log(`📅 NAVIGATION: Previous week - ${newWeek.toDateString()} (display only, no refetch)`);
       return newWeek;
     });
-    // Clear loading state after a brief delay to ensure data reloads
-    setTimeout(() => setLoading(false), 1000);
+    // NO data refetch - data is already loaded for full sprint range
   };
 
   const goToNextWeek = () => {
-    setLoading(true); // Add visual feedback
     setCurrentWeek(prev => {
       const newWeek = new Date(prev);
       newWeek.setDate(prev.getDate() + 7);
@@ -135,20 +136,19 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         console.warn('⚠️ Potential date cycling detected! Previous:', prev.toDateString(), 'New:', newWeek.toDateString());
       }
       
+      console.log(`📅 NAVIGATION: Next week - ${newWeek.toDateString()} (display only, no refetch)`);
       return newWeek;
     });
-    // Clear loading state after a brief delay to ensure data reloads
-    setTimeout(() => setLoading(false), 1000);
+    // NO data refetch - data is already loaded for full sprint range
   };
 
   const goToCurrentWeek = () => {
-    setLoading(true); // Add visual feedback
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
     setCurrentWeek(startOfWeek);
-    // Clear loading state after a brief delay to ensure data reloads
-    setTimeout(() => setLoading(false), 1000);
+    console.log(`📅 NAVIGATION: Current week - ${startOfWeek.toDateString()} (display only, no refetch)`);
+    // NO data refetch - data is already loaded for full sprint range
   };
 
   // Generate week days for current week
@@ -383,89 +383,146 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   // Enhanced debugging for table rendering decisions
   // Table rendering decision matrix
 
-  // Load schedule data from database
+  // SINGLE DATA SOURCE: Load ALL schedule data that covers both week and sprint views
   useEffect(() => {
-    const loadScheduleData = async () => {
+    const loadAllScheduleData = async () => {
       setSchedulesLoading(true);
       setSchedulesError(null);
       
-      const viewDates = getViewDates();
-      
-      if (viewDates.length === 0) {
-        console.warn('No view dates available');
-        setSchedulesLoading(false);
-        return;
-      }
-      const startDate = viewDates[0]?.toISOString().split('T')[0];
-      const endDate = viewDates[viewDates.length - 1]?.toISOString().split('T')[0];
-      
-      if (!startDate || !endDate) {
-        console.warn('Invalid start or end date');
-        setSchedulesLoading(false);
-        return;
-      }
-      
-      
       try {
+        setAuthError(false);
+        setConnectionError(false);
+        
+        // Get FULL sprint date range to cover both week and sprint views
+        const sprintDates = getCurrentSprintDates();
+        
+        // If we have valid sprint dates, use the full sprint range
+        let startDate, endDate;
+        if (sprintDates && sprintDates.length > 0) {
+          startDate = sprintDates[0].toISOString().split('T')[0];
+          endDate = sprintDates[sprintDates.length - 1].toISOString().split('T')[0];
+        } else {
+          // Fallback: use current week extended to cover potential sprint
+          const today = new Date();
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay()); // Go to Sunday
+          
+          startDate = weekStart.toISOString().split('T')[0];
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 13); // Cover 2 weeks (full sprint)
+          endDate = weekEnd.toISOString().split('T')[0];
+        }
+        
+        console.log(`📊 SINGLE SOURCE: Loading data from ${startDate} to ${endDate} (covers both week & sprint views)`);
+        
+        // Fetch ALL data for the extended period ONCE
         const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
         setScheduleData(data);
-        setCurrentSprintDates(viewDates);
-        // REMOVED: setSprintDays(viewDates) - eliminated circular dependency
         
+        // Set current dates for display
+        const currentViewDates = getViewDates();
+        setCurrentSprintDates(currentViewDates);
+        
+        // Reset retry count on success
+        setRetryCount(0);
+        console.log(`✅ SINGLE SOURCE: Loaded ${Object.keys(data).length} team member schedules for full period`);
         showSuccess('Schedule Loaded', 'Schedule data loaded successfully');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading schedule data:', error);
-        const errorMessage = `Failed to load schedule data: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        setSchedulesError(errorMessage);
-        showError('Load Error', errorMessage);
-        // Fallback to empty state
+        
+        // Enhanced error handling for different types of failures
+        if (error?.code === 'PGRST301' || error?.message?.includes('401') || error?.status === 401) {
+          setAuthError(true);
+          console.error('❌ Authentication error detected:', error.message);
+          const errorMessage = 'Authentication failed - please refresh the page to reconnect';
+          setSchedulesError(errorMessage);
+          showError('Authentication Error', errorMessage);
+        } else if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
+          setConnectionError(true);
+          console.error('❌ Network connection error:', error.message);
+          const errorMessage = 'Network connection failed - please check your internet connection';
+          setSchedulesError(errorMessage);
+          showError('Connection Error', errorMessage);
+          
+          // Auto-retry for network errors (up to 3 times)
+          if (retryCount < 3) {
+            console.log(`⏳ Auto-retrying in 2 seconds... (attempt ${retryCount + 1}/3)`);
+            setRetryCount(prev => prev + 1);
+            setTimeout(() => {
+              loadAllScheduleData();
+            }, 2000 * (retryCount + 1)); // Exponential backoff
+            return;
+          }
+        } else {
+          console.error('❌ General error loading schedule data:', error);
+          const errorMessage = `Failed to load schedule data: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          setSchedulesError(errorMessage);
+          showError('Load Error', errorMessage);
+        }
+        
+        // Fallback to empty state for all error types
         setScheduleData({});
       } finally {
         setSchedulesLoading(false);
       }
     };
 
-    loadScheduleData();
+    loadAllScheduleData();
   }, [
-    // CRITICAL FIX: Include all navigation state that affects date calculation
-    currentSprintOffset, 
-    currentWeek, 
-    navigationMode, 
-    selectedTeam.id, 
-    viewMode, 
-    sprintDates,
-    // FIXED: Add currentSprint dependency since it affects date calculation in getCurrentSprintDates()
+    // FIXED: Reduced dependencies - only fetch data when team changes or sprint context changes
+    // NO LONGER dependent on navigationMode, currentWeek, or currentSprintOffset!
+    selectedTeam.id,
     currentSprint?.current_sprint_number,
     currentSprint?.sprint_start_date,
     currentSprint?.sprint_end_date
-  ]); // Enhanced dependency array to ensure data reloads on all navigation changes
+  ]); // Single data fetch - view mode changes only affect display, not data fetching
 
-  // Set up real-time subscription
+  // Set up real-time subscription for the FULL date range (covers both views)
   useEffect(() => {
-    const viewDates = getViewDates();
-    if (viewDates.length === 0) return;
+    // Get FULL sprint date range to cover both week and sprint views
+    const sprintDates = getCurrentSprintDates();
     
-    const startDate = viewDates[0]?.toISOString().split('T')[0];
-    const endDate = viewDates[viewDates.length - 1]?.toISOString().split('T')[0];
+    // Use the same date range logic as the data loading effect
+    let startDate, endDate;
+    if (sprintDates && sprintDates.length > 0) {
+      startDate = sprintDates[0].toISOString().split('T')[0];
+      endDate = sprintDates[sprintDates.length - 1].toISOString().split('T')[0];
+    } else {
+      // Fallback: use current week extended to cover potential sprint
+      const today = new Date();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay()); // Go to Sunday
+      
+      startDate = weekStart.toISOString().split('T')[0];
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 13); // Cover 2 weeks (full sprint)
+      endDate = weekEnd.toISOString().split('T')[0];
+    }
     
-    if (!startDate || !endDate) return;
-    
+    console.log(`🔄 REALTIME: Subscribing to changes from ${startDate} to ${endDate} (covers both views)`);
     
     const subscription = DatabaseService.subscribeToScheduleChanges(
       startDate,
       endDate,
       selectedTeam.id,
       () => {
-        // Reload data when changes occur
-        const loadScheduleData = async () => {
+        // Reload data when changes occur - using same full range
+        const reloadScheduleData = async () => {
           try {
             const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
             setScheduleData(data);
-          } catch (error) {
-            console.error('Error reloading schedule data:', error);
+            console.log('🔄 REALTIME: Data refresh successful for full range');
+          } catch (error: any) {
+            console.error('Error reloading schedule data from realtime:', error);
+            if (error?.code === 'PGRST301' || error?.message?.includes('401')) {
+              setAuthError(true);
+              setConnectionError(false);
+            } else {
+              setConnectionError(true);
+            }
           }
         };
-        loadScheduleData();
+        reloadScheduleData();
       }
     );
 
@@ -473,18 +530,12 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       subscription.unsubscribe();
     };
   }, [
-    // CRITICAL FIX: Same enhanced dependency array as data loading useEffect
-    currentSprintOffset, 
-    currentWeek, 
-    navigationMode, 
-    selectedTeam.id, 
-    viewMode, 
-    sprintDates,
-    // FIXED: Add currentSprint dependency to match data loading effect
+    // FIXED: Same reduced dependencies as data loading effect
+    selectedTeam.id,
     currentSprint?.current_sprint_number,
     currentSprint?.sprint_start_date,
     currentSprint?.sprint_end_date
-  ]);
+  ]); // Realtime subscription matches data loading scope
 
   // Type-safe date formatting helper
   const formatDate = (date: Date | undefined): string => {
@@ -700,6 +751,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
 
 
 
+  // Loading state
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -711,6 +763,79 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
               <div key={i} className="h-12 bg-gray-200 rounded"></div>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Authentication error display with user-friendly actions
+  if (authError) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center justify-center mb-4">
+            <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.232 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Authentication Error</h3>
+          <p className="text-red-700 mb-6">
+            Unable to access schedule data due to authentication issues. Please refresh the page or check your connection.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+            >
+              Refresh Page
+            </button>
+            <button
+              onClick={() => {
+                setAuthError(false);
+                setConnectionError(false);
+                setRetryCount(0);
+                // Retry loading manually
+                setLoading(true);
+              }}
+              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Connection error display with retry capability
+  if (connectionError && !authError) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-8 text-center">
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+          <div className="flex items-center justify-center mb-4">
+            <svg className="w-12 h-12 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-orange-800 mb-2">Connection Error</h3>
+          <p className="text-orange-700 mb-4">
+            Network connection failed. Please check your internet connection and try again.
+          </p>
+          {retryCount > 0 && (
+            <p className="text-sm text-orange-600 mb-4">
+              Retry attempt {retryCount}/3 failed. Manual retry available.
+            </p>
+          )}
+          <button
+            onClick={() => {
+              setConnectionError(false);
+              setRetryCount(0);
+              window.location.reload();
+            }}
+            className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     );
@@ -764,10 +889,9 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           currentSprintOffset={currentSprintOffset}
           currentSprintDays={currentSprintDays}
           onSprintChange={(offset) => {
-            setLoading(true); // Add visual feedback
             setCurrentSprintOffset(offset);
-            // Clear loading state after a brief delay to ensure data reloads
-            setTimeout(() => setLoading(false), 1000);
+            console.log(`📅 NAVIGATION: Sprint offset changed to ${offset} (display only, no refetch)`);
+            // NO data refetch - data is already loaded for full range
           }}
           onViewReasons={() => viewReasons.open()}
           getCurrentSprintString={getCurrentSprintString}

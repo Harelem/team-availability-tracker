@@ -1,0 +1,161 @@
+{
+  "timestamp": "2025-08-24T19:01:26.331Z",
+  "baseUrl": "http://localhost:3001",
+  "testResults": {
+    "coreUserFlow": {
+      "passed": false,
+      "details": {
+        "loadTime": 4681,
+        "teamSelectionExists": false,
+        "teamFound": false,
+        "buttonsAvailable": 4
+      }
+    },
+    "authentication": {
+      "passed": false,
+      "details": {
+        "authErrors": 0,
+        "webSocketErrors": 1,
+        "authErrorMessages": [],
+        "webSocketErrorMessages": [
+          "🌐 Initial connection status: Online"
+        ]
+      }
+    },
+    "mobileNavigation": {
+      "passed": false,
+      "details": {
+        "hamburgerMenuPresent": false,
+        "mobileNavigationPresent": false,
+        "mobileNavWorking": false,
+        "sprintNavFound": false
+      }
+    },
+    "dataPersistence": {
+      "passed": false,
+      "details": {
+        "scheduleTablePresent": false,
+        "availabilityTablePresent": false,
+        "dataElementsCount": 0,
+        "loadingStatesCount": 0,
+        "hasData": false
+      }
+    },
+    "consoleErrors": {
+      "passed": true,
+      "details": {
+        "totalMessages": 16,
+        "criticalErrors": 0,
+        "warnings": 0,
+        "allMessages": [
+          {
+            "type": "log",
+            "text": "Service worker disabled in development mode",
+            "timestamp": "2025-08-24T19:01:31.374Z"
+          },
+          {
+            "type": "log",
+            "text": "📱 Mobile touch optimizations initialized",
+            "timestamp": "2025-08-24T19:01:31.379Z"
+          },
+          {
+            "type": "log",
+            "text": "LCP: 3756",
+            "timestamp": "2025-08-24T19:01:31.399Z"
+          },
+          {
+            "type": "info",
+            "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+            "timestamp": "2025-08-24T19:01:31.528Z"
+          },
+          {
+            "type": "log",
+            "text": "Page load time: 0ms",
+            "timestamp": "2025-08-24T19:01:31.632Z"
+          },
+          {
+            "type": "log",
+            "text": "Performance metrics: JSHandle@object",
+            "timestamp": "2025-08-24T19:01:31.634Z"
+          },
+          {
+            "type": "error",
+            "text": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <HotReload assetPrefix=\"\" globalError={[...]}>\n      <AppDevOverlay state={{nextId:1, ...}} globalError={[...]}>\n        <AppDevOverlayErrorBoundary globalError={[...]} onError={function bound dispatchSetState}>\n          <ReplaySsrOnlyErrors>\n          <DevRootHTTPAccessFallbackBoundary>\n            <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>\n              <HTTPAccessFallbackErrorBoundary pathname=\"/\" notFound={<NotAllowedRootHTTPFallbackError>} ...>\n                <RedirectBoundary>\n                  <RedirectErrorBoundary router={{...}}>\n                    <Head>\n                    <link>\n                    <RootLayout>\n                      <html lang=\"en\" suppressHydrationWarning={true}>\n                        <head>\n                        <body className=\"__variable...\" suppressHydrationWarning={true}>\n                          <a\n                            href=\"#main-content\"\n                            className=\"skip-link\"\n                            data-skip-link=\"true\"\n-                           style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                          >\n+                           Skip to main content\n                          <a\n                            href=\"#navigation\"\n                            className=\"skip-link\"\n-                           style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                          >\n+                           Skip to navigation\n                          ...\n                    ...\n        ...\n",
+            "timestamp": "2025-08-24T19:01:31.640Z"
+          },
+          {
+            "type": "log",
+            "text": "🔄 AppStateProvider initializing...",
+            "timestamp": "2025-08-24T19:01:31.694Z"
+          },
+          {
+            "type": "log",
+            "text": "🌐 Initial connection status: Online",
+            "timestamp": "2025-08-24T19:01:31.694Z"
+          },
+          {
+            "type": "log",
+            "text": "🚀 Starting safe initialization: Critical App Initialization",
+            "timestamp": "2025-08-24T19:01:31.695Z"
+          },
+          {
+            "type": "log",
+            "text": "🔍 Validating required tables: teams",
+            "timestamp": "2025-08-24T19:01:31.695Z"
+          },
+          {
+            "type": "log",
+            "text": "✅ AppStateProvider fully initialized",
+            "timestamp": "2025-08-24T19:01:31.696Z"
+          },
+          {
+            "type": "log",
+            "text": "CLS: 0",
+            "timestamp": "2025-08-24T19:01:31.698Z"
+          },
+          {
+            "type": "log",
+            "text": "🔍 Starting database schema validation...",
+            "timestamp": "2025-08-24T19:01:32.049Z"
+          },
+          {
+            "type": "log",
+            "text": "✅ Schema validation passed for table 'teams'",
+            "timestamp": "2025-08-24T19:01:32.300Z"
+          },
+          {
+            "type": "log",
+            "text": "FID: 3.699999988079071",
+            "timestamp": "2025-08-24T19:01:32.409Z"
+          }
+        ],
+        "criticalErrorTexts": []
+      }
+    },
+    "performance": {
+      "passed": false,
+      "details": {
+        "domContentLoaded": 3737,
+        "loadComplete": 3985,
+        "firstPaint": 3756,
+        "memoryUsed": 92549565
+      }
+    },
+    "touchResponsiveness": {
+      "passed": true,
+      "details": {
+        "totalButtons": 4,
+        "sampleSize": 4,
+        "touchResponsiveButtons": 4,
+        "passRate": "100.0%"
+      }
+    }
+  },
+  "overallScore": 29,
+  "deploymentReady": false,
+  "criticalIssues": [
+    "No data tables or schedule elements found on page",
+    "Performance below target: 3985ms (target: <3000ms)"
+  ],
+  "recommendations": []
+}

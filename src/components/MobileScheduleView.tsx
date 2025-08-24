@@ -237,25 +237,38 @@ const MobileScheduleView = memo(function MobileScheduleView({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-      {/* Mobile Header */}
-      <div className="bg-white rounded-xl shadow-elevation-2 border border-gray-200 p-4 mb-4">
+      {/* Mobile Header - Fixed positioning to prevent navigation conflicts */}
+      <div className="sticky top-16 z-40 bg-white/95 backdrop-blur-md rounded-xl shadow-elevation-3 border-2 border-gray-200 p-4 mb-4">
         {/* Week Navigation */}
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() => handleNavigation(() => onWeekChange(currentWeekOffset - 1))}
+            onTouchStart={(e) => {
+              // Prevent event conflicts and ensure single tap registration
+              e.preventDefault();
+              if (!isNavigating) {
+                handleNavigation(() => onWeekChange(currentWeekOffset - 1));
+              }
+            }}
+            onClick={(e) => {
+              // Fallback for non-touch devices
+              e.preventDefault();
+              if (!isNavigating && !e.nativeEvent.detail) {
+                handleNavigation(() => onWeekChange(currentWeekOffset - 1));
+              }
+            }}
             disabled={isNavigating}
             className={`
-              flex items-center gap-2 px-3 py-2 rounded-lg text-sm min-h-[44px] 
-              touch-manipulation font-medium transition-all duration-200
+              flex items-center gap-2 px-4 py-3 rounded-xl text-sm min-h-[48px] min-w-[100px]
+              touch-manipulation font-semibold transition-all duration-200
               active:scale-95 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-              shadow-sm hover:shadow-md cursor-pointer select-none
+              shadow-md hover:shadow-lg cursor-pointer select-none border-2
               ${isNavigating 
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-200'
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50 border-gray-200' 
+                : 'bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-300 active:bg-blue-100 border-gray-300'
               }
             `}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-            aria-label="Previous week"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+            aria-label="Previous sprint"
           >
             {isNavigating ? (
               <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
@@ -267,39 +280,63 @@ const MobileScheduleView = memo(function MobileScheduleView({
           
           <div className="flex items-center gap-2">
             <button
-              onClick={handleRefresh}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                if (!refreshing && !isNavigating) {
+                  handleRefresh();
+                }
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!refreshing && !isNavigating && !e.nativeEvent.detail) {
+                  handleRefresh();
+                }
+              }}
               disabled={refreshing || isNavigating}
               className={`
-                p-2 min-h-[44px] min-w-[44px] rounded-lg
+                p-3 min-h-[48px] min-w-[48px] rounded-xl border-2
                 touch-manipulation transition-all duration-200
                 active:scale-95 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                shadow-sm hover:shadow-md cursor-pointer select-none
+                shadow-md hover:shadow-lg cursor-pointer select-none
                 ${refreshing || isNavigating 
-                  ? 'text-gray-400 cursor-not-allowed opacity-50 bg-gray-100' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'text-gray-400 cursor-not-allowed opacity-50 bg-gray-100 border-gray-200' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-blue-50 bg-white border-gray-300 hover:border-blue-300'
                 }
               `}
-              style={{ WebkitTapHighlightColor: 'transparent' }}
+              style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
               aria-label="Refresh data"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             {currentWeekOffset !== 0 && (
               <button
-                onClick={() => handleNavigation(() => onWeekChange(0))}
+                onTouchStart={(e) => {
+                  // Prevent event conflicts and ensure single tap registration
+                  e.preventDefault();
+                  if (!isNavigating) {
+                    handleNavigation(() => onWeekChange(0));
+                  }
+                }}
+                onClick={(e) => {
+                  // Fallback for non-touch devices
+                  e.preventDefault();
+                  if (!isNavigating && !e.nativeEvent.detail) {
+                    handleNavigation(() => onWeekChange(0));
+                  }
+                }}
                 disabled={isNavigating}
                 className={`
-                  flex items-center gap-1 px-3 py-2 rounded-lg text-sm min-h-[44px]
-                  touch-manipulation font-medium transition-all duration-200
+                  flex items-center gap-2 px-4 py-3 rounded-xl text-sm min-h-[48px] min-w-[88px]
+                  touch-manipulation font-semibold transition-all duration-200
                   active:scale-95 focus:ring-2 focus:ring-offset-2
-                  shadow-md hover:shadow-lg cursor-pointer select-none
+                  shadow-lg hover:shadow-xl cursor-pointer select-none border-2
                   ${isNavigating
-                    ? 'bg-blue-400 text-blue-200 cursor-not-allowed opacity-50'
-                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 focus:ring-blue-500 shadow-blue-200'
+                    ? 'bg-blue-400 text-blue-200 cursor-not-allowed opacity-50 border-blue-400'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 focus:ring-blue-500 shadow-blue-200 border-blue-600'
                   }
                 `}
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-                aria-label="Go to current week"
+                style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                aria-label="Go to current sprint"
               >
                 {isNavigating ? (
                   <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-200 border-t-white" />
@@ -312,20 +349,33 @@ const MobileScheduleView = memo(function MobileScheduleView({
           </div>
           
           <button
-            onClick={() => handleNavigation(() => onWeekChange(currentWeekOffset + 1))}
+            onTouchStart={(e) => {
+              // Prevent event conflicts and ensure single tap registration
+              e.preventDefault();
+              if (!isNavigating) {
+                handleNavigation(() => onWeekChange(currentWeekOffset + 1));
+              }
+            }}
+            onClick={(e) => {
+              // Fallback for non-touch devices
+              e.preventDefault();
+              if (!isNavigating && !e.nativeEvent.detail) {
+                handleNavigation(() => onWeekChange(currentWeekOffset + 1));
+              }
+            }}
             disabled={isNavigating}
             className={`
-              flex items-center gap-2 px-3 py-2 rounded-lg text-sm min-h-[44px]
-              touch-manipulation font-medium transition-all duration-200
+              flex items-center gap-2 px-4 py-3 rounded-xl text-sm min-h-[48px] min-w-[100px]
+              touch-manipulation font-semibold transition-all duration-200
               active:scale-95 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-              shadow-sm hover:shadow-md cursor-pointer select-none
+              shadow-md hover:shadow-lg cursor-pointer select-none border-2
               ${isNavigating 
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-200'
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50 border-gray-200' 
+                : 'bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-300 active:bg-blue-100 border-gray-300'
               }
             `}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-            aria-label="Next week"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+            aria-label="Next sprint"
           >
             <span>Next</span>
             {isNavigating ? (

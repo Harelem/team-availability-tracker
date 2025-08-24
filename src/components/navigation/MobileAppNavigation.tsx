@@ -16,13 +16,11 @@ import { NAVIGATION_PAGES } from '@/contexts/NavigationContext';
 export interface MobileAppNavigationProps {
   currentUser?: TeamMember;
   currentPage?: string;
-  showExecutive?: boolean;
   className?: string;
   
   // Navigation handlers
   onNavigateHome?: () => void;
   onNavigateTeams?: () => void;
-  onNavigateExecutive?: () => void;
   onNavigateProfile?: () => void;
   // Note: Settings navigation removed in v2.2 for cleaner mobile experience
 }
@@ -107,24 +105,20 @@ const NavTab: React.FC<NavTabProps> = ({
 export default function MobileAppNavigation({
   currentUser,
   currentPage = '/',
-  showExecutive = false,
   className = '',
   onNavigateHome,
   onNavigateTeams,
-  onNavigateExecutive,
   onNavigateProfile
   // onNavigateSettings removed in v2.2
 }: MobileAppNavigationProps) {
   const { 
     navigateToHome,
     navigateToTeamSelection,
-    navigateToExecutive
     // navigateToSettings removed in v2.2 for cleaner mobile experience
   } = useMobileNavigation();
 
   // Determine active tab based on current page
   const getActiveTab = () => {
-    if (currentPage.includes('/executive')) return 'executive';
     if (currentPage.includes('/profile')) return 'profile';
     if (currentPage.includes('/team')) return 'teams';
     return 'home';
@@ -149,13 +143,6 @@ export default function MobileAppNavigation({
     }
   };
 
-  const handleNavigateExecutive = () => {
-    if (onNavigateExecutive) {
-      onNavigateExecutive();
-    } else {
-      navigateToExecutive();
-    }
-  };
 
   // Settings navigation removed in v2.2 for cleaner mobile experience
   // const handleNavigateSettings = () => {
@@ -207,15 +194,6 @@ export default function MobileAppNavigation({
           onClick={handleNavigateTeams}
         />
         
-        {/* Executive Dashboard (conditional) */}
-        {showExecutive && (
-          <NavTab
-            icon={BarChart3}
-            label="Executive"
-            isActive={activeTab === 'executive'}
-            onClick={handleNavigateExecutive}
-          />
-        )}
         
         {/* Profile (show user initial if logged in) */}
         {currentUser && (
@@ -240,7 +218,6 @@ export function CompactMobileAppNavigation({
   currentPage = '/',
   onNavigateHome,
   onNavigateTeams,
-  onNavigateExecutive,
   className = ''
 }: Omit<MobileAppNavigationProps, 'showExecutive' | 'onNavigateSettings' | 'onNavigateProfile'>) {
   const activeTab = currentPage.includes('/executive') ? 'executive' : 
@@ -292,24 +269,6 @@ export function CompactMobileAppNavigation({
           <span className="text-sm font-medium">Teams</span>
         </button>
         
-        {/* Executive (if applicable) */}
-        {onNavigateExecutive && (
-          <button
-            onClick={onNavigateExecutive}
-            className={combineClasses(
-              'flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200',
-              DESIGN_SYSTEM.buttons.touchComfortable,
-              DESIGN_SYSTEM.mobile.touchFeedback,
-              activeTab === 'executive' 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'text-gray-600 hover:bg-gray-100'
-            )}
-            aria-current={activeTab === 'executive' ? 'page' : undefined}
-          >
-            <BarChart3 className="w-5 h-5" />
-            <span className="text-sm font-medium">COO</span>
-          </button>
-        )}
       </div>
     </nav>
   );

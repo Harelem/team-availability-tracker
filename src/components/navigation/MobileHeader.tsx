@@ -336,7 +336,6 @@ export default function MobileHeader({
         onNavigateHome={onNavigateHome}
         onSwitchUser={onSwitchUser}
         onChangeTeam={onChangeTeam}
-        onNavigateToExecutive={onNavigateToExecutive}
         onSettings={onSettings}
         onLogout={onLogout}
       />

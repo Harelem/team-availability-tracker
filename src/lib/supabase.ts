@@ -20,8 +20,9 @@ try {
   };
 }
 
-const supabaseUrl = validatedEnv.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = validatedEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Clean and sanitize connection strings to prevent 401 errors and WebSocket issues
+const supabaseUrl = validatedEnv.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\s/g, '') || '';
+const supabaseAnonKey = validatedEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim().replace(/\s/g, '') || '';
 
 export const supabase = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_url_here' && supabaseAnonKey !== 'your_supabase_anon_key_here'
   ? createClient(supabaseUrl, supabaseAnonKey, {
@@ -40,8 +41,16 @@ export const supabase = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_
         },
         // Connection timeout settings
         timeout: 10000, // 10 seconds connection timeout
-        // Logger for debugging connection issues
-        logger: process.env.NODE_ENV === 'development' ? console.log : undefined
+        // Enhanced logger for debugging connection and authentication issues
+        logger: process.env.NODE_ENV === 'development' ? (level: string, label: string, details?: any) => {
+          if (level === 'error') {
+            console.error(`🔴 Supabase ${label}:`, details);
+          } else if (level === 'warn' || label.includes('auth') || label.includes('401')) {
+            console.warn(`🟡 Supabase ${label}:`, details);
+          } else {
+            console.log(`🔵 Supabase ${label}:`, details);
+          }
+        } : undefined
       },
       // Increased timeout from 3 seconds to 20 seconds for COO dashboard compatibility
       global: {
@@ -76,6 +85,28 @@ export const supabase = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_
       }
     })
   : createClient('https://placeholder.supabase.co', 'placeholder-key')
+
+// Validate Supabase connection on initialization (development only)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  // Test authentication state and connection
+  const testConnection = async () => {
+    try {
+      const { error } = await supabase.from('schedule_entries').select('id').limit(1);
+      if (error && error.code === 'PGRST301') {
+        console.warn('🟡 Supabase authentication issue detected on init:', error.message);
+      } else if (error) {
+        console.error('🔴 Supabase connection test failed:', error);
+      } else {
+        console.log('✅ Supabase connection test passed');
+      }
+    } catch (err) {
+      console.error('🔴 Supabase connection test error:', err);
+    }
+  };
+  
+  // Run test after a brief delay to allow initialization
+  setTimeout(testConnection, 2000);
+}
 
 // Database types - Updated for enhanced schema
 export interface Database {

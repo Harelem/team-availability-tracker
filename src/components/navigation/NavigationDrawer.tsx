@@ -29,7 +29,6 @@ export interface NavigationItem {
   badge?: string | number;
   description?: string;
   requiresManager?: boolean;
-  requiresExecutive?: boolean;
 }
 
 interface NavigationDrawerProps {
@@ -43,7 +42,6 @@ interface NavigationDrawerProps {
   onNavigateHome?: () => void;
   onSwitchUser?: () => void;
   onChangeTeam?: () => void;
-  onNavigateToExecutive?: () => void;
   onSettings?: () => void;
   onLogout?: () => void;
   
@@ -120,7 +118,6 @@ export default function NavigationDrawer({
   onNavigateHome,
   onSwitchUser,
   onChangeTeam,
-  onNavigateToExecutive,
   onSettings,
   onLogout,
   customNavItems = []
@@ -187,17 +184,6 @@ export default function NavigationDrawer({
       }
     }
 
-    // Executive access
-    if (onNavigateToExecutive) {
-      items.push({
-        id: 'executive',
-        label: 'Executive Dashboard',
-        icon: BarChart3,
-        onClick: onNavigateToExecutive,
-        variant: 'primary',
-        requiresExecutive: true
-      });
-    }
 
     // Manager-specific items
     if (currentUser?.isManager) {
@@ -224,11 +210,10 @@ export default function NavigationDrawer({
 
   // Separate items by category
   const primaryItems = navigationItems.filter(item => 
-    !item.requiresManager && !item.requiresExecutive && item.variant !== 'danger'
+    !item.requiresManager && item.variant !== 'danger'
   );
   
   const managerItems = navigationItems.filter(item => item.requiresManager);
-  const executiveItems = navigationItems.filter(item => item.requiresExecutive);
   const settingsItems = onSettings ? [{
     id: 'settings',
     label: 'Settings',
@@ -343,21 +328,6 @@ export default function NavigationDrawer({
               </div>
             )}
             
-            {/* Executive items */}
-            {executiveItems.length > 0 && (
-              <div className="space-y-1">
-                <h3 className="text-sm font-medium text-gray-500 px-4 mb-2">
-                  Executive
-                </h3>
-                {executiveItems.map(item => (
-                  <NavigationButton 
-                    key={item.id} 
-                    item={item} 
-                    onClose={onClose}
-                  />
-                ))}
-              </div>
-            )}
             
             {/* Manager items */}
             {managerItems.length > 0 && currentUser?.isManager && (

@@ -1,0 +1,73 @@
+{
+  "timestamp": "2025-08-24T19:03:09.019Z",
+  "testResults": {
+    "databaseConnectivity": {
+      "passed": false,
+      "details": {
+        "error": "Unknown file extension \".ts\" for /Users/harel/team-availability-tracker/src/lib/database.ts"
+      }
+    },
+    "teamDataLoading": {
+      "passed": false,
+      "details": {
+        "error": "Unknown file extension \".ts\" for /Users/harel/team-availability-tracker/src/lib/database.ts"
+      }
+    },
+    "authenticationService": {
+      "passed": false,
+      "details": {
+        "error": "Unknown file extension \".ts\" for /Users/harel/team-availability-tracker/src/lib/supabase.ts"
+      }
+    },
+    "mobileComponents": {
+      "passed": false,
+      "details": {
+        "componentsFound": 1,
+        "totalComponents": 4,
+        "componentDetails": {
+          "src/components/EmergencyMobileMenu.tsx": "Found",
+          "src/components/MobileHeader.tsx": "Missing",
+          "src/components/MobileTableNavigation.tsx": "Missing",
+          "src/components/NavigationDrawer.tsx": "Missing",
+          "mobile-styles": "Found"
+        }
+      }
+    },
+    "calculationServices": {
+      "passed": false,
+      "details": {
+        "error": "Cannot find module '/Users/harel/team-availability-tracker/src/lib/simpleExecutiveAnalytics.ts' imported from /Users/harel/team-availability-tracker/lightweight-validation-test.js"
+      }
+    },
+    "environmentConfiguration": {
+      "passed": false,
+      "details": {
+        "requiredVars": 2,
+        "presentVars": 0,
+        "envStatus": {
+          "NEXT_PUBLIC_SUPABASE_URL": {
+            "present": false,
+            "hasWhitespace": false,
+            "length": 0
+          },
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY": {
+            "present": false,
+            "hasWhitespace": false,
+            "length": 0
+          }
+        }
+      }
+    }
+  },
+  "overallScore": 0,
+  "deploymentReady": false,
+  "criticalIssues": [
+    "Database service validation failed: Unknown file extension \".ts\" for /Users/harel/team-availability-tracker/src/lib/database.ts",
+    "Team data validation failed: Unknown file extension \".ts\" for /Users/harel/team-availability-tracker/src/lib/database.ts",
+    "Authentication service validation failed: Unknown file extension \".ts\" for /Users/harel/team-availability-tracker/src/lib/supabase.ts",
+    "Missing critical mobile components: 1/4 found",
+    "Calculation services validation failed: Cannot find module '/Users/harel/team-availability-tracker/src/lib/simpleExecutiveAnalytics.ts' imported from /Users/harel/team-availability-tracker/lightweight-validation-test.js",
+    "Missing environment variables: 0/2 present"
+  ],
+  "recommendations": []
+}

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, TeamStats, GlobalSprintSettings, CurrentGlobalSprint, CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, TeamDailyStatus, DailyStatusSummary, TeamDashboardData } from '@/types'
+import { TeamMember, Team, GlobalSprintSettings, CurrentGlobalSprint, CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, TeamDashboardData } from '@/types'
 // Template types temporarily disabled for production
 // import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
 // RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
@@ -61,26 +61,7 @@ const isSupabaseConfigured = () => {
 // Flag to prevent multiple executions of data fixes
 let dataFixInProgress = false
 
-// Timeout-aware query execution for COO operations
-export const executeCOOQuery = async <T>(
-  operation: () => Promise<T>,
-  fallback: T,
-  operationName: string
-): Promise<T> => {
-  try {
-    // Use COO circuit breaker for dashboard queries
-    return await cooDashboardCircuitBreaker.execute(operation);
-  } catch (error) {
-    if (error instanceof Error && (error.message.includes('timeout') || error.message.includes('timed out'))) {
-      console.warn(`COO Query timeout for ${operationName}, using fallback`);
-      return fallback;
-    }
-    throw error;
-  }
-};
 
-// Progressive data loading for COO dashboard
-// Helper functions for optimized metrics calculation
 const filterScheduleDataByMembers = (scheduleData: any, memberIds: number[], startDate: string, endDate: string) => {
   const filtered: Record<number, any> = {};
   memberIds.forEach(memberId => {
@@ -121,193 +102,61 @@ const calculateActualHoursFromData = (scheduleData: any, startDate: string, endD
   return totalActual;
 };
 
-export const getCOODashboardDataProgressive = async () => {
-  const results = {
-    teams: [] as Team[],
-    teamData: new Map<number, any>(),
-    errors: [] as Array<{ teamId: number; error: string }>,
-    timeouts: [] as Array<{ teamId: number; message: string }>
-  };
-  
-  try {
-    // Step 1: Load teams quickly (should never timeout)
-    results.teams = await DatabaseService.getTeams();
-    console.log(`📊 Progressive loading: Found ${results.teams.length} teams`);
-    
-    // Step 2: Load team data progressively with individual timeouts
-    const teamDataPromises = results.teams.map(async (team) => {
-      try {
-        const data = await executeCOOQuery(
-          () => Promise.resolve({ actualHours: 0, potentialHours: 0 }), // Placeholder until getCOOTeamData is implemented
-          { actualHours: 0, potentialHours: 0 } as any, // Type assertion for fallback
-          `team-${team.id}`
-        );
-        return { teamId: team.id, data };
-      } catch (error) {
-        console.error(`Team ${team.id} (${team.name}) failed:`, error);
-        results.errors.push({ 
-          teamId: team.id, 
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-        return { 
-          teamId: team.id, 
-          data: { actualHours: 0, potentialHours: 0, status: 'error' }
-        };
-      }
-    });
-    
-    const teamResults = await Promise.allSettled(teamDataPromises);
-    teamResults.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        results.teamData.set(result.value.teamId, result.value.data);
-        if (result.value.data.status === 'timeout') {
-          results.timeouts.push({
-            teamId: result.value.teamId,
-            message: `Team ${results.teams[index]?.name || result.value.teamId} data loading timed out`
-          });
-        }
-      } else {
-        results.errors.push({ 
-          teamId: results.teams[index]?.id || index, 
-          error: result.reason instanceof Error ? result.reason.message : 'Promise rejected'
-        });
-      }
-    });
-    
-  } catch (error) {
-    console.error('COO Dashboard progressive load failed:', error);
-    throw error;
-  }
-  
-  return results;
-};
 
 export const DatabaseService = {
   // Teams
   async getTeams(): Promise<Team[]> {
     try {
       if (!isSupabaseConfigured()) {
+        console.warn('⚠️ Supabase not configured - returning empty teams array');
         return []
       }
 
-      const operation = async () => {
-        const { data, error } = await supabase
-          .from('teams')
-          .select('id, name, description, color, created_at, updated_at')
-          .order('name')
-        
-        if (error) {
-          throw new Error(`Database query failed: ${error.message}`)
-        }
-        
-        return data.map(team => ({
-          id: team.id,
-          name: team.name,
-          description: team.description || undefined,
-          color: team.color || '#3b82f6',
-          created_at: team.created_at,
-          updated_at: team.updated_at
-        }))
-      }
-
-      return await retryOperation(operation, {
-        enabled: true,
-        maxAttempts: 3,
-        baseDelay: 1000,
-        retryableErrors: [ErrorCategory.DATABASE, ErrorCategory.NETWORK]
-      })
-
-    } catch (error) {
-      const appError = await handleError(error as Error, {
-        component: 'DatabaseService',
-        action: 'getTeams',
-        additionalData: { table: 'teams' }
-      })
+      console.log('📊 Fetching teams from database...');
       
-      // For critical data like teams, we might want to throw instead of returning empty array
-      // But maintaining backward compatibility for now
-      console.error('Failed to fetch teams:', appError.userMessage)
-      return []
-    }
-  },
-
-  async getTeamStats(): Promise<TeamStats[]> {
-    if (!isSupabaseConfigured()) {
-      return []
-    }
-    
-    // Try to get from team_stats view first
-    const { data, error } = await supabase
-      .from('team_stats')
-      .select('*')
-      .order('name')
-    
-    if (error) {
-      // View doesn't exist, use manual calculation (this is expected)
-      return this.calculateTeamStatsManually()
-    }
-    
-    return data
-  },
-
-  async calculateTeamStatsManually(): Promise<TeamStats[]> {
-    if (!isSupabaseConfigured()) {
-      return []
-    }
-    
-    try {
-      // Get all teams
-      const { data: teams, error: teamsError } = await supabase
+      // Direct query without complex retry wrapper for debugging
+      const { data, error } = await supabase
         .from('teams')
-        .select('*')
+        .select('id, name, description, color, created_at, updated_at')
         .order('name')
       
-      if (teamsError) {
-        console.error('Error fetching teams for manual stats:', teamsError)
-        return []
+      if (error) {
+        console.error('❌ Database error fetching teams:', {
+          message: error.message,
+          code: error.code,
+          details: error.details
+        });
+        
+        // Throw the error to let the caller handle it
+        throw new Error(`Failed to fetch teams: ${error.message}`);
       }
       
-      // Calculate stats for each team
-      const teamStats = await Promise.all(
-        teams.map(async (team) => {
-          const { data: members, error: membersError } = await supabase
-            .from('team_members')
-            .select('*')
-            .eq('team_id', team.id)
-          
-          if (membersError) {
-            console.error(`Error fetching members for team ${team.id}:`, membersError)
-            return {
-              id: team.id,
-              name: team.name,
-              description: team.description,
-              color: team.color,
-              member_count: 0,
-              manager_count: 0
-            }
-          }
-          
-          const member_count = members?.length || 0
-          const manager_count = members?.filter(m => m.is_manager).length || 0
-          
-          return {
-            id: team.id,
-            name: team.name,
-            description: team.description,
-            color: team.color,
-            sprint_length_weeks: team.sprint_length_weeks || 2,
-            member_count,
-            manager_count
-          }
-        })
-      )
+      if (!data) {
+        console.warn('⚠️ No data returned from teams query');
+        return [];
+      }
       
-      return teamStats
+      const teams = data.map(team => ({
+        id: team.id,
+        name: team.name,
+        description: team.description || undefined,
+        color: team.color || '#3b82f6',
+        created_at: team.created_at,
+        updated_at: team.updated_at
+      }));
+      
+      console.log(`✅ Successfully fetched ${teams.length} teams from database`);
+      return teams;
+
     } catch (error) {
-      console.error('Error calculating team stats manually:', error)
-      return []
+      // Log the full error for debugging
+      console.error('❌ Failed to fetch teams - full error:', error);
+      
+      // Re-throw to let caller handle
+      throw error;
     }
   },
+
 
   // Team Members (now filtered by team) with caching - OPTIMIZED WITH RETRY + PAGINATION
   async getTeamMembers(teamId?: number, forceRefresh: boolean = false, options?: { 
@@ -809,8 +658,6 @@ export const DatabaseService = {
         }
       }
 
-      // Add COO user if doesn't exist (special case)
-      await this.ensureCOOUserExists();
 
     } catch (error) {
       console.error('❌ Error in team member initialization:', error);
@@ -1231,54 +1078,6 @@ export const DatabaseService = {
     )
   },
 
-  /**
-   * Ensure COO user exists without duplicating
-   */
-  async ensureCOOUserExists(): Promise<void> {
-    try {
-      const { data: cooUsers } = await supabase
-        .from('team_members')
-        .select('id, team_id')
-        .eq('name', 'Nir Shilo');
-
-      const cooUser = cooUsers?.[0]
-      if (!cooUser) {
-        const { error } = await supabase
-          .from('team_members')
-          .insert([{
-            name: 'Nir Shilo',
-            hebrew: 'ניר שילה',
-            is_manager: false,
-            team_id: null // COO doesn't belong to a specific team
-          }]);
-
-        if (error) {
-          console.error('❌ Error creating COO user:', error);
-        } else {
-          console.log('✅ Created COO user: Nir Shilo');
-        }
-      } else {
-        // Check if COO user has incorrect team assignment and fix it
-        if (cooUser.team_id !== null) {
-          console.log('🔧 Fixing COO user team assignment: Nir Shilo should not belong to any team');
-          const { error } = await supabase
-            .from('team_members')
-            .update({ team_id: null })
-            .eq('name', 'Nir Shilo');
-
-          if (error) {
-            console.error('❌ Error fixing COO team assignment:', error);
-          } else {
-            console.log('✅ Fixed COO team assignment: Nir Shilo removed from team and set as COO-level user');
-          }
-        } else {
-          console.log('✅ COO user correctly configured: Nir Shilo');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error ensuring COO user exists:', error);
-    }
-  },
 
   // Team Member CRUD Operations
   async addTeamMember(memberData: TeamMemberInput): Promise<TeamMember | null> {
@@ -4054,84 +3853,6 @@ The table creation script includes:
     return new Promise(resolve => setTimeout(resolve, ms))
   },
 
-  // Fallback method for getDailyCompanyStatus when database function is not available
-  async getDailyCompanyStatusFallback(dateStr: string): Promise<any[]> {
-    console.log('🔧 Using fallback method for daily company status')
-    
-    try {
-      // Query team_members and schedule_entries directly
-      const { data: members, error: membersError } = await supabase
-        .from('team_members')
-        .select(`
-          id,
-          name,
-          hebrew,
-          team_id,
-          is_manager,
-          role,
-          is_critical,
-          inactive_date
-        `)
-        .is('inactive_date', null) // Only active members
-      
-      if (membersError) {
-        console.error('Fallback: Error fetching team_members:', membersError)
-        throw membersError
-      }
-
-      // Get schedule entries for the specific date
-      const { data: schedules, error: schedulesError } = await supabase
-        .from('schedule_entries')
-        .select('member_id, value, reason')
-        .eq('date', dateStr)
-      
-      if (schedulesError) {
-        console.error('Fallback: Error fetching schedule_entries:', schedulesError)
-        throw schedulesError
-      }
-
-      // Create a map for quick lookup
-      const scheduleMap = new Map()
-      schedules?.forEach(schedule => {
-        scheduleMap.set(schedule.member_id, schedule)
-      })
-
-      // Helper function to convert value to hours (same logic as database function)
-      const valueToHours = (value: string | null): number => {
-        if (!value) return 1.0 // Default to full day
-        switch (value) {
-          case '1': return 1.0
-          case '0.5': return 0.5
-          case 'X': return 0.0
-          default: return 1.0
-        }
-      }
-
-      // Combine member data with schedule data
-      const result = members?.map(member => {
-        const schedule = scheduleMap.get(member.id)
-        
-        return {
-          member_id: member.id,
-          member_name: member.name,
-          member_hebrew: member.hebrew,
-          team_id: member.team_id,
-          member_role: member.role || (member.is_manager ? 'Manager' : 'Team Member'),
-          is_manager: member.is_manager,
-          is_critical: member.is_critical || false,
-          hours: valueToHours(schedule?.value),
-          reason: schedule?.reason || null
-        }
-      }) || []
-
-      console.log(`✅ Fallback method returned ${result.length} member records`)
-      return result
-
-    } catch (error) {
-      console.error('🚨 Fallback method failed:', error)
-      throw new Error(`Fallback method failed: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  },
 
   // Daily Company Status Methods
   async getDailyCompanyStatus(selectedDate: Date): Promise<DailyCompanyStatusData | null> {

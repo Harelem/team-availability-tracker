@@ -42,7 +42,7 @@ export interface NavigationItem {
   badge?: number;
   disabled?: boolean;
   requiresAuth?: boolean;
-  permissions?: ('manager' | 'coo' | 'member')[];
+  permissions?: ('manager' | 'member')[];
   group?: 'primary' | 'secondary' | 'admin' | 'user';
 }
 
@@ -54,7 +54,7 @@ export interface NavigationGroup {
 }
 
 // User Role Types
-export type UserRole = 'member' | 'manager' | 'coo' | 'admin';
+export type UserRole = 'member' | 'manager' | 'admin';
 
 export interface NavigationUser {
   id: string;
@@ -63,7 +63,6 @@ export interface NavigationUser {
   role: UserRole;
   hebrew?: string;
   isManager?: boolean;
-  isCOO?: boolean;
 }
 
 // Primary Bottom Tab Navigation (only include working routes)
@@ -92,18 +91,6 @@ export const PRIMARY_NAVIGATION: NavigationItem[] = [
   }
 ];
 
-// COO-Specific Navigation Items (only working routes)
-export const COO_NAVIGATION: NavigationItem[] = [
-  {
-    id: 'executive-dashboard',
-    label: 'Executive',
-    icon: Building2,
-    path: '/executive',
-    group: 'primary',
-    requiresAuth: true,
-    permissions: ['coo']
-  }
-];
 
 // Manager-Specific Navigation Items
 export const MANAGER_NAVIGATION: NavigationItem[] = [
@@ -114,7 +101,7 @@ export const MANAGER_NAVIGATION: NavigationItem[] = [
     path: '/team-management',
     group: 'secondary',
     requiresAuth: true,
-    permissions: ['manager', 'coo']
+    permissions: ['manager']
   },
   {
     id: 'manager-reports',
@@ -123,7 +110,7 @@ export const MANAGER_NAVIGATION: NavigationItem[] = [
     path: '/manager-reports',
     group: 'secondary',
     requiresAuth: true,
-    permissions: ['manager', 'coo']
+    permissions: ['manager']
   },
   {
     id: 'team-analytics',
@@ -132,7 +119,7 @@ export const MANAGER_NAVIGATION: NavigationItem[] = [
     path: '/team-analytics',
     group: 'secondary',
     requiresAuth: true,
-    permissions: ['manager', 'coo']
+    permissions: ['manager']
   }
 ];
 
@@ -193,12 +180,6 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
     items: PRIMARY_NAVIGATION
   },
   {
-    id: 'coo',
-    label: 'Executive Functions',
-    items: COO_NAVIGATION,
-    collapsible: true
-  },
-  {
     id: 'manager',
     label: 'Management Tools',
     items: MANAGER_NAVIGATION,
@@ -222,8 +203,7 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
 export const hasPermission = (
   item: NavigationItem, 
   userRole: UserRole,
-  isManager?: boolean,
-  isCOO?: boolean
+  isManager?: boolean
 ): boolean => {
   // If no permissions specified, allow access
   if (!item.permissions || item.permissions.length === 0) {
@@ -237,11 +217,6 @@ export const hasPermission = (
 
   // Check manager permission
   if (isManager && item.permissions.includes('manager')) {
-    return true;
-  }
-
-  // Check COO permission
-  if (isCOO && item.permissions.includes('coo')) {
     return true;
   }
 
@@ -259,30 +234,19 @@ export const filterNavigationByPermissions = (
     }
 
     // Check permissions
-    return hasPermission(item, user.role, user.isManager, user.isCOO);
+    return hasPermission(item, user.role, user.isManager);
   });
 };
 
 export const getNavigationItemsForUser = (user: NavigationUser) => {
   const primaryItems = filterNavigationByPermissions(PRIMARY_NAVIGATION, user);
   const secondaryItems = filterNavigationByPermissions(SECONDARY_NAVIGATION, user);
-  const cooItems = filterNavigationByPermissions(COO_NAVIGATION, user);
   const managerItems = filterNavigationByPermissions(MANAGER_NAVIGATION, user);
   const quickActions = filterNavigationByPermissions(QUICK_ACTIONS, user);
-
-  // Add COO items to primary navigation if user is COO
-  if (user.isCOO) {
-    // Insert COO dashboard before analytics
-    const analyticsIndex = primaryItems.findIndex(item => item.id === 'analytics');
-    if (analyticsIndex !== -1 && COO_NAVIGATION[0]) {
-      primaryItems.splice(analyticsIndex, 0, COO_NAVIGATION[0]); // Executive dashboard
-    }
-  }
 
   return {
     primary: primaryItems,
     secondary: secondaryItems,
-    coo: cooItems,
     manager: managerItems,
     quickActions
   };
@@ -291,7 +255,6 @@ export const getNavigationItemsForUser = (user: NavigationUser) => {
 // Route Constants (only working routes)
 export const ROUTES = {
   HOME: '/',
-  EXECUTIVE: '/executive',
   TEAMS_TAB: '/?tab=teams'
 } as const;
 
@@ -319,7 +282,6 @@ export const TOUCH_TARGETS = {
 export default {
   PRIMARY_NAVIGATION,
   SECONDARY_NAVIGATION,
-  COO_NAVIGATION,
   MANAGER_NAVIGATION,
   QUICK_ACTIONS,
   NAVIGATION_GROUPS,

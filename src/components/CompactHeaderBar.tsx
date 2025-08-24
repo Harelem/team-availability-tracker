@@ -78,7 +78,7 @@ export default function CompactHeaderBar({
   const sprintStatus = sprintCompletion >= 90 ? 'excellent' : sprintCompletion >= 70 ? 'good' : 'needs-attention';
 
   return (
-    <div className="sticky top-0 z-30 bg-white border-b border-gray-200 max-h-20 flex-shrink-0">
+    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 max-h-20 flex-shrink-0 shadow-sm">
       {/* Hidden accessibility help for screen readers */}
       <div id="navigation-help" className="sr-only">
         Use navigation buttons to move between {navigationMode}s. 
@@ -108,48 +108,84 @@ export default function CompactHeaderBar({
           
           {/* Center: Navigation Controls */}
           <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
-            {/* Enhanced Sprint/Week Toggle */}
+            {/* Enhanced Sprint/Week Toggle with improved mobile performance */}
             {onNavigationModeChange && (
-              <div className="flex bg-gray-100 p-1 rounded-lg border">
+              <div className="flex bg-gray-100 p-1 rounded-xl border-2 border-gray-200 shadow-md">
                 <button
-                  {...getInteractionProps(() => onNavigationModeChange('sprint'), { hapticFeedback: true })}
-                  className={`
-                    min-h-[44px] px-3 py-2 text-sm font-medium
-                    rounded-md transition-all duration-200
-                    touch-manipulation select-none cursor-pointer
-                    active:scale-95
-                    ${navigationMode === 'sprint'
-                      ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    if (navigationMode !== 'sprint' && !isCurrentlyNavigating) {
+                      handleNavigation(() => onNavigationModeChange('sprint'));
                     }
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (navigationMode !== 'sprint' && !isCurrentlyNavigating && !e.nativeEvent.detail) {
+                      handleNavigation(() => onNavigationModeChange('sprint'));
+                    }
+                  }}
+                  disabled={isCurrentlyNavigating}
+                  className={`
+                    min-h-[48px] min-w-[80px] px-4 py-3 text-sm font-semibold
+                    rounded-lg transition-all duration-200
+                    touch-manipulation select-none cursor-pointer
+                    active:scale-95 focus:ring-2 focus:ring-offset-2
+                    ${navigationMode === 'sprint'
+                      ? 'bg-white text-blue-700 shadow-lg border-2 border-blue-200 focus:ring-blue-500'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-200'
+                    }
+                    ${isCurrentlyNavigating ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                   aria-label="Switch to Sprint view"
+                  aria-pressed={navigationMode === 'sprint'}
                 >
-                  Sprint
+                  {isCurrentlyNavigating && navigationMode === 'sprint' ? (
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600 mx-auto" />
+                  ) : (
+                    'Sprint'
+                  )}
                 </button>
                 <button
-                  {...getInteractionProps(() => onNavigationModeChange('week'), { hapticFeedback: true })}
-                  className={`
-                    min-h-[44px] px-3 py-2 text-sm font-medium
-                    rounded-md transition-all duration-200
-                    touch-manipulation select-none cursor-pointer
-                    active:scale-95
-                    ${navigationMode === 'week'
-                      ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    if (navigationMode !== 'week' && !isCurrentlyNavigating) {
+                      handleNavigation(() => onNavigationModeChange('week'));
                     }
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (navigationMode !== 'week' && !isCurrentlyNavigating && !e.nativeEvent.detail) {
+                      handleNavigation(() => onNavigationModeChange('week'));
+                    }
+                  }}
+                  disabled={isCurrentlyNavigating}
+                  className={`
+                    min-h-[48px] min-w-[80px] px-4 py-3 text-sm font-semibold
+                    rounded-lg transition-all duration-200
+                    touch-manipulation select-none cursor-pointer
+                    active:scale-95 focus:ring-2 focus:ring-offset-2
+                    ${navigationMode === 'week'
+                      ? 'bg-white text-blue-700 shadow-lg border-2 border-blue-200 focus:ring-blue-500'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-200'
+                    }
+                    ${isCurrentlyNavigating ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                   aria-label="Switch to Week view"
+                  aria-pressed={navigationMode === 'week'}
                 >
-                  Week
+                  {isCurrentlyNavigating && navigationMode === 'week' ? (
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600 mx-auto" />
+                  ) : (
+                    'Week'
+                  )}
                 </button>
               </div>
             )}
             
             {/* Date Navigation */}
-            <div className="flex items-center gap-1 relative z-50">
+            <div className="flex items-center gap-1 relative z-10">
               {navigationMode === 'week' ? (
                 <>
                   <button

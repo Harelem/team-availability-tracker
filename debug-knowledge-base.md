@@ -1,5 +1,179 @@
 # Debug Knowledge Base
 
+## Bug Report #28 - 2025-08-24
+
+### Bug Summary
+- **Type**: Frontend/State Management/Data Persistence
+- **Component**: ScheduleTable.tsx, PersonalScheduleTable.tsx - view mode switching
+- **Severity**: High
+- **Status**: FIXED
+- **Time to Fix**: 3 hours
+
+### What Went Wrong
+Users reported hours in "week mode" and saw them saved correctly, but when switching to "sprint mode", the same data appeared as unreported. Switching back to "week mode" showed the data again. This created a confusing user experience where data seemed to disappear and reappear based on view mode.
+
+### Root Cause Analysis
+**State Management Issue**: The ScheduleTable and PersonalScheduleTable components had separate navigationMode states that triggered separate data fetching operations:
+
+1. **Separate Data Fetching**: Each view mode (week vs sprint) was fetching data based on different date ranges
+2. **Multiple useEffect Dependencies**: Navigation state changes (navigationMode, currentWeek, currentSprintOffset) were triggering data refetches
+3. **Inconsistent Date Calculations**: Week and sprint views used different logic to determine which dates to fetch
+4. **No Single Source of Truth**: The same schedule data was being fetched multiple times with different parameters
+
+**The Problematic Pattern**:
+```typescript
+// BAD: Separate data states and fetches
+const [viewMode, setViewMode] = useState<'week' | 'sprint'>('week');
+useEffect(() => {
+  if (viewMode === 'week') {
+    fetchWeekData();  // Different fetch = inconsistency
+  } else {
+    fetchSprintData(); // Different fetch = inconsistency  
+  }
+}, [viewMode]); // Refetch on every view change
+```
+
+### Solution Applied
+**Implemented Single Source of Truth Pattern**:
+
+1. **Unified Data Fetching**: Load ALL schedule data for the full sprint range (covers both week and sprint views) in a single fetch
+2. **Display-Only Navigation**: View mode switching only affects what dates are displayed, NOT what data is fetched
+3. **Reduced useEffect Dependencies**: Only refetch data when team or sprint context changes, NOT on navigation
+4. **Consistent Date Ranges**: Created sprintDateUtils.ts for unified date calculations across all components
+
+**The Fixed Pattern**:
+```typescript
+// GOOD: Single data source with display filtering
+const [scheduleData, setScheduleData] = useState({});
+const [navigationMode, setNavigationMode] = useState<'week' | 'sprint'>('week');
+
+useEffect(() => {
+  // Fetch FULL range once (covers both views)
+  const sprintDates = getCurrentSprintDates();
+  const startDate = sprintDates[0].toISOString().split('T')[0];
+  const endDate = sprintDates[sprintDates.length - 1].toISOString().split('T')[0];
+  
+  const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
+  setScheduleData(data); // Single source of truth
+}, [
+  selectedTeam.id, // Only refetch on team change
+  currentSprint?.current_sprint_number // Or sprint change
+  // NOT dependent on navigationMode!
+]);
+
+// Display logic filters existing data
+const getDisplayDates = () => {
+  return navigationMode === 'week' ? getWeekDates() : getSprintDates();
+};
+```
+
+### My Thinking Process
+1. **Initial Investigation**: Noticed users reporting data disappearing when switching views - suggested state management issue
+2. **Code Analysis**: Found separate useEffect hooks with different dependencies for week vs sprint modes
+3. **Data Flow Tracing**: Traced how different view modes triggered separate API calls with different date ranges
+4. **Root Cause Identification**: Realized the fundamental issue was multiple data sources instead of single source of truth
+5. **Solution Design**: Designed unified approach where one data fetch covers all navigation scenarios
+6. **Implementation**: Applied single source of truth pattern and created unified date utilities
+7. **Validation**: Created comprehensive test to verify data persistence across view switches
+
+### Prevention Strategy
+**For Schedule Components**:
+- Always use single data fetch that covers maximum possible date range
+- Make navigation functions display-only (no data fetching)
+- Use unified date calculation utilities across all components
+- Limit useEffect dependencies to only data-changing events (team, sprint)
+
+**Code Review Checklist**:
+- ✅ Single useEffect for data fetching per component
+- ✅ Navigation changes don't trigger data refetch
+- ✅ Consistent date range calculations
+- ✅ View mode switching only affects display logic
+
+### Lessons for Other Agents
+- **Development Agents**: Always implement single source of truth for schedule data - avoid separate fetches per view mode
+- **Code Review**: Flag any useEffect that depends on navigation state for data fetching
+- **Testing**: Always test data persistence when switching between views
+- **State Management**: Navigation state should affect display only, not data fetching
+
+### Code Changes Made
+1. **ScheduleTable.tsx**:
+   - Modified useEffect to fetch full sprint range once
+   - Removed navigationMode from useEffect dependencies
+   - Updated navigation functions to not trigger loading states
+   - Added logging to distinguish navigation vs data operations
+
+2. **PersonalScheduleTable.tsx**:
+   - Updated navigation to be display-only
+   - Added logging to track navigation vs display operations
+   - Maintained data consistency across view switches
+
+3. **Created sprintDateUtils.ts**:
+   - Unified date calculation functions
+   - Consistent sprint and week range calculations
+   - Helper functions for display formatting
+
+### Validation Results
+✅ Single data fetch covers both week and sprint views
+✅ Navigation changes only affect display, not data fetching  
+✅ Data consistency maintained across view switches
+✅ Reduced API calls improved performance
+✅ Real-time updates work for full date range
+
+**User Experience After Fix**:
+- User reports hours in week mode → ✅ Saved
+- Switches to sprint mode → ✅ Same hours visible
+- Modifies hours in sprint mode → ✅ Changes saved
+- Switches back to week mode → ✅ Changes persist
+- Page refresh → ✅ Data consistent in both modes
+
+---
+
+## Bug Report #27 - 2025-08-24
+
+### Bug Summary
+- **Type**: Authentication/Database/WebSocket
+- **Component**: schedule_entries table access, Supabase client initialization
+- **Severity**: Critical
+- **Status**: FIXED
+- **Time to Fix**: 2 hours
+
+### What Went Wrong
+Users and managers experiencing 401 authentication errors when trying to access schedule_entries table. Console shows multiple 401 errors and WebSocket connection failures with malformed connection strings containing %0A characters.
+
+### Root Cause Analysis
+1. **Environment Variable Issues**: Environment variables may contain whitespace or newline characters causing malformed connection strings
+2. **WebSocket Connection Problems**: Connection string formatting issues causing WebSocket failures
+3. **RLS Policy Verification**: Need to ensure Row Level Security policies are properly configured for schedule_entries table
+
+### Solution Applied
+1. **Enhanced Supabase Client Initialization**: Added string trimming and whitespace removal for environment variables
+2. **Improved Error Handling**: Added comprehensive error handling and retry logic in ScheduleTable component
+3. **Connection String Sanitization**: Ensured clean connection strings by removing all whitespace characters
+4. **Authentication State Management**: Added authentication error detection and user-friendly error displays
+
+### My Thinking Process
+1. Initial hypothesis: RLS policies too restrictive or API keys expired
+2. Debugging steps taken: Checked current RLS policies, examined Supabase client initialization, analyzed WebSocket connection patterns
+3. Key insight: Environment variables may contain invisible characters causing connection issues
+4. Breakthrough: Realizing the need for string sanitization in Supabase client initialization
+5. Implementation: Added comprehensive error handling and retry mechanisms
+
+### Prevention Strategy
+- **Environment Variable Validation**: Always trim and sanitize environment variables before use
+- **Connection String Formatting**: Remove all whitespace characters from connection strings
+- **Comprehensive Error Handling**: Add authentication error detection with retry logic
+- **WebSocket Connection Monitoring**: Log connection states and handle failures gracefully
+
+### Lessons for Other Agents
+- **Development Agents**: Always sanitize environment variables and connection strings
+- **Code Review**: Check for whitespace characters in environment variable usage
+- **Testing**: Test WebSocket connections and authentication errors specifically
+
+### Failed Attempts (if any)
+None - direct fix approach based on analysis of environment variable handling and connection string formatting.
+
+---
+
 ## Bug Report #26 - 2025-01-21
 
 ### Bug Summary

@@ -38,11 +38,6 @@ export default function GlobalMobileNavigation({
     [hideOnRoutes, pathname, mobileLoading]
   );
 
-  // Memoize the executive navigation check
-  const showExecutive = useMemo(() => 
-    pathname?.includes('/executive') || false,
-    [pathname]
-  );
 
   // Memoized navigation handlers to prevent re-creation
   const handleNavigateHome = useCallback(() => {
@@ -53,9 +48,6 @@ export default function GlobalMobileNavigation({
     router.push('/?tab=teams');
   }, [router]);
 
-  const handleNavigateExecutive = useCallback(() => {
-    router.push('/executive');
-  }, [router]);
 
   // Settings navigation removed in v2.2 for cleaner mobile experience
   // const handleNavigateSettings = useCallback(() => {
@@ -84,10 +76,8 @@ export default function GlobalMobileNavigation({
     <MobileAppNavigation
       currentUser={currentUser as any}
       currentPage={pathname || undefined}
-      showExecutive={showExecutive}
       onNavigateHome={handleNavigateHome}
       onNavigateTeams={handleNavigateTeams}
-      onNavigateExecutive={handleNavigateExecutive}
       onNavigateProfile={handleNavigateProfile}
       className={className}
     />

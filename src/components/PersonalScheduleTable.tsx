@@ -82,10 +82,12 @@ export default function PersonalScheduleTable({
   const [showReasonTooltips, setShowReasonTooltips] = useState<{[key: string]: boolean}>({});
   const reasonTooltipRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
   
-  // Navigation state for week/sprint navigation
+  // Navigation state for week/sprint navigation - DISPLAY ONLY
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [displayDates, setDisplayDates] = useState<Date[]>(sprintDates);
   const [navigationMode, setNavigationMode] = useState<'sprint' | 'week'>('week');
+  
+  // SINGLE DATA SOURCE: All schedule data is passed from parent - no separate fetching
   
   // All users (including managers) use the same work options: 1, 0.5, X
   const workOptions = allWorkOptions;
@@ -134,29 +136,33 @@ export default function PersonalScheduleTable({
     return getWeekDates(offset);
   };
   
-  // Handle week/sprint navigation
+  // FIXED: Handle week/sprint navigation - NO DATA REFETCH, only change display
   const handleWeekChange = (offset: number) => {
     setCurrentWeekOffset(offset);
     const newDates = navigationMode === 'sprint' 
       ? getSprintDates(offset) 
       : getWeekDates(offset);
     setDisplayDates(newDates);
+    console.log(`📅 PERSONAL NAV: Changed offset to ${offset}, mode: ${navigationMode} (display only)`);
   };
   
-  // Go to current week/sprint
+  // FIXED: Go to current week/sprint - NO DATA REFETCH
   const goToCurrentWeek = () => {
     handleWeekChange(0);
+    console.log(`📅 PERSONAL NAV: Reset to current period (display only)`);
   };
   
-  // Update display dates when navigation changes
+  // FIXED: Update display dates when navigation changes - DISPLAY ONLY
   useEffect(() => {
     if (currentWeekOffset === 0) {
       setDisplayDates(sprintDates);
+      console.log(`📅 PERSONAL DISPLAY: Using original sprint dates (${sprintDates.length} days)`);
     } else {
       const newDates = navigationMode === 'sprint' 
         ? getSprintDates(currentWeekOffset) 
         : getWeekDates(currentWeekOffset);
       setDisplayDates(newDates);
+      console.log(`📅 PERSONAL DISPLAY: Calculated ${newDates.length} dates for offset ${currentWeekOffset}, mode: ${navigationMode}`);
     }
   }, [sprintDates, currentWeekOffset, navigationMode]);
   
