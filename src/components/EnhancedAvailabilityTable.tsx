@@ -1,11 +1,16 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, memo, useCallback } from 'react';
 import { detectCurrentSprintForDateSync } from '@/utils/smartSprintDetection';
 import { Clock, MessageSquare } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
 import EnhancedDayCell from './EnhancedDayCell';
 import { ComponentErrorBoundary } from './ErrorBoundary';
+import { logPerformanceMetric, useTeamMemberRowCache, useMemoizedCalculation } from '@/utils/performanceOptimization';
+import { usePerformanceTracking, performanceMonitor } from '@/utils/performanceMonitor';
+
+// Performance monitoring utilities
+const performance = typeof window !== 'undefined' ? window.performance : null;
 
 interface EnhancedAvailabilityTableProps {
   currentUser: TeamMember;
@@ -24,7 +29,8 @@ interface EnhancedAvailabilityTableProps {
   formatDate: (date: Date) => string;
 }
 
-export default function EnhancedAvailabilityTable({
+// Optimized table component with React.memo and smart comparison
+const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
   currentUser,
   teamMembers,
   scheduleData,
@@ -40,6 +46,8 @@ export default function EnhancedAvailabilityTable({
   isPastDate,
   formatDate
 }: EnhancedAvailabilityTableProps) {
+  const renderStart = performance?.now() || 0;
+  const { trackRender, trackCalculation } = usePerformanceTracking('EnhancedAvailabilityTable');
   
   // Debug logging to track table rendering
   console.log('📊 EnhancedAvailabilityTable: Rendering attempt', {
@@ -50,7 +58,7 @@ export default function EnhancedAvailabilityTable({
     sprintDays: sprintDays?.length || 0,
     timestamp: new Date().toISOString()
   });
-
+  
   // Helper function for comprehensive date validation
   const validateSprintDate = (date: any): date is Date => {
     return date && 
@@ -223,8 +231,9 @@ export default function EnhancedAvailabilityTable({
     );
   }
 
-  // Create enhanced sprint calendar with weekend reference columns
+  // Memoized expensive calculations with performance tracking
   const enhancedSprintCalendar = useMemo(() => {
+    const calcStart = performance?.now() || 0;
     if (!validatedSprintDays || validatedSprintDays.length === 0) return [];
 
     const calendar: Array<{date: Date, type: string, label: string, isVisible: boolean}> = [];
@@ -298,11 +307,16 @@ export default function EnhancedAvailabilityTable({
       });
     }
     
+    logPerformanceMetric('enhancedSprintCalendar calculation', calcStart);
     return calendar;
   }, [validatedSprintDays]);
 
-  // Calculate daily totals for footer - ENHANCED DEFENSIVE PROGRAMMING
-  const getDayTotal = (date: Date) => {
+  // Performance-optimized team member row cache
+  const teamMemberRowCache = useTeamMemberRowCache(teamMembers, scheduleData, validatedSprintDays);
+
+  // Memoized daily totals calculation - ENHANCED DEFENSIVE PROGRAMMING  
+  const getDayTotal = useCallback((date: Date) => {
+    const calcStart = performance?.now() || 0;
     if (!date || typeof date.toISOString !== 'function') {
       console.warn('getDayTotal: Invalid date provided:', date);
       return 0;
@@ -332,11 +346,14 @@ export default function EnhancedAvailabilityTable({
     } catch (error) {
       console.error('getDayTotal error for date:', date, 'Error:', error);
       return 0;
+    } finally {
+      logPerformanceMetric('getDayTotal calculation', calcStart);
     }
-  };
+  }, [teamMembers, scheduleData, workOptions]);
 
-  // Count reasons for the sprint - DEFENSIVE PROGRAMMING
-  const getSprintReasonStats = () => {
+  // Memoized sprint reason stats calculation - DEFENSIVE PROGRAMMING
+  const getSprintReasonStats = useMemo(() => {
+    const calcStart = performance?.now() || 0;
     let totalReasons = 0;
     let halfDayReasons = 0;
     let absenceReasons = 0;
@@ -366,16 +383,22 @@ export default function EnhancedAvailabilityTable({
       console.warn('Error calculating sprint reason stats:', error);
     }
 
-    return { totalReasons, halfDayReasons, absenceReasons };
-  };
+    const result = { totalReasons, halfDayReasons, absenceReasons };
+    logPerformanceMetric('getSprintReasonStats calculation', calcStart);
+    return result;
+  }, [teamMembers, scheduleData]);
 
-  const reasonStats = getSprintReasonStats();
+  const reasonStats = getSprintReasonStats;
 
-  // Log successful rendering preparation
+  // Track render performance
+  trackRender();
+  
+  // Log successful rendering preparation with performance metrics
   console.log('✅ EnhancedAvailabilityTable: About to render table successfully', {
     teamMembers: teamMembers?.length || 0,
     validatedSprintDays: validatedSprintDays?.length || 0,
     hasScheduleData: Object.keys(scheduleData || {}).length > 0,
+    renderPerformance: `${(performance?.now() || 0) - renderStart}ms`,
     timestamp: new Date().toISOString()
   });
 
@@ -415,42 +438,53 @@ export default function EnhancedAvailabilityTable({
           <div className="bg-white/60 rounded-xl p-3 flex items-center gap-3">
             <span className="text-2xl">✅</span>
             <div>
-              <div className="font-bold text-gray-900">{teamMembers.reduce((acc, member) => {
-                return acc + validatedSprintDays.reduce((dayAcc, day) => {
-                  const dateKey = day.toISOString().split('T')[0];
-                  if (!dateKey) return dayAcc;
-                  const entry = scheduleData[member.id]?.[dateKey];
-                  return dayAcc + (entry?.value === '1' ? 1 : 0);
+              <div className="font-bold text-gray-900">{useMemo(() => {
+                const calcStart = performance?.now() || 0;
+                const result = teamMembers.reduce((acc, member) => {
+                  return acc + validatedSprintDays.reduce((dayAcc, day) => {
+                    const dateKey = day.toISOString().split('T')[0];
+                    if (!dateKey) return dayAcc;
+                    const entry = scheduleData[member.id]?.[dateKey];
+                    return dayAcc + (entry?.value === '1' ? 1 : 0);
+                  }, 0);
                 }, 0);
-              }, 0)}</div>
+                logPerformanceMetric('Full Days calculation', calcStart);
+                return result;
+              }, [teamMembers, validatedSprintDays, scheduleData])}</div>
               <div className="text-xs text-gray-600">Full Days</div>
             </div>
           </div>
           <div className="bg-white/60 rounded-xl p-3 flex items-center gap-3">
             <span className="text-2xl">⏰</span>
             <div>
-              <div className="font-bold text-gray-900">{teamMembers.reduce((acc, member) => {
-                return acc + validatedSprintDays.reduce((dayAcc, day) => {
-                  const dateKey = day.toISOString().split('T')[0];
-                  if (!dateKey) return dayAcc;
-                  const entry = scheduleData[member.id]?.[dateKey];
-                  return dayAcc + (entry?.value === '0.5' ? 1 : 0);
+              <div className="font-bold text-gray-900">{useMemo(() => {
+                const calcStart = performance?.now() || 0;
+                const result = teamMembers.reduce((acc, member) => {
+                  return acc + validatedSprintDays.reduce((dayAcc, day) => {
+                    const dateKey = day.toISOString().split('T')[0];
+                    if (!dateKey) return dayAcc;
+                    const entry = scheduleData[member.id]?.[dateKey];
+                    return dayAcc + (entry?.value === '0.5' ? 1 : 0);
+                  }, 0);
                 }, 0);
-              }, 0)}</div>
+                logPerformanceMetric('Half Days calculation', calcStart);
+                return result;
+              }, [teamMembers, validatedSprintDays, scheduleData])}</div>
               <div className="text-xs text-gray-600">Half Days</div>
             </div>
           </div>
           <div className="bg-white/60 rounded-xl p-3 flex items-center gap-3">
             <span className="text-2xl">❌</span>
             <div>
-              <div className="font-bold text-gray-900">{teamMembers.reduce((acc, member) => {
-                return acc + validatedSprintDays.reduce((dayAcc, day) => {
-                  const dateKey = day.toISOString().split('T')[0];
-                  if (!dateKey) return dayAcc;
-                  const entry = scheduleData[member.id]?.[dateKey];
-                  return dayAcc + (entry?.value === 'X' ? 1 : 0);
-                }, 0);
-              }, 0)}</div>
+              <div className="font-bold text-gray-900">{useMemoizedCalculation(
+                'Absences Stats',
+                () => {
+                  return Array.from(teamMemberRowCache.values()).reduce((acc, member) => {
+                    return acc + Object.values(member.scheduleEntries).filter(entry => entry?.value === 'X').length;
+                  }, 0);
+                },
+                [teamMemberRowCache]
+              )}</div>
               <div className="text-xs text-gray-600">Absences</div>
             </div>
           </div>
@@ -928,4 +962,39 @@ export default function EnhancedAvailabilityTable({
     </div>
     </ComponentErrorBoundary>
   );
-}
+}, (prevProps, nextProps) => {
+  // Smart comparison function for React.memo optimization
+  const compareStart = performance?.now() || 0;
+  
+  // Quick reference checks
+  if (prevProps.currentUser?.id !== nextProps.currentUser?.id) return false;
+  if (prevProps.teamMembers?.length !== nextProps.teamMembers?.length) return false;
+  if (prevProps.workOptions?.length !== nextProps.workOptions?.length) return false;
+  if (prevProps.sprintDays?.length !== nextProps.sprintDays?.length) return false;
+  
+  // Deep comparison for team members (check if IDs changed)
+  if (prevProps.teamMembers && nextProps.teamMembers) {
+    for (let i = 0; i < prevProps.teamMembers.length; i++) {
+      if (prevProps.teamMembers[i]?.id !== nextProps.teamMembers[i]?.id) return false;
+    }
+  }
+  
+  // Schedule data comparison (shallow check of keys and selected values)
+  if (prevProps.scheduleData !== nextProps.scheduleData) {
+    const prevKeys = Object.keys(prevProps.scheduleData || {});
+    const nextKeys = Object.keys(nextProps.scheduleData || {});
+    if (prevKeys.length !== nextKeys.length) return false;
+    
+    // Sample comparison - check a few key members to detect changes
+    for (const memberId of prevKeys.slice(0, 3)) {
+      if (JSON.stringify(prevProps.scheduleData[memberId]) !== JSON.stringify(nextProps.scheduleData[memberId])) {
+        return false;
+      }
+    }
+  }
+  
+  logPerformanceMetric('React.memo comparison', compareStart);
+  return true; // Props are effectively equal
+});
+
+export default EnhancedAvailabilityTable;

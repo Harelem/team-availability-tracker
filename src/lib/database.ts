@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, GlobalSprintSettings, CurrentGlobalSprint, CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, TeamDashboardData } from '@/types'
+import { TeamMember, Team, GlobalSprintSettings, CurrentGlobalSprint, CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, TeamDashboardData, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData } from '@/types'
 // Template types temporarily disabled for production
 // import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
 // RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
@@ -13,6 +13,7 @@ import { operation, debug, error as logError } from '@/utils/debugLogger'
 import { connectionRetry } from '@/utils/connectionRetry'
 import { queryBatcher } from './QueryBatcher'
 import { validateTeamMemberData, validateReasonText, normalizeNameForComparison, type TeamMemberInput } from './input-validation'
+import logger from '@/utils/logger'
 
 // Sprint History interfaces
 export interface SprintHistoryEntry {
@@ -108,11 +109,11 @@ export const DatabaseService = {
   async getTeams(): Promise<Team[]> {
     try {
       if (!isSupabaseConfigured()) {
-        console.warn('⚠️ Supabase not configured - returning empty teams array');
+        logger.warn('Supabase not configured - returning empty teams array', 'database');
         return []
       }
 
-      console.log('📊 Fetching teams from database...');
+      logger.database('Fetching teams from database');
       
       // Direct query without complex retry wrapper for debugging
       const { data, error } = await supabase
@@ -121,7 +122,7 @@ export const DatabaseService = {
         .order('name')
       
       if (error) {
-        console.error('❌ Database error fetching teams:', {
+        logger.error('Database error fetching teams', 'database', {
           message: error.message,
           code: error.code,
           details: error.details
@@ -132,7 +133,7 @@ export const DatabaseService = {
       }
       
       if (!data) {
-        console.warn('⚠️ No data returned from teams query');
+        logger.warn('No data returned from teams query', 'database');
         return [];
       }
       
@@ -145,7 +146,7 @@ export const DatabaseService = {
         updated_at: team.updated_at
       }));
       
-      console.log(`✅ Successfully fetched ${teams.length} teams from database`);
+      logger.success(`Successfully fetched ${teams.length} teams from database`);
       return teams;
 
     } catch (error) {

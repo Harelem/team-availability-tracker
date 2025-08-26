@@ -42,23 +42,29 @@
           }
         }
 
-        // Cumulative Layout Shift (with error handling)
+        // Cumulative Layout Shift (with proper support check)
         try {
-          new PerformanceObserver(function(list) {
-            var clsValue = 0;
-            list.getEntries().forEach(function(entry) {
-              if (!entry.hadRecentInput) {
-                clsValue += entry.value;
-              }
-            });
-            console.log('CLS:', clsValue);
-            // Send to analytics if needed
-          }).observe({ type: 'layout-shift', buffered: true });
-        } catch (e) {
-          // Silently handle unsupported layout-shift metric
-          if (process.env.NODE_ENV === 'development') {
+          // Check if layout-shift is supported before observing
+          if (typeof PerformanceObserver !== 'undefined' && 
+              PerformanceObserver.supportedEntryTypes && 
+              PerformanceObserver.supportedEntryTypes.includes('layout-shift')) {
+            new PerformanceObserver(function(list) {
+              var clsValue = 0;
+              list.getEntries().forEach(function(entry) {
+                if (!entry.hadRecentInput) {
+                  clsValue += entry.value;
+                }
+              });
+              console.log('CLS:', clsValue);
+              // Send to analytics if needed
+            }).observe({ type: 'layout-shift', buffered: true });
+          } else {
+            // Layout shift monitoring not supported - skip silently
             console.debug('Layout shift monitoring not supported in this browser');
           }
+        } catch (e) {
+          // Silently handle any other PerformanceObserver errors
+          console.debug('Performance monitoring error:', e.message);
         }
       }
 

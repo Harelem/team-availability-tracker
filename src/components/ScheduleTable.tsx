@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 // import { } from 'lucide-react'; // No icons used directly in this component
 import { TeamMember, Team, WorkOption, ReasonDialogData } from '@/types';
 import ReasonDialog from './ReasonDialog';
 import ViewReasonsModal from './ViewReasonsModal';
 import MobileScheduleView from './MobileScheduleView';
+import { useDebounce, logPerformanceMetric } from '@/utils/performanceOptimization';
 // import EnhancedManagerExportButton from './EnhancedManagerExportButton'; // Used in CompactHeaderBar
 import TeamMemberManagement from './TeamMemberManagement';
 import TeamHoursStatus from './TeamHoursStatus';
@@ -18,6 +19,7 @@ import ClientOnly from './ClientOnly';
 import { DatabaseService } from '@/lib/database';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { DEFAULT_SPRINT_CONFIG } from '@/utils/smartSprintDetection';
+import { useSprintData } from '@/hooks/useSprintData';
 
 // TEMPORARILY REMOVED: Import centralized state management
 // import {
@@ -78,6 +80,13 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   // Sprint data from GlobalSprintContext
   const { currentSprint } = useGlobalSprint();
   
+  // Enhanced sprint data with fallback logic
+  const sprintDataResult = useSprintData({
+    refreshInterval: 5 * 60 * 1000, // 5 minutes
+    autoInitialize: true,
+    debugMode: process.env.NODE_ENV === 'development'
+  });
+  
   // Helper functions for notifications
   const showError = (title: string, message: string) => {
     console.error(`${title}: ${message}`);
@@ -86,21 +95,32 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   const showSuccess = (title: string, message: string) => {
   };
   
-  // Helper functions for state updates
+  // Performance-optimized helper functions for state updates
   const setSchedulesLoading = setLoading;
   const setSchedulesError = setError;
-  const updateScheduleEntry = (memberId: number, date: Date, value: string | null, reason?: string) => {
+  
+  // Debounced schedule entry updates to reduce re-renders
+  const updateScheduleEntryImmediate = useCallback((memberId: number, date: Date, value: string | null, reason?: string) => {
+    const updateStart = performance?.now() || 0;
     const dateKey = date.toISOString().split('T')[0];
     if (!dateKey) return;
     
-    setScheduleData((prev: any) => ({
-      ...prev,
-      [memberId]: {
-        ...prev[memberId],
-        [dateKey]: { value, reason }
-      }
-    }));
-  };
+    setScheduleData((prev: any) => {
+      const updated = {
+        ...prev,
+        [memberId]: {
+          ...prev[memberId],
+          [dateKey]: { value, reason }
+        }
+      };
+      
+      logPerformanceMetric('Schedule entry update', updateStart);
+      return updated;
+    });
+  }, []);
+  
+  // Debounced version for batch updates
+  const updateScheduleEntry = useDebounce(updateScheduleEntryImmediate, 200);
   
   // Mock refresh function
   const refreshSchedules = () => {
@@ -200,18 +220,21 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     close: () => setViewReasonsOpen(false)
   };
 
-  // Calculate current sprint dates (Sun-Thu working days)
+  // Calculate current sprint dates using reliable sprint data handler
   const getCurrentSprintDates = () => {
-    if (!currentSprint) {
-      // Fallback to smart sprint detection if no sprint data available
-      console.warn('No current sprint data available, using smart detection fallback');
+    // Use the enhanced sprint data which guarantees valid data
+    const sprintToUse = sprintDataResult.sprint || currentSprint;
+    
+    if (!sprintToUse) {
+      // This should rarely happen with the new system, but provide fallback
+      console.warn('No sprint data available from any source, using smart detection fallback');
       return getSmartSprintDates();
     }
 
     // Validate that current sprint contains today's date
     const today = new Date();
-    const sprintStart = new Date(currentSprint.sprint_start_date);
-    const sprintEnd = new Date(currentSprint.sprint_end_date);
+    const sprintStart = new Date(sprintToUse.sprint_start_date);
+    const sprintEnd = new Date(sprintToUse.sprint_end_date);
     
     // Check if today falls within the sprint range
     if (today < sprintStart || today > sprintEnd) {
@@ -472,9 +495,10 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     // FIXED: Reduced dependencies - only fetch data when team changes or sprint context changes
     // NO LONGER dependent on navigationMode, currentWeek, or currentSprintOffset!
     selectedTeam.id,
-    currentSprint?.current_sprint_number,
-    currentSprint?.sprint_start_date,
-    currentSprint?.sprint_end_date
+    // Use enhanced sprint data as primary source
+    sprintDataResult.sprint?.current_sprint_number || currentSprint?.current_sprint_number,
+    sprintDataResult.sprint?.sprint_start_date || currentSprint?.sprint_start_date,
+    sprintDataResult.sprint?.sprint_end_date || currentSprint?.sprint_end_date
   ]); // Single data fetch - view mode changes only affect display, not data fetching
 
   // Set up real-time subscription for the FULL date range (covers both views)
@@ -532,9 +556,10 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   }, [
     // FIXED: Same reduced dependencies as data loading effect
     selectedTeam.id,
-    currentSprint?.current_sprint_number,
-    currentSprint?.sprint_start_date,
-    currentSprint?.sprint_end_date
+    // Use enhanced sprint data as primary source
+    sprintDataResult.sprint?.current_sprint_number || currentSprint?.current_sprint_number,
+    sprintDataResult.sprint?.sprint_start_date || currentSprint?.sprint_start_date,
+    sprintDataResult.sprint?.sprint_end_date || currentSprint?.sprint_end_date
   ]); // Realtime subscription matches data loading scope
 
   // Type-safe date formatting helper
@@ -566,19 +591,20 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   };
 
   const getCurrentSprintString = () => {
-    // Enhanced fallback logic: Use smart sprint detection when currentSprintDays is empty
+    // Enhanced fallback logic: Use reliable sprint data handler
     if (!currentSprintDays || currentSprintDays.length === 0) {
-      // IMPROVED: Use smart sprint detection instead of warnings
+      // IMPROVED: Use enhanced sprint data with guaranteed fallback
       try {
-        // First priority: Use database sprint if available and valid
-        if (currentSprint) {
-          const sprintStart = new Date(currentSprint.sprint_start_date);
-          const sprintEnd = new Date(currentSprint.sprint_end_date);
+        // First priority: Use enhanced sprint data (guaranteed to be available)
+        const sprintToUse = sprintDataResult.sprint || currentSprint;
+        if (sprintToUse) {
+          const sprintStart = new Date(sprintToUse.sprint_start_date);
+          const sprintEnd = new Date(sprintToUse.sprint_end_date);
           const today = new Date();
           
-          // Validate that current date falls within database sprint range
+          // Validate that current date falls within sprint range
           if (today >= sprintStart && today <= sprintEnd) {
-            return `Sprint ${currentSprint.current_sprint_number} (${formatDate(sprintStart)} - ${formatDate(sprintEnd)})`;
+            return `Sprint ${sprintToUse.current_sprint_number} (${formatDate(sprintStart)} - ${formatDate(sprintEnd)})`;
           }
         }
         
@@ -588,8 +614,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           const startDate = smartSprintDates[0];
           const endDate = smartSprintDates[smartSprintDates.length - 1];
           
-          // Determine sprint number from smart detection or database
-          const sprintNumber = currentSprint?.current_sprint_number || 
+          // Determine sprint number from enhanced sprint data or database
+          const sprintNumber = sprintDataResult.sprint?.current_sprint_number || currentSprint?.current_sprint_number || 
             Math.floor((Date.now() - DEFAULT_SPRINT_CONFIG.firstSprintStartDate.getTime()) / (1000 * 60 * 60 * 24 * DEFAULT_SPRINT_CONFIG.sprintLengthWeeks * 7)) + 1;
           
           return `Sprint ${sprintNumber} (${formatDate(startDate)} - ${formatDate(endDate)})`;
@@ -597,7 +623,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         
         // Final fallback: Current date with estimated sprint number
         const today = new Date();
-        const sprintNumber = currentSprint?.current_sprint_number || 
+        const sprintNumber = sprintDataResult.sprint?.current_sprint_number || currentSprint?.current_sprint_number || 
           Math.floor((Date.now() - DEFAULT_SPRINT_CONFIG.firstSprintStartDate.getTime()) / (1000 * 60 * 60 * 24 * DEFAULT_SPRINT_CONFIG.sprintLengthWeeks * 7)) + 1;
         
         return `Sprint ${sprintNumber} (${formatDate(today)})`;
@@ -614,8 +640,9 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     const startDate = currentSprintDays[0];
     const endDate = currentSprintDays[currentSprintDays.length - 1];
     
-    const sprintLabel = currentSprint ? 
-      `Sprint ${currentSprint.current_sprint_number}` : 
+    const sprintToUse = sprintDataResult.sprint || currentSprint;
+    const sprintLabel = sprintToUse ? 
+      `Sprint ${sprintToUse.current_sprint_number}` : 
       'Current Sprint';
     
     return `${sprintLabel} (${formatDate(startDate)} - ${formatDate(endDate)})`;
@@ -848,7 +875,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         <div className="md:hidden">
           <TeamSummaryOverview
             team={selectedTeam}
-            currentSprint={currentSprint}
+            currentSprint={sprintDataResult.sprint || currentSprint}
             teamMembers={teamMembers}
             className="mb-2"
           />
@@ -910,7 +937,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         {currentUser.isManager && (
           <TeamSummaryOverview
             team={selectedTeam}
-            currentSprint={currentSprint}
+            currentSprint={sprintDataResult.sprint || currentSprint}
             teamMembers={teamMembers}
             className="mt-0"
           />
@@ -1006,7 +1033,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         */}
 
         {/* Team Hours Status - Collapsed */}
-        {currentSprint && (
+        {(sprintDataResult.sprint || currentSprint) && (
           <div className="bg-white rounded-lg border border-gray-200">
             <div className="border-b border-gray-200 p-3">
               <h3 className="font-medium text-gray-900">Sprint Hours Status</h3>
@@ -1014,7 +1041,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
             <div className="p-4">
               <TeamHoursStatus 
                 selectedTeam={selectedTeam}
-                currentSprint={currentSprint}
+                currentSprint={sprintDataResult.sprint || currentSprint}
               />
             </div>
           </div>

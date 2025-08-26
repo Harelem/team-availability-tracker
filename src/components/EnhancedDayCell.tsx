@@ -1,9 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { MessageSquare, Info } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
 import { canAccessManagerQuickReasons } from '@/utils/permissions';
+import { usePerformanceTracking } from '@/utils/performanceMonitor';
+import { logPerformanceMetric } from '@/utils/performanceOptimization';
+
+// Performance monitoring utilities
+const performance = typeof window !== 'undefined' ? window.performance : null;
 
 interface EnhancedDayCellProps {
   member: TeamMember;
@@ -56,7 +61,7 @@ const MANAGER_HEBREW_QUICK_REASONS = {
   ]
 };
 
-export default function EnhancedDayCell({
+const EnhancedDayCell = memo(function EnhancedDayCell({
   member,
   date,
   currentValue,
@@ -68,6 +73,8 @@ export default function EnhancedDayCell({
   onReasonRequired,
   onQuickReasonSelect
 }: EnhancedDayCellProps) {
+  const renderStart = performance?.now() || 0;
+  const { trackRender } = usePerformanceTracking('EnhancedDayCell');
   const [showQuickReasons, setShowQuickReasons] = useState(false);
   const [pendingValue, setPendingValue] = useState<'0.5' | 'X' | null>(null);
   const [showReasonTooltip, setShowReasonTooltip] = useState(false);
@@ -223,6 +230,9 @@ export default function EnhancedDayCell({
     );
   };
 
+  // Track render performance
+  trackRender();
+  
   return (
     <td className={`relative py-2 px-1 sm:py-4 sm:px-4 text-center border-r ${getCellBackgroundColor()}`}>
       {/* Reason Indicator */}
@@ -422,4 +432,26 @@ export default function EnhancedDayCell({
       )}
     </td>
   );
-}
+}, (prevProps, nextProps) => {
+  // Optimized shallow comparison for cell props
+  const compareStart = performance?.now() || 0;
+  
+  // Check primitive props
+  if (prevProps.member.id !== nextProps.member.id) return false;
+  if (prevProps.date.getTime() !== nextProps.date.getTime()) return false;
+  if (prevProps.canEdit !== nextProps.canEdit) return false;
+  if (prevProps.isToday !== nextProps.isToday) return false;
+  if (prevProps.isPast !== nextProps.isPast) return false;
+  
+  // Check current value (most likely to change)
+  if (prevProps.currentValue?.value !== nextProps.currentValue?.value) return false;
+  if (prevProps.currentValue?.reason !== nextProps.currentValue?.reason) return false;
+  
+  // Work options rarely change, but check length
+  if (prevProps.workOptions?.length !== nextProps.workOptions?.length) return false;
+  
+  logPerformanceMetric('EnhancedDayCell.memo comparison', compareStart);
+  return true; // Props are effectively equal
+});
+
+export default EnhancedDayCell;

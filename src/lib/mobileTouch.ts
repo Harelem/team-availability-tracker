@@ -345,11 +345,11 @@ if (typeof window !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
     mobileViewportUtils.applyIOSViewportFixes()
     
-    // Auto-fix touch targets in development
+    // Skip auto-fix touch targets to prevent hydration mismatch
+    // Touch targets should be handled through CSS classes instead
     if (process.env.NODE_ENV === 'development') {
-      setTimeout(() => {
-        touchTargetValidation.autoFixTouchTargets()
-      }, 1000)
+      console.log('🔧 Touch target auto-fix disabled to prevent hydration mismatch')
+      console.log('📱 Use CSS classes from touchTargetClasses instead')
     }
   })
 }

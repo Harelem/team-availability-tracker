@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getValidatedEnvironment, validateEnvironmentOnStartup } from './env-validation'
+import logger from '@/utils/logger'
 
 // Validate environment on module load
 if (typeof window === 'undefined') {
@@ -12,7 +13,7 @@ let validatedEnv: ReturnType<typeof getValidatedEnvironment>;
 try {
   validatedEnv = getValidatedEnvironment();
 } catch (error) {
-  console.error('Failed to validate environment:', error);
+  logger.error('Failed to validate environment', 'auth', error);
   // Fallback for development
   validatedEnv = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -44,11 +45,11 @@ export const supabase = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_
         // Enhanced logger for debugging connection and authentication issues
         logger: process.env.NODE_ENV === 'development' ? (level: string, label: string, details?: any) => {
           if (level === 'error') {
-            console.error(`🔴 Supabase ${label}:`, details);
+            logger.error(`Supabase ${label}`, 'database', details);
           } else if (level === 'warn' || label.includes('auth') || label.includes('401')) {
-            console.warn(`🟡 Supabase ${label}:`, details);
+            logger.warn(`Supabase ${label}`, 'auth', details);
           } else {
-            console.log(`🔵 Supabase ${label}:`, details);
+            logger.info(`Supabase ${label}`, 'database', details);
           }
         } : undefined
       },
@@ -93,14 +94,14 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     try {
       const { error } = await supabase.from('schedule_entries').select('id').limit(1);
       if (error && error.code === 'PGRST301') {
-        console.warn('🟡 Supabase authentication issue detected on init:', error.message);
+        logger.warn('Supabase authentication issue detected on init', 'auth', error.message);
       } else if (error) {
-        console.error('🔴 Supabase connection test failed:', error);
+        logger.error('Supabase connection test failed', 'database', error);
       } else {
-        console.log('✅ Supabase connection test passed');
+        logger.success('Supabase connection test passed');
       }
     } catch (err) {
-      console.error('🔴 Supabase connection test error:', err);
+      logger.error('Supabase connection test error', 'database', err);
     }
   };
   

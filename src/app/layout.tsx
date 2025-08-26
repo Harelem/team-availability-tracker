@@ -142,20 +142,24 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        {/* Skip links for accessibility */}
-        <a 
-          href="#main-content" 
-          className="skip-link"
-          data-skip-link="true"
-        >
-          Skip to main content
-        </a>
-        <a 
-          href="#navigation" 
-          className="skip-link"
-        >
-          Skip to navigation
-        </a>
+        {/* Skip links for accessibility - hydration safe */}
+        <div className="skip-links-container" suppressHydrationWarning>
+          <a 
+            href="#main-content" 
+            className="skip-link"
+            data-skip-link="true"
+            tabIndex={1}
+          >
+            Skip to main content
+          </a>
+          <a 
+            href="#navigation" 
+            className="skip-link"
+            tabIndex={2}
+          >
+            Skip to navigation
+          </a>
+        </div>
         
         {/* Main application content with error boundary */}
         <div id="root" className="min-h-screen">

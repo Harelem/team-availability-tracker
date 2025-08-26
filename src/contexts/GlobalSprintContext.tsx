@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CurrentGlobalSprint, TeamSprintStats, GlobalSprintSettings, GlobalSprintContextType } from '@/types';
 import { DatabaseService } from '@/lib/database';
+import { sprintDataHandler } from '@/lib/SprintDataHandler';
+import { debug, warn } from '@/utils/debugLogger';
 
 const GlobalSprintContext = createContext<GlobalSprintContextType | undefined>(undefined);
 
@@ -17,15 +19,33 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load global sprint and team stats
+  // Load global sprint and team stats using new centralized handler
   const refreshSprint = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Load global sprint (always available)
-      const globalSprint = await DatabaseService.getCurrentGlobalSprint();
-      setCurrentSprint(globalSprint);
+      // Use the new centralized sprint data handler
+      const sprintResult = await sprintDataHandler.getCurrentSprint();
+      
+      if (sprintResult.success) {
+        setCurrentSprint(sprintResult.sprint);
+        
+        // Log warnings if any (for debugging)
+        if (sprintResult.warnings.length > 0) {
+          warn('Sprint data warnings:', sprintResult.warnings);
+        }
+        
+        debug(`Sprint data loaded from ${sprintResult.source} (cached: ${sprintResult.cached})`);
+      } else {
+        // Even if there are errors, we should have emergency default data
+        if (sprintResult.sprint) {
+          setCurrentSprint(sprintResult.sprint);
+          warn('Using fallback sprint data:', sprintResult.warnings);
+        } else {
+          throw new Error('Failed to load sprint data from all sources');
+        }
+      }
       
       // Load team-specific stats if teamId is provided
       if (teamId) {
@@ -35,7 +55,19 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
         setTeamStats(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load sprint data');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load sprint data';
+      setError(errorMessage);
+      
+      // Try to provide emergency default even on error
+      try {
+        const emergencyResult = await sprintDataHandler.getCurrentSprint();
+        if (emergencyResult.sprint) {
+          setCurrentSprint(emergencyResult.sprint);
+          warn('Using emergency sprint configuration due to error:', errorMessage);
+        }
+      } catch (emergencyErr) {
+        warn('Failed to load even emergency sprint configuration:', emergencyErr);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +79,8 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
       const success = await DatabaseService.updateGlobalSprintSettings(settings, 'Harel Mazan');
       
       if (success) {
+        // Invalidate sprint data cache before refresh
+        sprintDataHandler.invalidateCache();
         await refreshSprint(); // Refresh data after update
         return true;
       } else {
@@ -65,6 +99,8 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
       const success = await DatabaseService.startNewGlobalSprint(lengthWeeks, 'Harel Mazan');
       
       if (success) {
+        // Invalidate sprint data cache before refresh
+        sprintDataHandler.invalidateCache();
         await refreshSprint(); // Refresh data after starting new sprint
         return true;
       } else {
@@ -83,6 +119,8 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
       const success = await DatabaseService.updateSprintDates(startDate, endDate, 'Harel Mazan');
       
       if (success) {
+        // Invalidate sprint data cache before refresh
+        sprintDataHandler.invalidateCache();
         await refreshSprint(); // Refresh data after updating dates
         return true;
       } else {

@@ -1,0 +1,51 @@
+{
+  "timestamp": "2025-08-26T18:10:05.874Z",
+  "tests": [
+    {
+      "name": "Main Page Loading",
+      "status": "PASS",
+      "loadTime": 1783,
+      "details": "Page loaded successfully in 1783ms"
+    },
+    {
+      "name": "Team List Display",
+      "status": "FAIL",
+      "error": "Waiting for selector `[data-testid=\"team-list\"], .team-grid, .team-container` failed"
+    },
+    {
+      "name": "COO Dashboard Access",
+      "status": "PASS",
+      "loadTime": 1026,
+      "details": "COO Dashboard loaded successfully in 1026ms"
+    },
+    {
+      "name": "Executive Dashboard Access",
+      "status": "PASS",
+      "loadTime": 969,
+      "details": "Executive Dashboard loaded successfully in 969ms"
+    },
+    {
+      "name": "Navigation Testing",
+      "status": "PASS",
+      "details": "0 navigation elements found and accessible"
+    },
+    {
+      "name": "Console Error Check",
+      "status": "PASS",
+      "details": "No critical console errors detected"
+    },
+    {
+      "name": "Network Error Check",
+      "status": "PASS",
+      "details": "No network errors detected"
+    }
+  ],
+  "summary": {
+    "total": 7,
+    "passed": 6,
+    "failed": 1,
+    "errors": [
+      "Team List Display: Waiting for selector `[data-testid=\"team-list\"], .team-grid, .team-container` failed"
+    ]
+  }
+}

@@ -98,6 +98,16 @@
   --mobile-radius-xl: 20px;
   --mobile-radius-2xl: 24px;
 
+  /* Accessibility Skip Links - Hydration Safe */
+  --skip-link-hide-offset: -40px;
+  --skip-link-show-offset: 0px;
+  --skip-link-left-position: 6px;
+  --skip-link-padding: 8px;
+  --skip-link-z-index: 1000;
+  --skip-link-bg-color: #000;
+  --skip-link-text-color: #fff;
+  --skip-link-border-radius: 0 0 4px 4px;
+
   /* Mobile Animation Durations */
   --mobile-duration-fast: 150ms;
   --mobile-duration-normal: 200ms;
@@ -2249,21 +2259,53 @@ html[data-focus-mode="high-visibility"] *:focus-visible {
   scroll-behavior: auto !important;
 }
 
-/* Skip Links */
+/* Accessibility Skip Links - Hydration Safe */
 .skip-link {
   position: absolute;
-  top: -40px;
-  left: 6px;
-  background: #000;
-  color: #fff;
-  padding: 8px;
+  top: var(--skip-link-hide-offset);
+  left: var(--skip-link-left-position);
+  background: var(--skip-link-bg-color);
+  color: var(--skip-link-text-color);
+  padding: var(--skip-link-padding);
   text-decoration: none;
-  z-index: 1000;
-  border-radius: 0 0 4px 4px;
+  z-index: var(--skip-link-z-index);
+  border-radius: var(--skip-link-border-radius);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateY(0); /* Prevent layout shift */
+  transition: top 0.2s ease-in-out;
+  /* Ensure consistent rendering */
+  will-change: top;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 .skip-link:focus {
+  top: var(--skip-link-show-offset);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.skip-link:focus-visible {
+  top: var(--skip-link-show-offset);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Skip Links Container - Hydration Safe */
+.skip-links-container {
+  position: absolute;
   top: 0;
+  left: 0;
+  z-index: calc(var(--skip-link-z-index) + 1);
+  pointer-events: none; /* Allow interaction only with child links */
+  width: auto;
+  height: auto;
+}
+
+.skip-links-container .skip-link {
+  pointer-events: auto; /* Re-enable interaction for links */
 }
 
 /* Screen Reader Only Content */

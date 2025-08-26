@@ -21,6 +21,8 @@ import { validateDatabaseSchema } from '@/utils/schemaValidator';
 import { loadOfflineData, saveOfflineData, initializeOfflineMode, getErrorMessage } from '@/utils/errorRecovery';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import ClientOnly from '@/components/ClientOnly';
+import LoadingState from '@/components/LoadingState';
+import logger from '@/utils/logger';
 
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
@@ -52,14 +54,14 @@ function HomeContent() {
       if (dataChecks && dataChecks.status === 'fulfilled' && Array.isArray(dataChecks.value)) {
         const criticalIssues = dataChecks.value.filter((check: any) => check.status === 'FAIL');
         if (criticalIssues.length > 0) {
-          console.warn('⚠️ Background: Critical data issues detected:', criticalIssues.length);
+          logger.warn(`Background: Critical data issues detected: ${criticalIssues.length}`, 'database');
         }
       }
       
       setBackgroundDataLoaded(true);
       
     } catch (error) {
-      console.warn('⚠️ Background data loading failed (non-critical):', error);
+      logger.warn('Background data loading failed (non-critical)', 'database', error);
     }
   }, [backgroundDataLoaded]);
 
@@ -80,7 +82,7 @@ function HomeContent() {
         setLoading(true);
         
         // SIMPLIFIED: Direct team loading without blocking validation
-        console.log('🔄 Loading teams from database...');
+        logger.info('Loading teams from database', 'database');
         
         // Direct call to DatabaseService without complex wrappers
         const teamsData = await DatabaseService.getTeams();
@@ -91,12 +93,12 @@ function HomeContent() {
         setTeams(teamsData || []);
         
         if (teamsData && teamsData.length > 0) {
-          console.log(`✅ Successfully loaded ${teamsData.length} teams`);
+          logger.success(`Successfully loaded ${teamsData.length} teams`);
           
           // Save to offline storage for future use
           saveOfflineData(teamsData);
         } else {
-          console.warn('⚠️ No teams found in database - this may be expected for new installations');
+          logger.warn('No teams found in database - this may be expected for new installations', 'database');
         }
         
         // BACKGROUND: Run validation and other checks non-blocking
@@ -105,12 +107,12 @@ function HomeContent() {
             // Run schema validation in background - just for logging
             validateDatabaseSchema().then(result => {
               if (!result.isValid) {
-                console.warn('⚠️ Schema validation warnings (non-blocking):', result.errors);
+                logger.warn('Schema validation warnings (non-blocking)', 'validation', result.errors);
               } else {
-                console.log('✅ Schema validation passed');
+                logger.success('Schema validation passed');
               }
             }).catch(err => {
-              console.warn('⚠️ Schema validation check failed (non-critical):', err);
+              logger.warn('Schema validation check failed (non-critical)', 'validation', err);
             });
             
             // Load other background data
@@ -122,20 +124,20 @@ function HomeContent() {
         if (!mounted) return;
         
         const errorMessage = getErrorMessage(error);
-        console.error('❌ Failed to load teams:', errorMessage);
+        logger.error('Failed to load teams', 'database', errorMessage);
         
         // FALLBACK: Try offline mode only for real failures
         try {
           const offlineData = loadOfflineData();
           if (offlineData && offlineData.teams && offlineData.teams.length > 0) {
-            console.info('📱 Using offline data - some information may not be current');
+            logger.info('Using offline data - some information may not be current', 'mobile');
             setTeams(offlineData.teams);
           } else {
-            console.warn('⚠️ No offline data available');
+            logger.warn('No offline data available', 'mobile');
             setTeams([]);
           }
         } catch (fallbackError) {
-          console.error('❌ Offline fallback also failed:', fallbackError);
+          logger.error('Offline fallback also failed', 'mobile', fallbackError);
           setTeams([]);
         }
       } finally {
@@ -179,7 +181,7 @@ function HomeContent() {
       } catch (error) {
         if (!mounted) return;
         
-        console.error('Error loading team members:', error);
+        logger.error(`Error loading team members for team: ${selectedTeam?.name}`, 'database', error);
         // Show meaningful error but don't block UI
         setTeamMembers([]);
       } finally {
@@ -216,7 +218,7 @@ function HomeContent() {
       if (targetTeam) {
         setSelectedTeam(targetTeam);
       } else {
-        console.warn(`⚠️ Team with ID ${teamId} not found in available teams`);
+        logger.warn(`Team with ID ${teamId} not found in available teams`);
       }
     }
   }, [searchParams, teams, selectedTeam, setSelectedTeam]);
@@ -246,24 +248,7 @@ function HomeContent() {
 
   // Team loading state - hydration safe
   if (selectedTeam && loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex items-center justify-center p-4 min-h-screen">
-          <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
-            {/* Consistent loading structure for both server and client */}
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
-              <div className="space-y-2">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="h-12 bg-gray-200 rounded"></div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingState testId="team-members-loading" />;
   }
 
   // Show user selection for selected team
@@ -455,24 +440,7 @@ function HomeContent() {
 export default function Home() {
   return (
     <TeamProvider>
-      <Suspense fallback={
-        <div className="min-h-screen bg-gray-50">
-          <div className="flex items-center justify-center p-4 min-h-screen">
-            <div className="bg-white rounded-lg p-8 shadow-md max-w-md w-full text-center">
-              {/* Server-safe loading without animations */}
-              <div>
-                <div className="h-8 bg-gray-200 rounded mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
-                <div className="space-y-2">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      }>
+      <Suspense fallback={<LoadingState testId="suspense-loading" />}>
         <HomeContent />
       </Suspense>
     </TeamProvider>
