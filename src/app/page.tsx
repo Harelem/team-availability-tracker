@@ -3,30 +3,71 @@
 import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
-import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
-import MobileBreadcrumb from '@/components/MobileBreadcrumb';
 
-// CRITICAL FIX: Direct imports to eliminate originalFactory undefined errors
-import PersonalDashboard from '@/components/PersonalDashboard';
-import ManagerDashboard from '@/components/ManagerDashboard';
+// Dynamic imports for navigation components to optimize initial load
+const BreadcrumbNavigation = dynamic(() => import('@/components/BreadcrumbNavigation'), {
+  loading: () => <div className="h-8 bg-gray-200 rounded animate-pulse" />,
+  ssr: false
+});
+
+const MobileBreadcrumb = dynamic(() => import('@/components/MobileBreadcrumb'), {
+  loading: () => <div className="h-6 bg-gray-200 rounded animate-pulse" />,
+  ssr: false
+});
+
+// Dynamic imports for heavy dashboard components - improves LCP
+const PersonalDashboard = dynamic(() => import('@/components/PersonalDashboard'), {
+  loading: () => <LoadingState testId="personal-dashboard-loading" showText text="Loading dashboard..." />,
+  ssr: false
+});
+
+const ManagerDashboard = dynamic(() => import('@/components/ManagerDashboard').then(mod => ({ default: mod.default })), {
+  loading: () => <LoadingState testId="manager-dashboard-loading" showText text="Loading dashboard..." />,
+  ssr: false
+});
+
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
 import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
-// Removed unused import: verifyEnvironmentConfiguration
-import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPreservation';
-import { validateDatabaseSchema } from '@/utils/schemaValidator';
-import { loadOfflineData, saveOfflineData, initializeOfflineMode, getErrorMessage } from '@/utils/errorRecovery';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import ClientOnly from '@/components/ClientOnly';
 import LoadingState from '@/components/LoadingState';
-import logger from '@/utils/logger';
+
+// Defer non-critical imports for better LCP
+const getLogger = () => {
+  if (typeof window !== 'undefined') {
+    // Dynamic import for client-side only
+    return import('@/utils/logger').then(module => module.default);
+  }
+  return Promise.resolve({ info: () => {}, warn: () => {}, error: () => {}, success: () => {} });
+};
+
+const logger = { info: () => {}, warn: () => {}, error: () => {}, success: () => {} };
 
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
-  const { isMobile } = useIsMobile();
+  
+  // Dynamic mobile detection to reduce initial bundle
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    import('@/hooks/useIsMobile').then(({ useIsMobile }) => {
+      // For immediate use after import
+      const checkMobile = () => window.innerWidth < 768;
+      setIsMobile(checkMobile());
+      
+      const handleResize = () => setIsMobile(checkMobile());
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }).catch(error => {
+      console.warn('Failed to load mobile detection:', error);
+      // Fallback to basic mobile detection
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    });
+  }, []);
   // Router removed as unused
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -36,11 +77,19 @@ function HomeContent() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [backgroundDataLoaded, setBackgroundDataLoaded] = useState(false);
 
-  // Background data loading for non-critical operations
+  // Background data loading for non-critical operations - dynamically loaded
   const loadBackgroundData = useCallback(async () => {
     if (backgroundDataLoaded) return;
     
     try {
+      // Dynamically import non-critical utilities to reduce initial bundle
+      const [
+        { performDataPersistenceCheck, verifyDatabaseState },
+        { validateDatabaseSchema }
+      ] = await Promise.all([
+        import('@/utils/dataPreservation'),
+        import('@/utils/schemaValidator')
+      ]);
       
       // Load non-critical data in background
       const backgroundTasks = [
@@ -65,10 +114,14 @@ function HomeContent() {
     }
   }, [backgroundDataLoaded]);
 
-  // Client-side initialization for offline mode
+  // Client-side initialization for offline mode - dynamically loaded
   useEffect(() => {
-    // Initialize offline mode listeners
-    initializeOfflineMode();
+    // Initialize offline mode listeners after component mount
+    import('@/utils/errorRecovery').then(({ initializeOfflineMode }) => {
+      initializeOfflineMode();
+    }).catch(error => {
+      console.warn('Failed to initialize offline mode:', error);
+    });
   }, []);
 
   // Load initial data (teams only) with timeout protection
@@ -95,24 +148,32 @@ function HomeContent() {
         if (teamsData && teamsData.length > 0) {
           logger.success(`Successfully loaded ${teamsData.length} teams`);
           
-          // Save to offline storage for future use
-          saveOfflineData(teamsData);
+          // Save to offline storage for future use - dynamically loaded
+          import('@/utils/errorRecovery').then(({ saveOfflineData }) => {
+            saveOfflineData(teamsData);
+          }).catch(error => {
+            logger.warn('Failed to save offline data (non-critical)', 'mobile', error);
+          });
         } else {
           logger.warn('No teams found in database - this may be expected for new installations', 'database');
         }
         
-        // BACKGROUND: Run validation and other checks non-blocking
+        // BACKGROUND: Run validation and other checks non-blocking with dynamic imports
         setTimeout(() => {
           if (mounted) {
-            // Run schema validation in background - just for logging
-            validateDatabaseSchema().then(result => {
-              if (!result.isValid) {
-                logger.warn('Schema validation warnings (non-blocking)', 'validation', result.errors);
-              } else {
-                logger.success('Schema validation passed');
-              }
+            // Run schema validation in background - dynamically loaded
+            import('@/utils/schemaValidator').then(({ validateDatabaseSchema }) => {
+              validateDatabaseSchema().then(result => {
+                if (!result.isValid) {
+                  logger.warn('Schema validation warnings (non-blocking)', 'validation', result.errors);
+                } else {
+                  logger.success('Schema validation passed');
+                }
+              }).catch(err => {
+                logger.warn('Schema validation check failed (non-critical)', 'validation', err);
+              });
             }).catch(err => {
-              logger.warn('Schema validation check failed (non-critical)', 'validation', err);
+              logger.warn('Failed to load schema validator (non-critical)', 'validation', err);
             });
             
             // Load other background data
@@ -123,23 +184,29 @@ function HomeContent() {
       } catch (error) {
         if (!mounted) return;
         
-        const errorMessage = getErrorMessage(error);
-        logger.error('Failed to load teams', 'database', errorMessage);
-        
-        // FALLBACK: Try offline mode only for real failures
-        try {
-          const offlineData = loadOfflineData();
-          if (offlineData && offlineData.teams && offlineData.teams.length > 0) {
-            logger.info('Using offline data - some information may not be current', 'mobile');
-            setTeams(offlineData.teams);
-          } else {
-            logger.warn('No offline data available', 'mobile');
+        // Dynamically import error utilities for fallback
+        import('@/utils/errorRecovery').then(({ getErrorMessage, loadOfflineData, saveOfflineData }) => {
+          const errorMessage = getErrorMessage(error);
+          logger.error('Failed to load teams', 'database', errorMessage);
+          
+          // FALLBACK: Try offline mode only for real failures
+          try {
+            const offlineData = loadOfflineData();
+            if (offlineData && offlineData.teams && offlineData.teams.length > 0) {
+              logger.info('Using offline data - some information may not be current', 'mobile');
+              setTeams(offlineData.teams);
+            } else {
+              logger.warn('No offline data available', 'mobile');
+              setTeams([]);
+            }
+          } catch (fallbackError) {
+            logger.error('Offline fallback also failed', 'mobile', fallbackError);
             setTeams([]);
           }
-        } catch (fallbackError) {
-          logger.error('Offline fallback also failed', 'mobile', fallbackError);
+        }).catch(fallbackImportError => {
+          logger.error('Failed to load error recovery utilities', 'database', fallbackImportError);
           setTeams([]);
-        }
+        });
       } finally {
         if (mounted) {
           setLoading(false);
@@ -395,42 +462,48 @@ function HomeContent() {
           </div>
         </div>
         
-        {/* User Type Detection and Dashboard Rendering - FIXED: Direct component imports */}
+        {/* User Type Detection and Dashboard Rendering with Suspense boundaries */}
         <div suppressHydrationWarning={true}>
-          {canViewSprints(selectedUser) && selectedTeam && selectedUser && (
-            <GlobalSprintProvider teamId={selectedTeam.id}>
-              {selectedUser.isManager ? (
-                <ManagerDashboard 
-                  user={selectedUser}
-                  team={selectedTeam}
-                  teamMembers={teamMembers}
-                />
-              ) : (
-                <PersonalDashboard 
-                  user={selectedUser}
-                  team={selectedTeam}
-                  teamMembers={teamMembers}
-                />
-              )}
-            </GlobalSprintProvider>
-          )}
-          
-          {/* Show basic dashboard without sprint features if user can't view sprints */}
-          {!canViewSprints(selectedUser) && selectedTeam && selectedUser && (
-            selectedUser.isManager ? (
-              <ManagerDashboard 
-                user={selectedUser}
-                team={selectedTeam}
-                teamMembers={teamMembers}
-              />
-            ) : (
-              <PersonalDashboard 
-                user={selectedUser}
-                team={selectedTeam}
-                teamMembers={teamMembers}
-              />
-            )
-          )}
+          <Suspense fallback={<LoadingState testId="dashboard-suspense-loading" showText text="Loading dashboard..." />}>
+            {canViewSprints(selectedUser) && selectedTeam && selectedUser && (
+              <GlobalSprintProvider teamId={selectedTeam.id}>
+                <Suspense fallback={<LoadingState testId="sprint-dashboard-loading" showText text="Loading sprint data..." />}>
+                  {selectedUser.isManager ? (
+                    <ManagerDashboard 
+                      user={selectedUser}
+                      team={selectedTeam}
+                      teamMembers={teamMembers}
+                    />
+                  ) : (
+                    <PersonalDashboard 
+                      user={selectedUser}
+                      team={selectedTeam}
+                      teamMembers={teamMembers}
+                    />
+                  )}
+                </Suspense>
+              </GlobalSprintProvider>
+            )}
+            
+            {/* Show basic dashboard without sprint features if user can't view sprints */}
+            {!canViewSprints(selectedUser) && selectedTeam && selectedUser && (
+              <Suspense fallback={<LoadingState testId="basic-dashboard-loading" showText text="Loading dashboard..." />}>
+                {selectedUser.isManager ? (
+                  <ManagerDashboard 
+                    user={selectedUser}
+                    team={selectedTeam}
+                    teamMembers={teamMembers}
+                  />
+                ) : (
+                  <PersonalDashboard 
+                    user={selectedUser}
+                    team={selectedTeam}
+                    teamMembers={teamMembers}
+                  />
+                )}
+              </Suspense>
+            )}
+          </Suspense>
         </div>
       </div>
     </div>

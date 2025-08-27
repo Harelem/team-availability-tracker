@@ -130,23 +130,17 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  /* Fix webkit text size adjust warnings */
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+  /* Text size adjust property removed to prevent webkit warnings */
 }
 
 /* EMERGENCY MOBILE CSS FIXES */
 html, body {
-  -webkit-text-size-adjust: 100% !important;
-  text-size-adjust: 100% !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
 }
 
-/* Global webkit fixes for better mobile compatibility */
+/* Global mobile compatibility fixes */
 * {
-  -webkit-text-size-adjust: 100% !important;
-  text-size-adjust: 100% !important;
   -webkit-font-feature-settings: inherit;
   font-feature-settings: inherit;
 }
@@ -180,29 +174,22 @@ html, body {
 /* Force mobile CSS properties to work with emergency overrides */
 @media (max-width: 768px) {
   html {
-    -webkit-text-size-adjust: none !important;
-    text-size-adjust: none !important;
+    /* text-size-adjust property removed to prevent webkit warnings */
   }
   
   body {
-    -webkit-text-size-adjust: 100% !important;
-    text-size-adjust: 100% !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior: contain !important;
   }
   
   /* Emergency button standards */
   button, .btn, [role="button"] {
-    -webkit-text-size-adjust: 100% !important;
-    text-size-adjust: 100% !important;
     touch-action: manipulation !important;
     -webkit-tap-highlight-color: transparent !important;
   }
   
   /* Input fixes to prevent iOS zoom */
   input, select, textarea {
-    -webkit-text-size-adjust: 100% !important;
-    text-size-adjust: 100% !important;
     font-size: 16px !important;
   }
 }
@@ -247,8 +234,6 @@ html, body {
   will-change: transform, box-shadow;
   position: relative;
   overflow: hidden;
-  -webkit-text-size-adjust: 100% !important;
-  text-size-adjust: 100% !important;
 }
 
 .touch-feedback::before {
@@ -3132,4 +3117,97 @@ main:focus {
 @keyframes shimmer {
   0% { background-position: -200px 0; }
   100% { background-position: calc(200px + 100%) 0; }
+}
+
+/* ============================================================================
+   CSS PARSING ERROR FIXES - CRITICAL OVERRIDES
+   ============================================================================ */
+
+/* 
+ * This section contains critical CSS fixes that resolve browser parsing errors
+ * These fixes override Tailwind's base styles that cause console errors
+ * Priority: HIGHEST - These must always override any conflicting styles
+ */
+
+/* Override problematic Tailwind base styles with highest specificity */
+html:not([data-never-match]),
+:host:not([data-never-match]) {
+  /* 
+   * Replace problematic -webkit-text-size-adjust with proper iOS zoom prevention 
+   * Using font-size 16px prevents iOS zoom without vendor prefix issues
+   */
+  -webkit-text-size-adjust: unset !important;
+  font-size: 16px !important;
+  tab-size: 4 !important;
+  line-height: 1.5 !important;
+  font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji") !important;
+  font-feature-settings: var(--default-font-feature-settings, normal) !important;
+  font-variation-settings: var(--default-font-variation-settings, normal) !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Force override any remaining -webkit-text-size-adjust declarations */
+*,
+*::before,
+*::after,
+:host,
+html {
+  /* Use 'initial' to reset any inherited problematic values */
+  -webkit-text-size-adjust: initial !important;
+}
+
+/* Ensure all interactive elements use proper font sizes for iOS zoom prevention */
+input:not([data-never-match]),
+select:not([data-never-match]),
+textarea:not([data-never-match]),
+button:not([data-never-match]) {
+  font-size: 16px !important;
+  /* Ensure no problematic vendor prefixes are inherited */
+  -webkit-text-size-adjust: initial !important;
+}
+
+/* Focus handling without problematic pseudo-elements - highest specificity */
+button:focus-visible:not([data-never-match]),
+input:focus-visible:not([data-never-match]),
+select:focus-visible:not([data-never-match]),
+textarea:focus-visible:not([data-never-match]),
+[role="button"]:focus-visible:not([data-never-match]),
+[tabindex]:focus-visible:not([data-never-match]) {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+}
+
+/* Additional mobile-specific fixes without vendor prefixes */
+@media screen and (max-device-width: 480px) {
+  input[type="text"]:not([data-never-match]),
+  input[type="email"]:not([data-never-match]),
+  input[type="search"]:not([data-never-match]),
+  input[type="tel"]:not([data-never-match]),
+  input[type="url"]:not([data-never-match]),
+  input[type="password"]:not([data-never-match]),
+  textarea:not([data-never-match]),
+  select:not([data-never-match]) {
+    font-size: 16px !important;
+    -webkit-text-size-adjust: initial !important;
+  }
+}
+
+/* 
+ * CSS @supports rule to handle different browser support levels
+ * This ensures compatibility across all browsers while fixing parsing errors
+ */
+@supports (text-size-adjust: none) {
+  html,
+  :host {
+    text-size-adjust: none !important;
+    -webkit-text-size-adjust: initial !important;
+  }
+}
+
+@supports not (text-size-adjust: none) {
+  html,
+  :host {
+    -webkit-text-size-adjust: initial !important;
+    font-size: 16px !important;
+  }
 }

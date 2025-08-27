@@ -4,7 +4,9 @@
  * Prevents React hydration mismatches
  */
 
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 
 interface LoadingStateProps {
   /**
@@ -54,6 +56,13 @@ export default function LoadingState({
   size = "default",
   testId = "loading-state"
 }: LoadingStateProps) {
+  // Track client-side mounting to prevent hydration mismatch
+  const [isClientMounted, setIsClientMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
+
   const sizeClasses = {
     small: {
       container: "max-w-sm",
@@ -77,33 +86,32 @@ export default function LoadingState({
   
   const sizes = sizeClasses[size];
   
+  // Ensure consistent structure - use same layout as page.tsx expects
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex items-center justify-center p-4 min-h-screen">
-        <div className={`bg-white rounded-lg p-8 shadow-md w-full text-center ${sizes.container} ${className}`}>
-          <div className="animate-pulse" data-testid={testId}>
-            {/* Header skeleton */}
-            <div className={`${sizes.header} bg-gray-200 rounded mb-4`}></div>
-            
-            {/* Subheader skeleton */}
-            <div className={`${sizes.subheader} bg-gray-200 rounded mx-auto mb-6`}></div>
-            
-            {/* Loading text (optional) */}
-            {showText && (
-              <div className="text-gray-600 text-sm mb-4">
-                {text}
-              </div>
-            )}
-            
-            {/* Skeleton rows */}
-            <div className="space-y-2">
-              {Array.from({ length: rows }, (_, i) => (
-                <div 
-                  key={i} 
-                  className={`${sizes.row} bg-gray-200 rounded`}
-                ></div>
-              ))}
+    <div className="flex items-center justify-center p-4 min-h-screen">
+      <div className={`bg-white rounded-lg p-8 shadow-md w-full text-center ${sizes.container} ${className}`}>
+        <div className={isClientMounted ? "animate-pulse" : ""} data-testid={testId || undefined}>
+          {/* Header skeleton */}
+          <div className={`${sizes.header} bg-gray-200 rounded mb-4`}></div>
+          
+          {/* Subheader skeleton */}
+          <div className={`${sizes.subheader} bg-gray-200 rounded mx-auto mb-6`}></div>
+          
+          {/* Loading text (optional) */}
+          {showText && (
+            <div className="text-gray-600 text-sm mb-4">
+              {text}
             </div>
+          )}
+          
+          {/* Skeleton rows */}
+          <div className="space-y-2">
+            {Array.from({ length: rows }, (_, i) => (
+              <div 
+                key={i} 
+                className={`${sizes.row} bg-gray-200 rounded`}
+              ></div>
+            ))}
           </div>
         </div>
       </div>
@@ -121,8 +129,15 @@ export function CompactLoadingState({
   className?: string;
   testId?: string;
 }) {
+  // Track client-side mounting to prevent hydration mismatch
+  const [isClientMounted, setIsClientMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
+
   return (
-    <div className={`animate-pulse ${className}`} data-testid={testId}>
+    <div className={`${isClientMounted ? "animate-pulse" : ""} ${className}`} data-testid={testId || undefined}>
       <div className="h-6 bg-gray-200 rounded mb-2"></div>
       <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
       <div className="space-y-2">
@@ -146,9 +161,16 @@ export function InlineLoadingState({
   className?: string;
   testId?: string;
 }) {
+  // Track client-side mounting to prevent hydration mismatch
+  const [isClientMounted, setIsClientMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsClientMounted(true);
+  }, []);
+
   return (
-    <div className={`flex items-center gap-2 ${className}`} data-testid={testId}>
-      <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+    <div className={`flex items-center gap-2 ${className}`} data-testid={testId || undefined}>
+      <div className={`h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full ${isClientMounted ? "animate-spin" : ""}`}></div>
       <span className="text-gray-600 text-sm">{text}</span>
     </div>
   );

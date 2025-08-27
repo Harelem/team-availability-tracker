@@ -1011,6 +1011,7 @@ export function createSprintDetectionReportSync(targetDate: Date = new Date()): 
  * Backward compatibility wrapper for components expecting synchronous sprint detection
  * This maintains the original API while providing enhanced functionality
  */
+// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace BackwardCompatibility {
   
   /**

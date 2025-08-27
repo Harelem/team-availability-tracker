@@ -315,7 +315,7 @@ export function createHydrationSafeDynamic<P extends object>(
 ) {
   const { loading: Loading, ssr = false, delay = 0 } = options
 
-  return React.forwardRef<HTMLElement, P>((props, ref) => {
+  const HydrationSafeComponent = React.forwardRef<HTMLElement, P>((props, ref) => {
     const [Component, setComponent] = useState<React.ComponentType<P> | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<Error | null>(null)
@@ -327,8 +327,8 @@ export function createHydrationSafeDynamic<P extends object>(
             await new Promise(resolve => setTimeout(resolve, delay))
           }
           
-          const module = await importFunction()
-          setComponent(() => module.default)
+          const moduleResult = await importFunction()
+          setComponent(() => moduleResult.default)
         } catch (err) {
           setError(err as Error)
         } finally {
@@ -367,6 +367,10 @@ export function createHydrationSafeDynamic<P extends object>(
 
     return <Component {...(props as any)} {...(ref ? { ref } : {})} />
   })
+  
+  HydrationSafeComponent.displayName = `HydrationSafe(${importFunction.name || 'Component'})`
+  
+  return HydrationSafeComponent
 }
 
 export default HydrationSafeWrapper

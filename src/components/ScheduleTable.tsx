@@ -12,7 +12,14 @@ import TeamMemberManagement from './TeamMemberManagement';
 import TeamHoursStatus from './TeamHoursStatus';
 import CompactHeaderBar from './CompactHeaderBar';
 import QuickActionsBar from './QuickActionsBar';
-import EnhancedAvailabilityTable from './EnhancedAvailabilityTable';
+import dynamic from 'next/dynamic';
+import LoadingState from './LoadingState';
+
+// Dynamic import for heavy table component to improve LCP
+const EnhancedAvailabilityTable = dynamic(() => import('./EnhancedAvailabilityTable'), {
+  loading: () => <LoadingState testId="availability-table-loading" showText text="Loading availability table..." />,
+  ssr: false
+});
 import TeamSummaryOverview from './TeamSummaryOverview';
 import ClientOnly from './ClientOnly';
 // import { canManageSprints } from '@/utils/permissions'; // Used in CompactHeaderBar

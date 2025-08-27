@@ -1,0 +1,47 @@
+{
+  "timestamp": "2025-08-27T14:31:57.025Z",
+  "optimizations": [
+    "Dynamic import: PersonalDashboard",
+    "Dynamic import: ManagerDashboard",
+    "Dynamic import: BreadcrumbNavigation",
+    "Dynamic import: MobileBreadcrumb",
+    "Dynamic import: EnhancedAvailabilityTable (ScheduleTable)",
+    "Suspense boundary: Main Suspense boundary",
+    "Suspense boundary: Dashboard Suspense boundary",
+    "Suspense boundary: Sprint dashboard Suspense boundary",
+    "Suspense boundary: Basic dashboard Suspense boundary",
+    "Deferred import: Dynamic error recovery import",
+    "Deferred import: Dynamic schema validator import",
+    "Deferred import: Dynamic data preservation import",
+    "Deferred import: Conditional logger import",
+    "Resource optimization: Critical CSS inlined",
+    "Resource optimization: Font preload",
+    "Resource optimization: DNS prefetch",
+    "Resource optimization: Module preload",
+    "Resource optimization: Font display swap",
+    "Resource optimization: Deferred scripts"
+  ],
+  "bundleAnalysis": {
+    "dynamicImports": 5,
+    "staticImports": 30,
+    "dynamicRatio": 14.285714285714285,
+    "estimatedReduction": 21
+  },
+  "codeAnalysis": {},
+  "recommendations": [
+    "LCP target <2500ms should be achieved with these optimizations",
+    "Monitor Core Web Vitals in production using real user metrics",
+    "Consider implementing virtual scrolling for very large team lists",
+    "Add service worker caching for offline functionality",
+    "Optimize images using Next.js Image component with proper sizing",
+    "Consider implementing route-based code splitting for additional pages",
+    "Use lighthouse CI in GitHub Actions to monitor performance regression"
+  ],
+  "projection": {
+    "originalLCP": 3779,
+    "projectedLCP": 2769,
+    "improvement": 1010,
+    "improvementPercentage": 26.726647261180208,
+    "targetAchieved": false
+  }
+}

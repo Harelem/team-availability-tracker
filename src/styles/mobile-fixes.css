@@ -86,8 +86,7 @@ a:has(.lucide):not([class*="rounded-xl"]):not([class*="btn-height-responsive"]) 
 /* Fix iOS input zoom issue */
 input, select, textarea {
   font-size: 16px !important;
-  /* Prevent iOS zoom on focus */
-  -webkit-text-size-adjust: 100%;
+  /* iOS zoom prevention handled by font-size instead of text-size-adjust */
 }
 
 /* Mobile form controls */

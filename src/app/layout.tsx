@@ -9,17 +9,22 @@ import { MobileNavigationProvider } from "@/components/navigation/MobileNavigati
 import GlobalMobileNavigation from "@/components/navigation/GlobalMobileNavigation";
 import EmergencyMobileWrapper from "@/components/EmergencyMobileWrapper";
 import { HydrationProvider } from "@/components/HydrationSafeWrapper";
+import SkipLinks from "@/components/SkipLinks";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
+  preload: true,
+  fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  variable: "--font-geist-mono", 
   subsets: ["latin"],
   display: "swap",
+  preload: true,
+  fallback: ["ui-monospace", "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", "monospace"],
 });
 
 export const metadata: Metadata = {
@@ -131,35 +136,30 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//fonts.gstatic.com" />
         
+        {/* Critical CSS optimization - inline key styles */}
+        <style dangerouslySetInnerHTML={{__html: `
+          .min-h-screen{min-height:100vh}
+          .bg-gray-50{background-color:#f9fafb}
+          .bg-white{background-color:#fff}
+          .animate-pulse{animation:pulse 2s cubic-bezier(0.4,0,0.6,1) infinite}
+          @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+          .bg-gray-200{background-color:#e5e7eb}
+          .rounded{border-radius:0.25rem}
+        `}} />
+        
         {/* Optimized Cache Control for Performance */}
         <meta httpEquiv="Cache-Control" content="public, max-age=3600, stale-while-revalidate=86400" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         
-        {/* Service Worker registration script - external file for security */}
-        <script src="/scripts/service-worker-init.js" defer></script>
+        {/* Service Worker registration script - external file for security - low priority */}
+        <script src="/scripts/service-worker-init.js" defer async></script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
         {/* Skip links for accessibility - hydration safe */}
-        <div className="skip-links-container" suppressHydrationWarning>
-          <a 
-            href="#main-content" 
-            className="skip-link"
-            data-skip-link="true"
-            tabIndex={1}
-          >
-            Skip to main content
-          </a>
-          <a 
-            href="#navigation" 
-            className="skip-link"
-            tabIndex={2}
-          >
-            Skip to navigation
-          </a>
-        </div>
+        <SkipLinks />
         
         {/* Main application content with error boundary */}
         <div id="root" className="min-h-screen">
@@ -189,14 +189,21 @@ export default function RootLayout({
         {/* Version display for mobile emergency debugging */}
         <LazyVersionDisplay />
         
-        {/* Performance monitoring initialization script - external file for security */}
-        <script src="/scripts/performance-monitor.js" defer></script>
+        {/* Non-critical scripts - loaded after main content for better LCP */}
+        <script 
+          src="/scripts/performance-monitor.js" 
+          defer 
+        ></script>
         
-        {/* Accessibility preferences initialization - external file for security */}
-        <script src="/scripts/accessibility-init.js" defer></script>
+        <script 
+          src="/scripts/accessibility-init.js" 
+          defer 
+        ></script>
         
-        {/* Mobile touch and viewport optimization initialization */}
-        <script src="/scripts/mobile-touch-init.js" defer></script>
+        <script 
+          src="/scripts/mobile-touch-init.js" 
+          defer 
+        ></script>
       </body>
     </html>
   );

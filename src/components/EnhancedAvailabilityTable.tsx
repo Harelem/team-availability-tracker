@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, memo, useCallback } from 'react';
+import { useMemo, memo, useCallback, useState, useEffect } from 'react';
 import { detectCurrentSprintForDateSync } from '@/utils/smartSprintDetection';
 import { Clock, MessageSquare } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';

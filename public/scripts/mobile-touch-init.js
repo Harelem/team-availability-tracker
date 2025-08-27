@@ -74,12 +74,16 @@
 
   // Optimize touch targets
   function optimizeTouchTargets() {
-    // Find potentially problematic touch targets
+    // Find potentially problematic touch targets (exclude skip links to prevent hydration issues)
     const interactiveElements = document.querySelectorAll(
-      'button, a[href], [role="button"], [onclick], input[type="button"], input[type="submit"], .clickable, .btn'
+      'button, a[href]:not(.skip-link), [role="button"]:not(.skip-link), [onclick], input[type="button"], input[type="submit"], .clickable, .btn'
     );
 
     interactiveElements.forEach(function(element) {
+      // Skip if this is a skip link to prevent hydration mismatch
+      if (element.classList.contains('skip-link') || element.hasAttribute('data-skip-link')) {
+        return;
+      }
       const rect = element.getBoundingClientRect();
       const minSize = 44; // iOS minimum touch target size
 
@@ -124,12 +128,18 @@
       }, { passive: true });
     }
 
-    // Apply to interactive elements
+    // Apply to interactive elements (exclude skip links to prevent hydration issues)
     const interactiveElements = document.querySelectorAll(
-      'button, .btn, [role="button"], .clickable, .touch-feedback'
+      'button, .btn, [role="button"]:not(.skip-link), .clickable, .touch-feedback'
     );
 
-    interactiveElements.forEach(addTouchActiveStates);
+    interactiveElements.forEach(function(element) {
+      // Skip if this is a skip link to prevent hydration mismatch
+      if (element.classList.contains('skip-link') || element.hasAttribute('data-skip-link')) {
+        return;
+      }
+      addTouchActiveStates(element);
+    });
   }
 
   // Add haptic feedback helper
@@ -217,10 +227,10 @@
           const node = mutation.addedNodes[i];
           if (node.nodeType === Node.ELEMENT_NODE) {
             const interactiveElements = node.querySelectorAll ? 
-              node.querySelectorAll('button, a[href], [role="button"], [onclick]') : [];
+              node.querySelectorAll('button, a[href]:not(.skip-link), [role="button"]:not(.skip-link), [onclick]') : [];
             
             if (interactiveElements.length > 0 || 
-                (node.tagName && ['BUTTON', 'A'].includes(node.tagName))) {
+                (node.tagName && ['BUTTON', 'A'].includes(node.tagName) && !node.classList.contains('skip-link'))) {
               shouldReOptimize = true;
               break;
             }
