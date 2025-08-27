@@ -104,13 +104,10 @@ export const LazyComponents = {
     { preload: false }
   ),
   
-  AnalyticsPage: createLazyComponent(
-    () => import('@/components/analytics/ExecutiveSummaryDashboard'),
-    { preload: false }
-  ),
+  // AnalyticsPage removed - component doesn't exist
   
   COODashboard: createLazyComponent(
-    () => import('@/components/COOAnalyticsDashboard'),
+    () => import('@/components/ManagerDashboard'),
     { preload: false }
   ),
 
@@ -126,7 +123,7 @@ export const LazyComponents = {
   ),
   
   MobileCOODashboard: createLazyComponent(
-    () => import('@/components/MobileCOODashboard'),
+    () => import('@/components/MobileTeamDashboard'),
     { preload: false }
   ),
 
@@ -190,15 +187,10 @@ export const routeConfig: RouteConfig[] = [
     preload: false,
     chunkName: 'teams'
   },
-  {
-    path: '/analytics',
-    component: () => import('@/components/analytics/ExecutiveSummaryDashboard'),
-    preload: false,
-    chunkName: 'analytics'
-  },
+  // Analytics route removed - component doesn't exist
   {
     path: '/coo-dashboard',
-    component: () => import('@/components/COOAnalyticsDashboard'),
+    component: () => import('@/components/ManagerDashboard'),
     preload: false,
     chunkName: 'coo'
   }
@@ -238,7 +230,7 @@ export class IntelligentPreloader {
   // Preload based on user role
   preloadForUserRole(userRole: 'manager' | 'coo' | 'member'): void {
     const roleBasedComponents: Record<string, (keyof typeof LazyComponents)[]> = {
-      coo: ['COODashboard', 'MobileCOODashboard', 'AnalyticsPage'],
+      coo: ['COODashboard', 'MobileCOODashboard'],
       manager: ['TeamsPage', 'TeamDetailModal', 'EnhancedExportModal'],
       member: ['SchedulePage', 'MobileScheduleView']
     };

@@ -267,12 +267,10 @@ class SprintDataManager {
       days_remaining: remainingDays,
       working_days_remaining: workingDaysRemaining,
       is_active: true,
-      sprint_name: `Week of ${this.formatDateForDisplay(startOfWeek)}`,
-      description: 'Auto-generated weekly sprint (Monday-Friday)',
-      total_working_days: 5,
-      working_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      notes: `Week of ${this.formatDateForDisplay(startOfWeek)} - Auto-generated weekly sprint (Monday-Friday)`,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      updated_by: 'system'
     };
   }
 
@@ -313,12 +311,10 @@ class SprintDataManager {
       days_remaining: remainingDays,
       working_days_remaining: workingDaysRemaining,
       is_active: record.status === 'active',
-      sprint_name: record.sprint_name || `Sprint ${record.sprint_number}`,
-      description: record.description || '',
-      total_working_days: workingDaysTotal,
-      working_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      notes: record.notes || `Sprint ${record.sprint_number}`,
       created_at: record.created_at,
-      updated_at: record.updated_at
+      updated_at: record.updated_at,
+      updated_by: record.created_by || 'system'
     };
   }
 
@@ -349,12 +345,10 @@ class SprintDataManager {
       days_remaining: remainingDays,
       working_days_remaining: workingDaysRemaining,
       is_active: true,
-      sprint_name: `Sprint ${settings.current_sprint_number || 1}`,
-      description: settings.description || 'From global sprint settings',
-      total_working_days: workingDaysTotal,
-      working_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      notes: `Sprint ${settings.current_sprint_number || 1} - ${settings.description || 'From global sprint settings'}`,
       created_at: settings.created_at || new Date().toISOString(),
-      updated_at: settings.updated_at || new Date().toISOString()
+      updated_at: settings.updated_at || new Date().toISOString(),
+      updated_by: 'system'
     };
   }
 
@@ -513,5 +507,4 @@ class SprintDataManager {
 // Export singleton instance
 export const sprintDataHandler = new SprintDataManager();
 
-// Export types and utilities
-export type { SprintDataResult, SprintCacheEntry };
+// Export types and utilities already declared above

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 import BreadcrumbNavigation from '@/components/BreadcrumbNavigation';
@@ -15,7 +15,7 @@ import { canViewSprints, getUserRole } from '@/utils/permissions';
 import { TeamProvider, useTeam } from '@/contexts/TeamContext';
 import { TeamMember, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
-import { verifyEnvironmentConfiguration } from '@/utils/deploymentSafety';
+// Removed unused import: verifyEnvironmentConfiguration
 import { performDataPersistenceCheck, verifyDatabaseState } from '@/utils/dataPreservation';
 import { validateDatabaseSchema } from '@/utils/schemaValidator';
 import { loadOfflineData, saveOfflineData, initializeOfflineMode, getErrorMessage } from '@/utils/errorRecovery';
@@ -26,8 +26,8 @@ import logger from '@/utils/logger';
 
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
-  const { isMobile, isLoading: isMobileLoading, isHydrated } = useIsMobile();
-  const router = useRouter();
+  const { isMobile } = useIsMobile();
+  // Router removed as unused
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,11 +48,11 @@ function HomeContent() {
         verifyDatabaseState()
       ];
       
-      const [dataChecks, dbState] = await Promise.allSettled(backgroundTasks);
+      const [dataChecks] = await Promise.allSettled(backgroundTasks);
       
       // Log background data results
       if (dataChecks && dataChecks.status === 'fulfilled' && Array.isArray(dataChecks.value)) {
-        const criticalIssues = dataChecks.value.filter((check: any) => check.status === 'FAIL');
+        const criticalIssues = dataChecks.value?.filter((check: { status: string }) => check.status === 'FAIL');
         if (criticalIssues.length > 0) {
           logger.warn(`Background: Critical data issues detected: ${criticalIssues.length}`, 'database');
         }
@@ -153,7 +153,7 @@ function HomeContent() {
       mounted = false;
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [loadBackgroundData]);
   
   // Load team members when a team is selected with timeout protection - OPTIMIZED
   useEffect(() => {
@@ -172,7 +172,7 @@ function HomeContent() {
           timeoutId = setTimeout(() => reject(new Error(`Team members loading timeout after 2 seconds for team: ${selectedTeam.name}`)), 2000);
         });
 
-        const members = await Promise.race([membersPromise, timeoutPromise]) as any;
+        const members = await Promise.race([membersPromise, timeoutPromise]) as TeamMember[];
         
         if (!mounted) return;
         clearTimeout(timeoutId);

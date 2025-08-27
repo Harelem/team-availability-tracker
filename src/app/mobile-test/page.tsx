@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Smartphone, Target, Zap, Eye, Play, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Smartphone, Target, Zap, Eye, Play, CheckCircle, XCircle } from 'lucide-react';
 import MobileTester, { TouchTargetTest, MobilePerformanceTest, MobileTestUtils } from '@/utils/mobileTestUtils';
 import MobileLoadingSpinner from '@/components/mobile/MobileLoadingSpinner';
 import MobilePerformanceMonitor from '@/components/mobile/MobilePerformanceMonitor';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 
 export default function MobileTestPage() {
   const [tester] = useState(() => new MobileTester());
-  const [testResults, setTestResults] = useState<Map<string, any>>(new Map());
+  const [testResults, setTestResults] = useState<Map<string, { success: boolean; message?: string; data?: unknown; performance?: Record<string, number> }>>(new Map());
   const [isRunning, setIsRunning] = useState(false);
   const [currentTest, setCurrentTest] = useState<string>('');
   const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
@@ -73,7 +73,8 @@ export default function MobileTestPage() {
   };
 
   const TouchTargetsResults: React.FC = () => {
-    const touchTargets = testResults.get('touchTargets') as TouchTargetTest[] | undefined;
+    const touchTargetsResult = testResults.get('touchTargets');
+    const touchTargets = touchTargetsResult?.data as TouchTargetTest[] | undefined;
     if (!touchTargets) return null;
 
     const passed = touchTargets.filter(t => t.meetsMinimum);
@@ -133,7 +134,8 @@ export default function MobileTestPage() {
   };
 
   const PerformanceResults: React.FC = () => {
-    const performance = testResults.get('performance') as MobilePerformanceTest | undefined;
+    const performanceResult = testResults.get('performance');
+    const performance = performanceResult?.data as MobilePerformanceTest | undefined;
     if (!performance) return null;
 
     const getGradeColor = (grade: string) => {
@@ -204,7 +206,8 @@ export default function MobileTestPage() {
   };
 
   const ScreenSizeResults: React.FC = () => {
-    const screenSizes = testResults.get('screenSizes') as Map<string, any> | undefined;
+    const screenSizesResult = testResults.get('screenSizes');
+    const screenSizes = screenSizesResult?.data as Map<string, any> | undefined;
     if (!screenSizes) return null;
 
     return (

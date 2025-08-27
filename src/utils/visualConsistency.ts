@@ -309,7 +309,7 @@ export const focus = {
 // EXPORTS
 // =============================================================================
 
-export default {
+const visualConsistencyUtils = {
   interactiveElement,
   professionalButton,
   professionalCard,
@@ -331,3 +331,5 @@ export default {
   getSizeStyling,
   createComponentClasses
 };
+
+export default visualConsistencyUtils;

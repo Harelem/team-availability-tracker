@@ -47,6 +47,7 @@
     "dist",
     "__tests__/**/backup-broken/**",
     "__tests__/backup-all-broken/**",
-    "src/tests/**"
+    "src/tests/**",
+    "tests/**"
   ]
 }

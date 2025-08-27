@@ -392,7 +392,7 @@ export default function ManagerDashboard({
             </div>
             <div className="bg-white/50 rounded-md p-3 border border-purple-200">
               <p className="text-sm text-purple-800 leading-relaxed">
-                <strong>Enhanced Permissions:</strong> Edit any team member's schedule across all {sprintWorkingDays.length} working days. 
+                <strong>Enhanced Permissions:</strong> Edit any team member&apos;s schedule across all {sprintWorkingDays.length} working days. 
                 Changes are automatically saved and tracked for compliance.
               </p>
             </div>

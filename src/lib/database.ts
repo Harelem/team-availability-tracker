@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { TeamMember, Team, GlobalSprintSettings, CurrentGlobalSprint, CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, TeamDashboardData, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData } from '@/types'
+import { TeamMember, Team, GlobalSprintSettings, CurrentGlobalSprint, CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, TeamDashboardData, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, DailyStatusSummary, TeamDailyStatus } from '@/types'
 // Template types temporarily disabled for production
 // import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
 // RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION

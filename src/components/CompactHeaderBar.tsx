@@ -1,7 +1,7 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
-import { TeamMember, Team } from '@/types';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { TeamMember, Team, WeekData } from '@/types';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { useTouchFriendly } from '@/hooks/useTouchGestures';
 import EnhancedManagerExportButton from './EnhancedManagerExportButton';
@@ -11,7 +11,7 @@ interface CompactHeaderBarProps {
   currentUser: TeamMember;
   selectedTeam: Team;
   teamMembers: TeamMember[];
-  scheduleData: any;
+  scheduleData: WeekData;
   currentSprintOffset: number;
   currentSprintDays: Date[];
   onSprintChange: (offset: number) => void;
@@ -49,7 +49,7 @@ export default function CompactHeaderBar({
   isNavigating = false
 }: CompactHeaderBarProps) {
   const { currentSprint } = useGlobalSprint();
-  const { getInteractionProps, isTouchDevice } = useTouchFriendly();
+  const { getInteractionProps } = useTouchFriendly();
   const [localNavigating, setLocalNavigating] = useState(false);
 
   // Enhanced navigation handler with loading state
@@ -69,7 +69,7 @@ export default function CompactHeaderBar({
     if (!currentSprint) return 0;
     
     const totalHours = getTeamTotalHours();
-    const targetHours = (currentSprint as any)?.targetHours || (teamMembers.length * 35); // 35h per person default
+    const targetHours = (currentSprint as { targetHours?: number })?.targetHours || (teamMembers.length * 35); // 35h per person default
     
     return Math.min(Math.round((totalHours / targetHours) * 100), 100);
   };
@@ -82,7 +82,7 @@ export default function CompactHeaderBar({
       {/* Hidden accessibility help for screen readers */}
       <div id="navigation-help" className="sr-only">
         Use navigation buttons to move between {navigationMode}s. 
-        Current button returns to today's date.
+        Current button returns to today&apos;s date.
         {currentUser.isManager && ' As a manager, you can tap schedule cells to edit team member availability.'}
       </div>
       

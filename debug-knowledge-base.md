@@ -1,5 +1,97 @@
 # Debug Knowledge Base
 
+## Bug Report #31 - 2025-08-26
+
+### Bug Summary
+- **Type**: TypeScript/Build Error  
+- **Component**: src/lib/database.ts - Type imports
+- **Severity**: Critical
+- **Status**: FIXED
+- **Time to Fix**: 30 minutes
+
+### What Went Wrong
+TypeScript compilation was failing with the error:
+```
+./src/lib/database.ts:2844:47
+Type error: Cannot find name 'MemberDaySchedule'.
+```
+
+The `MemberDaySchedule` interface was defined in `/Users/harel/team-availability-tracker/src/types/index.ts` but was not included in the import statement in `database.ts`. This was causing a critical build-blocking issue preventing deployment.
+
+### Root Cause Analysis
+**Missing Type Imports**: Several interface types required by `database.ts` were not properly imported from the centralized types module:
+
+1. **Missing Primary Type**: `MemberDaySchedule` used at line 2844 but not imported
+2. **Incomplete Import Audit**: Other missing types discovered during fix: `MemberReasonEntry`, `DailyCompanyStatusData`, `DailyMemberStatus`, `DailyStatusSummary`, `TeamDailyStatus`
+3. **Import Statement Maintenance Issue**: Long import statement making it easy to miss required types
+4. **No Type Import Validation**: Build process didn't catch missing imports until full compilation
+
+**The Problematic Pattern**:
+```typescript
+// BEFORE: Missing imports causing TypeScript errors
+import { TeamMember, Team, /*... many types ...*/ } from '@/types'
+// Later in file:
+const dailySchedule: { [dateKey: string]: MemberDaySchedule } = {} // ERROR: Cannot find name 'MemberDaySchedule'
+```
+
+### Solution Applied
+**Added All Missing Type Imports to Import Statement**:
+
+```typescript
+// FIXED: Complete import statement including all required types
+import { 
+  TeamMember, Team, GlobalSprintSettings, CurrentGlobalSprint, 
+  CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, 
+  EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, 
+  TeamDashboardData, CompanyCapacityMetrics, TeamCapacityStatus, 
+  COODashboardData, COOUser, DetailedCompanyScheduleData, 
+  DetailedTeamScheduleData, DetailedMemberScheduleData, 
+  MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, 
+  DailyMemberStatus, DailyStatusSummary, TeamDailyStatus 
+} from '@/types'
+```
+
+**Step-by-Step Fix Process**:
+1. Added `MemberDaySchedule` to import statement at line 2
+2. Ran build to check for additional missing types
+3. Iteratively added `MemberReasonEntry`, `DailyCompanyStatusData`, `DailyMemberStatus`, `DailyStatusSummary`, `TeamDailyStatus`
+4. Verified all types are now properly imported and TypeScript compilation succeeds
+
+### My Thinking Process
+1. **Initial Assessment**: Identified exact line causing TypeScript error (2844)
+2. **Type Location Verification**: Confirmed `MemberDaySchedule` exists in `/src/types/index.ts` at line 582
+3. **Import Gap Analysis**: Realized type was defined but not imported
+4. **Systematic Fix**: Added missing type to import statement
+5. **Iterative Testing**: Used build command to identify additional missing types
+6. **Complete Resolution**: Added all missing types to prevent similar issues
+
+### Prevention Strategy
+**Import Statement Maintenance Protocol**:
+- When adding new type usage in `database.ts`, immediately add to imports
+- Use TypeScript IDE features to auto-import when possible
+- Regular audit of long import statements for completeness  
+- Consider breaking very long import statements into multiple lines for maintainability
+
+**Build Process Enhancement**:
+- The existing build process correctly caught the missing type imports
+- Ensure `npm run build` is run after any type-related changes
+- Consider adding a git pre-commit hook for TypeScript compilation check
+
+### Lessons for Other Agents
+- **Development Agents**: Always verify imports when adding new type annotations
+- **Code Review**: Check that complex import statements include all referenced types
+- **Testing**: TypeScript compilation errors are critical and must be fixed before any feature work
+
+### Related Bug Patterns
+This is a **Type Import Management** bug - similar to bugs we've seen with:
+- Missing React component imports
+- Utility function imports
+- Constants and enum imports
+
+**Pattern Recognition**: Any "Cannot find name" TypeScript error usually indicates missing import, not missing type definition.
+
+---
+
 ## Bug Report #30 - 2025-08-24
 
 ### Bug Summary

@@ -73,7 +73,7 @@ const EnhancedDayCell = memo(function EnhancedDayCell({
   onReasonRequired,
   onQuickReasonSelect
 }: EnhancedDayCellProps) {
-  const renderStart = performance?.now() || 0;
+  // Performance tracking available
   const { trackRender } = usePerformanceTracking('EnhancedDayCell');
   const [showQuickReasons, setShowQuickReasons] = useState(false);
   const [pendingValue, setPendingValue] = useState<'0.5' | 'X' | null>(null);
@@ -118,31 +118,32 @@ const EnhancedDayCell = memo(function EnhancedDayCell({
     onWorkOptionClick(member.id, date, nextStatus);
   };
 
-  const handleWorkOptionClick = (value: string) => {
-    // Prevent editing weekend days
-    if (isWeekend) {
-      return;
-    }
-    const currentVal = currentValue?.value;
-    
-    // If clicking the same value, deselect it
-    if (currentVal === value) {
-      onWorkOptionClick(member.id, date, ''); // Clear selection
-      return;
-    }
-    
-    // If selecting full day (1), update directly
-    if (value === '1') {
-      onWorkOptionClick(member.id, date, value);
-      return;
-    }
-    
-    // For 0.5 or X, show quick reasons
-    if (value === '0.5' || value === 'X') {
-      setPendingValue(value);
-      setShowQuickReasons(true);
-    }
-  };
+  // Work option click handler (available for direct use)
+  // const handleWorkOptionClick = (value: string) => {
+  //   // Prevent editing weekend days
+  //   if (isWeekend) {
+  //     return;
+  //   }
+  //   const currentVal = currentValue?.value;
+  //   
+  //   // If clicking the same value, deselect it
+  //   if (currentVal === value) {
+  //     onWorkOptionClick(member.id, date, ''); // Clear selection
+  //     return;
+  //   }
+  //   
+  //   // If selecting full day (1), update directly
+  //   if (value === '1') {
+  //     onWorkOptionClick(member.id, date, value);
+  //     return;
+  //   }
+  //   
+  //   // For 0.5 or X, show quick reasons
+  //   if (value === '0.5' || value === 'X') {
+  //     setPendingValue(value);
+  //     setShowQuickReasons(true);
+  //   }
+  // };
 
   const handleQuickReasonSelect = (reason: string) => {
     if (pendingValue) {
@@ -361,7 +362,7 @@ const EnhancedDayCell = memo(function EnhancedDayCell({
                     const reasonOptions = isManager ? MANAGER_HEBREW_QUICK_REASONS[pendingValue] : HEBREW_QUICK_REASONS[pendingValue];
                     
                     return reasonOptions.map((reason, index) => {
-                      const isPrimary = (reason as any).isPrimary && isManager;
+                      const isPrimary = (reason as { isPrimary?: boolean }).isPrimary && isManager;
                       return (
                         <button
                           key={index}

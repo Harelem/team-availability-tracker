@@ -49,15 +49,14 @@ export default function ExecutiveDashboard() {
       setError(null);
 
       // Check if executive views exist, fallback to team_sprint_stats
-      let executiveData = null;
       try {
-        const { data: execData } = await supabase
+        await supabase
           .from('executive_daily_intelligence')
           .select('*')
           .limit(1)
           .single();
-        executiveData = execData;
-      } catch (execError) {
+        // Executive data loaded successfully
+      } catch (error) {
         console.log('Executive view not available, using fallback data');
       }
 
@@ -282,7 +281,7 @@ export default function ExecutiveDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {teamPerformance.map((team, index) => {
                 const utilization = team.capacity_utilization;
-                const efficiency = (team.sprint_hours / team.potential_hours) * 100;
+                // const efficiency = (team.sprint_hours / team.potential_hours) * 100; // Future use
                 const statusColor = utilization >= 80 ? 'border-green-500 bg-green-50' :
                                   utilization >= 60 ? 'border-yellow-500 bg-yellow-50' :
                                   'border-red-500 bg-red-50';

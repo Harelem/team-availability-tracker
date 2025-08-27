@@ -235,7 +235,7 @@ export default function EmergencyMobileMenu() {
                       try {
                         window.history.back();
                         setIsOpen(false);
-                      } catch (error) {
+                      } catch {
                         navigateTo('/');
                       }
                     }}

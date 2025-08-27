@@ -522,7 +522,7 @@ export function getDetailedSprintStatus(
   const status = getSprintStatus(startDate, endDate, referenceDate);
   const oneDay = 24 * 60 * 60 * 1000; // milliseconds in a day
   
-  let statusInfo: SprintStatusInfo = {
+  const statusInfo: SprintStatusInfo = {
     status,
     statusDescription: '',
     shouldAutoTransition: false

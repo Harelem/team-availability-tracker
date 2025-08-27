@@ -92,11 +92,12 @@ const CompactReasonsDisplay: React.FC<CompactReasonsDisplayProps> = ({
     });
   };
 
-  const getValueLabel = (value: '0.5' | 'X') => {
-    return value === '0.5' ? 'Half Day' : 'Absence';
-  };
+  // Value label helper function (available for future use)
+  // const getValueLabel = (value: '0.5' | 'X') => {
+  //   return value === '0.5' ? 'Half Day' : 'Absence';
+  // };
 
-  const getGroupIcon = (groupKey: string) => {
+  const getGroupIcon = () => {
     if (groupBy === 'date') return <Calendar className="w-4 h-4" />;
     if (groupBy === 'member') return <Users className="w-4 h-4" />;
     return <Filter className="w-4 h-4" />;
@@ -113,7 +114,8 @@ const CompactReasonsDisplay: React.FC<CompactReasonsDisplayProps> = ({
   };
 
   const totalCount = filteredReasons.length;
-  const displayCount = showAll ? totalCount : Math.min(totalCount, maxInitialDisplay);
+  // Display count helper for future use
+  // const displayCount = showAll ? totalCount : Math.min(totalCount, maxInitialDisplay);
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -188,7 +190,7 @@ const CompactReasonsDisplay: React.FC<CompactReasonsDisplayProps> = ({
                       className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-between text-left"
                     >
                       <div className="flex items-center gap-2">
-                        {getGroupIcon(groupKey)}
+                        {getGroupIcon()}
                         <span className="font-medium text-gray-900">{groupKey}</span>
                         <span className="text-sm text-gray-500">
                           ({groupReasons.length} reason{groupReasons.length !== 1 ? 's' : ''})

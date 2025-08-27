@@ -44,17 +44,7 @@ const MobileScheduleView = memo(function MobileScheduleView({
   getTeamTotalHours
 }: MobileScheduleViewProps) {
   
-  // Error boundary protection for the entire component
-  if (!currentUser || !selectedTeam || !teamMembers) {
-    return (
-      <div className="lg:hidden p-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-          <p className="text-red-600 font-medium">Unable to load mobile schedule</p>
-          <p className="text-red-500 text-sm mt-1">Missing required data. Please refresh the page.</p>
-        </div>
-      </div>
-    );
-  }
+  // ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL RETURNS
   const [refreshing, setRefreshing] = useState(false);
   const [isSwipeEnabled, setIsSwipeEnabled] = useState(false); // DISABLED: Swipe navigation conflicts with button navigation
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
@@ -67,6 +57,25 @@ const MobileScheduleView = memo(function MobileScheduleView({
   const isSwiping = useRef<boolean>(false);
   const isPulling = useRef<boolean>(false);
   const pullStartY = useRef<number>(0);
+
+  // useEffect for swipe interactions - MUST BE WITH OTHER HOOKS
+  useEffect(() => {
+    // Re-enable swipe after interactions end
+    const timer = setTimeout(() => setIsSwipeEnabled(true), 300);
+    return () => clearTimeout(timer);
+  }, [isSwipeEnabled]);
+
+  // Error boundary protection for the entire component - AFTER HOOKS
+  if (!currentUser || !selectedTeam || !teamMembers) {
+    return (
+      <div className="lg:hidden p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-red-600 font-medium">Unable to load mobile schedule</p>
+          <p className="text-red-500 text-sm mt-1">Missing required data. Please refresh the page.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -171,12 +180,6 @@ const MobileScheduleView = memo(function MobileScheduleView({
   // Disable swipe during interactions with cards or buttons
   const handleInteractionStart = () => setIsSwipeEnabled(false);
   const handleInteractionEnd = () => setIsSwipeEnabled(true);
-
-  useEffect(() => {
-    // Re-enable swipe after interactions end
-    const timer = setTimeout(() => setIsSwipeEnabled(true), 300);
-    return () => clearTimeout(timer);
-  }, [isSwipeEnabled]);
 
   if (loading) {
     return (
