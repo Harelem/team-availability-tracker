@@ -81,9 +81,10 @@ interface DayStatusModalProps {
   onSelect: (status: '1' | '0.5' | 'X') => void;
   date: Date | null;
   memberName?: string;
+  currentStatus?: '1' | '0.5' | 'X' | null;
 }
 
-function DayStatusModal({ isOpen, onClose, onSelect, date, memberName }: DayStatusModalProps) {
+function DayStatusModal({ isOpen, onClose, onSelect, date, memberName, currentStatus }: DayStatusModalProps) {
   if (!isOpen || !date) return null;
 
   return (
@@ -94,7 +95,7 @@ function DayStatusModal({ isOpen, onClose, onSelect, date, memberName }: DayStat
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-bold text-gray-900">
-                בחירת סטטוס יום
+                {currentStatus ? 'עריכת סטטוס יום' : 'בחירת סטטוס יום'}
               </h3>
               <p className="text-gray-600 mt-1">
                 {date.toLocaleDateString('he-IL', { 
@@ -125,26 +126,38 @@ function DayStatusModal({ isOpen, onClose, onSelect, date, memberName }: DayStat
         {/* Options */}
         <div className="p-6 space-y-3">
           <p className="text-gray-700 font-medium mb-4">
-            אנא בחר את סוג היום:
+            {currentStatus ? 'שנה את סוג היום:' : 'אנא בחר את סוג היום:'}
           </p>
           
-          {DAY_STATUS_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => onSelect(option.value)}
-              className={`w-full p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md active:scale-[0.98] text-right ${option.color}`}
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0">
-                  {option.icon}
+          {DAY_STATUS_OPTIONS.map((option) => {
+            const isSelected = currentStatus === option.value;
+            return (
+              <button
+                key={option.value}
+                onClick={() => onSelect(option.value)}
+                className={`w-full p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md active:scale-[0.98] text-right ${
+                  isSelected 
+                    ? 'ring-2 ring-blue-500 ring-offset-2 shadow-lg border-blue-400 ' + option.color
+                    : option.color
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0">
+                    {option.icon}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-lg">
+                      {option.label}
+                      {isSelected && (
+                        <span className="mr-2 text-blue-600">✓</span>
+                      )}
+                    </div>
+                    <div className="text-sm opacity-75">{option.description}</div>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="font-bold text-lg">{option.label}</div>
-                  <div className="text-sm opacity-75">{option.description}</div>
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         {/* Footer */}
@@ -205,15 +218,17 @@ export default function PersonalCalendar({
       const dateKey = formatDateKey(date);
       const scheduleEntry = scheduleData[dateKey];
       
+      const isWeekend = date.getDay() === 5 || date.getDay() === 6; // Friday or Saturday
+      
       days.push({
         date: new Date(date),
         dayNumber: date.getDate(),
         isCurrentMonth: date.getMonth() === month,
         isToday: date.toDateString() === today.toDateString(),
-        isWeekend: date.getDay() === 5 || date.getDay() === 6, // Friday or Saturday
+        isWeekend,
         isPast: date < today,
-        value: scheduleEntry?.value || null,
-        reason: scheduleEntry?.reason
+        value: (!isWeekend && scheduleEntry?.value) || null, // Exclude weekend values
+        reason: (!isWeekend && scheduleEntry?.reason) || undefined // Exclude weekend reasons
       });
     }
     
@@ -291,13 +306,12 @@ export default function PersonalCalendar({
     }
   }, [user]);
 
-  // Handle day click
+  // Handle day click - UNIFIED FLOW: Always show DayStatusModal first
   const handleDayClick = (day: CalendarDay) => {
     if (!editable) return;
     
     // Prevent clicks on weekends
     if (day.isWeekend) {
-      // Add toast notification if available
       console.log('Cannot report on weekends');
       return;
     }
@@ -308,33 +322,16 @@ export default function PersonalCalendar({
       return;
     }
     
-    // NEW FLOW: For empty dates, show status selection modal first
-    if (!day.value) {
-      setSelectedDate(day.date);
-      setStatusModalOpen(true);
-      return;
-    }
-    
-    // EXISTING FLOW: For dates with values, cycle through: 1 → 0.5 → X → null
-    let nextValue: '1' | '0.5' | 'X' | null;
-    
-    if (day.value === '1') {
-      nextValue = '0.5';
-    } else if (day.value === '0.5') {
-      nextValue = 'X';
-    } else {
-      nextValue = null;
-    }
-    
-    // If next value requires reason, show modal
-    if (nextValue === '0.5' || nextValue === 'X') {
-      setSelectedDate(day.date);
-      setPendingValue(nextValue);
-      setReasonModalOpen(true);
-    } else {
-      // Update directly (for null value or full day)
-      updateSchedule(day.date, nextValue);
-    }
+    // UNIFIED FLOW: Always show status selection modal first (empty or filled)
+    setSelectedDate(day.date);
+    setStatusModalOpen(true);
+  };
+
+  // Get current status for the selected date
+  const getCurrentStatus = (): '1' | '0.5' | 'X' | null => {
+    if (!selectedDate) return null;
+    const dateKey = formatDateKey(selectedDate);
+    return scheduleData[dateKey]?.value || null;
   };
 
   // Handle status selection from first modal
@@ -342,9 +339,9 @@ export default function PersonalCalendar({
     setStatusModalOpen(false);
     
     if (status === '1') {
-      // Full day - save directly without reason
+      // Full day - save directly and clear any existing reason
       if (selectedDate) {
-        updateSchedule(selectedDate, status);
+        updateSchedule(selectedDate, status, undefined); // Clear reason
       }
       setSelectedDate(null);
     } else {
@@ -552,7 +549,7 @@ export default function PersonalCalendar({
               </span>
               
               {/* Status icon */}
-              {day.value && (
+              {day.value && !day.isWeekend && (
                 <div className="absolute top-1 right-1">
                   <div className="w-4 h-4 flex items-center justify-center">
                     {getStatusIcon(day.value)}
@@ -606,7 +603,7 @@ export default function PersonalCalendar({
               </span>
               
               {/* Status icon - smaller for mobile */}
-              {day.value && (
+              {day.value && !day.isWeekend && (
                 <div className="absolute top-1 right-1">
                   <div className="w-3 h-3 flex items-center justify-center">
                     {getStatusIcon(day.value)}
@@ -666,6 +663,7 @@ export default function PersonalCalendar({
         onSelect={handleStatusSelect}
         date={selectedDate}
         memberName={user?.hebrew || user?.name}
+        currentStatus={getCurrentStatus()}
       />
 
       {/* Reason Modal */}
