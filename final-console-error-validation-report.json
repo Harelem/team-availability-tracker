@@ -1,0 +1,368 @@
+{
+  "timestamp": "2025-08-27T18:01:36.999Z",
+  "results": {
+    "mainPage": {
+      "pageLoaded": true,
+      "loadingStatesFound": false,
+      "consoleErrors": []
+    },
+    "managerDashboard": {
+      "managerDashboardTriggered": true,
+      "consoleErrors": []
+    },
+    "allPages": {
+      "/": {
+        "loaded": true,
+        "consoleErrors": []
+      },
+      "/teams": {
+        "loaded": true,
+        "consoleErrors": [
+          {
+            "type": "console-error",
+            "message": "📊 Supabase connection test failed JSHandle@object",
+            "timestamp": "2025-08-27T18:01:20.158Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:20.505Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:20.508Z"
+          }
+        ]
+      },
+      "/schedule": {
+        "loaded": true,
+        "consoleErrors": [
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:24.040Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:24.044Z"
+          }
+        ]
+      },
+      "/coo-dashboard": {
+        "loaded": true,
+        "consoleErrors": []
+      },
+      "/executive-dashboard": {
+        "loaded": true,
+        "consoleErrors": []
+      },
+      "/analytics": {
+        "loaded": true,
+        "consoleErrors": [
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:34.192Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:34.247Z"
+          },
+          {
+            "type": "console-error",
+            "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <RenderFromTemplateContext>\n      <ScrollAndFocusHandler segmentPath={[...]}>\n        <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>\n          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n            <LoadingBoundary loading={null}>\n              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n                <RedirectBoundary>\n                  <RedirectErrorBoundary router={{...}}>\n                    <InnerLayoutRouter url=\"/executive\" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>\n                      <NotFound>\n                        <div className=\"min-h-scre...\">\n                          <div className=\"text-center\">\n                            <h1>\n                            <h2>\n                            <p>\n                            <LinkComponent href=\"/\" className=\"inline-fle...\">\n                              <a\n                                className=\"inline-flex items-center px-4 py-2 border border-transparent text-base font...\"\n                                ref={function}\n                                onClick={function onClick}\n                                onMouseEnter={function onMouseEnter}\n                                onTouchStart={function onTouchStart}\n                                href=\"/\"\n-                               style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                              >\n+                               Return Home\n                      ...\n",
+            "timestamp": "2025-08-27T18:01:34.426Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:35.544Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:35.547Z"
+          }
+        ]
+      }
+    },
+    "finalValidation": {
+      "totalConsoleErrors": 10,
+      "hydrationErrors": 1,
+      "reactErrors": 1,
+      "cssErrors": 0,
+      "networkErrors": 9,
+      "isValid": false,
+      "errorBreakdown": {
+        "consoleErrors": [
+          {
+            "type": "console-error",
+            "message": "📊 Supabase connection test failed JSHandle@object",
+            "timestamp": "2025-08-27T18:01:20.158Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:20.505Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:20.508Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:24.040Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:24.044Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:34.192Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:34.247Z"
+          },
+          {
+            "type": "console-error",
+            "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <RenderFromTemplateContext>\n      <ScrollAndFocusHandler segmentPath={[...]}>\n        <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>\n          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n            <LoadingBoundary loading={null}>\n              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n                <RedirectBoundary>\n                  <RedirectErrorBoundary router={{...}}>\n                    <InnerLayoutRouter url=\"/executive\" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>\n                      <NotFound>\n                        <div className=\"min-h-scre...\">\n                          <div className=\"text-center\">\n                            <h1>\n                            <h2>\n                            <p>\n                            <LinkComponent href=\"/\" className=\"inline-fle...\">\n                              <a\n                                className=\"inline-flex items-center px-4 py-2 border border-transparent text-base font...\"\n                                ref={function}\n                                onClick={function onClick}\n                                onMouseEnter={function onMouseEnter}\n                                onTouchStart={function onTouchStart}\n                                href=\"/\"\n-                               style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                              >\n+                               Return Home\n                      ...\n",
+            "timestamp": "2025-08-27T18:01:34.426Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:35.544Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:35.547Z"
+          }
+        ],
+        "hydrationErrors": [
+          {
+            "type": "hydration-error",
+            "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <RenderFromTemplateContext>\n      <ScrollAndFocusHandler segmentPath={[...]}>\n        <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>\n          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n            <LoadingBoundary loading={null}>\n              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n                <RedirectBoundary>\n                  <RedirectErrorBoundary router={{...}}>\n                    <InnerLayoutRouter url=\"/executive\" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>\n                      <NotFound>\n                        <div className=\"min-h-scre...\">\n                          <div className=\"text-center\">\n                            <h1>\n                            <h2>\n                            <p>\n                            <LinkComponent href=\"/\" className=\"inline-fle...\">\n                              <a\n                                className=\"inline-flex items-center px-4 py-2 border border-transparent text-base font...\"\n                                ref={function}\n                                onClick={function onClick}\n                                onMouseEnter={function onMouseEnter}\n                                onTouchStart={function onTouchStart}\n                                href=\"/\"\n-                               style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                              >\n+                               Return Home\n                      ...\n",
+            "timestamp": "2025-08-27T18:01:34.426Z"
+          }
+        ],
+        "reactErrors": [
+          {
+            "type": "react-error",
+            "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <RenderFromTemplateContext>\n      <ScrollAndFocusHandler segmentPath={[...]}>\n        <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>\n          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n            <LoadingBoundary loading={null}>\n              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n                <RedirectBoundary>\n                  <RedirectErrorBoundary router={{...}}>\n                    <InnerLayoutRouter url=\"/executive\" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>\n                      <NotFound>\n                        <div className=\"min-h-scre...\">\n                          <div className=\"text-center\">\n                            <h1>\n                            <h2>\n                            <p>\n                            <LinkComponent href=\"/\" className=\"inline-fle...\">\n                              <a\n                                className=\"inline-flex items-center px-4 py-2 border border-transparent text-base font...\"\n                                ref={function}\n                                onClick={function onClick}\n                                onMouseEnter={function onMouseEnter}\n                                onTouchStart={function onTouchStart}\n                                href=\"/\"\n-                               style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                              >\n+                               Return Home\n                      ...\n",
+            "timestamp": "2025-08-27T18:01:34.426Z"
+          }
+        ],
+        "cssErrors": [],
+        "networkErrors": [
+          {
+            "type": "network-error",
+            "url": "https://jdkdgcfwuizbeeeftove.supabase.co/rest/v1/schedule_entries?select=id&limit=1",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:20.156Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.9393ab513161bef6.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:20.157Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/?_rsc=1njrv",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:20.375Z"
+          },
+          {
+            "type": "network-error",
+            "url": "https://jdkdgcfwuizbeeeftove.supabase.co/rest/v1/schedule_entries?select=id%2Cmember_id%2Cdate%2Cvalue%2Creason%2Ccreated_at%2Cupdated_at&member_id=in.%2822%2C21%2C26%2C20%2C23%2C19%2C24%2C25%29&date=gte.2025-08-24&date=lte.2025-09-06&limit=1000&order=date.desc",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:23.725Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.92c9377baba29546.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:23.725Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.d04cc4351e19bb73.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:27.936Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.b3a27e683c60b889.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:30.985Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.7d257eab608feeb6.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:33.979Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/executive?_rsc=1pebd",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:34.246Z"
+          }
+        ]
+      }
+    }
+  },
+  "report": {
+    "overallPass": false,
+    "fixes": {
+      "LoadingState Hydration Fix": false,
+      "ManagerDashboard React.lazy Fix": false,
+      "CSS System Cleanup": true,
+      "Overall Console Cleanliness": false
+    },
+    "summary": {
+      "totalConsoleErrors": 10,
+      "hydrationErrors": 1,
+      "reactErrors": 1,
+      "cssErrors": 0,
+      "networkErrors": 9,
+      "isValid": false,
+      "errorBreakdown": {
+        "consoleErrors": [
+          {
+            "type": "console-error",
+            "message": "📊 Supabase connection test failed JSHandle@object",
+            "timestamp": "2025-08-27T18:01:20.158Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:20.505Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:20.508Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:24.040Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:24.044Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:34.192Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:34.247Z"
+          },
+          {
+            "type": "console-error",
+            "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <RenderFromTemplateContext>\n      <ScrollAndFocusHandler segmentPath={[...]}>\n        <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>\n          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n            <LoadingBoundary loading={null}>\n              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n                <RedirectBoundary>\n                  <RedirectErrorBoundary router={{...}}>\n                    <InnerLayoutRouter url=\"/executive\" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>\n                      <NotFound>\n                        <div className=\"min-h-scre...\">\n                          <div className=\"text-center\">\n                            <h1>\n                            <h2>\n                            <p>\n                            <LinkComponent href=\"/\" className=\"inline-fle...\">\n                              <a\n                                className=\"inline-flex items-center px-4 py-2 border border-transparent text-base font...\"\n                                ref={function}\n                                onClick={function onClick}\n                                onMouseEnter={function onMouseEnter}\n                                onTouchStart={function onTouchStart}\n                                href=\"/\"\n-                               style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                              >\n+                               Return Home\n                      ...\n",
+            "timestamp": "2025-08-27T18:01:34.426Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+            "timestamp": "2025-08-27T18:01:35.544Z"
+          },
+          {
+            "type": "console-error",
+            "message": "Error while trying to use the following icon from the Manifest: http://localhost:3004/icons/icon-144x144.png (Download error or resource isn't a valid image)",
+            "timestamp": "2025-08-27T18:01:35.547Z"
+          }
+        ],
+        "hydrationErrors": [
+          {
+            "type": "hydration-error",
+            "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <RenderFromTemplateContext>\n      <ScrollAndFocusHandler segmentPath={[...]}>\n        <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>\n          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n            <LoadingBoundary loading={null}>\n              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n                <RedirectBoundary>\n                  <RedirectErrorBoundary router={{...}}>\n                    <InnerLayoutRouter url=\"/executive\" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>\n                      <NotFound>\n                        <div className=\"min-h-scre...\">\n                          <div className=\"text-center\">\n                            <h1>\n                            <h2>\n                            <p>\n                            <LinkComponent href=\"/\" className=\"inline-fle...\">\n                              <a\n                                className=\"inline-flex items-center px-4 py-2 border border-transparent text-base font...\"\n                                ref={function}\n                                onClick={function onClick}\n                                onMouseEnter={function onMouseEnter}\n                                onTouchStart={function onTouchStart}\n                                href=\"/\"\n-                               style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                              >\n+                               Return Home\n                      ...\n",
+            "timestamp": "2025-08-27T18:01:34.426Z"
+          }
+        ],
+        "reactErrors": [
+          {
+            "type": "react-error",
+            "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <RenderFromTemplateContext>\n      <ScrollAndFocusHandler segmentPath={[...]}>\n        <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>\n          <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n            <LoadingBoundary loading={null}>\n              <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n                <RedirectBoundary>\n                  <RedirectErrorBoundary router={{...}}>\n                    <InnerLayoutRouter url=\"/executive\" tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>\n                      <NotFound>\n                        <div className=\"min-h-scre...\">\n                          <div className=\"text-center\">\n                            <h1>\n                            <h2>\n                            <p>\n                            <LinkComponent href=\"/\" className=\"inline-fle...\">\n                              <a\n                                className=\"inline-flex items-center px-4 py-2 border border-transparent text-base font...\"\n                                ref={function}\n                                onClick={function onClick}\n                                onMouseEnter={function onMouseEnter}\n                                onTouchStart={function onTouchStart}\n                                href=\"/\"\n-                               style={{touch-action:\"manipulation\",user-select:\"none\"}}\n                              >\n+                               Return Home\n                      ...\n",
+            "timestamp": "2025-08-27T18:01:34.426Z"
+          }
+        ],
+        "cssErrors": [],
+        "networkErrors": [
+          {
+            "type": "network-error",
+            "url": "https://jdkdgcfwuizbeeeftove.supabase.co/rest/v1/schedule_entries?select=id&limit=1",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:20.156Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.9393ab513161bef6.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:20.157Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/?_rsc=1njrv",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:20.375Z"
+          },
+          {
+            "type": "network-error",
+            "url": "https://jdkdgcfwuizbeeeftove.supabase.co/rest/v1/schedule_entries?select=id%2Cmember_id%2Cdate%2Cvalue%2Creason%2Ccreated_at%2Cupdated_at&member_id=in.%2822%2C21%2C26%2C20%2C23%2C19%2C24%2C25%29&date=gte.2025-08-24&date=lte.2025-09-06&limit=1000&order=date.desc",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:23.725Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.92c9377baba29546.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:23.725Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.d04cc4351e19bb73.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:27.936Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.b3a27e683c60b889.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:30.985Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/_next/static/webpack/webpack.7d257eab608feeb6.hot-update.js",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:33.979Z"
+          },
+          {
+            "type": "network-error",
+            "url": "http://localhost:3004/executive?_rsc=1pebd",
+            "errorText": "net::ERR_ABORTED",
+            "timestamp": "2025-08-27T18:01:34.246Z"
+          }
+        ]
+      }
+    }
+  }
+}

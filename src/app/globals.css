@@ -3133,10 +3133,10 @@ main:focus {
 html:not([data-never-match]),
 :host:not([data-never-match]) {
   /* 
-   * Replace problematic -webkit-text-size-adjust with proper iOS zoom prevention 
-   * Using font-size 16px prevents iOS zoom without vendor prefix issues
+   * iOS zoom prevention using font-size instead of problematic -webkit-text-size-adjust
+   * Prevents CSS parsing errors while maintaining functionality
    */
-  -webkit-text-size-adjust: unset !important;
+  /* Removed: -webkit-text-size-adjust to prevent CSS parsing errors */
   font-size: 16px !important;
   tab-size: 4 !important;
   line-height: 1.5 !important;
@@ -3146,14 +3146,14 @@ html:not([data-never-match]),
   -webkit-tap-highlight-color: transparent !important;
 }
 
-/* Force override any remaining -webkit-text-size-adjust declarations */
+/* CSS parsing error prevention - removed problematic vendor prefixes */
 *,
 *::before,
 *::after,
 :host,
 html {
-  /* Use 'initial' to reset any inherited problematic values */
-  -webkit-text-size-adjust: initial !important;
+  /* Removed: -webkit-text-size-adjust to prevent CSS parsing errors */
+  /* iOS zoom prevention handled via font-size: 16px instead */
 }
 
 /* Ensure all interactive elements use proper font sizes for iOS zoom prevention */
@@ -3162,8 +3162,7 @@ select:not([data-never-match]),
 textarea:not([data-never-match]),
 button:not([data-never-match]) {
   font-size: 16px !important;
-  /* Ensure no problematic vendor prefixes are inherited */
-  -webkit-text-size-adjust: initial !important;
+  /* Removed: -webkit-text-size-adjust to prevent CSS parsing errors */
 }
 
 /* Focus handling without problematic pseudo-elements - highest specificity */
@@ -3188,7 +3187,7 @@ textarea:focus-visible:not([data-never-match]),
   textarea:not([data-never-match]),
   select:not([data-never-match]) {
     font-size: 16px !important;
-    -webkit-text-size-adjust: initial !important;
+    /* Removed: -webkit-text-size-adjust to prevent CSS parsing errors */
   }
 }
 
@@ -3200,14 +3199,14 @@ textarea:focus-visible:not([data-never-match]),
   html,
   :host {
     text-size-adjust: none !important;
-    -webkit-text-size-adjust: initial !important;
+    /* Removed: -webkit-text-size-adjust to prevent CSS parsing errors */
   }
 }
 
 @supports not (text-size-adjust: none) {
   html,
   :host {
-    -webkit-text-size-adjust: initial !important;
+    /* Removed: -webkit-text-size-adjust to prevent CSS parsing errors */
     font-size: 16px !important;
   }
 }

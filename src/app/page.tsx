@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -23,10 +23,40 @@ const PersonalDashboard = dynamic(() => import('@/components/PersonalDashboard')
   ssr: false
 });
 
-const ManagerDashboard = dynamic(() => import('@/components/ManagerDashboard').then(mod => ({ default: mod.default })), {
-  loading: () => <LoadingState testId="manager-dashboard-loading" showText text="Loading dashboard..." />,
-  ssr: false
-});
+// Conditional rendering approach to avoid dynamic import factory issues
+const LazyManagerDashboard = React.lazy(() => import('@/components/ManagerDashboard'));
+
+// Simple Error Boundary for ManagerDashboard
+class ManagerDashboardErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('ManagerDashboard Error Boundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <LoadingState 
+          testId="manager-dashboard-error" 
+          showText 
+          text="Unable to load manager dashboard. Please refresh the page." 
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
 
 import { GlobalSprintProvider } from '@/contexts/GlobalSprintContext';
 import { canViewSprints, getUserRole } from '@/utils/permissions';
@@ -313,9 +343,15 @@ function HomeContent() {
     );
   }
 
-  // Team loading state - hydration safe
+  // Team loading state - hydration safe with inline mode to match container structure
   if (selectedTeam && loading) {
-    return <LoadingState testId="team-members-loading" />;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex items-center justify-center p-4">
+          <LoadingState testId="team-members-loading" mode="inline" />
+        </div>
+      </div>
+    );
   }
 
   // Show user selection for selected team
@@ -469,11 +505,15 @@ function HomeContent() {
               <GlobalSprintProvider teamId={selectedTeam.id}>
                 <Suspense fallback={<LoadingState testId="sprint-dashboard-loading" showText text="Loading sprint data..." />}>
                   {selectedUser.isManager ? (
-                    <ManagerDashboard 
-                      user={selectedUser}
-                      team={selectedTeam}
-                      teamMembers={teamMembers}
-                    />
+                    <React.Suspense fallback={<LoadingState testId="manager-dashboard-loading" showText text="Loading manager dashboard..." />}>
+                      <ManagerDashboardErrorBoundary>
+                        <LazyManagerDashboard 
+                          user={selectedUser}
+                          team={selectedTeam}
+                          teamMembers={teamMembers}
+                        />
+                      </ManagerDashboardErrorBoundary>
+                    </React.Suspense>
                   ) : (
                     <PersonalDashboard 
                       user={selectedUser}
@@ -489,11 +529,15 @@ function HomeContent() {
             {!canViewSprints(selectedUser) && selectedTeam && selectedUser && (
               <Suspense fallback={<LoadingState testId="basic-dashboard-loading" showText text="Loading dashboard..." />}>
                 {selectedUser.isManager ? (
-                  <ManagerDashboard 
-                    user={selectedUser}
-                    team={selectedTeam}
-                    teamMembers={teamMembers}
-                  />
+                  <React.Suspense fallback={<LoadingState testId="manager-dashboard-basic-loading" showText text="Loading manager dashboard..." />}>
+                    <ManagerDashboardErrorBoundary>
+                      <LazyManagerDashboard 
+                        user={selectedUser}
+                        team={selectedTeam}
+                        teamMembers={teamMembers}
+                      />
+                    </ManagerDashboardErrorBoundary>
+                  </React.Suspense>
                 ) : (
                   <PersonalDashboard 
                     user={selectedUser}

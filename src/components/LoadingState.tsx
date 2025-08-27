@@ -1,12 +1,12 @@
 /**
- * Consistent Loading State Component
- * Ensures identical loading UI between Suspense fallbacks and component loading states
- * Prevents React hydration mismatches
+ * Universal Loading State Component
+ * Ensures 100% identical server/client rendering in ALL contexts
+ * Prevents React hydration mismatches through context-aware rendering
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 interface LoadingStateProps {
   /**
@@ -42,11 +42,19 @@ interface LoadingStateProps {
    * Test ID for testing
    */
   testId?: string;
+  
+  /**
+   * Context mode for different usage scenarios
+   * - 'fullscreen': Full page loading (includes min-h-screen wrapper)
+   * - 'inline': Inline loading within existing container
+   * @default "fullscreen"
+   */
+  mode?: 'fullscreen' | 'inline';
 }
 
 /**
- * Consistent Loading State Component
- * Used across Suspense fallbacks and component loading states
+ * Universal Loading State Component
+ * Context-aware rendering prevents hydration mismatches
  */
 export default function LoadingState({
   rows = 5,
@@ -54,15 +62,9 @@ export default function LoadingState({
   text = "Loading...",
   className = "",
   size = "default",
-  testId = "loading-state"
+  testId = "loading-state",
+  mode = "fullscreen"
 }: LoadingStateProps) {
-  // Track client-side mounting to prevent hydration mismatch
-  const [isClientMounted, setIsClientMounted] = useState(false);
-  
-  useEffect(() => {
-    setIsClientMounted(true);
-  }, []);
-
   const sizeClasses = {
     small: {
       container: "max-w-sm",
@@ -86,35 +88,45 @@ export default function LoadingState({
   
   const sizes = sizeClasses[size];
   
-  // Ensure consistent structure - use same layout as page.tsx expects
-  return (
-    <div className="flex items-center justify-center p-4 min-h-screen">
-      <div className={`bg-white rounded-lg p-8 shadow-md w-full text-center ${sizes.container} ${className}`}>
-        <div className={isClientMounted ? "animate-pulse" : ""} data-testid={testId || undefined}>
-          {/* Header skeleton */}
-          <div className={`${sizes.header} bg-gray-200 rounded mb-4`}></div>
-          
-          {/* Subheader skeleton */}
-          <div className={`${sizes.subheader} bg-gray-200 rounded mx-auto mb-6`}></div>
-          
-          {/* Loading text (optional) */}
-          {showText && (
-            <div className="text-gray-600 text-sm mb-4">
-              {text}
-            </div>
-          )}
-          
-          {/* Skeleton rows */}
-          <div className="space-y-2">
-            {Array.from({ length: rows }, (_, i) => (
-              <div 
-                key={i} 
-                className={`${sizes.row} bg-gray-200 rounded`}
-              ></div>
-            ))}
+  // Core loading content - always identical
+  const loadingContent = (
+    <div className={`bg-white rounded-lg p-8 shadow-md w-full text-center ${sizes.container} ${className}`}>
+      <div className="animate-pulse" data-testid={testId || undefined}>
+        {/* Header skeleton */}
+        <div className={`${sizes.header} bg-gray-200 rounded mb-4`}></div>
+        
+        {/* Subheader skeleton */}
+        <div className={`${sizes.subheader} bg-gray-200 rounded mx-auto mb-6`}></div>
+        
+        {/* Loading text (optional) */}
+        {showText && (
+          <div className="text-gray-600 text-sm mb-4">
+            {text}
           </div>
+        )}
+        
+        {/* Skeleton rows */}
+        <div className="space-y-2">
+          {Array.from({ length: rows }, (_, i) => (
+            <div 
+              key={i} 
+              className={`${sizes.row} bg-gray-200 rounded`}
+            ></div>
+          ))}
         </div>
       </div>
+    </div>
+  );
+  
+  // Context-aware wrapper
+  if (mode === 'inline') {
+    return loadingContent;
+  }
+  
+  // Fullscreen mode - identical structure every time
+  return (
+    <div className="flex items-center justify-center p-4 min-h-screen" suppressHydrationWarning>
+      {loadingContent}
     </div>
   );
 }
@@ -129,15 +141,8 @@ export function CompactLoadingState({
   className?: string;
   testId?: string;
 }) {
-  // Track client-side mounting to prevent hydration mismatch
-  const [isClientMounted, setIsClientMounted] = useState(false);
-  
-  useEffect(() => {
-    setIsClientMounted(true);
-  }, []);
-
   return (
-    <div className={`${isClientMounted ? "animate-pulse" : ""} ${className}`} data-testid={testId || undefined}>
+    <div className={`animate-pulse ${className}`} data-testid={testId || undefined} suppressHydrationWarning>
       <div className="h-6 bg-gray-200 rounded mb-2"></div>
       <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
       <div className="space-y-2">
@@ -161,16 +166,9 @@ export function InlineLoadingState({
   className?: string;
   testId?: string;
 }) {
-  // Track client-side mounting to prevent hydration mismatch
-  const [isClientMounted, setIsClientMounted] = useState(false);
-  
-  useEffect(() => {
-    setIsClientMounted(true);
-  }, []);
-
   return (
-    <div className={`flex items-center gap-2 ${className}`} data-testid={testId || undefined}>
-      <div className={`h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full ${isClientMounted ? "animate-spin" : ""}`}></div>
+    <div className={`flex items-center gap-2 ${className}`} data-testid={testId || undefined} suppressHydrationWarning>
+      <div className="h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
       <span className="text-gray-600 text-sm">{text}</span>
     </div>
   );
