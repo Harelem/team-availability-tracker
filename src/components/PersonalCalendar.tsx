@@ -41,6 +41,126 @@ const HEBREW_MONTHS = [
 // Hebrew day abbreviations (Sunday to Saturday)
 const HEBREW_DAY_ABBREV = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 
+// Day status options for initial selection
+interface DayStatusOption {
+  value: '1' | '0.5' | 'X';
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
+const DAY_STATUS_OPTIONS: DayStatusOption[] = [
+  {
+    value: '1',
+    label: 'יום מלא',
+    description: '7 שעות עבודה',
+    icon: <Check className="w-6 h-6" />,
+    color: 'border-green-300 bg-green-50 hover:bg-green-100 text-green-900'
+  },
+  {
+    value: '0.5',
+    label: 'חצי יום',
+    description: '3.5 שעות עבודה',
+    icon: <Clock className="w-6 h-6" />,
+    color: 'border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-900'
+  },
+  {
+    value: 'X',
+    label: 'חופש / מחלה',
+    description: '0 שעות עבודה',
+    icon: <XIcon className="w-6 h-6" />,
+    color: 'border-red-300 bg-red-50 hover:bg-red-100 text-red-900'
+  }
+];
+
+// DayStatusModal component
+interface DayStatusModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (status: '1' | '0.5' | 'X') => void;
+  date: Date | null;
+  memberName?: string;
+}
+
+function DayStatusModal({ isOpen, onClose, onSelect, date, memberName }: DayStatusModalProps) {
+  if (!isOpen || !date) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] overflow-auto">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                בחירת סטטוס יום
+              </h3>
+              <p className="text-gray-600 mt-1">
+                {date.toLocaleDateString('he-IL', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-gray-100"
+            >
+              <span className="text-2xl">×</span>
+            </button>
+          </div>
+          
+          {memberName && (
+            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>{memberName}</strong>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Options */}
+        <div className="p-6 space-y-3">
+          <p className="text-gray-700 font-medium mb-4">
+            אנא בחר את סוג היום:
+          </p>
+          
+          {DAY_STATUS_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => onSelect(option.value)}
+              className={`w-full p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md active:scale-[0.98] text-right ${option.color}`}
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  {option.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-lg">{option.label}</div>
+                  <div className="text-sm opacity-75">{option.description}</div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="w-full px-6 py-3 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+          >
+            ביטול
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PersonalCalendar({
   user,
   team,
@@ -51,6 +171,7 @@ export default function PersonalCalendar({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [scheduleData, setScheduleData] = useState<{[key: string]: ScheduleEntry}>({});
   const [isReasonModalOpen, setReasonModalOpen] = useState(false);
+  const [isStatusModalOpen, setStatusModalOpen] = useState(false);
   const [pendingValue, setPendingValue] = useState<'0.5' | 'X' | null>(null);
   const [loading, setLoading] = useState(true);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
@@ -187,12 +308,17 @@ export default function PersonalCalendar({
       return;
     }
     
-    // Cycle through values: null → 1 → 0.5 → X → null
+    // NEW FLOW: For empty dates, show status selection modal first
+    if (!day.value) {
+      setSelectedDate(day.date);
+      setStatusModalOpen(true);
+      return;
+    }
+    
+    // EXISTING FLOW: For dates with values, cycle through: 1 → 0.5 → X → null
     let nextValue: '1' | '0.5' | 'X' | null;
     
-    if (!day.value) {
-      nextValue = '1';
-    } else if (day.value === '1') {
+    if (day.value === '1') {
       nextValue = '0.5';
     } else if (day.value === '0.5') {
       nextValue = 'X';
@@ -206,9 +332,32 @@ export default function PersonalCalendar({
       setPendingValue(nextValue);
       setReasonModalOpen(true);
     } else {
-      // Update directly
+      // Update directly (for null value or full day)
       updateSchedule(day.date, nextValue);
     }
+  };
+
+  // Handle status selection from first modal
+  const handleStatusSelect = (status: '1' | '0.5' | 'X') => {
+    setStatusModalOpen(false);
+    
+    if (status === '1') {
+      // Full day - save directly without reason
+      if (selectedDate) {
+        updateSchedule(selectedDate, status);
+      }
+      setSelectedDate(null);
+    } else {
+      // Half day or absent - show reason modal
+      setPendingValue(status);
+      setReasonModalOpen(true);
+    }
+  };
+
+  // Handle status modal close
+  const handleStatusModalClose = () => {
+    setStatusModalOpen(false);
+    setSelectedDate(null);
   };
 
   // Handle reason submission
@@ -246,12 +395,12 @@ export default function PersonalCalendar({
     setShowMonthPicker(false);
   };
 
-  // Get status color class
+  // Get status color class with subtle tints
   const getStatusColorClass = (value: '1' | '0.5' | 'X' | null): string => {
     switch (value) {
-      case '1': return 'bg-green-500 text-white';
-      case '0.5': return 'bg-orange-500 text-white';
-      case 'X': return 'bg-red-500 text-white';
+      case '1': return 'bg-green-100 text-gray-900 border-green-300';
+      case '0.5': return 'bg-orange-100 text-gray-900 border-orange-300';
+      case 'X': return 'bg-red-100 text-gray-900 border-red-300';
       default: return 'bg-gray-100 text-gray-400';
     }
   };
@@ -259,9 +408,9 @@ export default function PersonalCalendar({
   // Get status icon
   const getStatusIcon = (value: '1' | '0.5' | 'X' | null) => {
     switch (value) {
-      case '1': return <Check className="w-4 h-4" />;
-      case '0.5': return <Clock className="w-4 h-4" />;
-      case 'X': return <XIcon className="w-4 h-4" />;
+      case '1': return <Check className="w-4 h-4 text-green-600" />;
+      case '0.5': return <span className="text-orange-600 font-bold text-sm">½</span>;
+      case 'X': return <XIcon className="w-4 h-4 text-red-600" />;
       default: return null;
     }
   };
@@ -286,7 +435,7 @@ export default function PersonalCalendar({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden" dir="rtl">
+    <div className="bg-white rounded-2xl shadow-lg overflow-hidden max-w-2xl mx-auto" dir="rtl">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
@@ -328,11 +477,11 @@ export default function PersonalCalendar({
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <button
-            onClick={goToNextMonth}
+            onClick={goToPreviousMonth}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px] shadow-sm"
           >
-            <span>חודש הבא</span>
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4" />
+            <span>חודש קודם</span>
           </button>
           
           <div className="flex items-center gap-3">
@@ -354,11 +503,11 @@ export default function PersonalCalendar({
           </div>
           
           <button
-            onClick={goToPreviousMonth}
+            onClick={goToNextMonth}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px] shadow-sm"
           >
-            <ChevronRight className="w-4 h-4" />
-            <span>חודש קודם</span>
+            <span>חודש הבא</span>
+            <ChevronLeft className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -382,11 +531,11 @@ export default function PersonalCalendar({
               onClick={() => handleDayClick(day)}
               disabled={!editable || day.isWeekend || (day.isPast && !day.value)}
               className={`
-                relative aspect-square min-h-[120px] rounded-lg border-2 transition-all duration-200 p-3 flex flex-col items-center justify-center
+                relative w-[60px] h-[50px] rounded-lg border-2 transition-all duration-200 p-2 flex flex-col items-center justify-center
                 ${day.isCurrentMonth ? 'border-gray-200' : 'border-gray-100'}
                 ${day.isToday ? 'ring-2 ring-blue-500 border-blue-500' : ''}
                 ${day.isWeekend ? 'bg-gray-100 cursor-not-allowed' : ''}
-                ${day.isWeekend ? 'bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.05)_10px,rgba(0,0,0,0.05)_20px)]' : ''}
+                ${day.isWeekend ? 'bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.03)_8px,rgba(0,0,0,0.03)_16px)]' : ''}
                 ${!day.isWeekend && editable && !day.isPast ? 'hover:bg-blue-50 hover:border-blue-300 cursor-pointer' : ''}
                 ${day.isPast && !day.value ? 'opacity-50 cursor-not-allowed' : ''}
                 ${!day.isCurrentMonth ? 'opacity-30' : ''}
@@ -396,30 +545,32 @@ export default function PersonalCalendar({
               title={day.isWeekend ? 'סופי שבוע - לא ניתן לדיווח' : day.reason || ''}
             >
               {/* Day number */}
-              <span className={`text-xl font-bold mb-1 ${
-                day.value ? 'text-white' : day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+              <span className={`text-sm font-bold ${
+                day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
               }`}>
                 {day.dayNumber}
               </span>
               
               {/* Status icon */}
               {day.value && (
-                <div className="mb-1">
-                  {getStatusIcon(day.value)}
+                <div className="absolute top-1 right-1">
+                  <div className="w-4 h-4 flex items-center justify-center">
+                    {getStatusIcon(day.value)}
+                  </div>
                 </div>
               )}
               
               {/* Reason indicator */}
               {day.reason && (
-                <div className="absolute bottom-2 left-2">
-                  <Info className="w-3 h-3 text-white opacity-75" />
+                <div className="absolute bottom-1 left-1">
+                  <Info className="w-2.5 h-2.5 text-white opacity-75" />
                 </div>
               )}
               
               {/* Today indicator */}
               {day.isToday && (
-                <div className="absolute bottom-2 right-2">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                <div className="absolute bottom-1 right-1">
+                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
                 </div>
               )}
             </button>
@@ -449,7 +600,7 @@ export default function PersonalCalendar({
             >
               {/* Day number */}
               <span className={`text-sm font-bold ${
-                day.value ? 'text-white' : day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
               }`}>
                 {day.dayNumber}
               </span>
@@ -507,6 +658,15 @@ export default function PersonalCalendar({
           </div>
         </div>
       </div>
+
+      {/* Status Selection Modal */}
+      <DayStatusModal
+        isOpen={isStatusModalOpen}
+        onClose={handleStatusModalClose}
+        onSelect={handleStatusSelect}
+        date={selectedDate}
+        memberName={user?.hebrew || user?.name}
+      />
 
       {/* Reason Modal */}
       <MobileReasonInput
