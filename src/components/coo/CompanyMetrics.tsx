@@ -21,9 +21,11 @@ interface CompanyMetrics {
   totalTeams: number;
   totalMembers: number;
   excludedMembers: string[];
-  companyPotentialHours: number;
-  currentSprintCapacity: number;
-  sprintUtilization: number;
+  sprintCapacity: {
+    actualHours: number;
+    maximumHours: number;
+    utilizationPercentage: number;
+  };
   weeklyMetrics: {
     thisWeekHours: number;
     thisWeekPotential: number;
@@ -71,6 +73,8 @@ export default function CompanyMetrics() {
       if (membersError) throw membersError;
 
       // 4. Excluded members as per requirements
+      // Note: Original requirements mentioned "Nir Shilo, Bar, and Sela" 
+      // but "Bar" and "Sela" don't exist in current team member database
       const excludedMembers = ['Nir Shilo', 'Ran Avraham'];
       const eligibleMembers = allMembers?.filter(
         member => !excludedMembers.includes(member.name)
@@ -196,9 +200,11 @@ export default function CompanyMetrics() {
         totalTeams: teams?.length || 0,
         totalMembers: allMembers?.length || 0,
         excludedMembers,
-        companyPotentialHours: sprintCapacity,
-        currentSprintCapacity: sprintCapacity,
-        sprintUtilization: sprintCapacity > 0 ? Math.round((currentSprintHours / sprintCapacity) * 100) : 0,
+        sprintCapacity: {
+          actualHours: currentSprintHours,
+          maximumHours: sprintCapacity,
+          utilizationPercentage: sprintCapacity > 0 ? Math.round((currentSprintHours / sprintCapacity) * 100) : 0
+        },
         weeklyMetrics: {
           thisWeekHours: thisWeekActualHours,
           thisWeekPotential: thisWeekPotential,
@@ -330,7 +336,7 @@ export default function CompanyMetrics() {
               
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-600">Sprint Utilization</p>
-                <p className="text-2xl font-bold text-purple-600 mt-1">{metrics.sprintUtilization}%</p>
+                <p className="text-2xl font-bold text-purple-600 mt-1">{metrics.sprintCapacity.utilizationPercentage}%</p>
                 <p className="text-xs text-gray-500">capacity used</p>
               </div>
             </div>
@@ -369,21 +375,66 @@ export default function CompanyMetrics() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6">
+          <div className={`bg-gradient-to-br rounded-lg p-6 ${
+            metrics.sprintCapacity.utilizationPercentage >= 80 
+              ? 'from-green-50 to-green-100' 
+              : metrics.sprintCapacity.utilizationPercentage >= 60 
+                ? 'from-yellow-50 to-yellow-100' 
+                : 'from-red-50 to-red-100'
+          }`}>
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-700">Sprint Capacity</p>
-                <p className="text-2xl font-bold text-green-900 mt-1">
-                  {metrics.companyPotentialHours.toLocaleString()}h
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${
+                  metrics.sprintCapacity.utilizationPercentage >= 80 
+                    ? 'text-green-700' 
+                    : metrics.sprintCapacity.utilizationPercentage >= 60 
+                      ? 'text-yellow-700' 
+                      : 'text-red-700'
+                }`}>Sprint Capacity</p>
+                <p className={`text-2xl font-bold mt-1 ${
+                  metrics.sprintCapacity.utilizationPercentage >= 80 
+                    ? 'text-green-900' 
+                    : metrics.sprintCapacity.utilizationPercentage >= 60 
+                      ? 'text-yellow-900' 
+                      : 'text-red-900'
+                }`}>
+                  {metrics.sprintCapacity.actualHours.toLocaleString()}/{metrics.sprintCapacity.maximumHours.toLocaleString()}
                 </p>
-                <p className="text-sm text-green-600">
-                  Total potential hours
+                <p className={`text-sm ${
+                  metrics.sprintCapacity.utilizationPercentage >= 80 
+                    ? 'text-green-600' 
+                    : metrics.sprintCapacity.utilizationPercentage >= 60 
+                      ? 'text-yellow-600' 
+                      : 'text-red-600'
+                }`}>
+                  Actual/Maximum Hours
                 </p>
-                <p className="text-xs text-green-500 mt-1">
+                <div className="mt-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        metrics.sprintCapacity.utilizationPercentage >= 80 
+                          ? 'bg-green-600' 
+                          : metrics.sprintCapacity.utilizationPercentage >= 60 
+                            ? 'bg-yellow-600' 
+                            : 'bg-red-600'
+                      }`}
+                      style={{ width: `${Math.min(metrics.sprintCapacity.utilizationPercentage, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">{metrics.sprintCapacity.utilizationPercentage}% utilized</p>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
                   Excludes weekends & specified personnel
                 </p>
               </div>
-              <Clock className="w-12 h-12 text-green-600 opacity-80" />
+              <Clock className={`w-12 h-12 opacity-80 ${
+                metrics.sprintCapacity.utilizationPercentage >= 80 
+                  ? 'text-green-600' 
+                  : metrics.sprintCapacity.utilizationPercentage >= 60 
+                    ? 'text-yellow-600' 
+                    : 'text-red-600'
+              }`} />
             </div>
           </div>
 
