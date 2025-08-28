@@ -80,6 +80,9 @@ const logger = { info: () => {}, warn: () => {}, error: () => {}, success: () =>
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
   
+  // Hydration safety - prevent server/client mismatches
+  const [isMounted, setIsMounted] = useState(false);
+  
   // Dynamic mobile detection to reduce initial bundle
   const [isMobile, setIsMobile] = useState(false);
   
@@ -98,6 +101,12 @@ function HomeContent() {
       setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
     });
   }, []);
+
+  // Set mounted state for hydration safety
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
   // Router removed as unused
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -341,6 +350,11 @@ function HomeContent() {
         />
       </div>
     );
+  }
+
+  // Hydration safety - prevent server/client mismatches
+  if (!isMounted) {
+    return <LoadingState mode="fullscreen" testId="hydration-loading" />;
   }
 
   // Team loading state - hydration safe with inline mode to match container structure

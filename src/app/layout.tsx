@@ -15,7 +15,7 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
-  preload: true,
+  preload: false, // Disabled for development to avoid console warnings
   fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
 });
 
@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono", 
   subsets: ["latin"],
   display: "swap",
-  preload: true,
+  preload: false, // Disabled for development to avoid console warnings
   fallback: ["ui-monospace", "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", "monospace"],
 });
 

@@ -1,0 +1,59 @@
+{
+  "timestamp": "2025-08-28T07:28:32.414Z",
+  "environment": {
+    "ci": false,
+    "branch": "unknown",
+    "commit": "unknown",
+    "workflow": "local"
+  },
+  "summary": {
+    "totalSuites": 0,
+    "passedSuites": 0,
+    "failedSuites": 0,
+    "totalTests": 0,
+    "passedTests": 0,
+    "failedTests": 0,
+    "skippedTests": 0,
+    "totalDuration": 0,
+    "overallStatus": "PASSED"
+  },
+  "suites": {},
+  "coverage": {
+    "overall": {
+      "lines": {
+        "covered": 0,
+        "total": 0,
+        "percentage": 0
+      },
+      "functions": {
+        "covered": 0,
+        "total": 0,
+        "percentage": 0
+      },
+      "branches": {
+        "covered": 0,
+        "total": 0,
+        "percentage": 0
+      },
+      "statements": {
+        "covered": 0,
+        "total": 0,
+        "percentage": 0
+      }
+    },
+    "bySuite": {}
+  },
+  "performance": {
+    "loadTimes": {},
+    "memoryUsage": {},
+    "renderTimes": {}
+  },
+  "security": {
+    "vulnerabilities": [],
+    "recommendations": []
+  },
+  "accessibility": {
+    "violations": [],
+    "score": 0
+  }
+}

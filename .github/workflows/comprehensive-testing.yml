@@ -1,0 +1,507 @@
+name: Comprehensive Testing Suite
+
+on:
+  push:
+    branches: [ main, develop, 'hotfix/**', 'feature/**' ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '18'
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  # ============================================================================
+  # Setup and Validation
+  # ============================================================================
+  setup:
+    name: Setup and Validation
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+      should-run-e2e: ${{ steps.check-changes.outputs.should-run-e2e }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            .next/cache
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Check for significant changes
+        id: check-changes
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -E '\.(tsx?|jsx?)$|package\.json$|\.env' > /dev/null; then
+            echo "should-run-e2e=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-run-e2e=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate environment
+        run: |
+          echo "✓ Node.js version: $(node --version)"
+          echo "✓ npm version: $(npm --version)"
+          echo "✓ Environment: ${{ github.event_name }}"
+
+  # ============================================================================
+  # Code Quality and Security
+  # ============================================================================
+  code-quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript compilation check
+        run: npx tsc --noEmit
+
+      - name: Run Semgrep Security Scan
+        run: npm run semgrep:ci
+        continue-on-error: true
+
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-scan-results
+          path: semgrep/reports/
+
+  # ============================================================================
+  # Unit and Integration Tests
+  # ============================================================================
+  unit-tests:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      matrix:
+        test-suite:
+          - { name: 'Data Layer', path: 'src/__tests__/data', critical: true }
+          - { name: 'Business Logic', path: 'src/__tests__/logic', critical: true }
+          - { name: 'Components', path: 'src/__tests__/components', critical: true }
+          - { name: 'Integration', path: 'src/__tests__/integration', critical: true }
+          - { name: 'Security', path: 'src/__tests__/security', critical: true }
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create test results directory
+        run: mkdir -p test-results
+
+      - name: Run ${{ matrix.test-suite.name }} Tests
+        run: |
+          npx jest ${{ matrix.test-suite.path }} \
+            --verbose \
+            --coverage \
+            --json \
+            --outputFile=test-results/${{ matrix.test-suite.name }}-results.json \
+            --coverageReporters=text-lcov \
+            --coverageDirectory=coverage/${{ matrix.test-suite.name }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results-${{ matrix.test-suite.name }}
+          path: |
+            test-results/
+            coverage/
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage/${{ matrix.test-suite.name }}/lcov.info
+          flags: ${{ matrix.test-suite.name }}
+          name: ${{ matrix.test-suite.name }}-coverage
+
+  # ============================================================================
+  # Performance Tests
+  # ============================================================================
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [setup, unit-tests]
+    if: needs.setup.outputs.should-run-e2e == 'true' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Performance Tests
+        run: |
+          npx jest src/__tests__/performance \
+            --verbose \
+            --json \
+            --outputFile=test-results/performance-results.json \
+            --testTimeout=300000
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: performance-test-results
+          path: test-results/
+
+  # ============================================================================
+  # End-to-End Tests
+  # ============================================================================
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [setup, unit-tests]
+    if: needs.setup.outputs.should-run-e2e == 'true' || github.event_name == 'schedule'
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install ${{ matrix.browser }} --with-deps
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start application
+        run: npm start &
+
+      - name: Wait for application to be ready
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run E2E tests
+        run: |
+          npx playwright test \
+            --project=${{ matrix.browser }}-desktop \
+            --reporter=json \
+            --output=test-results/e2e-${{ matrix.browser }}.json
+
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results-${{ matrix.browser }}
+          path: |
+            test-results/
+            test-results/**/*.png
+            test-results/**/*.webm
+
+  # ============================================================================
+  # Mobile Testing
+  # ============================================================================
+  mobile-tests:
+    name: Mobile E2E Tests
+    runs-on: ubuntu-latest
+    needs: [setup, unit-tests]
+    if: needs.setup.outputs.should-run-e2e == 'true' || github.event_name == 'schedule'
+    strategy:
+      matrix:
+        device: ['iPhone 14 Pro', 'Galaxy S21', 'iPad Pro']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium webkit --with-deps
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start application
+        run: npm start &
+
+      - name: Wait for application to be ready
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run Mobile E2E tests
+        run: |
+          npx playwright test \
+            --grep="mobile|touch|responsive" \
+            --project="$(echo '${{ matrix.device }}' | tr ' ' '-' | tr '[:upper:]' '[:lower:]')" \
+            --reporter=json \
+            --output=test-results/mobile-${{ matrix.device }}.json
+
+      - name: Upload mobile test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: mobile-test-results-${{ matrix.device }}
+          path: test-results/
+
+  # ============================================================================
+  # Accessibility Tests
+  # ============================================================================
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    needs: [setup, unit-tests]
+    if: needs.setup.outputs.should-run-e2e == 'true' || github.event_name == 'schedule'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start application
+        run: npm start &
+
+      - name: Wait for application to be ready
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run Accessibility tests
+        run: |
+          npx playwright test \
+            --grep="accessibility|a11y" \
+            --project=accessibility \
+            --reporter=json \
+            --output=test-results/accessibility-results.json
+
+      - name: Upload accessibility test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: accessibility-test-results
+          path: test-results/
+
+  # ============================================================================
+  # Test Report Generation
+  # ============================================================================
+  generate-report:
+    name: Generate Comprehensive Test Report
+    runs-on: ubuntu-latest
+    needs: 
+      - code-quality
+      - unit-tests
+      - performance-tests
+      - e2e-tests
+      - mobile-tests
+      - accessibility-tests
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/
+
+      - name: Generate comprehensive report
+        run: node scripts/generate-test-report.js
+        env:
+          ARTIFACTS_PATH: artifacts/
+          OUTPUT_PATH: final-test-report/
+
+      - name: Upload final test report
+        uses: actions/upload-artifact@v3
+        with:
+          name: comprehensive-test-report
+          path: final-test-report/
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'final-test-report/summary.json';
+            
+            if (fs.existsSync(reportPath)) {
+              const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+              
+              const comment = `
+            ## 🧪 Test Results Summary
+            
+            | Test Suite | Status | Tests | Coverage |
+            |------------|--------|-------|----------|
+            | Unit Tests | ${report.unit.passed ? '✅' : '❌'} | ${report.unit.total} | ${report.unit.coverage}% |
+            | Integration | ${report.integration.passed ? '✅' : '❌'} | ${report.integration.total} | ${report.integration.coverage}% |
+            | E2E Tests | ${report.e2e.passed ? '✅' : '❌'} | ${report.e2e.total} | N/A |
+            | Performance | ${report.performance.passed ? '✅' : '❌'} | ${report.performance.total} | N/A |
+            | Security | ${report.security.passed ? '✅' : '❌'} | ${report.security.total} | N/A |
+            
+            **Overall Status**: ${report.overall.passed ? '✅ PASSED' : '❌ FAILED'}
+            
+            📊 [View detailed report](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+  # ============================================================================
+  # Deployment Gate
+  # ============================================================================
+  deployment-gate:
+    name: Deployment Gate
+    runs-on: ubuntu-latest
+    needs: 
+      - code-quality
+      - unit-tests
+      - generate-report
+    if: always()
+    steps:
+      - name: Check critical test results
+        run: |
+          echo "Checking critical test results..."
+          
+          # This would check the results of critical tests
+          # and determine if deployment should be allowed
+          
+          if [[ "${{ needs.unit-tests.result }}" == "success" && 
+                "${{ needs.code-quality.result }}" == "success" ]]; then
+            echo "✅ Critical tests passed - deployment approved"
+            echo "DEPLOYMENT_APPROVED=true" >> $GITHUB_ENV
+          else
+            echo "❌ Critical tests failed - deployment blocked"
+            echo "DEPLOYMENT_APPROVED=false" >> $GITHUB_ENV
+            exit 1
+          fi
+
+      - name: Update deployment status
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const deploymentApproved = process.env.DEPLOYMENT_APPROVED === 'true';
+            
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: '${{ github.sha }}',
+              state: deploymentApproved ? 'success' : 'failure',
+              description: deploymentApproved ? 
+                'All tests passed - ready for deployment' : 
+                'Tests failed - deployment blocked'
+            });
+
+  # ============================================================================
+  # Cleanup
+  # ============================================================================
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [generate-report]
+    if: always()
+    steps:
+      - name: Clean up old artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            
+            // Keep only the comprehensive report and delete intermediate artifacts
+            for (const artifact of artifacts.data.artifacts) {
+              if (!artifact.name.includes('comprehensive-test-report') && 
+                  artifact.created_at < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id
+                });
+              }
+            }

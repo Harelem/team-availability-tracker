@@ -966,6 +966,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
           scheduleData={scheduleData}
           workOptions={workOptions}
           sprintDays={currentSprintDays}
+          selectedTeam={selectedTeam}
           onWorkOptionClick={handleWorkOptionClick}
           onReasonRequired={handleReasonRequired}
           onQuickReasonSelect={handleQuickReasonSelect}

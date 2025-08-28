@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Users, Clock, Calendar, AlertCircle, TrendingUp, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Users, Clock, Calendar, AlertCircle, TrendingUp, Settings, BarChart3, Table } from 'lucide-react';
 import { TeamMember, Team, CurrentGlobalSprint } from '@/types';
 import PersonalDashboard from './PersonalDashboard';
 import ScheduleTable from './ScheduleTable';
 import PersonalStatsCard from './PersonalStatsCard';
 import TeamCompletionModal from './TeamCompletionModal';
+import TeamMemberManagement from './TeamMemberManagement';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { DESIGN_SYSTEM, combineClasses } from '@/utils/designSystem';
 import { RealTimeCalculationService, type TeamMemberSubmissionStatus } from '@/lib/realTimeCalculationService';
@@ -18,56 +19,35 @@ interface ManagerDashboardProps {
   className?: string;
 }
 
-interface CollapsibleSectionProps {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  managerOnly?: boolean;
-  icon?: React.ElementType;
-  badge?: string;
+type TabType = 'overview' | 'schedule' | 'management';
+
+interface TabConfig {
+  id: TabType;
+  label: string;
+  icon: React.ElementType;
+  description: string;
 }
 
-function CollapsibleSection({ 
-  title, 
-  children, 
-  defaultOpen = false, 
-  icon: Icon, 
-  badge 
-}: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className={DESIGN_SYSTEM.cards.default}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          {Icon && <Icon className="w-5 h-5 text-gray-600" />}
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          {badge && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-              {badge}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {isOpen ? (
-            <ChevronUp className="w-5 h-5 text-gray-400" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
-          )}
-        </div>
-      </button>
-      
-      {isOpen && (
-        <div className="border-t border-gray-200">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
+const tabs: TabConfig[] = [
+  {
+    id: 'overview',
+    label: 'Overview',
+    icon: BarChart3,
+    description: 'Team completion and status overview'
+  },
+  {
+    id: 'schedule',
+    label: 'Team Schedule',
+    icon: Table,
+    description: 'Full team availability with inline editing'
+  },
+  {
+    id: 'management',
+    label: 'Team Management',
+    icon: Settings,
+    description: 'Add, edit, and manage team members'
+  }
+];
 
 export default function ManagerDashboard({
   user,
@@ -77,6 +57,9 @@ export default function ManagerDashboard({
 }: ManagerDashboardProps) {
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading } = useGlobalSprint();
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   
   // Modal state
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -111,302 +94,294 @@ export default function ManagerDashboard({
     return dates;
   }, [currentSprint]);
 
-  // Load real-time team completion data
-  React.useEffect(() => {
-    if (!team?.id) return;
+  // Load team statistics
+  const loadTeamStats = useCallback(async () => {
+    if (!currentSprint || !team?.id || teamMembers.length === 0) return;
     
-    const loadTeamData = async () => {
+    try {
       setIsLoadingTeamData(true);
-      try {
-        const [completionData, memberStatuses] = await Promise.all([
-          RealTimeCalculationService.getTeamCompletionStatus(team.id),
-          RealTimeCalculationService.getTeamMemberSubmissionStatus(team.id)
-        ]);
-        
-        setTeamCompletionData(completionData);
-        setMemberSubmissionStatuses(memberStatuses);
-      } catch (error) {
-        console.error('Error loading team data:', error);
-        // Fallback to basic data
-        setTeamCompletionData({
-          totalMembers: teamMembers.length,
-          completedMembers: 0,
-          completionPercentage: 0,
-          totalSubmittedHours: 0,
-          sprintPotentialHours: sprintWorkingDays.length * teamMembers.length * 7
-        });
-      } finally {
-        setIsLoadingTeamData(false);
-      }
-    };
-    
-    loadTeamData();
-  }, [team?.id, teamMembers.length, sprintWorkingDays.length]);
-  
-  // Calculate team statistics with real-time data
-  const teamStats = React.useMemo(() => {
-    const totalMembers = teamMembers.length;
-    const managersCount = teamMembers.filter(m => m.isManager).length;
-    const regularMembers = totalMembers - managersCount;
-    
-    // Use real-time data if available, otherwise fallback to calculated values
-    const completedMembers = teamCompletionData?.completedMembers ?? 0;
-    const completionPercentage = teamCompletionData?.completionPercentage ?? 0;
-    const totalSubmittedHours = teamCompletionData?.totalSubmittedHours ?? 0;
-    const sprintPotentialHours = teamCompletionData?.sprintPotentialHours ?? (sprintWorkingDays.length * totalMembers * 7);
-    
+      
+      const startDate = sprintWorkingDays[0]?.toISOString().split('T')[0];
+      const endDate = sprintWorkingDays[sprintWorkingDays.length - 1]?.toISOString().split('T')[0];
+      
+      if (!startDate || !endDate) return;
+      
+      const teamStats = await RealTimeCalculationService.calculateTeamSubmissionStatus(
+        teamMembers,
+        startDate,
+        endDate,
+        team.id
+      );
+
+      setMemberSubmissionStatuses(teamStats.memberStatuses);
+      setTeamCompletionData({
+        totalMembers: teamStats.totalMembers,
+        completedMembers: teamStats.completedMembers,
+        completionPercentage: teamStats.completionPercentage,
+        totalSubmittedHours: teamStats.totalSubmittedHours,
+        sprintPotentialHours: teamStats.sprintPotentialHours
+      });
+
+    } catch (error) {
+      console.error('Error loading team stats:', error);
+    } finally {
+      setIsLoadingTeamData(false);
+    }
+  }, [currentSprint, team?.id, teamMembers, sprintWorkingDays]);
+
+  // Load team stats on mount and when dependencies change
+  React.useEffect(() => {
+    loadTeamStats();
+  }, [loadTeamStats]);
+
+  const teamStats = useMemo(() => {
+    if (!teamCompletionData) {
+      return {
+        totalMembers: teamMembers.length,
+        completedMembers: 0,
+        completionPercentage: 0,
+        totalSubmittedHours: 0,
+        sprintPotentialHours: 0,
+        sprintLength: sprintWorkingDays.length
+      };
+    }
+
     return {
-      totalMembers,
-      managersCount,
-      regularMembers,
-      completedMembers,
-      completionPercentage,
-      totalSubmittedHours,
-      sprintPotentialHours,
+      ...teamCompletionData,
       sprintLength: sprintWorkingDays.length
     };
-  }, [teamMembers, sprintWorkingDays, teamCompletionData]);
+  }, [teamCompletionData, teamMembers.length, sprintWorkingDays.length]);
 
-  const handleMembersUpdated = useCallback(() => {
-    // This would trigger a refresh of team members data
-    console.log('Team members updated - refreshing data...');
-  }, []);
-
-  return (
-    <div className={`space-y-6 ${className}`}>
-      {/* Manager Header */}
-      <div className={combineClasses(
-        DESIGN_SYSTEM.cards.default,
-        DESIGN_SYSTEM.spacing.lg
-      )}>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-            <Users className="w-6 h-6 text-purple-600" />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Team Management Dashboard
-            </h1>
-            <p className="text-gray-600">
-              {user.name} • {team.name} Manager
-            </p>
-          </div>
-        </div>
-        
-        {currentSprint && (
-          <div className="bg-purple-50 rounded-lg p-4">
-            <h3 className="font-medium text-purple-900 mb-2">Managing Sprint</h3>
-            <p className="text-purple-700 text-sm mb-1">{(currentSprint as any)?.name || 'Current Sprint'}</p>
-            <p className="text-purple-600 text-xs">
-              {new Date(currentSprint.sprint_start_date || Date.now()).toLocaleDateString()} - {new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-              <span className="ml-2">({teamStats.totalMembers} team members)</span>
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Simplified Manager Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <PersonalStatsCard
-          title="Team Completion"
-          value={`${teamStats.completedMembers}/${teamStats.totalMembers}`}
-          icon={Users}
-          color="blue"
-          description={`${teamStats.completionPercentage}% completed • Click for details`}
-          onClick={() => setShowCompletionModal(true)}
-        />
-        
-        <PersonalStatsCard
-          title="Sprint Hours Submitted"
-          value={`${teamStats.totalSubmittedHours}h`}
-          icon={Clock}
-          color="green"
-          description={`of ${teamStats.sprintPotentialHours}h potential`}
-        />
-        
-        <PersonalStatsCard
-          title="Sprint Length"
-          value={`${teamStats.sprintLength} days`}
-          icon={Calendar}
-          color="purple"
-          description="Working days in current sprint"
-        />
-      </div>
-
-      {/* Collapsible Team Summary */}
-      <CollapsibleSection 
-        title="Team Status Overview" 
-        defaultOpen={false}
-        icon={TrendingUp}
-        badge={`${teamStats.completionPercentage}% Complete`}
-      >
-        <div className="p-4">
-          {isLoadingTeamData ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading team status...</p>
-              </div>
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="space-y-6">
+            {/* Team Completion Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <PersonalStatsCard
+                title="Team Completion"
+                value={`${teamStats.completedMembers}/${teamStats.totalMembers}`}
+                icon={Users}
+                color="blue"
+                description={`${teamStats.completionPercentage}% completed • Click for details`}
+                onClick={() => setShowCompletionModal(true)}
+              />
+              
+              <PersonalStatsCard
+                title="Sprint Hours"
+                value={`${teamStats.totalSubmittedHours}h`}
+                icon={Clock}
+                color="green"
+                description={`of ${teamStats.sprintPotentialHours}h potential`}
+              />
+              
+              <PersonalStatsCard
+                title="Sprint Length"
+                value={`${teamStats.sprintLength} days`}
+                icon={Calendar}
+                color="purple"
+                description="Working days in current sprint"
+              />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {memberSubmissionStatuses.length > 0 ? (
-                memberSubmissionStatuses.map(memberStatus => {
-                  const statusColors = {
-                    complete: { bg: 'bg-green-100', text: 'text-green-800', label: 'Complete' },
-                    partial: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Partial' },
-                    missing: { bg: 'bg-red-100', text: 'text-red-800', label: 'Missing' }
-                  };
-                  
-                  const statusColor = statusColors[memberStatus.currentWeekStatus];
-                  
-                  return (
-                    <div key={memberStatus.memberId} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-medium text-sm">
-                              {memberStatus.memberName.charAt(0)}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900 text-sm">{memberStatus.memberName}</div>
-                            <div className="text-xs text-gray-500">{memberStatus.hebrew}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {memberStatus.isManager && (
-                            <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs font-medium rounded-full shadow-sm">
-                              Manager
-                            </span>
-                          )}
-                          <span className={`px-2 py-1 text-xs font-medium rounded ${statusColor.bg} ${statusColor.text}`}>
-                            {statusColor.label}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="text-sm text-gray-600 mb-1">
-                        {memberStatus.sprintSubmittedHours}h submitted
-                      </div>
-                      
-                      {memberStatus.pendingEntries > 0 && (
-                        <div className="text-xs text-orange-600 mb-2">
-                          {memberStatus.pendingEntries} days pending
-                        </div>
-                      )}
-                      
-                      {/* Progress bar */}
-                      <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            memberStatus.sprintCompletionPercentage >= 90 ? 'bg-green-500' :
-                            memberStatus.sprintCompletionPercentage >= 80 ? 'bg-blue-500' :
-                            memberStatus.sprintCompletionPercentage >= 60 ? 'bg-yellow-500' :
-                            'bg-red-500'
-                          }`}
-                          style={{ width: `${Math.max(5, memberStatus.sprintCompletionPercentage)}%` }}
-                        />
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1 text-right">
-                        {memberStatus.sprintCompletionPercentage}%
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                teamMembers.map(member => (
-                  <div key={member.id} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-medium text-sm">
-                            {member.name.charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">{member.name}</div>
-                          <div className="text-xs text-gray-500">{member.hebrew}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {member.isManager && (
-                          <span className="px-3 py-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs font-medium rounded-full shadow-sm">
-                            Manager
-                          </span>
-                        )}
-                        <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
-                          No Data
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="text-sm text-gray-600">
-                      0h submitted
-                    </div>
-                    
-                    <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-gray-400 h-2 rounded-full" style={{ width: '0%' }} />
+
+            {/* Sprint Hours Summary */}
+            <div className={DESIGN_SYSTEM.cards.default}>
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-gray-600" />
+                  Sprint Hours Summary
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Expandable summary of team member hours and progress
+                </p>
+              </div>
+              <div className="p-6">
+                {isLoadingTeamData ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">Loading team data...</p>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-      </CollapsibleSection>
-
-      {/* Manager's Personal Schedule (if applicable) */}
-      <CollapsibleSection 
-        title="My Personal Schedule" 
-        defaultOpen={false}
-        icon={Calendar}
-      >
-        <div className="p-4">
-          <PersonalDashboard 
-            user={user} 
-            team={team} 
-            teamMembers={teamMembers}
-            className="shadow-none border-0 bg-transparent p-0"
-          />
-        </div>
-      </CollapsibleSection>
-
-      {/* Full Team Schedule */}
-      <CollapsibleSection 
-        title="Full Team Sprint Schedule" 
-        defaultOpen={true}
-        icon={Users}
-        badge={currentSprint ? `${sprintWorkingDays.length} days` : "No Sprint"}
-      >
-        <div className="p-4">
-          <div className="mb-6 bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 border-l-4 border-purple-500 rounded-lg p-4 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full">
-                <AlertCircle className="w-4 h-4 text-purple-600" />
+                ) : (
+                  <div className="space-y-3">
+                    {memberSubmissionStatuses.map(memberStatus => {
+                      const statusColors = {
+                        complete: { bg: 'bg-green-100', text: 'text-green-800', label: 'Complete' },
+                        partial: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Partial' },
+                        missing: { bg: 'bg-red-100', text: 'text-red-800', label: 'Missing' }
+                      };
+                      
+                      const statusColor = statusColors[memberStatus.currentWeekStatus];
+                      
+                      return (
+                        <div key={memberStatus.memberId} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 font-medium">
+                                {memberStatus.memberName.charAt(0)}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{memberStatus.memberName}</div>
+                              <div className="text-sm text-gray-500">{memberStatus.hebrew}</div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="font-medium text-gray-900">{memberStatus.sprintSubmittedHours}h</div>
+                              <div className="text-sm text-gray-500">submitted</div>
+                            </div>
+                            <span className={`px-3 py-1 text-sm font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}>
+                              {statusColor.label}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div>
-                <span className="text-base font-semibold text-purple-900 block">Manager Controls Active</span>
-                <span className="text-xs text-purple-600">Full Sprint Management View</span>
-              </div>
             </div>
-            <div className="bg-white/50 rounded-md p-3 border border-purple-200">
-              <p className="text-sm text-purple-800 leading-relaxed">
-                <strong>Enhanced Permissions:</strong> Edit any team member&apos;s schedule across all {sprintWorkingDays.length} working days. 
-                Changes are automatically saved and tracked for compliance.
-              </p>
+
+            {/* My Schedule Widget */}
+            <div className={DESIGN_SYSTEM.cards.default}>
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-gray-600" />
+                  My Schedule
+                  <span className="text-sm font-normal text-gray-500 ml-2">(Collapsible)</span>
+                </h3>
+              </div>
+              <div className="border-gray-200">
+                <PersonalDashboard 
+                  user={user}
+                  team={team}
+                  teamMembers={[]}
+                  className="border-none shadow-none"
+                />
+              </div>
             </div>
           </div>
-          
-          <ScheduleTable 
-            currentUser={user} 
-            teamMembers={teamMembers}
-            selectedTeam={team}
-            viewMode="sprint"
-            sprintDates={sprintWorkingDays}
-          />
+        );
+
+      case 'schedule':
+        return (
+          <div className="space-y-6">
+            <div className={DESIGN_SYSTEM.cards.default}>
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Table className="w-5 h-5 text-gray-600" />
+                  Team Availability
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full ml-3">
+                    Inline Editing Enabled
+                  </span>
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Click any cell to edit directly. Changes are saved automatically.
+                </p>
+              </div>
+              
+              <ScheduleTable 
+                currentUser={user} 
+                teamMembers={teamMembers}
+                selectedTeam={team}
+                viewMode="sprint"
+                sprintDates={sprintWorkingDays}
+              />
+            </div>
+          </div>
+        );
+
+      case 'management':
+        return (
+          <div className="space-y-6">
+            <div className={DESIGN_SYSTEM.cards.default}>
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-gray-600" />
+                  Team Management
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Add, edit, and manage team members
+                </p>
+              </div>
+              
+              <div className="p-6">
+                <TeamMemberManagement 
+                  team={team}
+                  teamMembers={teamMembers}
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className={combineClasses('space-y-6', className)}>
+      {/* Header */}
+      {currentSprint && (
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 border border-purple-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                Manager Dashboard - {team.name}
+              </h2>
+              <p className="text-purple-600 text-sm">
+                {new Date(currentSprint.sprint_start_date || Date.now()).toLocaleDateString()} - {new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                <span className="ml-2">({teamStats.totalMembers} team members)</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-purple-600">{teamStats.completionPercentage}%</div>
+              <div className="text-sm text-purple-500">Team Complete</div>
+            </div>
+          </div>
         </div>
-      </CollapsibleSection>
+      )}
+
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={combineClasses(
+                    'py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
+                    isActive
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  <div className="text-center">
+                    <div>{tab.label}</div>
+                    <div className="text-xs mt-1 opacity-75">{tab.description}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {renderTabContent()}
+        </div>
+      </div>
 
       {/* Team Completion Modal */}
       <TeamCompletionModal

@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, memo, useCallback, useState, useEffect } from 'react';
+import { useMemo, memo, useCallback } from 'react';
 import { detectCurrentSprintForDateSync } from '@/utils/smartSprintDetection';
 import { Clock, MessageSquare } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
 import EnhancedDayCell from './EnhancedDayCell';
+import InlineEditableCell from './InlineEditableCell';
 import { ComponentErrorBoundary } from './ErrorBoundary';
 import { logPerformanceMetric, useTeamMemberRowCache } from '@/utils/performanceOptimization';
 import { usePerformanceTracking } from '@/utils/performanceMonitor';
@@ -18,7 +19,8 @@ interface EnhancedAvailabilityTableProps {
   scheduleData: Record<number, Record<string, { value: string; reason?: string }>>;
   workOptions: WorkOption[];
   sprintDays: Date[];
-  onWorkOptionClick: (memberId: number, date: Date, value: string) => void;
+  selectedTeam?: { id: number };
+  onWorkOptionClick: (memberId: number, date: Date, value: string, reason?: string) => void;
   onReasonRequired: (memberId: number, date: Date, value: '0.5' | 'X') => void;
   onQuickReasonSelect?: (memberId: number, date: Date, value: '0.5' | 'X', reason: string) => void;
   onFullSprintSet: (memberId: number) => void;
@@ -36,6 +38,7 @@ const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
   scheduleData,
   workOptions,
   sprintDays,
+  selectedTeam,
   onWorkOptionClick,
   onReasonRequired,
   onQuickReasonSelect,
@@ -744,21 +747,49 @@ const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
                       );
                     }
                     
-                    return (
-                      <EnhancedDayCell
-                        key={dateKey}
-                        member={member}
-                        date={date}
-                        currentValue={currentValue}
-                        workOptions={workOptions}
-                        canEdit={canEdit}
-                        isToday={typeof isToday === 'function' ? isToday(date) : false}
-                        isPast={typeof isPastDate === 'function' ? isPastDate(date) : false}
-                        onWorkOptionClick={onWorkOptionClick}
-                        onReasonRequired={onReasonRequired}
-                        onQuickReasonSelect={onQuickReasonSelect}
-                      />
-                    );
+                    // Use InlineEditableCell for managers, regular EnhancedDayCell for others
+                    if (currentUser.isManager) {
+                      return (
+                        <td key={dateKey} className="py-3 px-1 sm:py-4 sm:px-2 text-center border-r">
+                          <InlineEditableCell
+                            value={{
+                              value: currentValue?.value || null,
+                              reason: currentValue?.reason || undefined,
+                              hours: currentValue?.value === '1' ? 7 : 
+                                   currentValue?.value === '0.5' ? 3.5 : 
+                                   currentValue?.value === 'X' ? 0 : undefined
+                            }}
+                            date={dateKey || ''}
+                            memberId={member.id.toString()}
+                            teamId={selectedTeam?.id?.toString() || ''}
+                            isManagerView={true}
+                            onSave={(newValue) => {
+                              // Update the schedule entry through the parent's update mechanism
+                              if (onWorkOptionClick && newValue.value) {
+                                onWorkOptionClick(member.id, date, newValue.value, newValue.reason);
+                              }
+                            }}
+                            className="h-12"
+                          />
+                        </td>
+                      );
+                    } else {
+                      return (
+                        <EnhancedDayCell
+                          key={dateKey}
+                          member={member}
+                          date={date}
+                          currentValue={currentValue}
+                          workOptions={workOptions}
+                          canEdit={canEdit}
+                          isToday={typeof isToday === 'function' ? isToday(date) : false}
+                          isPast={typeof isPastDate === 'function' ? isPastDate(date) : false}
+                          onWorkOptionClick={onWorkOptionClick}
+                          onReasonRequired={onReasonRequired}
+                          onQuickReasonSelect={onQuickReasonSelect}
+                        />
+                      );
+                    }
                   })}
 
                   {/* Sprint Hours */}

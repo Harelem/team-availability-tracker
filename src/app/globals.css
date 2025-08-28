@@ -3130,8 +3130,7 @@ main:focus {
  */
 
 /* Override problematic Tailwind base styles with highest specificity */
-html:not([data-never-match]),
-:host:not([data-never-match]) {
+html:not([data-never-match]) {
   /* 
    * iOS zoom prevention using font-size instead of problematic -webkit-text-size-adjust
    * Prevents CSS parsing errors while maintaining functionality
@@ -3195,18 +3194,16 @@ textarea:focus-visible:not([data-never-match]),
  * CSS @supports rule to handle different browser support levels
  * This ensures compatibility across all browsers while fixing parsing errors
  */
-@supports (text-size-adjust: none) {
-  html,
-  :host {
-    text-size-adjust: none !important;
-    /* Removed: -webkit-text-size-adjust to prevent CSS parsing errors */
+@supports (-webkit-text-size-adjust: none) {
+  html {
+    -webkit-text-size-adjust: none !important;
+    -moz-text-size-adjust: none !important;
   }
 }
 
-@supports not (text-size-adjust: none) {
-  html,
-  :host {
-    /* Removed: -webkit-text-size-adjust to prevent CSS parsing errors */
+@supports not (-webkit-text-size-adjust: none) {
+  html {
+    /* Fallback for browsers that don't support text-size-adjust */
     font-size: 16px !important;
   }
 }

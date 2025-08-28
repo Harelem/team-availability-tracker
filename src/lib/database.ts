@@ -1350,9 +1350,21 @@ export const DatabaseService = {
 
     const { limit = 100, offset = 0, cursor, orderBy = 'date', orderDirection = 'desc' } = options;
 
+    // Validate date parameters
+    if (!startDate || !endDate || startDate === 'undefined' || endDate === 'undefined') {
+      console.error('getPaginatedScheduleEntries: Invalid date parameters', { startDate, endDate });
+      return { data: {}, hasMore: false };
+    }
+
     // Validate date range to prevent excessive queries
     const start = new Date(startDate);
     const end = new Date(endDate);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.error('getPaginatedScheduleEntries: Invalid date format', { startDate, endDate });
+      return { data: {}, hasMore: false };
+    }
+    
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diffDays > 90) {
@@ -4833,11 +4845,11 @@ The table creation script includes:
           .select('id, member_id, date, value, reason, created_at, updated_at')
           .in('member_id', options.memberIds);
 
-        if (options.startDate) {
+        if (options.startDate && options.startDate !== 'undefined') {
           query = query.gte('date', options.startDate);
         }
 
-        if (options.endDate) {
+        if (options.endDate && options.endDate !== 'undefined') {
           query = query.lte('date', options.endDate);
         }
 

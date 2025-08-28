@@ -1,0 +1,37 @@
+{
+  "overall": {
+    "passed": true,
+    "status": "PASSED"
+  },
+  "unit": {
+    "passed": false,
+    "total": 0,
+    "coverage": 0
+  },
+  "integration": {
+    "passed": false,
+    "total": 0,
+    "coverage": 0
+  },
+  "components": {
+    "passed": false,
+    "total": 0,
+    "coverage": 0
+  },
+  "e2e": {
+    "passed": false,
+    "total": 0
+  },
+  "performance": {
+    "passed": false,
+    "total": 0
+  },
+  "security": {
+    "passed": false,
+    "total": 0
+  },
+  "accessibility": {
+    "passed": true,
+    "score": 0
+  }
+}

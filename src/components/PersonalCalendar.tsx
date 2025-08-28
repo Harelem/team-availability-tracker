@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TeamMember, Team, ScheduleEntry } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import MobileReasonInput from './MobileReasonInput';
@@ -8,7 +8,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon,
-  Today,
   Check,
   Clock,
   X as XIcon,
@@ -19,6 +18,7 @@ interface PersonalCalendarProps {
   user?: TeamMember;
   team?: Team;
   editable?: boolean;
+  onDataChange?: (scheduleData: Record<number, Record<string, ScheduleEntry>>) => void;
 }
 
 interface CalendarDay {
@@ -55,21 +55,21 @@ const DAY_STATUS_OPTIONS: DayStatusOption[] = [
     value: '1',
     label: 'יום מלא',
     description: '7 שעות עבודה',
-    icon: <Check className="w-6 h-6" />,
+    icon: Check ? <Check className="w-6 h-6" /> : <span className="text-xl">✓</span>,
     color: 'border-green-300 bg-green-50 hover:bg-green-100 text-green-900'
   },
   {
     value: '0.5',
     label: 'חצי יום',
     description: '3.5 שעות עבודה',
-    icon: <Clock className="w-6 h-6" />,
+    icon: Clock ? <Clock className="w-6 h-6" /> : <span className="text-xl">🕐</span>,
     color: 'border-orange-300 bg-orange-50 hover:bg-orange-100 text-orange-900'
   },
   {
     value: 'X',
     label: 'חופש / מחלה',
     description: '0 שעות עבודה',
-    icon: <XIcon className="w-6 h-6" />,
+    icon: XIcon ? <XIcon className="w-6 h-6" /> : <span className="text-xl">✗</span>,
     color: 'border-red-300 bg-red-50 hover:bg-red-100 text-red-900'
   }
 ];
@@ -177,7 +177,8 @@ function DayStatusModal({ isOpen, onClose, onSelect, date, memberName, currentSt
 export default function PersonalCalendar({
   user,
   team,
-  editable = true
+  editable = true,
+  onDataChange
 }: PersonalCalendarProps) {
   // State management
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -187,7 +188,14 @@ export default function PersonalCalendar({
   const [isStatusModalOpen, setStatusModalOpen] = useState(false);
   const [pendingValue, setPendingValue] = useState<'0.5' | 'X' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  
+  // Critical refs for preventing race conditions and memory leaks
+  const isMountedRef = useRef(true);
+  const currentOperationRef = useRef<string | null>(null);
+  const savingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Format date as YYYY-MM-DD for database keys
   const formatDateKey = (date: Date): string => {
@@ -281,11 +289,35 @@ export default function PersonalCalendar({
     }
   }, [user, currentMonth]);
 
-  // Update schedule entry
+  // Update schedule entry with race condition prevention and robust error handling
   const updateSchedule = useCallback(async (date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
-    if (!user) return;
+    if (!user || !isMountedRef.current) return;
     
     const dateKey = formatDateKey(date);
+    const operationId = `${Date.now()}-${Math.random()}`;
+    
+    // Prevent overlapping operations
+    if (currentOperationRef.current) {
+      console.log('⚠️ Blocking overlapping operation, current:', currentOperationRef.current);
+      return;
+    }
+    
+    currentOperationRef.current = operationId;
+    console.log('🔄 Starting operation:', operationId, { dateKey, value, reason });
+    
+    // Clear any previous errors
+    setLastError(null);
+    
+    // Set saving with failsafe timeout
+    setSaving(true);
+    savingTimeoutRef.current = setTimeout(() => {
+      console.error('⚠️ Force clearing saving state - operation timeout');
+      if (isMountedRef.current && currentOperationRef.current === operationId) {
+        setSaving(false);
+        currentOperationRef.current = null;
+        setLastError('Operation timed out. Please try again.');
+      }
+    }, 10000); // 10-second timeout
     
     try {
       await DatabaseService.updateScheduleEntry(
@@ -295,32 +327,97 @@ export default function PersonalCalendar({
         reason
       );
       
-      // Update local state
-      setScheduleData(prev => ({
-        ...prev,
-        [dateKey]: value ? { value, reason, hours: value === '1' ? 7 : value === '0.5' ? 3.5 : 0 } : undefined
-      }));
+      // Only proceed if this is still the current operation and component is mounted
+      if (!isMountedRef.current || currentOperationRef.current !== operationId) {
+        console.log('🚫 Operation cancelled or superseded:', operationId);
+        return;
+      }
+      
+      // Update local state carefully to preserve existing data
+      const updatedScheduleData = { ...scheduleData };
+      
+      if (value) {
+        // Add or update entry
+        updatedScheduleData[dateKey] = { 
+          value, 
+          reason, 
+          hours: value === '1' ? 7 : value === '0.5' ? 3.5 : 0 
+        };
+      } else {
+        // Remove entry (delete case)
+        delete updatedScheduleData[dateKey];
+      }
+      
+      setScheduleData(updatedScheduleData);
+      
+      // Notify parent component of data change
+      if (onDataChange && user) {
+        onDataChange({
+          [user.id]: updatedScheduleData
+        });
+      }
+      
+      console.log('✅ Operation completed successfully:', operationId);
       
     } catch (error) {
-      console.error('Error updating schedule:', error);
+      console.error('❌ Error updating schedule:', error, 'Operation:', operationId);
+      
+      // Only update error state if component is still mounted and operation is current
+      if (isMountedRef.current && currentOperationRef.current === operationId) {
+        setLastError(`Failed to save schedule: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    } finally {
+      // Clean up timeout
+      if (savingTimeoutRef.current) {
+        clearTimeout(savingTimeoutRef.current);
+        savingTimeoutRef.current = null;
+      }
+      
+      // Only clear saving state if component is mounted and this is the current operation
+      if (isMountedRef.current && currentOperationRef.current === operationId) {
+        setSaving(false);
+        currentOperationRef.current = null;
+        console.log('🧹 Operation cleanup completed:', operationId);
+      } else {
+        console.log('🚫 Skipping cleanup - component unmounted or operation superseded:', operationId);
+      }
     }
-  }, [user]);
+  }, [user, scheduleData, onDataChange]);
 
-  // Handle day click - UNIFIED FLOW: Always show DayStatusModal first
+  // Handle day click - UNIFIED FLOW with enhanced error handling
   const handleDayClick = (day: CalendarDay) => {
-    if (!editable) return;
+    if (!editable || !isMountedRef.current) return;
+    
+    // Clear any previous errors when user interacts
+    setLastError(null);
+    
+    // Prevent clicks during save operations
+    if (saving || currentOperationRef.current) {
+      console.log('🚫 Calendar interaction blocked - operation in progress:', {
+        saving,
+        currentOperation: currentOperationRef.current
+      });
+      return;
+    }
     
     // Prevent clicks on weekends
     if (day.isWeekend) {
-      console.log('Cannot report on weekends');
+      console.log('🚫 Cannot report on weekends');
       return;
     }
     
     // Prevent clicks on past dates (unless already has value)
     if (day.isPast && !day.value) {
-      console.log('Cannot edit past dates');
+      console.log('🚫 Cannot edit past dates without existing value');
       return;
     }
+    
+    console.log('✅ Day click allowed:', {
+      date: day.date.toISOString().split('T')[0],
+      currentValue: day.value,
+      editable,
+      saving
+    });
     
     // UNIFIED FLOW: Always show status selection modal first (empty or filled)
     setSelectedDate(day.date);
@@ -405,9 +502,9 @@ export default function PersonalCalendar({
   // Get status icon
   const getStatusIcon = (value: '1' | '0.5' | 'X' | null) => {
     switch (value) {
-      case '1': return <Check className="w-4 h-4 text-green-600" />;
+      case '1': return Check ? <Check className="w-4 h-4 text-green-600" /> : <span className="text-green-600 text-sm">✓</span>;
       case '0.5': return <span className="text-orange-600 font-bold text-sm">½</span>;
-      case 'X': return <XIcon className="w-4 h-4 text-red-600" />;
+      case 'X': return XIcon ? <XIcon className="w-4 h-4 text-red-600" /> : <span className="text-red-600 text-sm">✗</span>;
       default: return null;
     }
   };
@@ -416,6 +513,35 @@ export default function PersonalCalendar({
   useEffect(() => {
     fetchMonthData();
   }, [fetchMonthData]);
+
+  // Component lifecycle management and cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      console.log('🧹 PersonalCalendar unmounting - cleaning up');
+      isMountedRef.current = false;
+      
+      // Clear any pending timeouts
+      if (savingTimeoutRef.current) {
+        clearTimeout(savingTimeoutRef.current);
+        savingTimeoutRef.current = null;
+      }
+      
+      // Reset operation tracking
+      currentOperationRef.current = null;
+    };
+  }, []);
+
+  // Enhanced debug logging for saving state transitions
+  useEffect(() => {
+    console.log('📊 PersonalCalendar state update:', {
+      saving,
+      currentOperation: currentOperationRef.current,
+      isMounted: isMountedRef.current,
+      lastError
+    });
+  }, [saving, lastError]);
 
   const calendarDays = generateCalendarDays();
   const currentDate = new Date();
@@ -477,7 +603,7 @@ export default function PersonalCalendar({
             onClick={goToPreviousMonth}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px] shadow-sm"
           >
-            <ChevronRight className="w-4 h-4" />
+            {ChevronRight && <ChevronRight className="w-4 h-4" />}
             <span>חודש קודם</span>
           </button>
           
@@ -493,7 +619,7 @@ export default function PersonalCalendar({
                 onClick={goToToday}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors min-h-[44px] shadow-sm"
               >
-                <Today className="w-4 h-4" />
+                {CalendarIcon && <CalendarIcon className="w-4 h-4" />}
                 <span>היום</span>
               </button>
             )}
@@ -504,13 +630,13 @@ export default function PersonalCalendar({
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-h-[44px] shadow-sm"
           >
             <span>חודש הבא</span>
-            <ChevronLeft className="w-4 h-4" />
+            {ChevronLeft && <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
       {/* Calendar Grid */}
-      <div className="p-6">
+      <div className="p-6 relative">
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {HEBREW_DAY_ABBREV.map((day, index) => (
@@ -526,7 +652,7 @@ export default function PersonalCalendar({
             <button
               key={index}
               onClick={() => handleDayClick(day)}
-              disabled={!editable || day.isWeekend || (day.isPast && !day.value)}
+              disabled={!editable || day.isWeekend || (day.isPast && !day.value) || saving}
               className={`
                 relative w-[60px] h-[50px] rounded-lg border-2 transition-all duration-200 p-2 flex flex-col items-center justify-center
                 ${day.isCurrentMonth ? 'border-gray-200' : 'border-gray-100'}
@@ -580,7 +706,7 @@ export default function PersonalCalendar({
             <button
               key={index}
               onClick={() => handleDayClick(day)}
-              disabled={!editable || day.isWeekend || (day.isPast && !day.value)}
+              disabled={!editable || day.isWeekend || (day.isPast && !day.value) || saving}
               className={`
                 relative aspect-square min-h-[60px] rounded-lg border-2 transition-all duration-200 p-1 flex flex-col items-center justify-center touch-manipulation
                 ${day.isCurrentMonth ? 'border-gray-200' : 'border-gray-100'}
@@ -620,6 +746,39 @@ export default function PersonalCalendar({
             </button>
           ))}
         </div>
+        
+        {/* Saving overlay */}
+        {saving && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            <div className="flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 border">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+              <span className="text-gray-700">שומר...</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Error overlay */}
+        {lastError && !saving && (
+          <div className="absolute inset-0 bg-red-50 bg-opacity-90 flex items-center justify-center z-10">
+            <div className="max-w-sm mx-4 bg-white rounded-lg shadow-lg border-2 border-red-200 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
+                  <span className="text-red-600 text-xs font-bold">!</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-medium text-red-900 mb-1">שגיאה בשמירה</h4>
+                  <p className="text-xs text-red-700 mb-3">{lastError}</p>
+                  <button
+                    onClick={() => setLastError(null)}
+                    className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 transition-colors"
+                  >
+                    סגור
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Legend */}
@@ -628,7 +787,7 @@ export default function PersonalCalendar({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
             <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center">
-              <Check className="w-4 h-4 text-white" />
+              {Check ? <Check className="w-4 h-4 text-white" /> : <span className="text-white text-sm">✓</span>}
             </div>
             <div>
               <div className="font-medium">יום מלא</div>
@@ -646,7 +805,7 @@ export default function PersonalCalendar({
           </div>
           <div className="flex items-center gap-3 p-3 bg-white rounded-lg border">
             <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center">
-              <XIcon className="w-4 h-4 text-white" />
+              {XIcon ? <XIcon className="w-4 h-4 text-white" /> : <span className="text-white text-sm">✗</span>}
             </div>
             <div>
               <div className="font-medium">היעדרות</div>

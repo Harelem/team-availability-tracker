@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Clock, TrendingUp, CheckCircle, User, Award, Users, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { Calendar, Clock, TrendingUp, CheckCircle, User, Award } from 'lucide-react';
 import { TeamMember, Team, CurrentGlobalSprint } from '@/types';
 import { DatabaseService } from '@/lib/database';
-import PersonalScheduleTable from './PersonalScheduleTable';
-import ScheduleTable from './ScheduleTable';
+import PersonalCalendar from './PersonalCalendar';
 import PersonalStatsCard from './PersonalStatsCard';
+import PersonalHoursStatus from './PersonalHoursStatus';
 import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { DESIGN_SYSTEM, combineClasses } from '@/utils/designSystem';
 
@@ -45,7 +45,6 @@ export default function PersonalDashboard({
   
   const [loading, setLoading] = useState(true);
   const [scheduleData, setScheduleData] = useState<any>({});
-  const [showTeamAvailability, setShowTeamAvailability] = useState(false);
 
   // Calculate working days in sprint (excluding weekends)
   const sprintWorkingDays = useMemo(() => {
@@ -292,6 +291,15 @@ export default function PersonalDashboard({
         />
       </div>
 
+      {/* Personal Hours Status */}
+      {currentSprint && (
+        <PersonalHoursStatus 
+          user={user}
+          team={team}
+          currentSprint={currentSprint}
+        />
+      )}
+
       {/* Personal Schedule Table - Sprint View */}
       {currentSprint && (
         <div className={DESIGN_SYSTEM.cards.default}>
@@ -305,15 +313,10 @@ export default function PersonalDashboard({
             </p>
           </div>
           
-          <PersonalScheduleTable
+          <PersonalCalendar
             user={user}
             team={team}
-            sprintDates={sprintWorkingDays}
-            scheduleData={scheduleData}
-            personalStats={{
-              hoursSubmitted: personalStats.hoursSubmitted,
-              sprintProgress: personalStats.sprintProgress
-            }}
+            editable={true}
             onDataChange={(newData) => {
               setScheduleData(newData);
               
@@ -360,62 +363,6 @@ export default function PersonalDashboard({
         </div>
       )}
       
-      {/* Team Availability Section - Only show if team members are available */}
-      {teamMembers.length > 0 && currentSprint && (
-        <div className={DESIGN_SYSTEM.cards.default}>
-          <button
-            onClick={() => setShowTeamAvailability(!showTeamAvailability)}
-            className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <Users className="w-5 h-5 text-gray-600" />
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Team Availability</h3>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  View your teammates' schedules ({teamMembers.length} members)
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                <Eye className="w-3 h-3" />
-                View Only
-              </div>
-              {showTeamAvailability ? (
-                <ChevronUp className="w-5 h-5 text-gray-400" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-gray-400" />
-              )}
-            </div>
-          </button>
-          
-          {showTeamAvailability && (
-            <div className="border-t border-gray-200">
-              <div className="p-4 bg-blue-50">
-                <div className="flex items-start gap-2 mb-2">
-                  <Eye className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">Team View - Read Only</p>
-                    <p className="text-sm text-blue-700 mt-1">
-                      You can view your teammates' availability but can only edit your own schedule above.
-                      Managers can edit team schedules from their dashboard.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <ScheduleTable
-                currentUser={user}
-                teamMembers={teamMembers}
-                selectedTeam={team}
-                viewMode="sprint"
-                sprintDates={sprintWorkingDays}
-                // Add prop to make it read-only for non-managers if needed
-              />
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Helpful Tips */}
       <div className={combineClasses(

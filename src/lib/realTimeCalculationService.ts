@@ -273,6 +273,145 @@ export class RealTimeCalculationService {
   }
 
   /**
+   * Calculate team submission status with detailed member information
+   * This method is used by the ManagerDashboard component
+   */
+  static async calculateTeamSubmissionStatus(
+    teamMembers: any[],
+    startDate: string,
+    endDate: string,
+    teamId: number
+  ): Promise<{
+    totalMembers: number;
+    completedMembers: number;
+    completionPercentage: number;
+    memberStatuses: TeamMemberSubmissionStatus[];
+  }> {
+    try {
+      if (!teamMembers || teamMembers.length === 0) {
+        return {
+          totalMembers: 0,
+          completedMembers: 0,
+          completionPercentage: 0,
+          memberStatuses: []
+        };
+      }
+
+      const memberIds = teamMembers.map(m => m.id);
+      
+      // Get all schedule entries for the team in the date range
+      const scheduleEntries = await DatabaseService.getScheduleEntriesBulk({
+        memberIds,
+        startDate,
+        endDate
+      });
+
+      // Calculate working days in the range
+      const workingDays = this.getWorkingDaysInRange(startDate, endDate);
+      const totalWorkingDays = workingDays.length;
+
+      const memberStatuses: TeamMemberSubmissionStatus[] = [];
+      let completedMembers = 0;
+
+      // Analyze each member's submission status
+      for (const member of teamMembers) {
+        const memberEntries = scheduleEntries.filter(entry => entry.member_id === member.id);
+        const submittedDays = new Set(memberEntries.map(entry => entry.date));
+        const submittedDaysCount = submittedDays.size;
+        
+        // Calculate hours for this member
+        let sprintSubmittedHours = 0;
+        for (const entry of memberEntries) {
+          if (entry.value === '1') sprintSubmittedHours += 7;
+          else if (entry.value === '0.5') sprintSubmittedHours += 3.5;
+        }
+
+        const sprintPotentialHours = totalWorkingDays * 7;
+        const sprintCompletionPercentage = sprintPotentialHours > 0 
+          ? Math.round((sprintSubmittedHours / sprintPotentialHours) * 100) 
+          : 0;
+
+        // Determine status based on completion
+        const completionRate = totalWorkingDays > 0 ? submittedDaysCount / totalWorkingDays : 0;
+        let currentWeekStatus: 'complete' | 'partial' | 'missing';
+        
+        if (completionRate >= 0.8) {
+          currentWeekStatus = 'complete';
+          completedMembers++;
+        } else if (completionRate >= 0.3) {
+          currentWeekStatus = 'partial';
+        } else {
+          currentWeekStatus = 'missing';
+        }
+
+        // Calculate pending entries
+        const pendingEntries = Math.max(0, totalWorkingDays - submittedDaysCount);
+
+        // Find last activity date
+        const lastActivityDate = memberEntries.length > 0 
+          ? memberEntries
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+              ?.created_at
+          : undefined;
+
+        memberStatuses.push({
+          memberId: member.id,
+          memberName: member.name,
+          hebrew: member.hebrew || member.name,
+          isManager: member.isManager || false,
+          currentWeekStatus,
+          currentWeekHours: sprintSubmittedHours, // Using sprint hours for now
+          sprintSubmittedHours,
+          sprintPotentialHours,
+          sprintCompletionPercentage,
+          lastActivityDate,
+          pendingEntries
+        });
+      }
+
+      const completionPercentage = teamMembers.length > 0 
+        ? Math.round((completedMembers / teamMembers.length) * 100) 
+        : 0;
+
+      // Sort by managers first, then by completion status
+      memberStatuses.sort((a, b) => {
+        if (a.isManager && !b.isManager) return -1;
+        if (!a.isManager && b.isManager) return 1;
+        return b.sprintCompletionPercentage - a.sprintCompletionPercentage;
+      });
+
+      return {
+        totalMembers: teamMembers.length,
+        completedMembers,
+        completionPercentage,
+        memberStatuses
+      };
+
+    } catch (error) {
+      console.error('Error calculating team submission status:', error);
+      
+      // Return safe fallback
+      return {
+        totalMembers: teamMembers?.length || 0,
+        completedMembers: 0,
+        completionPercentage: 0,
+        memberStatuses: teamMembers?.map(member => ({
+          memberId: member.id,
+          memberName: member.name,
+          hebrew: member.hebrew || member.name,
+          isManager: member.isManager || false,
+          currentWeekStatus: 'missing' as const,
+          currentWeekHours: 0,
+          sprintSubmittedHours: 0,
+          sprintPotentialHours: 0,
+          sprintCompletionPercentage: 0,
+          pendingEntries: 0
+        })) || []
+      };
+    }
+  }
+
+  /**
    * Calculate company-wide completion rates
    */
   static async getCompanyCompletionStatus(): Promise<{

@@ -1,0 +1,205 @@
+{
+  "sprintConfig": {
+    "id": "test-sprint-2024-01",
+    "sprint_number": 1,
+    "start_date": "2024-01-17",
+    "end_date": "2024-01-30",
+    "length_weeks": 2,
+    "working_days_count": 10,
+    "is_active": true
+  },
+  "scheduleEntries": [
+    {
+      "member_id": 1,
+      "date": "2024-01-17",
+      "value": "1",
+      "hours": 7,
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-18",
+      "value": "0.5",
+      "hours": 3.5,
+      "reason": "Doctor appointment",
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-21",
+      "value": "X",
+      "hours": 0,
+      "reason": "Sick leave",
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-22",
+      "value": "1",
+      "hours": 7,
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-23",
+      "value": "1",
+      "hours": 7,
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-24",
+      "value": "1",
+      "hours": 7,
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-25",
+      "value": "1",
+      "hours": 7,
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-28",
+      "value": "1",
+      "hours": 7,
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-29",
+      "value": "1",
+      "hours": 7,
+      "sprint_id": "test-sprint-2024-01"
+    },
+    {
+      "member_id": 1,
+      "date": "2024-01-30",
+      "value": "1",
+      "hours": 7,
+      "sprint_id": "test-sprint-2024-01"
+    }
+  ],
+  "testScenarios": {
+    "fullWeek": {
+      "description": "Complete week with all working days filled",
+      "totalHours": 35,
+      "workingDays": 5,
+      "utilization": 100
+    },
+    "partialWeek": {
+      "description": "Week with some absences and half days",
+      "member_id": 2,
+      "entries": [
+        {
+          "date": "2024-01-17",
+          "value": "1",
+          "hours": 7
+        },
+        {
+          "date": "2024-01-18",
+          "value": "0.5",
+          "hours": 3.5,
+          "reason": "Personal appointment"
+        },
+        {
+          "date": "2024-01-21",
+          "value": "X",
+          "hours": 0,
+          "reason": "Family emergency"
+        }
+      ],
+      "expectedHours": 10.5,
+      "expectedDays": 3
+    },
+    "edgeCases": [
+      {
+        "name": "emptyWeek",
+        "description": "No schedule entries for the week",
+        "member_id": 99,
+        "expectedHours": 0,
+        "expectedDays": 0
+      },
+      {
+        "name": "weekendEntries",
+        "description": "Entries on weekend days (should be ignored)",
+        "member_id": 3,
+        "entries": [
+          {
+            "date": "2024-01-19",
+            "value": "1",
+            "hours": 7,
+            "is_weekend": true
+          },
+          {
+            "date": "2024-01-20",
+            "value": "1", 
+            "hours": 7,
+            "is_weekend": true
+          }
+        ],
+        "expectedHours": 0,
+        "note": "Weekend entries should not count toward totals"
+      },
+      {
+        "name": "invalidReasons",
+        "description": "Test reason validation",
+        "member_id": 4,
+        "entries": [
+          {
+            "date": "2024-01-17",
+            "value": "0.5",
+            "hours": 3.5,
+            "reason": ""
+          },
+          {
+            "date": "2024-01-18",
+            "value": "X",
+            "hours": 0,
+            "reason": null
+          }
+        ],
+        "shouldValidate": false
+      }
+    ],
+    "concurrentEdits": {
+      "description": "Multiple users editing same data simultaneously",
+      "scenarios": [
+        {
+          "name": "sameCell",
+          "description": "Two users editing the same cell",
+          "user1Edit": {
+            "member_id": 1,
+            "date": "2024-01-17",
+            "value": "0.5",
+            "reason": "Meeting"
+          },
+          "user2Edit": {
+            "member_id": 1,
+            "date": "2024-01-17",
+            "value": "X",
+            "reason": "Sick"
+          },
+          "expectedBehavior": "Last write wins with conflict detection"
+        }
+      ]
+    }
+  },
+  "performanceTestData": {
+    "largeDataset": {
+      "description": "Large dataset for performance testing",
+      "members": 100,
+      "daysPerMember": 90,
+      "totalEntries": 9000,
+      "expectedLoadTime": "< 2 seconds"
+    },
+    "realTimeUpdates": {
+      "description": "Real-time subscription performance",
+      "simultaneousUsers": 50,
+      "updatesPerSecond": 10,
+      "expectedLatency": "< 500ms"
+    }
+  }
+}

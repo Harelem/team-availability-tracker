@@ -1,0 +1,308 @@
+{
+  "teams": [
+    {
+      "id": 1,
+      "name": "Development-Tal",
+      "description": "Frontend & Backend Development Team",
+      "color": "#3B82F6",
+      "manager": "Tal Stern"
+    },
+    {
+      "id": 2,
+      "name": "Development-Itai",
+      "description": "Mobile & Web Development Team", 
+      "color": "#10B981",
+      "manager": "Itai Keren"
+    },
+    {
+      "id": 3,
+      "name": "Infrastructure",
+      "description": "DevOps & Infrastructure Team",
+      "color": "#F59E0B", 
+      "manager": "Aviram Mizrachi"
+    },
+    {
+      "id": 4,
+      "name": "Data",
+      "description": "Data Engineering & Analytics Team",
+      "color": "#8B5CF6",
+      "manager": "Matan Goldstein"
+    },
+    {
+      "id": 5,
+      "name": "Product",
+      "description": "Product Management & Strategy Team",
+      "color": "#EF4444",
+      "manager": "Amit Goldberg"
+    }
+  ],
+  "teamMembers": [
+    {
+      "id": 1,
+      "name": "Tal Stern",
+      "hebrew": "טל שטרן",
+      "team_id": 1,
+      "isManager": true,
+      "role": "manager",
+      "email": "tal@company.com"
+    },
+    {
+      "id": 2,
+      "name": "Alice Johnson",
+      "hebrew": "אליס ג'ונסון",
+      "team_id": 1,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 3,
+      "name": "Bob Smith",
+      "hebrew": "בוב סמית'",
+      "team_id": 1,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 4,
+      "name": "Charlie Brown",
+      "hebrew": "צ'רלי בראון",
+      "team_id": 1,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 5,
+      "name": "Itai Keren",
+      "hebrew": "איתי קרן",
+      "team_id": 2,
+      "isManager": true,
+      "role": "manager",
+      "email": "itai@company.com"
+    },
+    {
+      "id": 6,
+      "name": "Dana Levi",
+      "hebrew": "דנה לוי",
+      "team_id": 2,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 7,
+      "name": "Eyal Cohen",
+      "hebrew": "אייל כהן",
+      "team_id": 2,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 8,
+      "name": "Gal Roth",
+      "hebrew": "גל רות",
+      "team_id": 2,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 9,
+      "name": "Hila Ben",
+      "hebrew": "הילה בן",
+      "team_id": 2,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 10,
+      "name": "Aviram Mizrachi",
+      "hebrew": "אבירם מזרחי",
+      "team_id": 3,
+      "isManager": true,
+      "role": "manager",
+      "email": "aviram@company.com"
+    },
+    {
+      "id": 11,
+      "name": "Ilan Dar",
+      "hebrew": "אילן דר",
+      "team_id": 3,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 12,
+      "name": "Keren Shay",
+      "hebrew": "קרן שי",
+      "team_id": 3,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 13,
+      "name": "Matan Goldstein",
+      "hebrew": "מתן גולדשטיין",
+      "team_id": 4,
+      "isManager": true,
+      "role": "manager",
+      "email": "matan@company.com"
+    },
+    {
+      "id": 14,
+      "name": "Noa Green",
+      "hebrew": "נועה גרין",
+      "team_id": 4,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 15,
+      "name": "Or Katz",
+      "hebrew": "אור כץ",
+      "team_id": 4,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 16,
+      "name": "Paz Rom",
+      "hebrew": "פז רום",
+      "team_id": 4,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 17,
+      "name": "Ron Blue",
+      "hebrew": "רון בלו",
+      "team_id": 4,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 18,
+      "name": "Shira Gold",
+      "hebrew": "שירה גולד",
+      "team_id": 4,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 19,
+      "name": "Amit Goldberg",
+      "hebrew": "עמית גולדברג", 
+      "team_id": 5,
+      "isManager": true,
+      "role": "manager",
+      "email": "amit@company.com"
+    },
+    {
+      "id": 20,
+      "name": "Tom White",
+      "hebrew": "תום וויט",
+      "team_id": 5,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 21,
+      "name": "Uri Pink",
+      "hebrew": "אורי פינק",
+      "team_id": 5,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 22,
+      "name": "Vered Black",
+      "hebrew": "ורד בלק",
+      "team_id": 5,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 23,
+      "name": "Yael Silver",
+      "hebrew": "יעל סילבר",
+      "team_id": 5,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 24,
+      "name": "Ziv Bronze",
+      "hebrew": "זיו ברונז",
+      "team_id": 5,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 25,
+      "name": "Anat Gold",
+      "hebrew": "ענת גולד",
+      "team_id": 5,
+      "isManager": false,
+      "role": "member"
+    },
+    {
+      "id": 26,
+      "name": "Ben Silver",
+      "hebrew": "בן סילבר",
+      "team_id": 5,
+      "isManager": false,
+      "role": "member"
+    }
+  ],
+  "cooUsers": [
+    {
+      "id": 100,
+      "name": "Nir Shilha",
+      "hebrew": "ניר שילה",
+      "title": "Chief Operating Officer",
+      "description": "Strategic Operations & Company Leadership",
+      "role": "coo",
+      "email": "nir@company.com"
+    },
+    {
+      "id": 101,
+      "name": "Harel Asaf",
+      "hebrew": "הראל אסף",
+      "title": "Sprint Manager & Technical Lead",
+      "description": "Sprint Planning & Technical Coordination",
+      "role": "sprint_manager",
+      "email": "harel@company.com"
+    }
+  ],
+  "testScenarios": {
+    "israeliWorkWeek": {
+      "workingDays": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"],
+      "weekendDays": ["Friday", "Saturday"],
+      "dailyHours": {
+        "fullDay": 7,
+        "halfDay": 3.5,
+        "sickDay": 0
+      }
+    },
+    "sprintConfig": {
+      "lengthWeeks": 2,
+      "startDay": "Wednesday",
+      "endDay": "Tuesday", 
+      "workingDaysPerSprint": 10
+    },
+    "permissions": {
+      "coo": {
+        "canViewAllTeams": true,
+        "canExportAllData": true,
+        "canManageSprints": true
+      },
+      "manager": {
+        "canViewOwnTeam": true,
+        "canEditTeamMembers": true,
+        "canExportTeamData": true
+      },
+      "member": {
+        "canViewOwnData": true,
+        "canEditOwnData": true,
+        "canExportOwnData": false
+      }
+    }
+  }
+}
