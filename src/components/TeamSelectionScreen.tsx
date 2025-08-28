@@ -1,25 +1,37 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Users, 
   Calendar, 
   ChevronRight, 
-  Loader2
+  Loader2,
+  Shield
 } from 'lucide-react';
 import { Team, TeamSelectionScreenProps } from '@/types';
+import { useCOOAuth } from '@/hooks/useCOOAuth';
 
 export default React.memo(function TeamSelectionScreen({ 
   teams, 
   onTeamSelect 
 }: TeamSelectionScreenProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const router = useRouter();
+  const { isCOO, isLoading: cooAuthLoading } = useCOOAuth();
 
 
   const handleTeamSelect = (team: Team) => {
     setSelectedId(`team-${team.id}`);
     setTimeout(() => {
       onTeamSelect(team);
+    }, 150);
+  };
+
+  const handleCOODashboardAccess = () => {
+    setSelectedId('coo-dashboard');
+    setTimeout(() => {
+      router.push('/coo-dashboard');
     }, 150);
   };
 
@@ -35,9 +47,50 @@ export default React.memo(function TeamSelectionScreen({
           <p className="text-gray-600 text-base sm:text-lg">
             Select your team to continue
           </p>
-          
         </div>
 
+        {/* COO Dashboard Access Section */}
+        {isCOO && !cooAuthLoading && (
+          <section className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <Shield className="w-6 h-6 text-purple-600" />
+              <h2 className="text-2xl font-bold text-gray-900">Executive Dashboard</h2>
+            </div>
+            
+            <div className="mb-8">
+              {selectedId === 'coo-dashboard' ? (
+                <div className="bg-gradient-to-br from-purple-50 to-indigo-100 border-2 border-purple-500 rounded-xl p-6 shadow-md">
+                  <div className="flex items-center justify-center gap-3">
+                    <Loader2 className="w-6 h-6 text-purple-600 animate-spin" />
+                    <span className="text-purple-700 font-medium">Loading COO Dashboard...</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleCOODashboardAccess}
+                  className="w-full bg-gradient-to-br from-purple-50 to-indigo-100 border-2 border-purple-200 hover:border-purple-400 rounded-xl p-6 text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] min-h-[80px] sm:min-h-[44px] touch-manipulation group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
+                        <Shield className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">
+                          COO Dashboard
+                        </h3>
+                        <p className="text-purple-700 text-sm sm:text-base">
+                          Company-wide analytics and sprint management
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-6 h-6 text-purple-600 group-hover:text-purple-700 transition-colors" />
+                  </div>
+                </button>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Teams Section */}
         <section className="mt-12">
