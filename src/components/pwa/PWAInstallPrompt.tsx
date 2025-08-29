@@ -112,12 +112,28 @@ export function PWAInstallPrompt({
     // Create a temporary toast notification
     const toast = document.createElement('div');
     toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2';
-    toast.innerHTML = `
-      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-      </svg>
-      <span>App installed successfully!</span>
-    `;
+    
+    // Create SVG element securely
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'h-5 w-5');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('d', 'M5 13l4 4L19 7');
+    
+    svg.appendChild(path);
+    
+    // Create text element securely
+    const span = document.createElement('span');
+    span.textContent = 'App installed successfully!';
+    
+    toast.appendChild(svg);
+    toast.appendChild(span);
     
     document.body.appendChild(toast);
     setTimeout(() => document.body.removeChild(toast), 3000);

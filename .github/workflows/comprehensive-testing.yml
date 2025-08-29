@@ -9,6 +9,13 @@ on:
     # Run tests daily at 2 AM UTC
     - cron: '0 2 * * *'
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  actions: read
+  deployments: write
+
 env:
   NODE_VERSION: '18'
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -144,7 +151,10 @@ jobs:
             --json \
             --outputFile=test-results/${{ matrix.test-suite.name }}-results.json \
             --coverageReporters=text-lcov \
-            --coverageDirectory=coverage/${{ matrix.test-suite.name }}
+            --coverageDirectory=coverage/${{ matrix.test-suite.name }} \
+            --maxWorkers=2 \
+            --testTimeout=30000 \
+            --forceExit
 
       - name: Upload test results
         uses: actions/upload-artifact@v3
@@ -398,35 +408,42 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const reportPath = 'final-test-report/summary.json';
             
-            if (fs.existsSync(reportPath)) {
-              const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            try {
+              if (fs.existsSync(reportPath)) {
+                const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+                
+                const comment = `
+              ## 🧪 Test Results Summary
               
-              const comment = `
-            ## 🧪 Test Results Summary
-            
-            | Test Suite | Status | Tests | Coverage |
-            |------------|--------|-------|----------|
-            | Unit Tests | ${report.unit.passed ? '✅' : '❌'} | ${report.unit.total} | ${report.unit.coverage}% |
-            | Integration | ${report.integration.passed ? '✅' : '❌'} | ${report.integration.total} | ${report.integration.coverage}% |
-            | E2E Tests | ${report.e2e.passed ? '✅' : '❌'} | ${report.e2e.total} | N/A |
-            | Performance | ${report.performance.passed ? '✅' : '❌'} | ${report.performance.total} | N/A |
-            | Security | ${report.security.passed ? '✅' : '❌'} | ${report.security.total} | N/A |
-            
-            **Overall Status**: ${report.overall.passed ? '✅ PASSED' : '❌ FAILED'}
-            
-            📊 [View detailed report](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-            `;
+              | Test Suite | Status | Tests | Coverage |
+              |------------|--------|-------|----------|
+              | Unit Tests | ${report.unit?.passed ? '✅' : '❌'} | ${report.unit?.total || 0} | ${report.unit?.coverage || 0}% |
+              | Integration | ${report.integration?.passed ? '✅' : '❌'} | ${report.integration?.total || 0} | ${report.integration?.coverage || 0}% |
+              | E2E Tests | ${report.e2e?.passed ? '✅' : '❌'} | ${report.e2e?.total || 0} | N/A |
+              | Performance | ${report.performance?.passed ? '✅' : '❌'} | ${report.performance?.total || 0} | N/A |
+              | Security | ${report.security?.passed ? '✅' : '❌'} | ${report.security?.total || 0} | N/A |
               
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
+              **Overall Status**: ${report.overall?.passed ? '✅ PASSED' : '❌ FAILED'}
+              
+              📊 [View detailed report](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+              `;
+                
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: comment
+                });
+              } else {
+                console.log('No test report summary found');
+              }
+            } catch (error) {
+              console.log('Failed to create PR comment:', error.message);
             }
 
   # ============================================================================

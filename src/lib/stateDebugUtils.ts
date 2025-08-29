@@ -457,14 +457,11 @@ export class StateSerializer {
       return new Date(value.value);
     }
     
-    // Restore Functions (not recommended, but possible)
+    // Functions are not restored for security reasons
+    // This prevents arbitrary code execution from serialized state
     if (value && typeof value === 'object' && value.__type === 'Function') {
-      try {
-        return new Function(`return ${value.value}`)();
-      } catch (error) {
-        console.warn('Failed to restore function:', error);
-        return null;
-      }
+      console.warn('Function deserialization blocked for security - returning null');
+      return null;
     }
     
     return value;

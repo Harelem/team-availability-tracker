@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const { securityHeaders } = require('./next.config.security');
+
 const nextConfig = {
   // Enable experimental features for performance
   experimental: {
@@ -69,12 +71,13 @@ const nextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
   },
 
-  // Headers for performance
+  // Headers for performance and security
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: [
+          ...securityHeaders,
           {
             key: 'X-DNS-Prefetch-Control',
             value: 'on'

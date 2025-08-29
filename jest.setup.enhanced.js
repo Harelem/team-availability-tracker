@@ -37,7 +37,7 @@ jest.mock('next/navigation', () => ({
   },
 }));
 
-// Mock Supabase client
+// Mock Supabase client with working chainable methods
 jest.mock('@/lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
@@ -48,6 +48,7 @@ jest.mock('@/lib/supabase', () => ({
       eq: jest.fn().mockReturnThis(),
       gte: jest.fn().mockReturnThis(),
       lte: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({ data: null, error: null }),
