@@ -120,7 +120,7 @@ export default function PersonalScheduleTable({
       newFirstDate.setDate(firstDate.getDate() + (offset * sprintLength));
       
       const dates: Date[] = [];
-      let currentDate = new Date(newFirstDate);
+      const currentDate = new Date(newFirstDate);
       
       // Add working days (Sunday-Thursday)
       for (let i = 0; i < sprintLength; i++) {
@@ -334,6 +334,30 @@ export default function PersonalScheduleTable({
       [dateKey]: !prev[dateKey]
     }));
   };
+
+  // Handle keyboard events for modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showQuickReasons) {
+        setShowQuickReasons(false);
+        setPendingValue(null);
+        setPendingDate(null);
+      }
+    };
+
+    if (showQuickReasons) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent background scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [showQuickReasons]);
 
   // Handle click outside to close tooltips
   useEffect(() => {
@@ -848,8 +872,19 @@ export default function PersonalScheduleTable({
 
       {/* Quick Reasons Modal */}
       {showQuickReasons && pendingValue && pendingDate && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 lg:p-4">
-          <div className="bg-white w-full h-full flex flex-col lg:rounded-lg lg:max-w-md lg:w-auto lg:h-auto lg:max-h-[80vh] lg:shadow-xl">
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 lg:p-4"
+          onClick={(e) => {
+            // Only close if clicking the backdrop, not the modal content
+            if (e.target === e.currentTarget) {
+              setShowQuickReasons(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white w-full h-full flex flex-col lg:rounded-lg lg:max-w-md lg:w-auto lg:h-auto lg:max-h-[80vh] lg:shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="p-4 bg-gray-50 border-b border-gray-200 lg:bg-white lg:border-b lg:border-gray-200">
               <div className="flex items-center justify-between">

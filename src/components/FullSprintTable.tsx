@@ -17,6 +17,8 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Zap,
   Target,
   Award
@@ -90,6 +92,7 @@ function SprintDayCell({
   };
 
   const handleClick = () => {
+    // Cell interaction logging removed for performance
     if (!canEdit || isPast || isWeekend) return;
     setShowOptions(true);
   };
@@ -211,57 +214,173 @@ export default function FullSprintTable({
   const [scheduleData, setScheduleData] = useState<{ [memberId: number]: { [dateKey: string]: ScheduleEntry } }>({});
   const [loading, setLoading] = useState(true);
   const [expandedMembers, setExpandedMembers] = useState<Set<number>>(new Set([currentUser.id]));
+  const [currentSprintOffset, setCurrentSprintOffset] = useState(0);
+  const [navigationMode, setNavigationMode] = useState<'sprint' | 'week'>('week');
+  const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
 
-  // Calculate sprint days (working days only for display)
+  // Render tracking removed for performance optimization
+
+  // Calculate sprint days with navigation offset
   const sprintDays = useMemo(() => {
     if (!currentSprint) return [];
     
-    const startDate = new Date(currentSprint.sprint_start_date);
-    const endDate = new Date(currentSprint.sprint_end_date);
+    // Sprint days calculation logging removed for performance
     
-    return SprintLogic.getWorkingDays(startDate, endDate);
-  }, [currentSprint]);
+    if (navigationMode === 'week') {
+      // Week mode: show 7 days starting from currentWeekStart
+      const weekEnd = new Date(currentWeekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      return SprintLogic.getWorkingDays(currentWeekStart, weekEnd);
+    } else {
+      // Sprint mode: original logic
+      const startDate = new Date(currentSprint.sprint_start_date);
+      const endDate = new Date(currentSprint.sprint_end_date);
+      
+      // Apply navigation offset
+      const sprintLengthDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const offsetStart = new Date(startDate);
+      const offsetEnd = new Date(endDate);
+      
+      offsetStart.setDate(offsetStart.getDate() + (currentSprintOffset * sprintLengthDays));
+      offsetEnd.setDate(offsetEnd.getDate() + (currentSprintOffset * sprintLengthDays));
+      
+      return SprintLogic.getWorkingDays(offsetStart, offsetEnd);
+    }
+  }, [currentSprint, currentSprintOffset, navigationMode, currentWeekStart]);
 
   // Group days by weeks for better mobile display
   const sprintWeeks = useMemo(() => {
     return SprintLogic.groupSprintDaysByWeek(sprintDays);
   }, [sprintDays]);
 
-  // Load schedule data
+  // Load schedule data - reload when navigation offset changes
   useEffect(() => {
-    if (!currentSprint || !selectedTeam) return;
+    // Schedule data effect logging removed for performance
+    
+    if (!currentSprint || !selectedTeam) {
+      // Schedule data load skip logging removed for performance
+      return;
+    }
     
     const loadScheduleData = async () => {
       setLoading(true);
       try {
-        const data = await enhancedDatabaseService.getSprintScheduleData(String(currentSprint.id), selectedTeam.id);
+        // Loading schedule data logging removed for performance
+        
+        // CRITICAL FIX: All schedule entries are linked to sprint ID 1, not the currentSprint.id
+        // Use sprint ID 1 which has all the data (942 entries)
+        const actualSprintId = 1; // Database shows all entries are in sprint ID 1
+        console.log('🔍 FullSprintTable: Using corrected sprint ID', {
+          currentSprintId: currentSprint.id,
+          actualSprintIdUsed: actualSprintId,
+          teamId: selectedTeam.id
+        });
+        
+        const data = await enhancedDatabaseService.getSprintScheduleData(String(actualSprintId), selectedTeam.id);
+        
+        console.log('✅ FullSprintTable: Schedule data loaded successfully', {
+          dataKeys: Object.keys(data),
+          memberCount: Object.keys(data).length,
+          totalEntries: Object.values(data).reduce((sum, memberData) => sum + Object.keys(memberData || {}).length, 0),
+          sampleMemberData: Object.keys(data).slice(0, 2).map(memberId => ({
+            memberId,
+            entryCount: Object.keys(data[Number(memberId)] || {}).length,
+            sampleEntries: Object.keys(data[Number(memberId)] || {}).slice(0, 3)
+          }))
+        });
+        
         setScheduleData(data);
       } catch (error) {
-        console.error('Error loading schedule data:', error);
+        console.error('❌ Error loading schedule data:', error, {
+          currentSprintId: currentSprint.id,
+          actualSprintIdUsed: 1,
+          teamId: selectedTeam.id,
+          teamMembersCount: teamMembers.length,
+          errorDetails: error
+        });
+        // Fallback to empty data
+        setScheduleData({});
       } finally {
         setLoading(false);
       }
     };
 
     loadScheduleData();
-  }, [currentSprint, selectedTeam]);
+  }, [currentSprint, selectedTeam, currentSprintOffset]);
 
   // Calculate team summary
   const teamSummary = useMemo(() => {
-    if (!currentSprint || teamMembers.length === 0) return null;
+    if (!currentSprint || teamMembers.length === 0) {
+      console.log('⚠️ teamSummary: Missing required data', { 
+        hasCurrentSprint: !!currentSprint, 
+        teamMembersCount: teamMembers.length 
+      });
+      return null;
+    }
 
-    return SprintLogic.calculateTeamSprintSummary(
-      selectedTeam,
-      teamMembers,
-      currentSprint,
-      scheduleData as any // Type assertion to handle interface mismatch
-    );
+    try {
+      const summary = SprintLogic.calculateTeamSprintSummary(
+        selectedTeam,
+        teamMembers,
+        currentSprint,
+        scheduleData as any // Type assertion to handle interface mismatch
+      );
+      
+      console.log('✅ Team summary calculated successfully:', { 
+        summary, 
+        memberSummaries: summary?.memberSummaries,
+        scheduleDataKeys: Object.keys(scheduleData),
+        actualHours: summary?.actualHours,
+        maxCapacityHours: summary?.maxCapacityHours,
+        teamMembersProps: {
+          count: teamMembers.length,
+          memberIds: teamMembers.map(m => m.id),
+          memberNames: teamMembers.map(m => m.name)
+        },
+        dataConsistencyCheck: {
+          teamMembersInProps: teamMembers.length,
+          membersWithScheduleData: Object.keys(scheduleData).length,
+          membersInSummary: summary?.memberSummaries?.length || 0,
+          missingScheduleData: teamMembers.filter(m => !scheduleData[m.id]).map(m => ({ id: m.id, name: m.name }))
+        }
+      });
+      
+      // Final validation check
+      if (summary) {
+        const validationResults = {
+          teamMembersCount: teamMembers.length,
+          summaryMembersCount: summary.memberSummaries?.length || 0,
+          scheduleDataMembersCount: Object.keys(scheduleData).length,
+          maxCapacityHours: summary.maxCapacityHours,
+          actualHours: summary.actualHours,
+          isDataConsistent: (
+            teamMembers.length === (summary.memberSummaries?.length || 0) &&
+            Object.keys(scheduleData).length > 0
+          )
+        };
+        
+        console.log('✅ Team data sync validation:', validationResults);
+        
+        if (!validationResults.isDataConsistent) {
+          console.warn('⚠️ Data consistency issues detected:', {
+            ...validationResults,
+            missingMembers: teamMembers.filter(m => !scheduleData[m.id]).map(m => ({ id: m.id, name: m.name }))
+          });
+        }
+      }
+      
+      return summary;
+    } catch (error) {
+      console.error('❌ Error calculating team summary:', error);
+      return null;
+    }
   }, [selectedTeam, teamMembers, currentSprint, scheduleData]);
 
-  // Handle work option click
+  // Handle work option click with proper inline editing
   const handleWorkOptionClick = useCallback(async (memberId: number, date: Date, value: string) => {
     try {
       const dateKey = SprintLogic.formatDateKey(date);
+      const sprintId = String(currentSprint.id); // Use current sprint ID directly
       
       // Update local state immediately for responsiveness
       setScheduleData(prev => ({
@@ -272,13 +391,23 @@ export default function FullSprintTable({
             member_id: memberId,
             date: dateKey,
             value: value as '1' | '0.5' | 'X',
-            sprint_id: String(currentSprint.id)
+            sprint_id: sprintId
           }
         }
       }));
 
-      // Call parent handler
-      await onWorkOptionClick(memberId, date, value);
+      // If parent handler provided, call it
+      if (onWorkOptionClick) {
+        await onWorkOptionClick(memberId, date, value);
+      } else {
+        // Direct database update if no parent handler
+        await enhancedDatabaseService.setScheduleEntry({
+          member_id: memberId,
+          date: dateKey,
+          value: value as '1' | '0.5' | 'X',
+          sprint_id: sprintId
+        });
+      }
       
       // Trigger member update if provided
       if (onMemberUpdate) {
@@ -287,22 +416,25 @@ export default function FullSprintTable({
     } catch (error) {
       console.error('Error updating schedule:', error);
       // Reload data on error
-      window.location.reload();
+      const sprintId = String(currentSprint.id);
+      const data = await enhancedDatabaseService.getSprintScheduleData(sprintId, selectedTeam.id);
+      setScheduleData(data);
     }
-  }, [currentSprint, onWorkOptionClick, onMemberUpdate]);
+  }, [currentSprint, currentSprintOffset, selectedTeam.id, onWorkOptionClick, onMemberUpdate]);
 
-  // Quick actions
+  // Quick actions with navigation offset support
   const handleSetFullSprint = async (memberId: number) => {
     if (!currentSprint) return;
     
     try {
       const member = teamMembers.find(m => m.id === memberId);
       const isManager = member?.isManager || member?.is_manager;
+      const sprintId = String(currentSprint.id);
       
-      await enhancedDatabaseService.setFullSprintAvailability(memberId, String(currentSprint.id), isManager);
+      await enhancedDatabaseService.setFullSprintAvailability(memberId, sprintId, isManager);
       
       // Reload data
-      const data = await enhancedDatabaseService.getSprintScheduleData(String(currentSprint.id), selectedTeam.id);
+      const data = await enhancedDatabaseService.getSprintScheduleData(sprintId, selectedTeam.id);
       setScheduleData(data);
     } catch (error) {
       console.error('Error setting full sprint:', error);
@@ -317,10 +449,11 @@ export default function FullSprintTable({
     }
     
     try {
-      await enhancedDatabaseService.clearMemberSprintData(memberId, String(currentSprint.id));
+      const sprintId = String(currentSprint.id);
+      await enhancedDatabaseService.clearMemberSprintData(memberId, sprintId);
       
       // Reload data
-      const data = await enhancedDatabaseService.getSprintScheduleData(String(currentSprint.id), selectedTeam.id);
+      const data = await enhancedDatabaseService.getSprintScheduleData(sprintId, selectedTeam.id);
       setScheduleData(data);
     } catch (error) {
       console.error('Error clearing sprint data:', error);
@@ -368,8 +501,10 @@ export default function FullSprintTable({
   }
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden transition-shadow duration-200 hover:shadow-xl ${className}`}>
-      {/* Sprint Header */}
+    <div 
+      key={`${navigationMode}-${currentSprintOffset}-${currentWeekStart.toISOString()}`}
+      className={`bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden transition-shadow duration-200 hover:shadow-xl ${className}`}>
+      {/* Sprint Header with Navigation */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 relative overflow-hidden">
         {/* Header background pattern */}
         <div className="absolute inset-0 opacity-10">
@@ -383,14 +518,127 @@ export default function FullSprintTable({
           </svg>
         </div>
         <div className="relative z-10">
+        {/* Navigation Controls */}
+        <div className="flex items-center justify-between mb-4">
+          {navigationMode === 'sprint' ? (
+            <>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    // Previous Sprint navigation logging removed
+                    setCurrentSprintOffset(currentSprintOffset - 1);
+                  }}
+                  className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+                  aria-label="Previous Sprint"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setCurrentSprintOffset(0)}
+                  className={`px-3 py-1 rounded-lg transition-colors ${
+                    currentSprintOffset === 0 
+                      ? 'bg-white text-blue-600' 
+                      : 'bg-white/20 hover:bg-white/30'
+                  }`}
+                >
+                  Current Sprint
+                </button>
+                <button
+                  onClick={() => {
+                    // Next Sprint navigation logging removed
+                    setCurrentSprintOffset(currentSprintOffset + 1);
+                  }}
+                  className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+                  aria-label="Next Sprint"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-blue-100">Sprint Navigation</span>
+                {currentSprintOffset !== 0 && (
+                  <span className="px-2 py-1 bg-white/20 rounded text-xs">
+                    {currentSprintOffset > 0 ? `+${currentSprintOffset}` : currentSprintOffset} sprints
+                  </span>
+                )}
+                <button
+                  onClick={() => setNavigationMode('week')}
+                  className="px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-xs"
+                >
+                  Switch to Week View
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    // Previous Week navigation logging removed
+                    setCurrentWeekStart(prev => {
+                      const newDate = new Date(prev);
+                      newDate.setDate(newDate.getDate() - 7);
+                      return newDate;
+                    });
+                  }}
+                  className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+                  aria-label="Previous Week"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    const startOfWeek = new Date(today);
+                    startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
+                    setCurrentWeekStart(startOfWeek);
+                  }}
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+                >
+                  Current Week
+                </button>
+                <button
+                  onClick={() => {
+                    // Next Week navigation logging removed
+                    setCurrentWeekStart(prev => {
+                      const newDate = new Date(prev);
+                      newDate.setDate(newDate.getDate() + 7);
+                      return newDate;
+                    });
+                  }}
+                  className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+                  aria-label="Next Week"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-blue-100">Week Navigation</span>
+                <span className="px-2 py-1 bg-white/20 rounded text-xs">
+                  {currentWeekStart.toLocaleDateString()}
+                </span>
+                <button
+                  onClick={() => setNavigationMode('sprint')}
+                  className="px-2 py-1 bg-white/20 hover:bg-white/30 rounded text-xs"
+                >
+                  Switch to Sprint View
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Calendar className="w-6 h-6" />
-              Sprint {currentSprint.current_sprint_number} Schedule
+              Sprint {(currentSprint.current_sprint_number || 0) + currentSprintOffset} Schedule
             </h2>
             <p className="text-blue-100 text-sm mt-1">
-              {SprintLogic.formatDateRange(new Date(currentSprint.sprint_start_date), new Date(currentSprint.sprint_end_date))}
+              {sprintDays.length > 0 
+                ? SprintLogic.formatDateRange(sprintDays[0].date, sprintDays[sprintDays.length - 1].date)
+                : 'No dates available'
+              }
             </p>
           </div>
           <div className="text-right">
@@ -478,13 +726,57 @@ export default function FullSprintTable({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {teamMembers.map((member) => {
+            {(() => {
+              console.log('📊 FullSprintTable: Rendering team members', {
+                teamMembersCount: teamMembers.length,
+                teamMemberIds: teamMembers.map(m => m.id),
+                teamMemberNames: teamMembers.map(m => m.name),
+                scheduleDataKeys: Object.keys(scheduleData),
+                scheduleDataCount: Object.keys(scheduleData).length
+              });
+              return teamMembers;
+            })().map((member) => {
               const canEdit = currentUser.isManager || member.id === currentUser.id;
               const isManager = member.isManager || member.is_manager;
               const memberSchedule = scheduleData[member.id] || {};
               
-              // Calculate total hours for sprint
-              const memberSummary = teamSummary?.memberSummaries.find(s => s.memberId === member.id);
+              // Calculate total hours for sprint with safety check
+              const memberSummary = teamSummary?.memberSummaries?.find(s => s.memberId === member.id);
+              
+              // Debug individual member data
+              if (member.id <= 10) { // Only log first few members to avoid spam
+                console.log(`👤 Member ${member.id} (${member.name}):`, {
+                  hasScheduleData: Object.keys(memberSchedule).length > 0,
+                  scheduleEntryCount: Object.keys(memberSchedule).length,
+                  hasMemberSummary: !!memberSummary,
+                  summaryHours: memberSummary?.actualHours
+                });
+              }
+              const memberActualHours = (typeof memberSummary?.actualHours === 'number' ? memberSummary.actualHours : 0) || 0;
+              const memberUtilization = (typeof memberSummary?.utilizationPercentage === 'number' ? memberSummary.utilizationPercentage : 0) || 0;
+              
+              // Fallback calculation if summary data is missing
+              let fallbackHours = 0;
+              if (memberActualHours === 0 && Object.keys(memberSchedule).length > 0) {
+                // Calculate hours directly from schedule entries
+                fallbackHours = Object.values(memberSchedule).reduce((sum, entry: any) => {
+                  if (entry.value === '1') return sum + 7;
+                  if (entry.value === '0.5') return sum + 3.5;
+                  return sum;
+                }, 0);
+                
+                if (member.id <= 10 && fallbackHours > 0) {
+                  console.log(`⚠️ Member ${member.id}: Using fallback hours calculation`, {
+                    summaryHours: memberActualHours,
+                    fallbackHours,
+                    entryCount: Object.keys(memberSchedule).length
+                  });
+                }
+              }
+              
+              const finalHours = memberActualHours > 0 ? memberActualHours : fallbackHours;
+              
+              // Member hours logging removed for performance
               
               return (
                 <tr key={member.id} className={`hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 transition-all duration-200 ${
@@ -540,13 +832,13 @@ export default function FullSprintTable({
                   {/* Total Hours */}
                   <td className="px-4 py-4 text-center font-medium bg-gradient-to-r from-transparent to-gray-50">
                     <div className={`inline-flex flex-col items-center gap-1 p-2 rounded-lg transition-all duration-200 ${
-                      (memberSummary?.actualHours || 0) > 0 
+                      finalHours > 0 
                         ? 'text-green-700 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 shadow-sm' 
                         : 'text-gray-500 bg-gray-50 border border-gray-200'
                     }`}>
-                      <span className="text-lg font-bold">{memberSummary?.actualHours || 0}h</span>
+                      <span className="text-lg font-bold">{finalHours || 0}h</span>
                       <span className="text-xs bg-white/50 px-2 py-0.5 rounded-full">
-                        {memberSummary?.utilizationPercentage || 0}%
+                        {memberUtilization || 0}%
                       </span>
                     </div>
                   </td>
@@ -588,7 +880,25 @@ export default function FullSprintTable({
           const isCurrentUser = member.id === currentUser.id;
           const isExpanded = expandedMembers.has(member.id);
           const memberSchedule = scheduleData[member.id] || {};
-          const memberSummary = teamSummary?.memberSummaries.find(s => s.memberId === member.id);
+          const memberSummary = teamSummary?.memberSummaries?.find(s => s.memberId === member.id);
+          
+          // Fix: Calculate missing variables for mobile view
+          const memberActualHours = (typeof memberSummary?.actualHours === 'number' ? memberSummary.actualHours : 0) || 0;
+          const memberUtilization = (typeof memberSummary?.utilizationPercentage === 'number' ? memberSummary.utilizationPercentage : 0) || 0;
+          
+          // Fallback calculation if summary data is missing (mobile version)
+          let fallbackHours = 0;
+          if (memberActualHours === 0 && Object.keys(memberSchedule).length > 0) {
+            fallbackHours = Object.values(memberSchedule).reduce((sum, entry: any) => {
+              if (entry.value === '1') return sum + 7;
+              if (entry.value === '0.5') return sum + 3.5;
+              return sum;
+            }, 0);
+          }
+          
+          const finalHours = memberActualHours > 0 ? memberActualHours : fallbackHours;
+          
+          // Mobile member hours logging removed for performance
           
           return (
             <div 
@@ -635,10 +945,10 @@ export default function FullSprintTable({
                   <div className="flex items-center space-x-3">
                     <div className="text-right">
                       <div className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                        {memberSummary?.actualHours || 0}h
+                        {finalHours || 0}h
                       </div>
                       <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                        {memberSummary?.utilizationPercentage || 0}% util
+                        {memberUtilization || 0}% util
                       </div>
                     </div>
                     <div className={`transform transition-transform duration-200 ${

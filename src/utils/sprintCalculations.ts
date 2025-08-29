@@ -1,13 +1,27 @@
 import { CurrentGlobalSprint } from '@/types';
 
 export interface SprintPeriod {
-  start: string;
-  end: string;
+  startDate: string;
+  endDate: string;
 }
 
 export const calculateSprintPeriod = (currentSprint: CurrentGlobalSprint, offset: number = 0): SprintPeriod => {
   const sprintStart = new Date(currentSprint.sprint_start_date);
   const sprintWeeks = currentSprint.sprint_length_weeks;
+  
+  // Add debugging for Next Sprint calculation
+  console.log('🔍 calculateSprintPeriod DEBUG:', {
+    input: {
+      sprint_start_date: currentSprint.sprint_start_date,
+      sprint_length_weeks: currentSprint.sprint_length_weeks,
+      offset: offset
+    },
+    sprintStart: sprintStart.toISOString(),
+    calculation: {
+      offsetDays: offset * sprintWeeks * 7,
+      sprintLengthDays: sprintWeeks * 7
+    }
+  });
   
   // Calculate target sprint start (current + offset)
   const targetSprintStart = new Date(sprintStart);
@@ -16,24 +30,80 @@ export const calculateSprintPeriod = (currentSprint: CurrentGlobalSprint, offset
   const targetSprintEnd = new Date(targetSprintStart);
   targetSprintEnd.setDate(targetSprintStart.getDate() + (sprintWeeks * 7) - 1);
   
-  return {
-    start: targetSprintStart.toISOString().split('T')[0],
-    end: targetSprintEnd.toISOString().split('T')[0]
+  const result = {
+    startDate: targetSprintStart.toISOString().split('T')[0],
+    endDate: targetSprintEnd.toISOString().split('T')[0]
   };
+  
+  // Add debugging for result
+  console.log('🔍 calculateSprintPeriod RESULT:', {
+    offset: offset,
+    result: result,
+    workingDaysInPeriod: calculateWorkingDaysInPeriod(result.startDate, result.endDate)
+  });
+  
+  return result;
+};
+
+// Helper function to check if a day is a working day (Israeli work week: Sunday-Thursday)
+export const isWorkingDay = (date: Date): boolean => {
+  const dayOfWeek = date.getDay();
+  // Sunday (0) to Thursday (4) are working days
+  // Friday (5) and Saturday (6) are weekend days
+  return dayOfWeek >= 0 && dayOfWeek <= 4;
+};
+
+// Helper function to get working day name for debugging
+export const getWorkingDayName = (dayOfWeek: number): string => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[dayOfWeek];
 };
 
 export const calculateWorkingDaysInPeriod = (startDate: string, endDate: string): number => {
   const start = new Date(startDate);
   const end = new Date(endDate);
+  
+  // Validate input dates
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    console.error('🔍 calculateWorkingDaysInPeriod ERROR: Invalid dates', {
+      startDate,
+      endDate,
+      startParsed: start.toISOString(),
+      endParsed: end.toISOString()
+    });
+    return 0;
+  }
+  
+  if (start > end) {
+    console.error('🔍 calculateWorkingDaysInPeriod ERROR: Start date after end date', {
+      startDate,
+      endDate
+    });
+    return 0;
+  }
+  
   let workingDays = 0;
+  const workingDaysList: string[] = [];
   
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dayOfWeek = d.getDay();
-    // Sunday (0) to Thursday (4) are working days
-    if (dayOfWeek >= 0 && dayOfWeek <= 4) {
+    // Use the helper function for consistency
+    if (isWorkingDay(d)) {
       workingDays++;
+      workingDaysList.push(d.toISOString().split('T')[0]);
     }
   }
+  
+  // Add debugging for working days calculation
+  console.log('🔍 calculateWorkingDaysInPeriod DEBUG:', {
+    input: { startDate, endDate },
+    output: { workingDays },
+    details: {
+      totalDaysInRange: Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      workingDaysList: workingDaysList.slice(0, 10), // Show first 10 for debugging
+      firstWorkingDay: workingDaysList[0],
+      lastWorkingDay: workingDaysList[workingDaysList.length - 1]
+    }
+  });
   
   return workingDays;
 };
@@ -51,9 +121,41 @@ export const getSprintDescription = (offset: number): string => {
   }
 };
 
+// Calculate working days remaining from today to end date (inclusive)
+export const calculateRemainingWorkingDaysFromToday = (endDate: string): number => {
+  const today = new Date();
+  const end = new Date(endDate);
+  
+  // If end date is in the past, return 0
+  if (end < today) {
+    return 0;
+  }
+  
+  // Start counting from tomorrow if today is a working day, or next working day if not
+  let startDate: Date;
+  const todayIsWorkingDay = isWorkingDay(today);
+  
+  if (todayIsWorkingDay) {
+    // If today is a working day, start counting from tomorrow
+    startDate = new Date(today);
+    startDate.setDate(today.getDate() + 1);
+  } else {
+    // If today is weekend (Friday/Saturday), find next working day (Sunday)
+    startDate = new Date(today);
+    while (!isWorkingDay(startDate)) {
+      startDate.setDate(startDate.getDate() + 1);
+    }
+  }
+  
+  return calculateWorkingDaysInPeriod(
+    startDate.toISOString().split('T')[0],
+    endDate
+  );
+};
+
 export const formatSprintDateRange = (period: SprintPeriod): string => {
-  const start = new Date(period.start);
-  const end = new Date(period.end);
+  const start = new Date(period.startDate);
+  const end = new Date(period.endDate);
   
   const startFormatted = start.toLocaleDateString('en-US', { 
     month: 'short', 

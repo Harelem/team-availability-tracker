@@ -56,7 +56,7 @@ export const getSprintDateRange = (referenceDate: Date = new Date(), offset: num
   const allDates: Date[] = [];
   const workingDates: string[] = [];
   
-  let currentDate = new Date(sprintStart);
+  const currentDate = new Date(sprintStart);
   while (currentDate <= sprintEnd) {
     const dayOfWeek = currentDate.getDay();
     allDates.push(new Date(currentDate));

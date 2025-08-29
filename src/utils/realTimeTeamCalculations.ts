@@ -101,8 +101,15 @@ export async function calculateRealTeamCompletionStats(
   const potentialHoursPerMember = sprintDays.totalDays * 7; // 7 hours per working day
   const totalPotentialHours = teamMembers.length * potentialHoursPerMember;
 
-  if (!currentSprint || sprintDays.totalDays === 0) {
-    // Return default stats if no sprint data
+  if (!currentSprint || sprintDays.totalDays === 0 || !currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+    console.log('⚠️ calculateRealTeamCompletionStats: Missing sprint data or dates', {
+      hasCurrentSprint: !!currentSprint,
+      totalDays: sprintDays.totalDays,
+      startDate: currentSprint?.sprint_start_date,
+      endDate: currentSprint?.sprint_end_date
+    });
+    
+    // Return default stats if no sprint data or missing dates
     return {
       totalMembers: teamMembers.length,
       completedMembers: 0,
@@ -127,6 +134,14 @@ export async function calculateRealTeamCompletionStats(
 
   try {
     // Get actual schedule data for the sprint period
+    if (!currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+      console.warn('calculateRealTeamCompletionStats: Missing sprint dates', {
+        startDate: currentSprint.sprint_start_date,
+        endDate: currentSprint.sprint_end_date
+      });
+      throw new Error('Missing sprint start or end date');
+    }
+    
     const startDate = new Date(currentSprint.sprint_start_date).toISOString().split('T')[0];
     const endDate = new Date(currentSprint.sprint_end_date).toISOString().split('T')[0];
     
@@ -253,7 +268,13 @@ export async function getTeamMemberSubmissionStatus(
   submissionRate: number;
   lastUpdateTime: string;
 }> {
-  if (!currentSprint) {
+  if (!currentSprint || !currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+    console.log('⚠️ getTeamMemberSubmissionStatus: Missing sprint or date data', {
+      hasCurrentSprint: !!currentSprint,
+      startDate: currentSprint?.sprint_start_date,
+      endDate: currentSprint?.sprint_end_date
+    });
+    
     return {
       totalMembers: 0,
       submittedMembers: 0,
@@ -267,6 +288,14 @@ export async function getTeamMemberSubmissionStatus(
     const teamMembers = await DatabaseService.getTeamMembers(teamId);
     
     // Get sprint date range
+    if (!currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+      console.warn('getTeamMemberSubmissionStatus: Missing sprint dates', {
+        startDate: currentSprint.sprint_start_date,
+        endDate: currentSprint.sprint_end_date
+      });
+      throw new Error('Missing sprint start or end date');
+    }
+    
     const startDate = new Date(currentSprint.sprint_start_date).toISOString().split('T')[0];
     const endDate = new Date(currentSprint.sprint_end_date).toISOString().split('T')[0];
     
@@ -321,7 +350,13 @@ export async function calculateCrossTeamCapacityUtilization(
     utilization: number;
   }>;
 }> {
-  if (!currentSprint) {
+  if (!currentSprint || !currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+    console.log('⚠️ calculateCrossTeamCapacityUtilization: Missing sprint or date data', {
+      hasCurrentSprint: !!currentSprint,
+      startDate: currentSprint?.sprint_start_date,
+      endDate: currentSprint?.sprint_end_date
+    });
+    
     return {
       totalCapacity: 0,
       utilizedCapacity: 0,
@@ -334,6 +369,14 @@ export async function calculateCrossTeamCapacityUtilization(
     // Get all teams
     const teams = await DatabaseService.getTeams();
     const sprintDays = calculateSprintWorkingDays(currentSprint);
+    
+    if (!currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+      console.warn('calculateCrossTeamCapacityUtilization: Missing sprint dates', {
+        startDate: currentSprint.sprint_start_date,
+        endDate: currentSprint.sprint_end_date
+      });
+      throw new Error('Missing sprint start or end date');
+    }
     
     const startDate = new Date(currentSprint.sprint_start_date).toISOString().split('T')[0];
     const endDate = new Date(currentSprint.sprint_end_date).toISOString().split('T')[0];

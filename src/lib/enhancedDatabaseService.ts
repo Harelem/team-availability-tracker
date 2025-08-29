@@ -863,11 +863,26 @@ export class EnhancedDatabaseService {
   async getSprintScheduleData(sprintId: string, teamId?: number, useCache = true): Promise<{
     [memberId: number]: { [dateKey: string]: ScheduleEntry }
   }> {
-    const cacheKey = `sprint_schedule_${sprintId}${teamId ? `_team_${teamId}` : ''}`;
+    // Convert sprint ID to UUID format if needed (for backward compatibility)
+    let querySprintId = sprintId;
+    if (!sprintId.includes('-')) {
+      // If it's just a number, convert to UUID format
+      const paddedId = sprintId.padStart(12, '0');
+      querySprintId = `00000000-0000-0000-0000-${paddedId}`;
+    }
+    
+    const cacheKey = `sprint_schedule_${querySprintId}${teamId ? `_team_${teamId}` : ''}`;
+    
+    console.log('🔍 getSprintScheduleData: Querying for schedule data', {
+      originalSprintId: sprintId,
+      querySprintId,
+      teamId
+    });
     
     if (useCache) {
       const cached = this.cache.get<{ [memberId: number]: { [dateKey: string]: ScheduleEntry } }>(cacheKey);
       if (cached) {
+        console.log('✅ getSprintScheduleData: Cache hit');
         return cached;
       }
     }
@@ -887,7 +902,7 @@ export class EnhancedDatabaseService {
               team_id
             )
           `)
-          .eq('sprint_id', sprintId);
+          .eq('sprint_id', querySprintId);
 
         if (teamId) {
           query = query.eq('team_members.team_id', teamId);

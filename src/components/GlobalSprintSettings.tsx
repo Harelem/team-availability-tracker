@@ -49,16 +49,23 @@ export default function GlobalSprintSettings({ isOpen, onClose }: GlobalSprintSe
 
     setIsStartingNewSprint(true);
     
-    const success = await startNewSprint(newSprintLength);
-    
-    if (success) {
-      alert('New sprint started successfully!');
-      onClose();
-    } else {
-      alert('Failed to start new sprint. Please try again.');
+    try {
+      console.log('Starting new sprint from UI...');
+      const success = await startNewSprint(newSprintLength);
+      
+      if (success) {
+        alert('🎉 New sprint started successfully! The dashboard will now refresh with the new sprint data.');
+        onClose();
+      } else {
+        alert('❌ Failed to start new sprint.\n\nPlease:\n1. Check the browser console for detailed error logs\n2. Verify you have admin permissions\n3. Contact support if the issue persists\n\nError details may be visible in the developer console (F12).');
+        console.error('Sprint creation failed - check previous error logs');
+      }
+    } catch (error) {
+      alert('❌ An unexpected error occurred while starting the sprint.\n\nPlease check the browser console for details and contact support.');
+      console.error('Unexpected error in handleStartNewSprint:', error);
+    } finally {
+      setIsStartingNewSprint(false);
     }
-    
-    setIsStartingNewSprint(false);
   };
 
   if (!isOpen) return null;

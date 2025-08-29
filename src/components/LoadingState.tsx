@@ -88,10 +88,10 @@ export default function LoadingState({
   
   const sizes = sizeClasses[size];
   
-  // Core loading content - always identical
+  // Core loading content - always identical with proper testId handling
   const loadingContent = (
-    <div className={`bg-white rounded-lg p-8 shadow-md w-full text-center ${sizes.container} ${className}`}>
-      <div className="animate-pulse" data-testid={testId || undefined}>
+    <div className={`bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-5xl w-full ${className}`}>
+      <div className="animate-pulse" data-testid={testId || null}>
         {/* Header skeleton */}
         <div className={`${sizes.header} bg-gray-200 rounded mb-4`}></div>
         
@@ -123,9 +123,9 @@ export default function LoadingState({
     return loadingContent;
   }
   
-  // Fullscreen mode - identical structure every time
+  // Fullscreen mode - identical structure every time with consistent styling
   return (
-    <div className="flex items-center justify-center p-4 min-h-screen" suppressHydrationWarning>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" suppressHydrationWarning>
       {loadingContent}
     </div>
   );

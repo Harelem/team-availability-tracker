@@ -47,6 +47,30 @@ export default function SprintManager() {
     loadSprints();
   }, []);
 
+  // Helper function to get next sprint number
+  const getNextSprintNumber = async (): Promise<number> => {
+    const { data: lastSprint, error } = await supabase
+      .from('sprint_history')
+      .select('sprint_number')
+      .order('sprint_number', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('Error getting last sprint number:', error);
+    }
+
+    const nextNumber = (lastSprint?.sprint_number || 0) + 1;
+    
+    // Validation: ensure it's a valid number
+    if (isNaN(nextNumber) || nextNumber <= 0) {
+      console.warn('Invalid sprint number calculated, using timestamp fallback');
+      return Math.floor(Date.now() / 100000);
+    }
+    
+    return nextNumber;
+  };
+
   const loadSprints = async () => {
     try {
       setError(null);
@@ -106,15 +130,59 @@ export default function SprintManager() {
 
         if (updateError) throw updateError;
       } else {
-        // Create new sprint
+        // Create new sprint - GENERATE SPRINT NUMBER FIRST
+        console.log('Creating new sprint with data:', formData);
+        
+        // Get the next sprint number with proper error handling
+        let nextSprintNumber: number;
+        try {
+          const { data: lastSprint, error } = await supabase
+            .from('sprint_history')
+            .select('sprint_number')
+            .order('sprint_number', { ascending: false })
+            .limit(1);
+          
+          if (error) {
+            console.warn('Error fetching last sprint:', error);
+            nextSprintNumber = 1; // Default to 1 if query fails
+          } else if (!lastSprint || lastSprint.length === 0) {
+            nextSprintNumber = 1; // First sprint
+          } else {
+            nextSprintNumber = (lastSprint[0]?.sprint_number || 0) + 1;
+          }
+        } catch (err) {
+          console.warn('Exception getting sprint number, defaulting to timestamp-based:', err);
+          nextSprintNumber = Math.floor(Date.now() / 1000); // Fallback to unique number
+        }
+
+        // Validate sprint number before using
+        if (!nextSprintNumber || isNaN(nextSprintNumber) || nextSprintNumber < 1) {
+          console.error('Invalid sprint number calculated:', nextSprintNumber);
+          nextSprintNumber = Math.floor(Date.now() / 1000);
+        }
+        
+        console.log('Generated sprint number for new sprint:', nextSprintNumber);
+        
+        const insertData = {
+          ...formData,
+          sprint_number: nextSprintNumber,  // ✅ NOW INCLUDES REQUIRED FIELD
+          created_by: 'Nir Shilo',
+          status: 'upcoming', // Default status
+          created_at: new Date().toISOString()
+        };
+        
+        console.log('Insert data:', insertData);
+
         const { error: insertError } = await supabase
           .from('sprint_history')
-          .insert([{
-            ...formData,
-            created_by: 'Nir Shilo'
-          }]);
+          .insert([insertData]);
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Database insert error:', insertError);
+          throw insertError;
+        }
+        
+        console.log('Sprint created successfully');
       }
 
       // Reset form and reload

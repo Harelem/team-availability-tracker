@@ -189,6 +189,13 @@ export class SprintLogic {
   static getManagerWorkOptions(): WorkOption[] {
     return [
       {
+        value: '1',
+        label: '1',
+        hours: 7,
+        description: 'Full day (8h - 1h lunch)',
+        color: 'bg-green-100 border-green-300 text-green-800'
+      },
+      {
         value: '0.5',
         label: '0.5',
         hours: 3.5,
@@ -310,8 +317,8 @@ export class SprintLogic {
     }
 
     const sprintDays = this.getWorkingDays(
-      new Date(currentSprint.start_date),
-      new Date(currentSprint.end_date)
+      new Date(currentSprint.sprint_start_date),
+      new Date(currentSprint.sprint_end_date)
     );
 
     const memberSummaries = teamMembers.map(member => 
@@ -348,7 +355,7 @@ export class SprintLogic {
       teamId: team.id,
       teamName: team.name,
       sprintId: currentSprint.id,
-      sprintNumber: currentSprint.sprint_number,
+      sprintNumber: currentSprint.current_sprint_number,
       totalMembers: teamMembers.length,
       managerCount: teamMembers.filter(m => m.isManager || m.is_manager).length,
       maxCapacityHours,

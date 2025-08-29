@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Users, TrendingUp, AlertTriangle, Target } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { calculateWorkingDaysInPeriod, calculateRemainingWorkingDaysFromToday, isWorkingDay, getWorkingDayName } from '@/utils/sprintCalculations';
 
 interface CompanyMetrics {
   currentSprint: {
@@ -86,28 +87,30 @@ export default function CompanyMetrics() {
       let currentSprintHours = 0;
 
       if (activeSprint) {
-        // Calculate working days (exclude weekends - Friday & Saturday in Israel)
+        // Calculate working days using centralized logic
         const startDate = new Date(activeSprint.sprint_start_date);
         const endDate = new Date(activeSprint.sprint_end_date);
-        const today = new Date();
 
-        // Count working days in sprint
-        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-          const dayOfWeek = date.getDay();
-          // Skip Friday (5) and Saturday (6)
-          if (dayOfWeek !== 5 && dayOfWeek !== 6) {
-            sprintWorkingDays++;
-          }
-        }
+        // Use centralized working days calculation for total sprint days
+        sprintWorkingDays = calculateWorkingDaysInPeriod(
+          activeSprint.sprint_start_date,
+          activeSprint.sprint_end_date
+        );
 
-        // Count remaining working days
-        const remainingStart = today > startDate ? today : startDate;
-        for (let date = new Date(remainingStart); date <= endDate; date.setDate(date.getDate() + 1)) {
-          const dayOfWeek = date.getDay();
-          if (dayOfWeek !== 5 && dayOfWeek !== 6) {
-            workingDaysRemaining++;
-          }
-        }
+        // Calculate remaining working days using the improved centralized function
+        workingDaysRemaining = calculateRemainingWorkingDaysFromToday(activeSprint.sprint_end_date);
+        
+        console.log('🔍 CompanyMetrics Working Days Debug:', {
+          today: new Date().toLocaleDateString(),
+          todayDay: new Date().getDay(),
+          todayDayName: getWorkingDayName(new Date().getDay()),
+          todayIsWorkingDay: isWorkingDay(new Date()),
+          sprintEnd: endDate.toLocaleDateString(),
+          sprintEndDay: endDate.getDay(),
+          sprintEndDayName: getWorkingDayName(endDate.getDay()),
+          sprintWorkingDays,
+          workingDaysRemaining
+        });
 
         // Calculate sprint capacity (eligible members × working days × 7 hours)
         sprintCapacity = eligibleMembers.length * sprintWorkingDays * 7;
@@ -144,16 +147,13 @@ export default function CompanyMetrics() {
       startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
       
       const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
+      endOfWeek.setDate(startOfWeek.getDate() + 4); // Thursday (working week end)
 
-      // Count this week's working days
-      let thisWeekWorkingDays = 0;
-      for (let date = new Date(startOfWeek); date <= endOfWeek; date.setDate(date.getDate() + 1)) {
-        const dayOfWeek = date.getDay();
-        if (dayOfWeek !== 5 && dayOfWeek !== 6) {
-          thisWeekWorkingDays++;
-        }
-      }
+      // Count this week's working days using centralized logic
+      const thisWeekWorkingDays = calculateWorkingDaysInPeriod(
+        startOfWeek.toISOString().split('T')[0],
+        endOfWeek.toISOString().split('T')[0]
+      );
 
       const thisWeekPotential = eligibleMembers.length * thisWeekWorkingDays * 7;
 

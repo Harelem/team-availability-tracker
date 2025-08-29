@@ -1,0 +1,210 @@
+{
+  "dashboard": {
+    "title": "Team Availability Tracker - System Health",
+    "refreshInterval": 30,
+    "timezone": "UTC",
+    "layout": "grid",
+    "theme": "dark"
+  },
+  "metrics": {
+    "database": {
+      "enabled": true,
+      "panels": [
+        {
+          "type": "gauge",
+          "title": "Database Response Time",
+          "metric": "database_response_time",
+          "unit": "ms",
+          "thresholds": {
+            "good": 0,
+            "warning": 1000,
+            "critical": 3000
+          }
+        },
+        {
+          "type": "graph",
+          "title": "Database Connections",
+          "metric": "database_connections",
+          "timeRange": "1h",
+          "aggregation": "avg"
+        },
+        {
+          "type": "table",
+          "title": "Slow Queries",
+          "metric": "slow_queries",
+          "columns": ["query", "duration", "timestamp"],
+          "limit": 10
+        }
+      ]
+    },
+    "application": {
+      "enabled": true,
+      "panels": [
+        {
+          "type": "gauge",
+          "title": "Page Load Time",
+          "metric": "page_load_time",
+          "unit": "ms",
+          "thresholds": {
+            "good": 0,
+            "warning": 3000,
+            "critical": 5000
+          }
+        },
+        {
+          "type": "graph",
+          "title": "Active Sessions",
+          "metric": "active_sessions",
+          "timeRange": "6h",
+          "aggregation": "max"
+        },
+        {
+          "type": "stat",
+          "title": "Memory Usage",
+          "metric": "memory_usage",
+          "unit": "%",
+          "sparkline": true
+        }
+      ]
+    },
+    "business": {
+      "enabled": true,
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Active Teams",
+          "metric": "active_teams",
+          "unit": "count",
+          "target": 5
+        },
+        {
+          "type": "graph",
+          "title": "Schedule Entries per Day",
+          "metric": "schedule_entries_daily",
+          "timeRange": "7d",
+          "aggregation": "sum"
+        },
+        {
+          "type": "heatmap",
+          "title": "Team Activity Heatmap",
+          "metric": "team_activity",
+          "timeRange": "30d"
+        }
+      ]
+    },
+    "security": {
+      "enabled": true,
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Failed Login Attempts",
+          "metric": "failed_logins",
+          "unit": "count",
+          "color": "red"
+        },
+        {
+          "type": "graph",
+          "title": "API Error Rate",
+          "metric": "api_error_rate",
+          "unit": "%",
+          "timeRange": "24h",
+          "thresholds": {
+            "warning": 5,
+            "critical": 10
+          }
+        },
+        {
+          "type": "logs",
+          "title": "Security Events",
+          "metric": "security_events",
+          "limit": 20,
+          "levels": ["warn", "error", "critical"]
+        }
+      ]
+    }
+  },
+  "alerts": [
+    {
+      "name": "Database Down",
+      "condition": "database_response_time > 10000 OR database_connection_failed == true",
+      "severity": "critical",
+      "channels": ["slack", "email", "sms"],
+      "runbook": "https://docs.company.com/runbooks/database-outage",
+      "enabled": true
+    },
+    {
+      "name": "High Error Rate",
+      "condition": "api_error_rate > 10",
+      "severity": "high",
+      "channels": ["slack", "email"],
+      "cooldown": "5m",
+      "enabled": true
+    },
+    {
+      "name": "Memory Usage High",
+      "condition": "memory_usage > 85",
+      "severity": "medium",
+      "channels": ["slack"],
+      "cooldown": "15m",
+      "enabled": true
+    },
+    {
+      "name": "No Recent Activity",
+      "condition": "active_sessions < 1 AND time_since_last_activity > 3600",
+      "severity": "medium",
+      "channels": ["slack"],
+      "schedule": "business_hours",
+      "enabled": true
+    },
+    {
+      "name": "Security Breach",
+      "condition": "failed_logins > 100 OR suspicious_activity_detected == true",
+      "severity": "critical",
+      "channels": ["slack", "email", "sms", "pagerduty"],
+      "enabled": true
+    }
+  ],
+  "notifications": {
+    "slack": {
+      "enabled": true,
+      "webhook": "${SLACK_WEBHOOK_URL}",
+      "channel": "#alerts",
+      "username": "Team Availability Monitor"
+    },
+    "email": {
+      "enabled": true,
+      "smtp_server": "${SMTP_SERVER}",
+      "from": "alerts@company.com",
+      "to": ["oncall@company.com", "devops@company.com"]
+    },
+    "sms": {
+      "enabled": false,
+      "provider": "twilio",
+      "numbers": ["+1234567890"]
+    },
+    "pagerduty": {
+      "enabled": false,
+      "integration_key": "${PAGERDUTY_INTEGRATION_KEY}"
+    }
+  },
+  "retention": {
+    "metrics": {
+      "high_resolution": "7d",
+      "medium_resolution": "30d",
+      "low_resolution": "1y"
+    },
+    "logs": {
+      "debug": "1d",
+      "info": "7d",
+      "warn": "30d",
+      "error": "90d"
+    },
+    "alerts": "1y"
+  },
+  "maintenance": {
+    "backup_interval": "daily",
+    "cleanup_interval": "weekly",
+    "health_check_interval": "5m",
+    "metric_aggregation_interval": "1m"
+  }
+}

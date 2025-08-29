@@ -61,9 +61,12 @@ class SprintDataManager {
         result.source = cached.source as any;
         result.cached = true;
         result.success = true;
+        console.log(`✅ Sprint data from cache (${cached.source})`, cached.data);
         debug(`✅ Sprint data from cache (${cached.source})`);
         return result;
       }
+      
+      console.log('🔍 SprintDataHandler: No cache hit, querying database');
 
       // Try database first
       const dbResult = await this.getSprintFromDatabase();
@@ -97,8 +100,10 @@ class SprintDataManager {
       result.errors.push(...smartResult.errors);
 
       // Final fallback - emergency default
+      console.log('🚨 Smart detection failed, using emergency default sprint');
       warn('Smart detection failed, using emergency default sprint');
       const emergencyResult = this.createEmergencyDefaultSprint();
+      console.log('📊 Emergency default sprint created:', emergencyResult.sprint);
       this.setCachedSprint(emergencyResult.sprint, 'emergency_default');
       result.sprint = emergencyResult.sprint;
       result.source = 'emergency_default';
@@ -137,6 +142,8 @@ class SprintDataManager {
     };
 
     try {
+      console.log('🔍 SprintDataHandler: Checking sprint_history table...');
+      
       // First, try to get from sprint_history table (preferred)
       const { data: historyData, error: historyError } = await supabase
         .from('sprint_history')
@@ -145,39 +152,62 @@ class SprintDataManager {
         .order('created_at', { ascending: false })
         .limit(1);
 
+      console.log('📊 Sprint history query result:', { 
+        historyData, 
+        historyError, 
+        count: historyData?.length 
+      });
+
       if (!historyError && historyData && historyData.length > 0) {
         const sprintRecord = historyData[0];
         const sprint = this.convertHistoryToCurrentSprint(sprintRecord);
         result.sprint = sprint;
         result.success = true;
+        console.log('✅ Found active sprint in sprint_history table:', sprintRecord);
         debug('Found active sprint in sprint_history table');
         return result;
       }
 
       if (historyError) {
+        console.log('❌ Sprint history query error:', historyError);
         result.warnings.push(`Sprint history query error: ${historyError.message}`);
+      } else {
+        console.log('⚠️ No active sprint found in sprint_history table');
       }
 
+      console.log('🔍 SprintDataHandler: Checking global_sprint_settings table...');
+      
       // Fallback to global_sprint_settings table
       const { data: settingsData, error: settingsError } = await supabase
         .from('global_sprint_settings')
         .select('*')
         .limit(1);
 
+      console.log('📊 Global sprint settings query result:', { 
+        settingsData, 
+        settingsError, 
+        count: settingsData?.length 
+      });
+
       if (!settingsError && settingsData && settingsData.length > 0) {
         const settings = settingsData[0];
         const sprint = this.convertSettingsToCurrentSprint(settings);
         result.sprint = sprint;
         result.success = true;
+        console.log('✅ Found sprint in global_sprint_settings table:', settings);
         debug('Found sprint in global_sprint_settings table');
         return result;
       }
 
       if (settingsError) {
+        console.log('❌ Global sprint settings error:', settingsError);
         result.errors.push(`Global sprint settings error: ${settingsError.message}`);
+      } else {
+        console.log('⚠️ No sprint found in global_sprint_settings table');
       }
 
       // No sprint data found in database
+      console.log('❌ No active sprint found in any database tables');
       result.errors.push('No active sprint found in database tables');
       return result;
 
@@ -287,9 +317,17 @@ class SprintDataManager {
    * Convert sprint_history record to CurrentGlobalSprint format
    */
   private convertHistoryToCurrentSprint(record: any): CurrentGlobalSprint {
+    console.log('🔧 Converting history record to current sprint:', record);
+    
     const startDate = new Date(record.sprint_start_date);
     const endDate = new Date(record.sprint_end_date);
     const now = new Date();
+    
+    console.log('📅 Date conversion:', {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      now: now.toISOString()
+    });
     
     const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
     const elapsedDays = Math.max(0, Math.ceil((now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)));
@@ -301,7 +339,7 @@ class SprintDataManager {
     const workingDaysElapsed = Math.ceil(elapsedDays * (5/7));
     const workingDaysRemaining = Math.max(0, workingDaysTotal - workingDaysElapsed);
 
-    return {
+    const convertedSprint = {
       id: record.id?.toString() || `history-${record.sprint_number}`,
       current_sprint_number: record.sprint_number,
       sprint_length_weeks: record.sprint_length_weeks,
@@ -316,6 +354,9 @@ class SprintDataManager {
       updated_at: record.updated_at,
       updated_by: record.created_by || 'system'
     };
+    
+    console.log('✅ Converted sprint from history:', convertedSprint);
+    return convertedSprint;
   }
 
   /**
@@ -323,8 +364,18 @@ class SprintDataManager {
    */
   private convertSettingsToCurrentSprint(settings: any): CurrentGlobalSprint {
     const startDate = new Date(settings.sprint_start_date);
-    const endDate = new Date(settings.sprint_end_date);
+    // Calculate end date if not provided (fallback for missing sprint_end_date column)
+    const endDate = settings.sprint_end_date 
+      ? new Date(settings.sprint_end_date)
+      : new Date(startDate.getTime() + (settings.sprint_length_weeks || 2) * 7 * 24 * 60 * 60 * 1000);
     const now = new Date();
+    
+    console.log('🔧 Converting settings to sprint:', { 
+      settingsData: settings,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      hasEndDate: !!settings.sprint_end_date
+    });
     
     const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
     const elapsedDays = Math.max(0, Math.ceil((now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)));
