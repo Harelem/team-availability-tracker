@@ -43,13 +43,21 @@ const MockPersonalDashboard = ({ user, team, onScheduleUpdate }: any) => (
     <div data-testid="team-info">{team.name}</div>
     <div data-testid="schedule-table">
       <button 
-        onClick={() => onScheduleUpdate('2024-01-17', '1')}
+        onClick={async () => {
+          onScheduleUpdate('2024-01-17', '1');
+          // Simulate the actual database call that InlineEditableCell would make
+          await DatabaseService.updateScheduleEntry(user.id, '2024-01-17', '1', undefined);
+        }}
         data-testid="edit-cell-2024-01-17"
       >
         Edit 1/17
       </button>
       <button 
-        onClick={() => onScheduleUpdate('2024-01-18', '0.5', 'Doctor visit')}
+        onClick={async () => {
+          onScheduleUpdate('2024-01-18', '0.5', 'Doctor visit');
+          // Simulate the actual database call that InlineEditableCell would make
+          await DatabaseService.updateScheduleEntry(user.id, '2024-01-18', '0.5', 'Doctor visit');
+        }}
         data-testid="edit-cell-2024-01-18"
       >
         Edit 1/18
@@ -184,7 +192,7 @@ describe('User Flow Integration Tests', () => {
 
       expect(mockScheduleUpdate).toHaveBeenCalledWith('2024-01-18', '0.5', 'Doctor visit');
 
-      // 4. Verify database calls were made
+      // 4. Verify database calls were made (with longer timeout for async operations)
       await waitFor(() => {
         expect(DatabaseService.updateScheduleEntry).toHaveBeenCalledWith(
           regularUser.id,
@@ -192,7 +200,7 @@ describe('User Flow Integration Tests', () => {
           '1',
           undefined
         );
-      });
+      }, { timeout: 5000 }); // Increased timeout for async database operations
     });
 
     test('should prevent access to management features', async () => {

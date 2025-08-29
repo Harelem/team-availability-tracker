@@ -144,19 +144,39 @@ export class SubscriptionManager {
   }
 
   /**
-   * Apply debouncing to subscription creation
+   * Apply debouncing to subscription creation with deduplication
    */
   private subscribeWithDebounce(config: SubscriptionConfig, debounceMs: number): { unsubscribe: () => void } {
+    // Check for duplicate subscription attempts
     const existingTimer = this.debounceTimers.get(config.key)
+    const existingSubscription = this.subscriptions.get(config.key)
+    
+    // If there's already an active subscription, return it instead of creating a new one
+    if (existingSubscription && existingSubscription.isActive) {
+      existingSubscription.refCount++;
+      existingSubscription.lastUsed = new Date();
+      console.log(`🔄 Reusing debounced subscription: ${config.key} (refs: ${existingSubscription.refCount})`);
+      return { unsubscribe: () => this.unsubscribe(config.key) };
+    }
+    
     if (existingTimer) {
       clearTimeout(existingTimer)
     }
 
     const timer = setTimeout(() => {
       this.debounceTimers.delete(config.key)
+      
+      // Double-check that subscription doesn't exist before creating
+      const doubleCheckSubscription = this.subscriptions.get(config.key);
+      if (doubleCheckSubscription && doubleCheckSubscription.isActive) {
+        console.log(`🚫 Subscription ${config.key} already exists, skipping creation`);
+        return;
+      }
+      
       const subscription = this.createSubscription(config)
       if (subscription) {
         this.subscriptions.set(config.key, subscription)
+        console.log(`✅ Created debounced subscription: ${config.key}`);
       }
     }, debounceMs)
 

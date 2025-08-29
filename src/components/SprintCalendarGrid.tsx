@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SprintHistoryEntry } from '@/lib/database';
+import ClientOnly from '@/components/ClientOnly';
 
 interface CalendarDay {
   date: Date;
@@ -258,7 +259,23 @@ export default function SprintCalendarGrid({
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="sprint-calendar-grid h-full flex flex-col" ref={gridRef}>
+    <ClientOnly fallback={
+      <div className="sprint-calendar-grid h-full flex flex-col animate-pulse">
+        <div className="grid grid-cols-7 border-b bg-gray-50">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            <div key={day} className="p-3 text-sm font-medium text-gray-600 text-center border-r last:border-r-0">
+              {day}
+            </div>
+          ))}
+        </div>
+        <div className="flex-1 grid grid-cols-7 border-l border-t">
+          {Array.from({ length: 35 }, (_, i) => (
+            <div key={i} className="relative border-r border-b min-h-[120px] bg-gray-50" />
+          ))}
+        </div>
+      </div>
+    }>
+      <div className="sprint-calendar-grid h-full flex flex-col" ref={gridRef}>
       {/* Week header */}
       <div className="grid grid-cols-7 border-b bg-gray-50">
         {weekDays.map(day => (
@@ -353,6 +370,7 @@ export default function SprintCalendarGrid({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ClientOnly>
   );
 }

@@ -22,6 +22,12 @@ jest.mock('lucide-react', () => ({
   Loader2: ({ className }: any) => <div className={className} data-testid="loading-icon" />,
 }));
 
+// Mock ClientOnly component for testing - render children immediately
+jest.mock('@/components/ClientOnly', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 describe('InlineEditableCell', () => {
   const defaultProps = {
     value: null as CellValue | null,
@@ -45,7 +51,7 @@ describe('InlineEditableCell', () => {
     test('should render empty cell by default', () => {
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       expect(cell).toBeInTheDocument();
       expect(cell).toHaveClass('bg-white');
     });
@@ -75,21 +81,23 @@ describe('InlineEditableCell', () => {
       const value: CellValue = { value: '0.5', hours: 3.5, reason: 'Doctor appointment' };
       render(<InlineEditableCell {...defaultProps} value={value} />);
       
-      const reasonIndicator = screen.getByRole('generic');
-      expect(reasonIndicator).toHaveClass('bg-blue-400');
+      // Look for the small blue dot indicator
+      const reasonIndicator = screen.getByTestId('inline-editable-cell').querySelector('.bg-blue-400');
+      expect(reasonIndicator).toBeInTheDocument();
+      expect(reasonIndicator).toHaveClass('w-2', 'h-2', 'rounded-full');
     });
 
     test('should apply correct styling based on value', () => {
       const { rerender } = render(<InlineEditableCell {...defaultProps} value={{ value: '1', hours: 7 }} />);
-      let cell = screen.getByRole('generic');
+      let cell = screen.getByTestId('inline-editable-cell');
       expect(cell).toHaveClass('bg-green-50');
 
       rerender(<InlineEditableCell {...defaultProps} value={{ value: '0.5', hours: 3.5 }} />);
-      cell = screen.getByRole('generic');
+      cell = screen.getByTestId('inline-editable-cell');
       expect(cell).toHaveClass('bg-yellow-50');
 
       rerender(<InlineEditableCell {...defaultProps} value={{ value: 'X', hours: 0 }} />);
-      cell = screen.getByRole('generic');
+      cell = screen.getByTestId('inline-editable-cell');
       expect(cell).toHaveClass('bg-red-50');
     });
   });
@@ -103,7 +111,7 @@ describe('InlineEditableCell', () => {
       const user = userEvent.setup();
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       // Should show value selection buttons
@@ -116,7 +124,7 @@ describe('InlineEditableCell', () => {
       const user = userEvent.setup();
       render(<InlineEditableCell {...defaultProps} isManagerView={false} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       // Should not show edit buttons
@@ -129,7 +137,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} onSave={mockOnSave} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const fullDayButton = screen.getByRole('button', { name: '1' });
@@ -155,7 +163,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const halfDayButton = screen.getByRole('button', { name: '0.5' });
@@ -172,7 +180,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const sickButton = screen.getByRole('button', { name: 'X' });
@@ -197,7 +205,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} onSave={mockOnSave} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const sickButton = screen.getByRole('button', { name: 'X' });
@@ -230,7 +238,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const halfDayButton = screen.getByRole('button', { name: '0.5' });
@@ -255,7 +263,7 @@ describe('InlineEditableCell', () => {
     test('should handle keyboard shortcuts in edit mode', async () => {
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       fireEvent.click(cell);
       
       // Test '1' key for full day
@@ -274,7 +282,7 @@ describe('InlineEditableCell', () => {
     test('should handle Escape key to cancel', () => {
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       fireEvent.click(cell);
       
       // Should show edit buttons
@@ -292,7 +300,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const halfDayButton = screen.getByRole('button', { name: '0.5' });
@@ -330,7 +338,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const fullDayButton = screen.getByRole('button', { name: '1' });
@@ -354,7 +362,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const fullDayButton = screen.getByRole('button', { name: '1' });
@@ -380,7 +388,7 @@ describe('InlineEditableCell', () => {
       
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       await user.click(cell);
       
       const fullDayButton = screen.getByRole('button', { name: '1' });
@@ -407,7 +415,7 @@ describe('InlineEditableCell', () => {
         </div>
       );
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       fireEvent.click(cell);
       
       // Should be in edit mode
@@ -424,7 +432,7 @@ describe('InlineEditableCell', () => {
     test('should not cancel on clicks within the cell', () => {
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       fireEvent.click(cell);
       
       // Should be in edit mode
@@ -446,7 +454,7 @@ describe('InlineEditableCell', () => {
     test('should be keyboard accessible', () => {
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       
       // Should be focusable for managers
       expect(cell).toHaveAttribute('tabIndex', '0');
@@ -455,7 +463,7 @@ describe('InlineEditableCell', () => {
     test('should not be focusable for non-manager view', () => {
       render(<InlineEditableCell {...defaultProps} isManagerView={false} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       
       // Should not be focusable for regular users
       expect(cell).toHaveAttribute('tabIndex', '-1');
@@ -465,7 +473,7 @@ describe('InlineEditableCell', () => {
       const value: CellValue = { value: '1', hours: 7 };
       render(<InlineEditableCell {...defaultProps} value={value} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       
       // Should have appropriate classes for screen readers
       expect(cell).toHaveClass('cursor-pointer');
@@ -474,7 +482,7 @@ describe('InlineEditableCell', () => {
     test('should handle focus and blur events', () => {
       render(<InlineEditableCell {...defaultProps} />);
       
-      const cell = screen.getByRole('generic');
+      const cell = screen.getByTestId('inline-editable-cell');
       
       fireEvent.focus(cell);
       fireEvent.blur(cell);

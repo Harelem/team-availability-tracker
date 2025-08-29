@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, startTransition } from 'react';
 import { Loader2 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
+import ClientOnly from '@/components/ClientOnly';
 
 export interface CellValue {
   value: '1' | '0.5' | 'X' | null;
@@ -95,29 +96,46 @@ export default function InlineEditableCell({
   };
 
   const saveValue = async (newValue: CellValue) => {
+    // Optimistic UI update - update immediately for better UX
+    const previousValue = currentValue;
+    setCurrentValue(newValue);
+    setIsEditing(false);
+    setShowReasonInput(false);
+    setReason('');
+    
+    // Show saving state without blocking UI
     setIsSaving(true);
     
-    try {
-      await DatabaseService.updateScheduleEntry(
+    // Use startTransition to make database update non-blocking
+    startTransition(() => {
+      // Perform database update asynchronously
+      DatabaseService.updateScheduleEntry(
         parseInt(memberId),
         date,
         newValue.value,
         newValue.reason
-      );
-
-      setCurrentValue(newValue);
-      setIsEditing(false);
-      setShowReasonInput(false);
-      setReason('');
-      
-      onSave?.(newValue);
-      
-    } catch (error) {
-      console.error('Error saving schedule entry:', error);
-      // TODO: Add error toast notification
-    } finally {
-      setIsSaving(false);
-    }
+      ).then(() => {
+        // Success - optimistic update was correct
+        onSave?.(newValue);
+        console.log(`✅ Schedule entry saved for member ${memberId} on ${date}`);
+      }).catch((error) => {
+        console.error('Error saving schedule entry:', error);
+        
+        // Rollback optimistic update on error
+        setCurrentValue(previousValue);
+        
+        // Re-enable editing so user can try again
+        setIsEditing(true);
+        if (newValue.value === '0.5' || newValue.value === 'X') {
+          setShowReasonInput(true);
+          setReason(newValue.reason || '');
+        }
+        
+        // TODO: Add error toast notification
+      }).finally(() => {
+        setIsSaving(false);
+      });
+    });
   };
 
   const handleCancelEdit = useCallback(() => {
@@ -192,15 +210,23 @@ export default function InlineEditableCell({
   };
 
   return (
-    <div
-      ref={cellRef}
-      className={`relative min-w-[120px] h-12 border transition-all duration-200 ${getCellStyle()} ${
-        isEditing ? 'ring-2 ring-blue-500 ring-offset-1' : ''
-      } ${isManagerView ? 'cursor-pointer' : 'cursor-default'} ${className}`}
-      onClick={handleCellClick}
-      onKeyDown={handleKeyDown}
-      tabIndex={isManagerView ? 0 : -1}
-    >
+    <ClientOnly fallback={
+      <div className={`relative min-w-[120px] h-12 border transition-all duration-200 bg-gray-50 ${className}`}>
+        <div className="flex items-center justify-center h-full">
+          <div className="w-4 h-4 bg-gray-300 rounded animate-pulse"></div>
+        </div>
+      </div>
+    }>
+      <div
+        ref={cellRef}
+        data-testid="inline-editable-cell"
+        className={`relative min-w-[120px] h-12 border transition-all duration-200 ${getCellStyle()} ${
+          isEditing ? 'ring-2 ring-blue-500 ring-offset-1' : ''
+        } ${isManagerView ? 'cursor-pointer' : 'cursor-default'} ${className}`}
+        onClick={handleCellClick}
+        onKeyDown={handleKeyDown}
+        tabIndex={isManagerView ? 0 : -1}
+      >
       {isSaving && (
         <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
           <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
@@ -273,6 +299,7 @@ export default function InlineEditableCell({
           )}
         </div>
       )}
-    </div>
+      </div>
+    </ClientOnly>
   );
 }

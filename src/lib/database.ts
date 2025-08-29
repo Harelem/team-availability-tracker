@@ -1517,9 +1517,35 @@ export const DatabaseService = {
       return {}
     }
 
+    // 🔍 DATABASE DEBUG - Log getScheduleEntries parameters
+    console.log('🔍 DATABASE DEBUG - getScheduleEntries called:', {
+      startDate,
+      endDate,
+      teamId,
+      forceRefresh,
+      dateRange: {
+        start: new Date(startDate).toLocaleDateString(),
+        end: new Date(endDate).toLocaleDateString(),
+        daysDiff: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+      }
+    });
+
     // Use optimized pagination with reduced limit to prevent egress overload
     // 50 items = ~20KB instead of 200 items = ~80KB (75% reduction)
     const result = await this.getPaginatedScheduleEntries(startDate, endDate, teamId, { limit: 50 });
+    
+    // 🔍 DATABASE DEBUG - Log getScheduleEntries results
+    console.log('🔍 DATABASE DEBUG - getScheduleEntries results:', {
+      startDate,
+      endDate,
+      teamId,
+      resultKeys: Object.keys(result.data),
+      totalMembers: Object.keys(result.data).length,
+      hasMoreData: result.hasMore,
+      sampleMemberIds: Object.keys(result.data).slice(0, 5),
+      totalEntries: Object.values(result.data).reduce((sum, memberData) => sum + Object.keys(memberData).length, 0)
+    });
+    
     return result.data;
   },
 
@@ -1602,7 +1628,41 @@ export const DatabaseService = {
           throw error
         }
       } else {
-        // Upsert the entry
+        // Use cached sprint data to avoid blocking calls
+        let sprintUuid = null;
+        
+        try {
+          // Try to get sprint from cache first (non-blocking)
+          const currentSprint = await Promise.race([
+            this.getCurrentGlobalSprint(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Sprint fetch timeout')), 2000)
+            )
+          ]) as any;
+          
+          if (currentSprint) {
+            // Convert sprint ID to UUID format (consistent with migration)
+            if (typeof currentSprint.id === 'string' && currentSprint.id.includes('-')) {
+              sprintUuid = currentSprint.id; // Already a UUID
+            } else {
+              // Convert integer ID to deterministic UUID format
+              const paddedId = String(currentSprint.id).padStart(12, '0');
+              sprintUuid = `00000000-0000-0000-0000-${paddedId}`;
+            }
+          }
+        } catch (sprintError) {
+          // Sprint fetch failed or timed out - proceed without sprint association
+          console.warn('Failed to fetch current sprint, proceeding without sprint association:', sprintError);
+        }
+        
+        console.log('🔗 Associating schedule entry with sprint:', { 
+          memberId, 
+          date, 
+          value, 
+          sprintUuid: sprintUuid || 'none' 
+        });
+        
+        // Upsert the entry - sprint association is optional for performance
         const { error } = await supabase
           .from('schedule_entries')
           .upsert({
@@ -1610,6 +1670,7 @@ export const DatabaseService = {
             date,
             value,
             reason: reason || null,
+            sprint_id: sprintUuid, // Optional: Associate with current sprint using UUID
             updated_at: new Date().toISOString()
           }, { onConflict: 'member_id,date' })
         
@@ -1619,12 +1680,24 @@ export const DatabaseService = {
         }
       }
 
-      // Invalidate relevant caches after successful update
-      dataConsistencyManager.invalidateCachePattern(/^schedule_entries_/);
-      dataConsistencyManager.invalidateCachePattern(/^company_hours_status_/);
-      dataConsistencyManager.invalidateCache(CacheKeys.COO_DASHBOARD_DATA);
+      // Batch cache invalidation operations to reduce blocking
+      try {
+        const cacheOperations = [
+          dataConsistencyManager.invalidateCachePattern(/^schedule_entries_/),
+          dataConsistencyManager.invalidateCachePattern(/^company_hours_status_/),
+          dataConsistencyManager.invalidateCache(CacheKeys.COO_DASHBOARD_DATA)
+        ];
+        
+        // Run cache operations in parallel but don't wait for them
+        Promise.all(cacheOperations).catch(cacheError => {
+          console.warn('Cache invalidation failed (non-critical):', cacheError);
+        });
+      } catch (cacheError) {
+        // Cache errors should not block the main operation
+        console.warn('Cache invalidation error (non-critical):', cacheError);
+      }
       
-      console.log(`✅ Schedule entry updated and caches invalidated for member ${memberId} on ${date}`);
+      console.log(`✅ Schedule entry updated for member ${memberId} on ${date}`);
       
     } catch (error) {
       console.error('Error in updateScheduleEntry:', error);
@@ -1930,15 +2003,87 @@ export const DatabaseService = {
     }
   },
 
+  // Helper method to find the next available sprint number
+  async getNextAvailableSprintNumber(): Promise<number> {
+    if (!isSupabaseConfigured()) {
+      return Math.floor(Date.now() / 100000) // Timestamp fallback
+    }
+    
+    try {
+      // Get all existing sprint numbers
+      const { data: existingSprints } = await supabase
+        .from('sprint_history')
+        .select('sprint_number')
+        .order('sprint_number', { ascending: true })
+      
+      if (!existingSprints || existingSprints.length === 0) {
+        return 1 // First sprint
+      }
+      
+      // Find the first gap in sequence or use max + 1
+      const sprintNumbers = existingSprints.map(s => s.sprint_number).sort((a, b) => a - b)
+      
+      // Check for gaps in sequence
+      for (let i = 1; i <= sprintNumbers.length + 1; i++) {
+        if (!sprintNumbers.includes(i)) {
+          return i
+        }
+      }
+      
+      // No gaps found, use max + 1
+      const maxNumber = Math.max(...sprintNumbers)
+      return maxNumber + 1
+      
+    } catch (error) {
+      console.error('Error finding next available sprint number:', error)
+      // Fallback to timestamp-based unique number
+      return Math.floor(Date.now() / 100000)
+    }
+  },
+
   async startNewGlobalSprint(lengthWeeks: number, updatedBy: string): Promise<boolean> {
     if (!isSupabaseConfigured()) {
       return false
     }
     
     try {
-      // Get current sprint to increment sprint number
-      const currentSprint = await this.getCurrentGlobalSprint()
-      const newSprintNumber = currentSprint ? currentSprint.current_sprint_number + 1 : 1
+      // Enhanced sprint number generation with better error handling
+      let newSprintNumber = 1
+      
+      try {
+        // Try to get from current sprint first
+        const currentSprint = await this.getCurrentGlobalSprint()
+        if (currentSprint?.current_sprint_number) {
+          newSprintNumber = currentSprint.current_sprint_number + 1
+        } else {
+          // Fallback: get max from sprint_history
+          const { data: maxSprint } = await supabase
+            .from('sprint_history')
+            .select('sprint_number')
+            .order('sprint_number', { ascending: false })
+            .limit(1)
+            .single()
+          newSprintNumber = (maxSprint?.sprint_number || 0) + 1
+        }
+        
+        console.log('Generated sprint number:', newSprintNumber)
+        
+        // Validate sprint number is not already in use
+        const { data: existingSprint } = await supabase
+          .from('sprint_history')
+          .select('sprint_number')
+          .eq('sprint_number', newSprintNumber)
+          .single()
+        
+        if (existingSprint) {
+          console.warn(`Sprint number ${newSprintNumber} already exists, finding next available`)
+          newSprintNumber = await this.getNextAvailableSprintNumber()
+        }
+      } catch (error) {
+        console.warn('Error getting sprint number, using timestamp fallback:', error)
+        // Use timestamp as unique number if all else fails
+        newSprintNumber = Math.floor(Date.now() / 100000)
+      }
       
       const startDate = new Date().toISOString().split('T')[0]
       const endDate = new Date()
@@ -1966,6 +2111,24 @@ export const DatabaseService = {
         })
       
       if (!enhancedError) {
+        // Also insert into sprint_history for consistency
+        const { error: historyError } = await supabase
+          .from('sprint_history')
+          .insert({
+            sprint_number: newSprintNumber,
+            sprint_name: `Sprint ${newSprintNumber}`,
+            sprint_start_date: startDate,
+            sprint_end_date: endDateString,
+            sprint_length_weeks: lengthWeeks,
+            status: 'active',
+            created_by: updatedBy
+          })
+        
+        if (historyError) {
+          console.error('Error inserting into sprint_history:', historyError)
+          // Continue anyway since enhanced_sprint_configs succeeded
+        }
+        
         return true
       }
 
@@ -1980,6 +2143,26 @@ export const DatabaseService = {
           updated_at: new Date().toISOString()
         })
         .eq('id', 1) // Assuming single row
+      
+      if (!legacyError) {
+        // Also insert into sprint_history for consistency
+        const { error: historyError } = await supabase
+          .from('sprint_history')
+          .insert({
+            sprint_number: newSprintNumber,
+            sprint_name: `Sprint ${newSprintNumber}`,
+            sprint_start_date: startDate,
+            sprint_end_date: endDateString,
+            sprint_length_weeks: lengthWeeks,
+            status: 'active',
+            created_by: updatedBy
+          })
+        
+        if (historyError) {
+          console.error('Error inserting into sprint_history (legacy path):', historyError)
+          // Continue anyway since global_sprint_settings succeeded
+        }
+      }
       
       return !legacyError
     } catch (error) {

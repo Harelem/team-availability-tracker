@@ -7,7 +7,8 @@
  * It includes debugging utilities and DevTools integration for development.
  */
 
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, ReactNode, startTransition } from 'react';
+import { unstable_batchedUpdates } from 'react-dom';
 import { AppStateContextType, AppState } from '@/types/state';
 import { useAppStateReducer } from '@/lib/appState';
 
@@ -160,60 +161,98 @@ export function AppStateProvider({
     }
   }, [selectors, state.ui.errors]);
 
-  // Auto-save user preferences to localStorage (debounced to prevent loops)
+  // Auto-save user preferences to localStorage (debounced and batched to prevent loops and blocking)
   const preferencesRef = React.useRef(state.user.preferences);
+  const preferencesTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
     if (state.initialized && state.user.currentUser && 
         JSON.stringify(preferencesRef.current) !== JSON.stringify(state.user.preferences)) {
-      preferencesRef.current = state.user.preferences;
-      try {
-        localStorage.setItem('userPreferences', JSON.stringify(state.user.preferences));
-      } catch (error) {
-        console.warn('Failed to save user preferences:', error);
+      
+      // Clear existing timeout
+      if (preferencesTimeoutRef.current) {
+        clearTimeout(preferencesTimeoutRef.current);
       }
+      
+      // Debounce localStorage operations to prevent blocking
+      preferencesTimeoutRef.current = setTimeout(() => {
+        startTransition(() => {
+          try {
+            localStorage.setItem('userPreferences', JSON.stringify(state.user.preferences));
+            preferencesRef.current = state.user.preferences;
+          } catch (error) {
+            console.warn('Failed to save user preferences:', error);
+          }
+        });
+      }, 500); // 500ms debounce
     }
   }, [state.initialized, state.user.currentUser, state.user.preferences]);
 
-  // Load user preferences from localStorage (only once on mount)
+  // Load user preferences from localStorage (only once on mount, non-blocking)
   const hasLoadedPreferences = React.useRef(false);
   useEffect(() => {
     if (state.initialized && !hasLoadedPreferences.current) {
       hasLoadedPreferences.current = true;
-      try {
-        const savedPreferences = localStorage.getItem('userPreferences');
-        if (savedPreferences) {
-          const preferences = JSON.parse(savedPreferences);
-          dispatch({ 
-            type: 'UPDATE_USER_PREFERENCES', 
-            payload: { preferences } 
-          });
+      
+      // Use startTransition to make preference loading non-blocking
+      startTransition(() => {
+        try {
+          const savedPreferences = localStorage.getItem('userPreferences');
+          if (savedPreferences) {
+            const preferences = JSON.parse(savedPreferences);
+            
+            // Batch the state update to prevent cascading re-renders
+            unstable_batchedUpdates(() => {
+              dispatch({ 
+                type: 'UPDATE_USER_PREFERENCES', 
+                payload: { preferences } 
+              });
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to load user preferences:', error);
         }
-      } catch (error) {
-        console.warn('Failed to load user preferences:', error);
-      }
+      });
     }
   }, [state.initialized, dispatch]);
 
-  // Cache invalidation cleanup
+  // Cache invalidation cleanup (batched and non-blocking)
   useEffect(() => {
     const cleanup = () => {
-      // Clean up any pending timeouts or intervals
-      Object.entries(state.cache.policies).forEach(([key, policy]) => {
-        const timestamp = state.cache.timestamps[key as keyof typeof state.cache.timestamps];
-        if (timestamp && policy.ttl) {
-          const age = Date.now() - timestamp.getTime();
-          if (age > policy.ttl) {
-            dispatch({ 
-              type: 'INVALIDATE_CACHE', 
-              payload: { key: key as keyof typeof state.cache.invalidation } 
-            });
+      startTransition(() => {
+        // Collect all cache operations to batch them
+        const invalidationActions: any[] = [];
+        
+        Object.entries(state.cache.policies).forEach(([key, policy]) => {
+          const timestamp = state.cache.timestamps[key as keyof typeof state.cache.timestamps];
+          if (timestamp && policy.ttl) {
+            const age = Date.now() - timestamp.getTime();
+            if (age > policy.ttl) {
+              invalidationActions.push({ 
+                type: 'INVALIDATE_CACHE', 
+                payload: { key: key as keyof typeof state.cache.invalidation } 
+              });
+            }
           }
+        });
+        
+        // Batch all invalidation actions to prevent multiple re-renders
+        if (invalidationActions.length > 0) {
+          unstable_batchedUpdates(() => {
+            invalidationActions.forEach(action => dispatch(action));
+          });
         }
       });
     };
 
     const interval = setInterval(cleanup, 60000); // Check every minute
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      // Cleanup timeout refs on unmount
+      if (preferencesTimeoutRef.current) {
+        clearTimeout(preferencesTimeoutRef.current);
+      }
+    };
   }, [state.cache.policies, state.cache.timestamps, dispatch]);
 
   const contextValue: AppStateContextType = {
