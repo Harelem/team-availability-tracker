@@ -38,6 +38,7 @@ export default function CompanyMetrics() {
   const [metrics, setMetrics] = useState<CompanyMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     loadCompanyMetrics();
@@ -213,6 +214,7 @@ export default function CompanyMetrics() {
       };
 
       setMetrics(companyMetrics);
+      setLastUpdated(new Date());
 
     } catch (err) {
       console.error('Error loading company metrics:', err);
@@ -224,7 +226,7 @@ export default function CompanyMetrics() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="bg-white rounded-lg shadow-sm p-6" data-testid="loading-metrics">
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-gray-200 rounded w-1/3"></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -258,7 +260,14 @@ export default function CompanyMetrics() {
             <Target className="w-5 h-5 text-purple-600" />
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Company Metrics</h2>
-              <p className="text-sm text-gray-600">Overall performance and capacity overview</p>
+              <p className="text-sm text-gray-600">
+                Overall performance and capacity overview
+                {lastUpdated && (
+                  <span className="block text-xs text-gray-500 mt-1">
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <button
@@ -272,7 +281,7 @@ export default function CompanyMetrics() {
 
       {/* Error Display */}
       {error && (
-        <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+        <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3" data-testid="error-message">
           <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm text-red-800">{error}</p>
@@ -342,7 +351,7 @@ export default function CompanyMetrics() {
             </div>
           </div>
         ) : (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6" data-testid="no-active-sprint">
             <div className="flex items-center gap-3">
               <Calendar className="w-6 h-6 text-yellow-600" />
               <div>

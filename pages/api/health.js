@@ -40,7 +40,9 @@ export default async function handler(req, res) {
   const response = {
     status: isHealthy ? 'healthy' : 'unhealthy',
     checks,
-    message: isHealthy ? 'All systems operational' : 'Some systems are experiencing issues'
+    message: isHealthy ? 'All systems operational' : 'Some systems are experiencing issues',
+    version: '2.2.0',
+    build_time: new Date().toISOString()
   };
 
   res.status(status).json(response);
