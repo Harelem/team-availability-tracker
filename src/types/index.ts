@@ -16,7 +16,7 @@ export interface TeamMember {
   email?: string;
   team_id: number;
   manager_max_hours?: number; // Enhanced sprint system - custom hours for managers
-  role?: 'member' | 'manager' | 'coo'; // Enhanced sprint system - role-based permissions
+  role?: 'member' | 'manager' | 'coo' | 'sprint_manager'; // Enhanced sprint system - role-based permissions
   created_at?: string;
   updated_at?: string;
 }

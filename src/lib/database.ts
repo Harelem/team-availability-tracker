@@ -5118,5 +5118,67 @@ The table creation script includes:
       console.error('Failed to fetch all members:', appError.userMessage);
       return [];
     }
+  },
+
+  /**
+   * Get current sprint information
+   */
+  async getCurrentSprint(): Promise<CurrentGlobalSprint> {
+    return this.getCurrentGlobalSprint();
+  },
+
+  /**
+   * Create a new team member
+   */
+  async createTeamMember(memberData: TeamMemberInput): Promise<TeamMember> {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .insert([{
+          name: memberData.name,
+          hebrew: memberData.hebrew,
+          email: memberData.email,
+          team_id: memberData.team_id,
+          is_manager: memberData.isManager || false,
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Failed to create team member: ${error.message}`);
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        hebrew: data.hebrew,
+        isManager: data.is_manager || false,
+        email: data.email,
+        team_id: data.team_id,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
+
+    } catch (error) {
+      console.error('Failed to create team member:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Export data to Excel format (now exports as CSV)
+   * @deprecated Use exportToCSV instead
+   */
+  async exportToExcel(data: any, filename?: string): Promise<void> {
+    const { exportToCSV } = await import('./exportService');
+    return exportToCSV(data, filename || 'export');
+  },
+
+  /**
+   * Export data to CSV format
+   */
+  async exportToCSV(data: any, filename?: string): Promise<void> {
+    const { exportToCSV } = await import('./exportService');
+    return exportToCSV(data, filename || 'export');
   }
-}
+};

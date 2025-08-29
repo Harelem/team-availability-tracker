@@ -1,11 +1,10 @@
 /**
- * Excel Export Service
+ * CSV Export Service
  * 
- * Provides functions to export dashboard data to properly formatted Excel files
- * instead of JSON files.
+ * Provides functions to export dashboard data to properly formatted CSV files
+ * for security and compatibility.
  */
 
-import * as XLSX from 'xlsx';
 import { COODashboardData } from '@/types';
 
 export interface ExportData {
@@ -13,66 +12,87 @@ export interface ExportData {
 }
 
 /**
- * Export data to Excel file with multiple sheets
+ * Convert array of objects to CSV string
  */
-export const exportToExcel = async (
+const arrayToCsv = (data: any[]): string => {
+  if (!data || data.length === 0) return '';
+  
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    // Header row
+    headers.map(header => `"${String(header).replace(/"/g, '""')}"`).join(','),
+    // Data rows
+    ...data.map(row => 
+      headers.map(header => {
+        const value = row[header] ?? '';
+        return `"${String(value).replace(/"/g, '""')}"`;
+      }).join(',')
+    )
+  ].join('\n');
+  
+  return csvContent;
+};
+
+/**
+ * Download CSV file
+ */
+const downloadCsv = (csvContent: string, filename: string): void => {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${filename}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Export data to CSV files (one file per sheet)
+ */
+export const exportToCSV = async (
   data: ExportData,
   filename: string
 ): Promise<void> => {
   try {
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
+    const sheets = Object.entries(data);
     
-    // Add each sheet
-    Object.entries(data).forEach(([sheetName, sheetData]) => {
-      const worksheet = XLSX.utils.json_to_sheet(sheetData);
+    if (sheets.length === 1) {
+      // Single sheet - export as one CSV file
+      const [sheetName, sheetData] = sheets[0];
+      const csvContent = arrayToCsv(sheetData);
+      downloadCsv(csvContent, filename);
+    } else {
+      // Multiple sheets - create a ZIP file or export separately
+      // For now, export the first sheet as the main file
+      const [mainSheetName, mainSheetData] = sheets[0];
+      const csvContent = arrayToCsv(mainSheetData);
+      downloadCsv(csvContent, `${filename}_${mainSheetName.replace(/[^a-zA-Z0-9]/g, '_')}`);
       
-      // Auto-size columns
-      const colWidths: { wch: number }[] = [];
-      if (sheetData.length > 0) {
-        const headers = Object.keys(sheetData[0]);
-        headers.forEach((header, index) => {
-          const maxLength = Math.max(
-            header.length,
-            ...sheetData.map(row => String(row[header] || '').length)
-          );
-          colWidths[index] = { wch: Math.min(Math.max(maxLength + 2, 10), 50) };
-        });
-        worksheet['!cols'] = colWidths;
+      // Export additional sheets with suffixed names
+      for (let i = 1; i < sheets.length; i++) {
+        const [sheetName, sheetData] = sheets[i];
+        const csvContent = arrayToCsv(sheetData);
+        downloadCsv(csvContent, `${filename}_${sheetName.replace(/[^a-zA-Z0-9]/g, '_')}`);
       }
-      
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-    });
-    
-    // Generate Excel file and download
-    const excelBuffer = XLSX.write(workbook, { 
-      bookType: 'xlsx', 
-      type: 'array' 
-    });
-    
-    const blob = new Blob([excelBuffer], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-    });
-    
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${filename}.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    URL.revokeObjectURL(url);
+    }
   } catch (error) {
-    console.error('Excel export failed:', error);
-    throw new Error('Failed to export Excel file');
+    console.error('CSV export failed:', error);
+    throw new Error('Failed to export CSV file');
   }
 };
 
 /**
- * Export analytics data to Excel with formatted sheets
+ * Legacy Excel export function - now exports as CSV
+ * @deprecated Use exportToCSV instead
  */
-export const exportAnalyticsToExcel = async (
+export const exportToExcel = exportToCSV;
+
+/**
+ * Export analytics data to CSV with formatted sheets
+ */
+export const exportAnalyticsToCSV = async (
   dashboardData: COODashboardData,
   companyAnalytics?: any | null,
   alerts?: any[] | null,
@@ -219,18 +239,24 @@ export const exportAnalyticsToExcel = async (
     }];
     
     const filename = `COO_Analytics_Report_${new Date().toISOString().split('T')[0]}`;
-    await exportToExcel(exportData, filename);
+    await exportToCSV(exportData, filename);
     
   } catch (error) {
-    console.error('Error exporting analytics to Excel:', error);
+    console.error('Error exporting analytics to CSV:', error);
     throw error;
   }
 };
 
 /**
- * Export team data to Excel
+ * Legacy Excel export function - now exports as CSV
+ * @deprecated Use exportAnalyticsToCSV instead
  */
-export const exportTeamDataToExcel = async (
+export const exportAnalyticsToExcel = exportAnalyticsToCSV;
+
+/**
+ * Export team data to CSV
+ */
+export const exportTeamDataToCSV = async (
   teamData: any,
   teamName: string
 ): Promise<void> => {
@@ -318,16 +344,25 @@ export const exportTeamDataToExcel = async (
     }
     
     const filename = `Team_${teamName.replace(/\s+/g, '_')}_Export_${new Date().toISOString().split('T')[0]}`;
-    await exportToExcel(exportData, filename);
+    await exportToCSV(exportData, filename);
     
   } catch (error) {
-    console.error('Error exporting team data to Excel:', error);
+    console.error('Error exporting team data to CSV:', error);
     throw error;
   }
 };
 
+/**
+ * Legacy Excel export function - now exports as CSV
+ * @deprecated Use exportTeamDataToCSV instead
+ */
+export const exportTeamDataToExcel = exportTeamDataToCSV;
+
 export default {
-  exportToExcel,
-  exportAnalyticsToExcel,
-  exportTeamDataToExcel
+  exportToExcel, // Legacy - now exports CSV
+  exportToCSV,
+  exportAnalyticsToExcel, // Legacy - now exports CSV
+  exportAnalyticsToCSV,
+  exportTeamDataToExcel, // Legacy - now exports CSV
+  exportTeamDataToCSV
 };
