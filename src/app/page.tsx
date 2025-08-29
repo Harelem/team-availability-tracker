@@ -4,27 +4,32 @@ import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import TeamSelectionScreen from '@/components/TeamSelectionScreen';
 
-// Dynamic imports for navigation components to optimize initial load
+// OPTIMIZED: Aggressively lazy load non-critical components to reduce TTI
 const BreadcrumbNavigation = dynamic(() => import('@/components/BreadcrumbNavigation'), {
-  loading: () => <div className="h-8 bg-gray-200 rounded animate-pulse" />,
+  loading: () => <MinimalLoader />,
   ssr: false
 });
 
 const MobileBreadcrumb = dynamic(() => import('@/components/MobileBreadcrumb'), {
-  loading: () => <div className="h-6 bg-gray-200 rounded animate-pulse" />,
+  loading: () => <MinimalLoader />,
   ssr: false
 });
 
-// Dynamic imports for heavy dashboard components - improves LCP
+// OPTIMIZED: Lazy load dashboard components with minimal loading states
 const PersonalDashboard = dynamic(() => import('@/components/PersonalDashboard'), {
-  loading: () => <LoadingState testId="personal-dashboard-loading" showText text="Loading dashboard..." />,
+  loading: () => <MinimalLoader text="Loading dashboard..." />,
   ssr: false
 });
 
-// Conditional rendering approach to avoid dynamic import factory issues
+// OPTIMIZED: Use React.lazy for better code splitting
 const LazyManagerDashboard = React.lazy(() => import('@/components/ManagerDashboard'));
+
+// OPTIMIZED: Lazy load team selection for faster initial load  
+const TeamSelectionScreen = dynamic(() => import('@/components/TeamSelectionScreen'), {
+  loading: () => <MinimalLoader text="Loading teams..." />,
+  ssr: false
+});
 
 // Simple Error Boundary for ManagerDashboard
 class ManagerDashboardErrorBoundary extends React.Component<
@@ -65,6 +70,7 @@ import { TeamMember, Team } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import ClientOnly from '@/components/ClientOnly';
 import LoadingState from '@/components/LoadingState';
+import MinimalLoader from '@/components/MinimalLoader';
 
 // Defer non-critical imports for better LCP
 const getLogger = () => {
@@ -80,23 +86,17 @@ const logger = { info: () => {}, warn: () => {}, error: () => {}, success: () =>
 function HomeContent() {
   const { selectedTeam, setSelectedTeam } = useTeam();
   
-  // Dynamic mobile detection to reduce initial bundle
+  // OPTIMIZED: Fast inline mobile detection to avoid dynamic imports during render
   const [isMobile, setIsMobile] = useState(false);
   
   useEffect(() => {
-    import('@/hooks/useIsMobile').then(({ useIsMobile }) => {
-      // For immediate use after import
-      const checkMobile = () => window.innerWidth < 768;
-      setIsMobile(checkMobile());
-      
-      const handleResize = () => setIsMobile(checkMobile());
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }).catch(error => {
-      console.warn('Failed to load mobile detection:', error);
-      // Fallback to basic mobile detection
-      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
-    });
+    // Direct mobile detection without dynamic imports
+    const checkMobile = () => window.innerWidth < 768;
+    setIsMobile(checkMobile());
+    
+    const handleResize = () => setIsMobile(checkMobile());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Removed isMounted state to prevent hydration mismatches
@@ -110,40 +110,26 @@ function HomeContent() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [backgroundDataLoaded, setBackgroundDataLoaded] = useState(false);
 
-  // Background data loading for non-critical operations - dynamically loaded
+  // OPTIMIZED: Simplified background data loading to reduce bundle size
   const loadBackgroundData = useCallback(async () => {
     if (backgroundDataLoaded) return;
     
     try {
-      // Dynamically import non-critical utilities to reduce initial bundle
-      const [
-        { performDataPersistenceCheck, verifyDatabaseState },
-        { validateDatabaseSchema }
-      ] = await Promise.all([
-        import('@/utils/dataPreservation'),
-        import('@/utils/schemaValidator')
-      ]);
-      
-      // Load non-critical data in background
-      const backgroundTasks = [
-        performDataPersistenceCheck(),
-        verifyDatabaseState()
-      ];
-      
-      const [dataChecks] = await Promise.allSettled(backgroundTasks);
-      
-      // Log background data results
-      if (dataChecks && dataChecks.status === 'fulfilled' && Array.isArray(dataChecks.value)) {
-        const criticalIssues = dataChecks.value?.filter((check: { status: string }) => check.status === 'FAIL');
-        if (criticalIssues.length > 0) {
-          logger.warn(`Background: Critical data issues detected: ${criticalIssues.length}`, 'database');
+      // Defer non-critical background operations even further
+      setTimeout(async () => {
+        try {
+          const { performDataPersistenceCheck } = await import('@/utils/dataPreservation');
+          await performDataPersistenceCheck();
+          setBackgroundDataLoaded(true);
+        } catch (error) {
+          console.warn('Background data loading failed (non-critical)', error);
+          setBackgroundDataLoaded(true); // Set anyway to prevent retries
         }
-      }
-      
-      setBackgroundDataLoaded(true);
+      }, 2000); // Delay 2 seconds after initial load
       
     } catch (error) {
-      logger.warn('Background data loading failed (non-critical)', 'database', error);
+      console.warn('Background data loading failed (non-critical)', error);
+      setBackgroundDataLoaded(true);
     }
   }, [backgroundDataLoaded]);
 
@@ -168,7 +154,7 @@ function HomeContent() {
         setLoading(true);
         
         // SIMPLIFIED: Direct team loading without blocking validation
-        logger.info('Loading teams from database', 'database');
+        console.log('Loading teams from database');
         
         // Direct call to DatabaseService without complex wrappers
         const teamsData = await DatabaseService.getTeams();
@@ -179,16 +165,16 @@ function HomeContent() {
         setTeams(teamsData || []);
         
         if (teamsData && teamsData.length > 0) {
-          logger.success(`Successfully loaded ${teamsData.length} teams`);
+          console.log(`Successfully loaded ${teamsData.length} teams`);
           
           // Save to offline storage for future use - dynamically loaded
           import('@/utils/errorRecovery').then(({ saveOfflineData }) => {
             saveOfflineData(teamsData);
           }).catch(error => {
-            logger.warn('Failed to save offline data (non-critical)', 'mobile', error);
+            console.warn('Failed to save offline data (non-critical)', error);
           });
         } else {
-          logger.warn('No teams found in database - this may be expected for new installations', 'database');
+          console.warn('No teams found in database - this may be expected for new installations');
         }
         
         // BACKGROUND: Run validation and other checks non-blocking with dynamic imports
@@ -198,15 +184,15 @@ function HomeContent() {
             import('@/utils/schemaValidator').then(({ validateDatabaseSchema }) => {
               validateDatabaseSchema().then(result => {
                 if (!result.isValid) {
-                  logger.warn('Schema validation warnings (non-blocking)', 'validation', result.errors);
+                  console.warn('Schema validation warnings (non-blocking)', result.errors);
                 } else {
-                  logger.success('Schema validation passed');
+                  console.log('Schema validation passed');
                 }
               }).catch(err => {
-                logger.warn('Schema validation check failed (non-critical)', 'validation', err);
+                console.warn('Schema validation check failed (non-critical)', err);
               });
             }).catch(err => {
-              logger.warn('Failed to load schema validator (non-critical)', 'validation', err);
+              console.warn('Failed to load schema validator (non-critical)', err);
             });
             
             // Load other background data
@@ -220,24 +206,24 @@ function HomeContent() {
         // Dynamically import error utilities for fallback
         import('@/utils/errorRecovery').then(({ getErrorMessage, loadOfflineData, saveOfflineData }) => {
           const errorMessage = getErrorMessage(error);
-          logger.error('Failed to load teams', 'database', errorMessage);
+          console.error('Failed to load teams', errorMessage);
           
           // FALLBACK: Try offline mode only for real failures
           try {
             const offlineData = loadOfflineData();
             if (offlineData && offlineData.teams && offlineData.teams.length > 0) {
-              logger.info('Using offline data - some information may not be current', 'mobile');
+              console.log('Using offline data - some information may not be current');
               setTeams(offlineData.teams);
             } else {
-              logger.warn('No offline data available', 'mobile');
+              console.warn('No offline data available');
               setTeams([]);
             }
           } catch (fallbackError) {
-            logger.error('Offline fallback also failed', 'mobile', fallbackError);
+            console.error('Offline fallback also failed', fallbackError);
             setTeams([]);
           }
         }).catch(fallbackImportError => {
-          logger.error('Failed to load error recovery utilities', 'database', fallbackImportError);
+          console.error('Failed to load error recovery utilities', fallbackImportError);
           setTeams([]);
         });
       } finally {
@@ -281,7 +267,7 @@ function HomeContent() {
       } catch (error) {
         if (!mounted) return;
         
-        logger.error(`Error loading team members for team: ${selectedTeam?.name}`, 'database', error);
+        console.error(`Error loading team members for team: ${selectedTeam?.name}`, error);
         // Show meaningful error but don't block UI
         setTeamMembers([]);
       } finally {
@@ -318,7 +304,7 @@ function HomeContent() {
       if (targetTeam) {
         setSelectedTeam(targetTeam);
       } else {
-        logger.warn(`Team with ID ${teamId} not found in available teams`);
+        console.warn(`Team with ID ${teamId} not found in available teams`);
       }
     }
   }, [searchParams, teams, selectedTeam, setSelectedTeam]);
@@ -348,7 +334,7 @@ function HomeContent() {
 
   // Show loading state during initial data loading only
   if (loading && teams.length === 0) {
-    return <LoadingState mode="fullscreen" testId="initial-loading" suppressHydrationWarning />;
+    return <div suppressHydrationWarning><LoadingState mode="fullscreen" testId="initial-loading" /></div>;
   }
 
   // Team loading state - hydration safe with inline mode to match container structure

@@ -4,12 +4,11 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DatabaseService } from '@/lib/database';
 import {
   createMockTeam,
-  createMockTeamMember,
   createMockCurrentSprint,
   createMockCOOUser,
   createMockManagerUser,
@@ -37,7 +36,13 @@ jest.mock('@/lib/database', () => ({
 }));
 
 // Mock components for integration testing
-const MockPersonalDashboard = ({ user, team, onScheduleUpdate }: any) => (
+interface MockPersonalDashboardProps {
+  user: { id: string; name: string };
+  team: { name: string };
+  onScheduleUpdate: (date: string, hours: string, note?: string) => void;
+}
+
+const MockPersonalDashboard = ({ user, team, onScheduleUpdate }: MockPersonalDashboardProps) => (
   <div data-testid="personal-dashboard">
     <h1>Welcome, {user.name}</h1>
     <div data-testid="team-info">{team.name}</div>
@@ -69,7 +74,14 @@ const MockPersonalDashboard = ({ user, team, onScheduleUpdate }: any) => (
   </div>
 );
 
-const MockManagerDashboard = ({ user, team, teamMembers, onMemberAction }: any) => (
+interface MockManagerDashboardProps {
+  user: { name: string };
+  team: { name: string };
+  teamMembers: Array<{ id: string; name: string }>;
+  onMemberAction: (action: string, memberId?: string, date?: string, hours?: string) => void;
+}
+
+const MockManagerDashboard = ({ user, team, teamMembers, onMemberAction }: MockManagerDashboardProps) => (
   <div data-testid="manager-dashboard">
     <h1>Manager Dashboard - {team.name}</h1>
     <div data-testid="team-overview">
@@ -77,7 +89,7 @@ const MockManagerDashboard = ({ user, team, teamMembers, onMemberAction }: any) 
       <div>Manager: {user.name}</div>
     </div>
     <div data-testid="team-schedule">
-      {teamMembers.map((member: any) => (
+      {teamMembers.map((member) => (
         <div key={member.id} data-testid={`member-${member.id}`}>
           <span>{member.name}</span>
           <button 
@@ -106,15 +118,20 @@ const MockManagerDashboard = ({ user, team, teamMembers, onMemberAction }: any) 
   </div>
 );
 
-const MockCOODashboard = ({ teams, onCOOAction }: any) => (
+interface MockCOODashboardProps {
+  teams: Array<{ id: number; name: string; members?: Array<{ id: string; name: string }> }>;
+  onCOOAction: (action: string, teamId?: number) => void;
+}
+
+const MockCOODashboard = ({ teams, onCOOAction }: MockCOODashboardProps) => (
   <div data-testid="coo-dashboard">
     <h1>COO Executive Dashboard</h1>
     <div data-testid="company-overview">
       <div>Total Teams: {teams.length}</div>
-      <div>Total Members: {teams.reduce((sum: number, team: any) => sum + (team.members?.length || 0), 0)}</div>
+      <div>Total Members: {teams.reduce((sum: number, team) => sum + (team.members?.length || 0), 0)}</div>
     </div>
     <div data-testid="team-grid">
-      {teams.map((team: any) => (
+      {teams.map((team) => (
         <div key={team.id} data-testid={`team-card-${team.id}`}>
           <h3>{team.name}</h3>
           <button 
@@ -294,7 +311,8 @@ describe('User Flow Integration Tests', () => {
     });
 
     test('should handle team member creation flow', async () => {
-      const manager = createMockManagerUser(1);
+      // Manager context for team member creation
+      createMockManagerUser(1);
       const newMember = {
         name: 'New Member',
         hebrew: 'חבר חדש',
@@ -315,7 +333,8 @@ describe('User Flow Integration Tests', () => {
 
     test('should enforce manager permissions for team boundaries', async () => {
       const manager = createMockManagerUser(1); // Team 1 manager
-      const otherTeamMembers = getTestTeamMembers(2); // Team 2 members
+      // Team 2 members - for reference only
+      getTestTeamMembers(2);
 
       // Manager should not be able to access other teams
       const canAccessOtherTeam = manager.team_id === 2;
@@ -330,7 +349,8 @@ describe('User Flow Integration Tests', () => {
   describe('COO User Journey', () => {
     test('should complete company-wide management flow', async () => {
       const user = userEvent.setup();
-      const cooUser = createMockCOOUser();
+      // COO user has access to all teams
+      createMockCOOUser();
       const teams = getTestTeams();
       
       const mockCOOAction = jest.fn();
@@ -372,7 +392,8 @@ describe('User Flow Integration Tests', () => {
     });
 
     test('should access all teams data', async () => {
-      const cooUser = createMockCOOUser();
+      // COO user has access to all teams data
+      createMockCOOUser();
       const teams = getTestTeams();
 
       (DatabaseService.getDailyCompanyStatus as jest.Mock).mockResolvedValue({
@@ -400,7 +421,8 @@ describe('User Flow Integration Tests', () => {
     });
 
     test('should handle company-wide export operations', async () => {
-      const cooUser = createMockCOOUser();
+      // COO can export company-wide data
+      createMockCOOUser();
       
       (DatabaseService.exportToExcel as jest.Mock).mockResolvedValue({
         filename: 'company-export-2024-01-17.xlsx',
@@ -429,7 +451,8 @@ describe('User Flow Integration Tests', () => {
 
   describe('Cross-Role Interactions', () => {
     test('should handle concurrent edits from different users', async () => {
-      const manager = createMockManagerUser(1);
+      // Manager context for concurrent edit scenario
+      createMockManagerUser(1);
       const regularUser = createMockRegularUser(1);
       const memberId = regularUser.id;
       const date = '2024-01-17';
@@ -522,7 +545,7 @@ describe('User Flow Integration Tests', () => {
 
     test('should handle large dataset operations', async () => {
       // Mock large dataset
-      const largeDataset: any = {};
+      const largeDataset: Record<number, Record<number, string>> = {};
       for (let memberId = 1; memberId <= 100; memberId++) {
         largeDataset[memberId] = {};
         for (let day = 1; day <= 30; day++) {
@@ -575,8 +598,7 @@ describe('User Flow Integration Tests', () => {
     });
 
     test('should calculate sprint hours correctly for Israeli calendar', async () => {
-      const sprintStart = '2024-01-17'; // Wednesday
-      const sprintEnd = '2024-01-30';   // Tuesday
+      // Sprint duration: 2024-01-17 (Wednesday) to 2024-01-30 (Tuesday)
       const teamSize = 4;
       
       // 2 weeks × 5 working days/week × 4 members × 7 hours/day = 280 hours
@@ -611,7 +633,8 @@ describe('User Flow Integration Tests', () => {
 
     test('should export team data for managers', async () => {
       const manager = createMockManagerUser(1);
-      const teamMembers = getTestTeamMembers(1);
+      // Team members for context
+      getTestTeamMembers(1);
       
       (DatabaseService.exportToExcel as jest.Mock).mockResolvedValue({
         filename: 'Development-Tal-2024-01-17.xlsx',
@@ -630,7 +653,8 @@ describe('User Flow Integration Tests', () => {
     });
 
     test('should export company-wide data for COO', async () => {
-      const cooUser = createMockCOOUser();
+      // COO can export all company data
+      createMockCOOUser();
       
       (DatabaseService.exportToExcel as jest.Mock).mockResolvedValue({
         filename: 'Company-Overview-2024-01-17.xlsx',

@@ -1543,7 +1543,7 @@ export const DatabaseService = {
       totalMembers: Object.keys(result.data).length,
       hasMoreData: result.hasMore,
       sampleMemberIds: Object.keys(result.data).slice(0, 5),
-      totalEntries: Object.values(result.data).reduce((sum, memberData) => sum + Object.keys(memberData).length, 0)
+      totalEntries: Object.values(result.data).reduce((sum: number, memberData) => sum + Object.keys(memberData as Record<string, any>).length, 0)
     });
     
     return result.data;
@@ -5138,7 +5138,7 @@ The table creation script includes:
           name: memberData.name,
           hebrew: memberData.hebrew,
           email: memberData.email,
-          team_id: memberData.team_id,
+          team_id: memberData.teamId,
           is_manager: memberData.isManager || false,
         }])
         .select()

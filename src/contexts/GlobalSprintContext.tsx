@@ -153,7 +153,7 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
   };
   
   // Public interface (uses debounced version)
-  const refreshSprint = useCallback(() => {
+  const refreshSprint = useCallback(async () => {
     debouncedRefreshSprint();
   }, [debouncedRefreshSprint]);
 

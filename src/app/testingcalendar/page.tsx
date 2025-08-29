@@ -56,14 +56,13 @@ export default function TestingCalendarPage() {
         const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         
-        const { data } = await DatabaseService.getScheduleEntries(
-          MOCK_USER.id,
+        const data = await DatabaseService.getScheduleEntries(
           startOfMonth.toISOString().split('T')[0],
           endOfMonth.toISOString().split('T')[0]
         );
         
         setDebugInfo({
-          totalEntries: data?.length || 0,
+          totalEntries: Object.keys(data).length || 0,
           lastUpdate: new Date().toLocaleString('he-IL')
         });
         

@@ -41,6 +41,9 @@
   
   /* Dynamic viewport height for iOS */
   --vh: 1vh;
+  
+  /* Mobile landscape detection for navigation collapse */
+  --is-landscape-phone: 0;
 
   /* =========================================================================
      MOBILE-FIRST TYPOGRAPHY & SPACING SYSTEM
@@ -3205,5 +3208,113 @@ textarea:focus-visible:not([data-never-match]),
   html {
     /* Fallback for browsers that don't support text-size-adjust */
     font-size: 16px !important;
+  }
+}
+
+/* =============================================================================
+   LANDSCAPE PHONE MODE DETECTION & NAVIGATION COLLAPSE
+   ============================================================================= */
+
+/* Landscape phone mode detection (height < 500px and width < 800px) */
+@media (orientation: landscape) and (max-height: 499px) and (max-width: 799px) {
+  :root {
+    --is-landscape-phone: 1;
+  }
+  
+  /* Mobile navigation should collapse in landscape phone mode */
+  .mobile-nav {
+    height: 48px; /* Reduced from standard 64px */
+    padding: 4px 0;
+  }
+  
+  .mobile-nav-item {
+    padding: 4px 8px;
+    min-height: 40px; /* Reduced from 44px */
+  }
+  
+  .mobile-nav-item-label {
+    display: none; /* Hide text labels to save space */
+  }
+  
+  /* Compact mobile navigation for landscape phones */
+  .mobile-nav-compact {
+    height: 48px !important;
+  }
+  
+  /* Hide non-essential navigation elements in landscape phone mode */
+  .nav-non-essential {
+    display: none !important;
+  }
+  
+  /* Compact mobile dashboard layout */
+  .mobile-dashboard {
+    padding: 8px 16px 56px 16px; /* Reduced padding for landscape */
+  }
+  
+  .mobile-header {
+    padding: 8px 16px; /* Reduced header padding */
+  }
+  
+  /* Compact card layouts */
+  .mobile-card {
+    padding: 8px;
+    margin-bottom: 6px;
+  }
+  
+  /* Ensure navigation collapses by adding specific class */
+  .navigation-collapsed {
+    height: 48px !important;
+    overflow: hidden;
+  }
+  
+  /* Hide secondary content to maximize screen real estate */
+  .mobile-secondary-content {
+    display: none !important;
+  }
+}
+
+/* Standard mobile navigation for portrait mode or larger landscape devices */
+@media (orientation: portrait), 
+       (orientation: landscape) and (min-height: 500px), 
+       (orientation: landscape) and (min-width: 800px) {
+  :root {
+    --is-landscape-phone: 0;
+  }
+  
+  /* Standard mobile navigation height */
+  .mobile-nav {
+    height: auto;
+  }
+  
+  .mobile-nav-item {
+    padding: 8px 12px;
+    min-height: 44px;
+  }
+  
+  .mobile-nav-item-label {
+    display: block;
+  }
+  
+  /* Show secondary content in standard mobile mode */
+  .mobile-secondary-content {
+    display: block;
+  }
+}
+
+/* CSS custom property to detect landscape phone mode via JavaScript */
+.landscape-phone-detector {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (orientation: landscape) and (max-height: 499px) and (max-width: 799px) {
+  .landscape-phone-detector {
+    width: 2px; /* JavaScript can detect this change */
   }
 }

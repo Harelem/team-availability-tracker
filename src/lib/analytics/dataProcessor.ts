@@ -5,7 +5,7 @@
  * for machine learning models and statistical analysis.
  */
 
-import { TeamMember, Team, ScheduleEntry, CurrentGlobalSprint } from '@/types';
+import { ScheduleEntry } from '@/types';
 import { DatabaseService } from '@/lib/database';
 
 // Core data interfaces for analytics
@@ -69,7 +69,7 @@ export interface FeatureVector {
  * Main data processing service for analytics
  */
 export class DataProcessor {
-  private cache = new Map<string, { data: any; timestamp: number }>();
+  private cache = new Map<string, { data: unknown; timestamp: number }>();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   /**
@@ -426,7 +426,7 @@ export class DataProcessor {
     
     const velocities = Array.from(sprintGroups.entries())
       .sort(([a], [b]) => a - b)
-      .map(([_, sprintData]) => {
+      .map(([, sprintData]) => {
         const totalHours = sprintData.reduce((sum, d) => sum + d.actualHours, 0);
         return totalHours;
       });

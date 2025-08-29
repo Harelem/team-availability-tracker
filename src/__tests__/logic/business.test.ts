@@ -4,7 +4,6 @@
  */
 
 import {
-  createMockTeam,
   createMockTeamMember,
   createMockScheduleEntry,
   createMockCurrentSprint,
@@ -260,7 +259,14 @@ describe('Business Logic', () => {
       // Users should not access other teams' data
       expect(user1Team1.team_id).not.toBe(user2Team2.team_id);
 
-      const canAccessData = (currentUser: any, targetUser: any) => {
+      interface UserWithAccess {
+        id: string;
+        team_id: number;
+        role?: string;
+        isManager?: boolean;
+      }
+
+      const canAccessData = (currentUser: UserWithAccess, targetUser: UserWithAccess) => {
         if (currentUser.role === 'coo') return true;
         if (currentUser.isManager && currentUser.team_id === targetUser.team_id) return true;
         return currentUser.id === targetUser.id;
@@ -279,7 +285,7 @@ describe('Business Logic', () => {
       });
       const regularManager = createMockManagerUser(1);
 
-      const canManageSprints = (user: any) => {
+      const canManageSprints = (user: { role?: string }) => {
         return user.role === 'coo' || 
                user.name === 'Harel Asaf' ||
                user.role === 'sprint_manager';
@@ -497,13 +503,13 @@ describe('Business Logic', () => {
 // Helper Functions for Tests
 // ============================================================================
 
-function generateMockCSV(data: any): string {
+function generateMockCSV(data: { scheduleData: Record<string, Record<string, string>>; members: Array<{ name: string }> }): string {
   return `Team Member,${Object.keys(data.scheduleData[1] || {})[0]}
 ${data.members[0].name},1
 ${data.members[1].name},0.5`;
 }
 
-function generateMockExcelSheets(data: any): string[] {
+function generateMockExcelSheets(_data: unknown): string[] {
   return ['Overview', 'Weekly Breakdown', 'Team Details'];
 }
 
@@ -522,6 +528,6 @@ function calculateWorkingDaysInRange(startDate: Date, endDate: Date): number {
   return count;
 }
 
-function formatMemberForExport(member: any): string {
+function formatMemberForExport(member: { name: string; hebrew: string }): string {
   return `${member.name} (${member.hebrew})`;
 }

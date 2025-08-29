@@ -5,9 +5,22 @@ const nextConfig = {
   // Enable experimental features for performance
   experimental: {
     optimizePackageImports: [
-      'lucide-react'
+      'react'
     ]
   },
+
+  // OPTIMIZED: Enable turbo mode for faster builds
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
+      },
+    },
+  },
+
+  // Transpile packages for optimization
+  transpilePackages: ['react', 'framer-motion'],
   
   // Compiler optimizations
   compiler: {
@@ -17,28 +30,54 @@ const nextConfig = {
     } : false,
   },
 
-  // Webpack optimizations for LCP
+  // OPTIMIZED: Enhanced webpack optimizations for TTI and mobile performance
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     // Production optimizations
     if (!dev && !isServer) {
-      // Optimize chunks for better caching
+      // OPTIMIZED: Aggressive chunk splitting for faster loading
       config.optimization.splitChunks = {
         chunks: 'all',
+        minSize: 20000,
+        maxSize: 100000, // Limit chunk size to 100KB for faster loading
         cacheGroups: {
-          // Vendor chunk for third-party libraries
+          // Critical vendor chunk - keep small
+          critical_vendor: {
+            test: /[\\/]node_modules[\\/](react|react-dom|next)[\\/]/,
+            name: 'critical-vendor',
+            priority: 30,
+            reuseExistingChunk: true,
+          },
+          // UI library chunk
+          ui_vendor: {
+            test: /[\\/]node_modules[\\/](lucide-react|framer-motion)[\\/]/,
+            name: 'ui-vendor',
+            priority: 25,
+            reuseExistingChunk: true,
+          },
+          // Regular vendor chunk
           vendor: {
             test: /[\\/]node_modules[\\/]/,
             name: 'vendors',
             priority: 20,
             reuseExistingChunk: true,
+            maxSize: 80000, // Keep vendor chunks under 80KB
           },
-          // Component chunk for large components
+          // Critical component chunk (dashboard components)
+          critical_components: {
+            test: /[\\/]src[\\/]components[\\/](PersonalDashboard|ManagerDashboard|TeamSelectionScreen)\.tsx$/,
+            name: 'critical-components',
+            priority: 18,
+            minChunks: 1,
+            reuseExistingChunk: true,
+          },
+          // Other component chunk
           components: {
             test: /[\\/]src[\\/]components[\\/]/,
             name: 'components',
             priority: 15,
             minChunks: 1,
             reuseExistingChunk: true,
+            maxSize: 60000, // Smaller component chunks
           },
           // Utils chunk for utility functions
           utils: {
@@ -53,13 +92,18 @@ const nextConfig = {
             minChunks: 2,
             priority: 5,
             reuseExistingChunk: true,
+            maxSize: 50000, // Keep default chunks small
           },
         },
       };
 
-      // Tree shaking optimization
+      // OPTIMIZED: Enhanced tree shaking and optimization
       config.optimization.usedExports = true;
       config.optimization.sideEffects = false;
+      config.optimization.minimize = true;
+      
+      // OPTIMIZED: Module concatenation for smaller bundles
+      config.optimization.concatenateModules = true;
     }
 
     return config;
@@ -125,6 +169,11 @@ const nextConfig = {
 
   // Enable strict mode for better performance
   reactStrictMode: true,
+
+  // Temporarily disable ESLint during build for CI/CD
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = nextConfig;

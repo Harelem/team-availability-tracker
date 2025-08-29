@@ -259,7 +259,7 @@ export class AnomalyDetector {
     const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
     const stdDev = Math.sqrt(variance);
 
-    return data.map((value, index) => {
+    return data.map((value, _index) => {
       const zScore = stdDev !== 0 ? Math.abs((value - mean) / stdDev) : 0;
       const isAnomaly = zScore > this.zscore_threshold;
       const anomalyScore = Math.min(1, zScore / (this.zscore_threshold * 2));

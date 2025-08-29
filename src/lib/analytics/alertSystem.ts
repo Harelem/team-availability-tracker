@@ -5,11 +5,11 @@
  * proactive alerts and actionable insights for management decision-making.
  */
 
-import { Team, TeamMember, CurrentGlobalSprint } from '@/types';
-import { dataProcessor, HistoricalDataPoint } from './dataProcessor';
-import { predictiveAnalytics, CapacityForecast, BurnoutRiskAssessment } from './predictiveAnalytics';
+import { CurrentGlobalSprint } from '@/types';
+import { dataProcessor, HistoricalDataPoint, ProcessedTeamData } from './dataProcessor';
+import { predictiveAnalytics } from './predictiveAnalytics';
 import { performanceMetrics, TeamPerformanceMetrics } from './performanceMetrics';
-import { anomalyDetector, riskAssessment } from './mlModels';
+import { anomalyDetector } from './mlModels';
 
 // Alert System Interfaces
 export interface Alert {
@@ -80,7 +80,7 @@ export interface AutomatedAction {
   description: string;
   triggeredAt: string;
   status: 'pending' | 'completed' | 'failed';
-  parameters: { [key: string]: any };
+  parameters: Record<string, unknown>;
   result?: string;
 }
 
@@ -117,7 +117,7 @@ export interface EscalationRule {
 export interface AutomatedResponse {
   condition: string;
   action: string;
-  parameters: { [key: string]: any };
+  parameters: Record<string, unknown>;
 }
 
 export interface AlertingContext {
@@ -155,7 +155,7 @@ export interface KeyInsight {
   description: string;
   impact: 'high' | 'medium' | 'low';
   confidence: number;
-  supportingData: { [key: string]: any };
+  supportingData: Record<string, unknown>;
   timeframe: string;
   affectedTeams: string[];
 }
@@ -240,7 +240,7 @@ export class IntelligentAlertSystem {
   private alerts: Map<string, Alert> = new Map();
   private configurations: AlertConfiguration[] = [];
   private context: AlertingContext;
-  private cache = new Map<string, { data: any; timestamp: number }>();
+  private cache = new Map<string, { data: unknown; timestamp: number }>();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
@@ -378,7 +378,7 @@ export class IntelligentAlertSystem {
   /**
    * Acknowledge an alert
    */
-  acknowledgeAlert(alertId: string, acknowledgedBy: string): boolean {
+  acknowledgeAlert(alertId: string, _acknowledgedBy: string): boolean {
     const alert = this.alerts.get(alertId);
     if (!alert || alert.status !== 'active') return false;
 
@@ -390,7 +390,7 @@ export class IntelligentAlertSystem {
   /**
    * Resolve an alert
    */
-  resolveAlert(alertId: string, resolvedBy: string, resolution: string): boolean {
+  resolveAlert(alertId: string, _resolvedBy: string, _resolution: string): boolean {
     const alert = this.alerts.get(alertId);
     if (!alert) return false;
 
@@ -401,7 +401,7 @@ export class IntelligentAlertSystem {
 
   // Private helper methods
 
-  private async checkAlertCondition(config: AlertConfiguration, teamData: any): Promise<Alert[]> {
+  private async checkAlertCondition(config: AlertConfiguration, teamData: ProcessedTeamData): Promise<Alert[]> {
     const alerts: Alert[] = [];
 
     switch (config.type) {
@@ -426,7 +426,7 @@ export class IntelligentAlertSystem {
     return alerts.filter(alert => !this.isAlertSuppressed(alert, config));
   }
 
-  private async checkCapacityWarnings(teamData: any, config: AlertConfiguration): Promise<Alert[]> {
+  private async checkCapacityWarnings(teamData: ProcessedTeamData, config: AlertConfiguration): Promise<Alert[]> {
     const alerts: Alert[] = [];
     const threshold = config.thresholds.utilizationThreshold || 95;
 
@@ -458,7 +458,7 @@ export class IntelligentAlertSystem {
     return alerts;
   }
 
-  private async checkBurnoutRisks(teamData: any, config: AlertConfiguration): Promise<Alert[]> {
+  private async checkBurnoutRisks(teamData: ProcessedTeamData, _config: AlertConfiguration): Promise<Alert[]> {
     const alerts: Alert[] = [];
     
     // Check team-level burnout risk
@@ -507,7 +507,7 @@ export class IntelligentAlertSystem {
     return alerts;
   }
 
-  private async checkPerformanceDecline(teamData: any, config: AlertConfiguration): Promise<Alert[]> {
+  private async checkPerformanceDecline(teamData: ProcessedTeamData, _config: AlertConfiguration): Promise<Alert[]> {
     const alerts: Alert[] = [];
     
     try {
@@ -544,7 +544,7 @@ export class IntelligentAlertSystem {
     return alerts;
   }
 
-  private async checkAnomalies(teamData: any, config: AlertConfiguration): Promise<Alert[]> {
+  private async checkAnomalies(teamData: ProcessedTeamData, _config: AlertConfiguration): Promise<Alert[]> {
     const alerts: Alert[] = [];
     
     if (teamData.historicalData && teamData.historicalData.length > 5) {
@@ -582,7 +582,7 @@ export class IntelligentAlertSystem {
     return alerts;
   }
 
-  private async checkUtilizationImbalance(teamData: any, config: AlertConfiguration): Promise<Alert[]> {
+  private async checkUtilizationImbalance(teamData: ProcessedTeamData, _config: AlertConfiguration): Promise<Alert[]> {
     const alerts: Alert[] = [];
     
     if (teamData.historicalData && teamData.historicalData.length > 0) {
@@ -636,7 +636,7 @@ export class IntelligentAlertSystem {
     return alerts;
   }
 
-  private async checkCompanyWideAlerts(teamsData: any[]): Promise<Alert[]> {
+  private async checkCompanyWideAlerts(teamsData: ProcessedTeamData[]): Promise<Alert[]> {
     const alerts: Alert[] = [];
     
     // Check overall company utilization
@@ -768,7 +768,7 @@ export class IntelligentAlertSystem {
     return insights;
   }
 
-  private async generateTrendInsights(teamsData: any[]): Promise<TrendInsight[]> {
+  private async generateTrendInsights(_teamsData: ProcessedTeamData[]): Promise<TrendInsight[]> {
     // Mock trend analysis - in real implementation would analyze historical trends
     return [
       {
@@ -840,7 +840,7 @@ export class IntelligentAlertSystem {
     return `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private generateRecommendations(alertType: AlertType, metrics: AlertMetrics): AlertRecommendation[] {
+  private generateRecommendations(alertType: AlertType, _metrics: AlertMetrics): AlertRecommendation[] {
     // Return type-specific recommendations
     const baseRecommendations: { [key in AlertType]: AlertRecommendation[] } = {
       capacity_warning: [{
@@ -993,11 +993,11 @@ export class IntelligentAlertSystem {
   }
 
   // Additional utility methods...
-  private isAlertSuppressed(alert: Alert, config: AlertConfiguration): boolean {
+  private isAlertSuppressed(_alert: Alert, _config: AlertConfiguration): boolean {
     return false; // Simplified - would check suppression rules
   }
 
-  private findSimilarAlert(alert: Alert): Alert | null {
+  private findSimilarAlert(_alert: Alert): Alert | null {
     return null; // Simplified - would find similar existing alerts
   }
 
@@ -1007,7 +1007,7 @@ export class IntelligentAlertSystem {
     existing.timestamp = newAlert.timestamp;
   }
 
-  private async executeAutomatedActions(alert: Alert): Promise<void> {
+  private async executeAutomatedActions(_alert: Alert): Promise<void> {
     // Execute any automated actions for this alert
   }
 
@@ -1020,12 +1020,12 @@ export class IntelligentAlertSystem {
     }
   }
 
-  private generateActionableRecommendations(teamPerformances: TeamPerformanceMetrics[]): ActionableRecommendation[] {
+  private generateActionableRecommendations(_teamPerformances: TeamPerformanceMetrics[]): ActionableRecommendation[] {
     // Generate company-wide actionable recommendations
     return [];
   }
 
-  private assessCompanyRisks(teamPerformances: TeamPerformanceMetrics[]): CompanyRiskAssessment {
+  private assessCompanyRisks(_teamPerformances: TeamPerformanceMetrics[]): CompanyRiskAssessment {
     // Assess overall company risk
     return {
       overallRisk: 0.3,
@@ -1057,7 +1057,7 @@ export class IntelligentAlertSystem {
     };
   }
 
-  private generateAlertSummary(startDate: Date, endDate: Date): AlertSummaryStats {
+  private generateAlertSummary(_startDate: Date, _endDate: Date): AlertSummaryStats {
     return {
       totalAlertsGenerated: 15,
       alertsBySeverity: { critical: 1, high: 3, medium: 7, low: 4 },

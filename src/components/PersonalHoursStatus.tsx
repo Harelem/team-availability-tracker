@@ -196,7 +196,7 @@ export default function PersonalHoursStatus({ user, team, currentSprint }: Perso
         totalDays: currentWorkingDays,
         completionRate: currentWorkingDays > 0 ? (currentFilledDays / currentWorkingDays) * 100 : 0,
         isComplete: currentFilledDays >= currentWorkingDays,
-        status: currentFilledDays >= currentWorkingDays ? 'complete' : currentFilledDays > 0 ? 'partial' : 'missing',
+        status: (currentFilledDays >= currentWorkingDays ? 'complete' : currentFilledDays > 0 ? 'partial' : 'missing') as 'complete' | 'partial' | 'missing',
         submittedHours: currentSubmittedHours,
         totalPossibleHours: currentWorkingDays * 7
       };
@@ -259,7 +259,7 @@ export default function PersonalHoursStatus({ user, team, currentSprint }: Perso
         totalDays: nextWorkingDays,
         completionRate: nextWorkingDays > 0 ? (nextFilledDays / nextWorkingDays) * 100 : 0,
         isComplete: nextFilledDays >= nextWorkingDays,
-        status: nextFilledDays >= nextWorkingDays ? 'complete' : nextFilledDays > 0 ? 'partial' : 'missing',
+        status: (nextFilledDays >= nextWorkingDays ? 'complete' : nextFilledDays > 0 ? 'partial' : 'missing') as 'complete' | 'partial' | 'missing',
         submittedHours: nextSubmittedHours,
         totalPossibleHours: nextWorkingDays * 7
       };

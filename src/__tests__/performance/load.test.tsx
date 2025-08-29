@@ -4,12 +4,11 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { DatabaseService } from '@/lib/database';
 import {
   measureRenderTime,
   simulateNetworkDelay,
-  createMockTeamMember,
   createMockScheduleEntry,
   getTestTeams,
   getTestTeamMembers,
@@ -172,7 +171,7 @@ describe('Performance Tests', () => {
         </div>
       );
 
-      const { result, timeMs } = await measureRenderTime(() => 
+      const { timeMs } = await measureRenderTime(() => 
         render(<MockDashboard />)
       );
 
@@ -206,7 +205,7 @@ describe('Performance Tests', () => {
         </table>
       );
 
-      const { result, timeMs } = await measureRenderTime(() => 
+      const { timeMs } = await measureRenderTime(() => 
         render(<MockScheduleTable />)
       );
 
@@ -273,7 +272,7 @@ describe('Performance Tests', () => {
         );
       };
 
-      const { result, timeMs } = await measureRenderTime(() => 
+      const { timeMs } = await measureRenderTime(() => 
         render(<MockResponsiveComponent />)
       );
 

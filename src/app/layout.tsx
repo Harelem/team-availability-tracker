@@ -15,7 +15,7 @@ const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
-  preload: false, // Disabled for development to avoid console warnings
+  preload: false, // OPTIMIZED: Disabled to prevent blocking critical resources
   fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
 });
 
@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono", 
   subsets: ["latin"],
   display: "swap",
-  preload: false, // Disabled for development to avoid console warnings
+  preload: false, // OPTIMIZED: Disabled to prevent blocking critical resources
   fallback: ["ui-monospace", "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", "monospace"],
 });
 
@@ -136,7 +136,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="dns-prefetch" href="//fonts.gstatic.com" />
         
-        {/* Critical CSS optimization - inline key styles */}
+        {/* OPTIMIZED: Minimal critical CSS for fastest initial render */}
         <style dangerouslySetInnerHTML={{__html: `
           .min-h-screen{min-height:100vh}
           .bg-gray-50{background-color:#f9fafb}
@@ -145,6 +145,8 @@ export default function RootLayout({
           @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
           .bg-gray-200{background-color:#e5e7eb}
           .rounded{border-radius:0.25rem}
+          .antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+          body{margin:0;font-family:system-ui,sans-serif}
         `}} />
         
         {/* Optimized Cache Control for Performance */}

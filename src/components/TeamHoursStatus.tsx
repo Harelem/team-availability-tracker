@@ -61,11 +61,11 @@ export default function TeamHoursStatus({ selectedTeam, currentSprint }: TeamHou
       }
       
       // Check current sprint status
-      const currentStatus = await checkSprintHoursStatus(members, currentPeriod);
+      const currentStatus = await checkSprintHoursStatus(members, { start: currentPeriod.startDate, end: currentPeriod.endDate });
       setCurrentSprintStatus(currentStatus);
       
       // Check next sprint status
-      const nextStatus = await checkSprintHoursStatus(members, nextPeriod);
+      const nextStatus = await checkSprintHoursStatus(members, { start: nextPeriod.startDate, end: nextPeriod.endDate });
       setNextSprintStatus(nextStatus);
       
       console.log('✅ Hours status loaded successfully');

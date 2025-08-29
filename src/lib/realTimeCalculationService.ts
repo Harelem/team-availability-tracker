@@ -285,6 +285,8 @@ export class RealTimeCalculationService {
     totalMembers: number;
     completedMembers: number;
     completionPercentage: number;
+    totalSubmittedHours: number;
+    sprintPotentialHours: number;
     memberStatuses: TeamMemberSubmissionStatus[];
   }> {
     try {
@@ -293,6 +295,8 @@ export class RealTimeCalculationService {
           totalMembers: 0,
           completedMembers: 0,
           completionPercentage: 0,
+          totalSubmittedHours: 0,
+          sprintPotentialHours: 0,
           memberStatuses: []
         };
       }
@@ -380,10 +384,16 @@ export class RealTimeCalculationService {
         return b.sprintCompletionPercentage - a.sprintCompletionPercentage;
       });
 
+      // Calculate total submitted hours and sprint potential hours
+      const totalSubmittedHours = memberStatuses.reduce((sum, member) => sum + member.sprintSubmittedHours, 0);
+      const sprintPotentialHours = memberStatuses.reduce((sum, member) => sum + member.sprintPotentialHours, 0);
+
       return {
         totalMembers: teamMembers.length,
         completedMembers,
         completionPercentage,
+        totalSubmittedHours,
+        sprintPotentialHours,
         memberStatuses
       };
 
@@ -395,6 +405,8 @@ export class RealTimeCalculationService {
         totalMembers: teamMembers?.length || 0,
         completedMembers: 0,
         completionPercentage: 0,
+        totalSubmittedHours: 0,
+        sprintPotentialHours: 0,
         memberStatuses: teamMembers?.map(member => ({
           memberId: member.id,
           memberName: member.name,

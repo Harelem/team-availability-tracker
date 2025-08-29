@@ -11,6 +11,7 @@ import {
 import { TeamMember } from '@/types';
 import { DESIGN_SYSTEM, combineClasses, COMPONENT_PATTERNS } from '@/utils/designSystem';
 import { useMobileNavigation } from '@/hooks/useMobileNavigation';
+import { useResponsiveLayout } from '@/hooks/useIsMobile';
 import { NAVIGATION_PAGES } from '@/contexts/NavigationContext';
 
 export interface MobileAppNavigationProps {
@@ -117,6 +118,9 @@ export default function MobileAppNavigation({
     // navigateToSettings removed in v2.2 for cleaner mobile experience
   } = useMobileNavigation();
 
+  // Use responsive layout to detect when navigation should be collapsed
+  const { navigationCollapsed, isLoading } = useResponsiveLayout();
+
   // Determine active tab based on current page
   const getActiveTab = () => {
     if (currentPage.includes('/profile')) return 'profile';
@@ -162,6 +166,91 @@ export default function MobileAppNavigation({
     }
   };
 
+  // Don't render navigation during loading to prevent layout shifts
+  if (isLoading) {
+    return null;
+  }
+
+  // In landscape phone mode (when navigation should be collapsed), render compact version
+  if (navigationCollapsed) {
+    return (
+      <nav 
+        className={combineClasses(
+          'fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-bottom',
+          'shadow-md backdrop-blur-sm bg-white/90',
+          // Reduced height for landscape mode
+          'h-12',
+          className
+        )}
+        role="navigation"
+        aria-label="Compact navigation"
+      >
+        <div className="flex items-center justify-center px-2 h-full">
+          
+          {/* Essential navigation only - Home and Teams */}
+          <button
+            onClick={handleNavigateHome}
+            className={combineClasses(
+              'flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200',
+              DESIGN_SYSTEM.buttons.touch,
+              DESIGN_SYSTEM.mobile.touchFeedback,
+              'min-w-[80px]',
+              activeTab === 'home' 
+                ? 'bg-blue-100 text-blue-700' 
+                : 'text-gray-600 hover:bg-gray-100'
+            )}
+            aria-current={activeTab === 'home' ? 'page' : undefined}
+            aria-label="Dashboard"
+          >
+            <Home className="w-4 h-4" />
+            <span className="text-xs font-medium hidden sm:inline">Dashboard</span>
+          </button>
+          
+          {/* Teams */}
+          <button
+            onClick={handleNavigateTeams}
+            className={combineClasses(
+              'flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200',
+              DESIGN_SYSTEM.buttons.touch,
+              DESIGN_SYSTEM.mobile.touchFeedback,
+              'min-w-[80px]',
+              activeTab === 'teams' 
+                ? 'bg-blue-100 text-blue-700' 
+                : 'text-gray-600 hover:bg-gray-100'
+            )}
+            aria-current={activeTab === 'teams' ? 'page' : undefined}
+            aria-label="Teams"
+          >
+            <Users className="w-4 h-4" />
+            <span className="text-xs font-medium hidden sm:inline">Teams</span>
+          </button>
+          
+          {/* Profile - only if current user exists and space permits */}
+          {currentUser && (
+            <button
+              onClick={handleNavigateProfile}
+              className={combineClasses(
+                'flex items-center gap-1 px-2 py-2 rounded-lg transition-all duration-200',
+                DESIGN_SYSTEM.buttons.touch,
+                DESIGN_SYSTEM.mobile.touchFeedback,
+                'min-w-[60px]',
+                activeTab === 'profile' 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}
+              aria-current={activeTab === 'profile' ? 'page' : undefined}
+              aria-label="Profile"
+            >
+              <User className="w-4 h-4" />
+            </button>
+          )}
+          
+        </div>
+      </nav>
+    );
+  }
+
+  // Standard navigation for portrait mode and larger screens
   return (
     <nav 
       className={combineClasses(

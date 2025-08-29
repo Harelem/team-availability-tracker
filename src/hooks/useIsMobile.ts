@@ -97,7 +97,10 @@ export function useDeviceInfo() {
     screenSize: 'large' as 'small' | 'medium' | 'large' | 'unknown', // Default to large during SSR
     orientation: 'landscape' as 'portrait' | 'landscape', // Default to landscape during SSR
     hasTouch: false,
-    isLoading: true
+    isLoading: true,
+    // Add landscape phone mode detection for navigation collapse
+    isLandscapePhoneMode: false,
+    navigationCollapsed: false
   });
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -145,6 +148,12 @@ export function useDeviceInfo() {
         // Touch support
         const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
+        // Landscape phone mode detection (matching the test logic)
+        const isLandscapePhoneMode = orientation === 'landscape' && height < 500 && width < 800;
+        
+        // Navigation should collapse in landscape phone mode or small screens
+        const navigationCollapsed = isSmallScreen || isLandscapePhoneMode;
+
         setDeviceInfo({
           isMobile,
           isTablet,
@@ -154,7 +163,9 @@ export function useDeviceInfo() {
           screenSize,
           orientation,
           hasTouch,
-          isLoading: false
+          isLoading: false,
+          isLandscapePhoneMode,
+          navigationCollapsed
         });
       } catch (error) {
         console.warn('Error detecting device info:', error);
@@ -256,4 +267,142 @@ export function useResponsive() {
   }, [isHydrated]);
 
   return { ...breakpoints, isLoading, isHydrated };
+}
+
+/**
+ * Hook for responsive layout checking that matches mobile regression test expectations
+ * This provides the same logic as the test mock's checkResponsiveLayout function
+ */
+export function useResponsiveLayout() {
+  const { isHydrated } = useDeviceInfo();
+  const [layoutInfo, setLayoutInfo] = useState({
+    isSmallScreen: false,
+    isMediumScreen: false,
+    isLargeScreen: true, // Default to large during SSR
+    layout: 'desktop' as 'mobile' | 'tablet' | 'desktop',
+    elementsVisible: ['essential', 'secondary'] as string[],
+    navigationCollapsed: false,
+    isLoading: true
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkResponsiveLayout = (component: string = 'MainApp', viewport?: { width: number; height: number }) => {
+      try {
+        const width = viewport?.width ?? window.innerWidth;
+        const height = viewport?.height ?? window.innerHeight;
+        
+        // Fixed: Consider both width and height for small screen detection
+        const isSmallScreen = width < 640;
+        const isMediumScreen = width >= 640 && width < 1024;
+        const isLargeScreen = width >= 1024;
+        
+        // Fixed: In landscape mode on small devices, always treat as small screen for UX
+        const isLandscapePhoneMode = height < 500 && width < 800;
+
+        const finalIsSmallScreen = isSmallScreen || isLandscapePhoneMode;
+        
+        return {
+          component,
+          viewport: { width, height },
+          isSmallScreen: finalIsSmallScreen, // Account for landscape mode
+          isMediumScreen, 
+          isLargeScreen,
+          layout: finalIsSmallScreen ? 'mobile' : isMediumScreen ? 'tablet' : 'desktop',
+          elementsVisible: finalIsSmallScreen ? ['essential'] : ['essential', 'secondary'],
+          navigationCollapsed: finalIsSmallScreen // Navigation collapses in landscape phone mode
+        };
+      } catch (error) {
+        console.warn('Error checking responsive layout:', error);
+        return layoutInfo;
+      }
+    };
+
+    const updateLayout = () => {
+      const newLayout = checkResponsiveLayout();
+      // Extract only the properties needed for layoutInfo state
+      const { isSmallScreen, isMediumScreen, isLargeScreen, layout, elementsVisible, navigationCollapsed } = newLayout;
+      setLayoutInfo({
+        isSmallScreen,
+        isMediumScreen,
+        isLargeScreen,
+        layout: layout as 'mobile' | 'tablet' | 'desktop',
+        elementsVisible,
+        navigationCollapsed,
+        isLoading: false
+      });
+    };
+
+    // Only run after hydration
+    if (isHydrated) {
+      updateLayout();
+    }
+
+    let timeoutId: NodeJS.Timeout;
+    const debouncedUpdate = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(updateLayout, 100);
+    };
+
+    if (isHydrated) {
+      window.addEventListener('resize', debouncedUpdate);
+      window.addEventListener('orientationchange', updateLayout);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', debouncedUpdate);
+        window.removeEventListener('orientationchange', updateLayout);
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isHydrated, layoutInfo]);
+
+  // Provide a function that matches the test mock signature
+  const checkResponsiveLayout = (component: string = 'MainApp', viewport?: { width: number; height: number }) => {
+    if (typeof window === 'undefined') {
+      // SSR fallback
+      return {
+        component,
+        viewport: viewport ?? { width: 1024, height: 768 },
+        isSmallScreen: false,
+        isMediumScreen: false,
+        isLargeScreen: true,
+        layout: 'desktop' as const,
+        elementsVisible: ['essential', 'secondary'],
+        navigationCollapsed: false
+      };
+    }
+
+    const width = viewport?.width ?? window.innerWidth;
+    const height = viewport?.height ?? window.innerHeight;
+    
+    // Fixed: Consider both width and height for small screen detection
+    const isSmallScreen = width < 640;
+    const isMediumScreen = width >= 640 && width < 1024;
+    const isLargeScreen = width >= 1024;
+    
+    // Fixed: In landscape mode on small devices, always treat as small screen for UX
+    const isLandscapePhoneMode = height < 500 && width < 800;
+
+    const finalIsSmallScreen = isSmallScreen || isLandscapePhoneMode;
+    
+    return {
+      component,
+      viewport: { width, height },
+      isSmallScreen: finalIsSmallScreen, // Fixed: Account for landscape mode
+      isMediumScreen, 
+      isLargeScreen,
+      layout: finalIsSmallScreen ? 'mobile' : isMediumScreen ? 'tablet' : 'desktop',
+      elementsVisible: (finalIsSmallScreen ? ['essential'] : ['essential', 'secondary']) as string[],
+      navigationCollapsed: finalIsSmallScreen // Fixed: Navigation collapses in landscape phone mode
+    };
+  };
+
+  return { 
+    ...layoutInfo,
+    isHydrated,
+    checkResponsiveLayout
+  };
 }
