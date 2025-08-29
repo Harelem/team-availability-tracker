@@ -15,6 +15,7 @@ export default function SkipLinks({ className = "skip-links-container" }: SkipLi
       <a 
         href="#main-content" 
         className="skip-link"
+        data-testid="skip-to-content"
         data-skip-link="true"
         tabIndex={1}
         style={{

@@ -235,7 +235,10 @@ const EnhancedDayCell = memo(function EnhancedDayCell({
   trackRender();
   
   return (
-    <td className={`relative py-2 px-1 sm:py-4 sm:px-4 text-center border-r ${getCellBackgroundColor()}`}>
+    <td 
+      className={`relative py-2 px-1 sm:py-4 sm:px-4 text-center border-r ${getCellBackgroundColor()}`}
+      data-testid={`schedule-cell-${member.id}-${date.toISOString().split('T')[0]}`}
+    >
       {/* Reason Indicator */}
       {getReasonIndicator()}
       

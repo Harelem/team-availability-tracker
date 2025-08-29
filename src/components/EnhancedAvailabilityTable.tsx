@@ -617,7 +617,7 @@ const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
       {/* Desktop Table View (hidden on mobile) */}
       <div className="hidden md:block overflow-x-auto overflow-y-auto scrollbar-hide max-h-[calc(100vh-120px)]">
         <div className="min-w-0 w-full">
-          <table className="schedule-table-optimized w-full table-auto">
+          <table className="schedule-table-optimized w-full table-auto" data-testid="schedule-table">
           {/* Table Header */}
           <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
