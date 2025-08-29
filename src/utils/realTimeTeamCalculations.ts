@@ -336,7 +336,18 @@ export async function getTeamMemberSubmissionStatus(
 /**
  * Calculate real capacity utilization across all teams for COO dashboard
  */
-export async function calculateCrossTeamCapacityUtilization(
+// Main real-time team calculations wrapper
+export const realTimeTeamCalculations = {
+  calculateRealTeamCompletionStats,
+  getTeamMemberSubmissionStatus, 
+  calculateCrossTeamCapacityUtilization: calculateCrossTeamCapacityUtilizationImpl,
+  calculateSprintWorkingDays
+};
+
+// Also export the main function separately for backwards compatibility
+export const calculateCrossTeamCapacityUtilization = calculateCrossTeamCapacityUtilizationImpl;
+
+async function calculateCrossTeamCapacityUtilizationImpl(
   currentSprint: CurrentGlobalSprint | null
 ): Promise<{
   totalCapacity: number;
