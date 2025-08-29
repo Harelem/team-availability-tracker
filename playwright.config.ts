@@ -364,6 +364,6 @@ export default defineConfig({
   },
 
   // Global setup and teardown
-  globalSetup: require.resolve('./__tests__/e2e/global-setup.ts'),
-  globalTeardown: require.resolve('./__tests__/e2e/global-teardown.ts'),
+  // globalSetup: require.resolve('./__tests__/e2e/global-setup.ts'),
+  // globalTeardown: require.resolve('./__tests__/e2e/global-teardown.ts'),
 });
