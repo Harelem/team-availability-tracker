@@ -118,16 +118,7 @@ jest.mock('date-fns', () => ({
   differenceInDays: jest.fn(() => 7),
 }));
 
-// Mock xlsx for export functionality
-jest.mock('xlsx', () => ({
-  utils: {
-    json_to_sheet: jest.fn(() => ({})),
-    book_new: jest.fn(() => ({})),
-    book_append_sheet: jest.fn(),
-  },
-  write: jest.fn(() => 'mock-excel-data'),
-  writeFile: jest.fn(),
-}));
+// xlsx mock removed - now using CSV exports only
 
 // Mock Web APIs
 global.URL.createObjectURL = jest.fn(() => 'mocked-url');
