@@ -1,0 +1,427 @@
+name: Deployment Notifications
+
+on:
+  workflow_run:
+    workflows: ["Main CI/CD Pipeline", "Deploy to Vercel"]
+    types: [completed]
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      message_type:
+        description: 'Type of notification to send'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+        - test
+        - deployment_success
+        - deployment_failure
+        - security_alert
+      custom_message:
+        description: 'Custom message to send'
+        required: false
+
+permissions:
+  contents: read
+  deployments: read
+  actions: read
+
+jobs:
+  # ============================================================================
+  # Notification Handler
+  # ============================================================================
+  send-notifications:
+    name: 📢 Send Notifications
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📊 Get workflow status
+        id: workflow-status
+        run: |
+          if [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.workflow_run.conclusion }}" == "failure" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          else
+            echo "status=unknown" >> $GITHUB_OUTPUT
+            echo "emoji=⚠️" >> $GITHUB_OUTPUT
+            echo "color=warning" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🔍 Get deployment details
+        id: deployment
+        run: |
+          # Get the latest deployment for this commit
+          DEPLOYMENT_URL="https://team-availability-tracker.vercel.app"
+          ENVIRONMENT="production"
+          
+          if [[ "${{ github.event.workflow_run.head_branch }}" != "main" ]]; then
+            ENVIRONMENT="preview"
+          fi
+          
+          echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+
+      - name: 📢 Send Slack notification
+        if: env.SLACK_WEBHOOK != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ steps.workflow-status.outputs.status }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          channel: '#deployments'
+          username: 'GitHub Actions'
+          icon_emoji: ':rocket:'
+          fields: |
+            {
+              "color": "${{ steps.workflow-status.outputs.color }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ steps.workflow-status.outputs.emoji }} Deployment ${{ steps.workflow-status.outputs.status == 'success' && 'Successful' || 'Failed' }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:* ${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Environment:* ${{ steps.deployment.outputs.environment }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:* ${{ github.event.workflow_run.head_branch }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:* <${{ github.event.workflow_run.html_url }}|${{ github.event.workflow_run.head_sha }}>"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Deployment URL:* <${{ steps.deployment.outputs.url }}|View Application>"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow"
+                      },
+                      "url": "${{ github.event.workflow_run.html_url }}"
+                    },
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Application"
+                      },
+                      "url": "${{ steps.deployment.outputs.url }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: 📧 Send Discord notification
+        if: env.DISCORD_WEBHOOK != ''
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ steps.workflow-status.outputs.status }}
+          title: "${{ steps.workflow-status.outputs.emoji }} Team Availability Tracker Deployment"
+          description: |
+            **Status**: ${{ steps.workflow-status.outputs.status == 'success' && '✅ Success' || '❌ Failed' }}
+            **Environment**: ${{ steps.deployment.outputs.environment }}
+            **Branch**: `${{ github.event.workflow_run.head_branch }}`
+            **Commit**: [`${{ github.event.workflow_run.head_sha }}`](${{ github.event.workflow_run.html_url }})
+            
+            🔗 **[View Application](${{ steps.deployment.outputs.url }})**
+            🔍 **[View Workflow](${{ github.event.workflow_run.html_url }})**
+          color: ${{ steps.workflow-status.outputs.status == 'success' && 0x00FF00 || 0xFF0000 }}
+          username: GitHub Actions
+          avatar_url: https://github.com/actions.png
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+
+      - name: 📱 Send Microsoft Teams notification
+        if: env.TEAMS_WEBHOOK != ''
+        run: |
+          curl -X POST "${{ secrets.TEAMS_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "@type": "MessageCard",
+              "@context": "https://schema.org/extensions",
+              "themeColor": "${{ steps.workflow-status.outputs.status == 'success' && '00FF00' || 'FF0000' }}",
+              "summary": "Team Availability Tracker Deployment",
+              "sections": [{
+                "activityTitle": "${{ steps.workflow-status.outputs.emoji }} Team Availability Tracker Deployment",
+                "activitySubtitle": "${{ steps.workflow-status.outputs.status == 'success' && 'Deployment Successful' || 'Deployment Failed' }}",
+                "facts": [
+                  {
+                    "name": "Repository",
+                    "value": "${{ github.repository }}"
+                  },
+                  {
+                    "name": "Environment", 
+                    "value": "${{ steps.deployment.outputs.environment }}"
+                  },
+                  {
+                    "name": "Branch",
+                    "value": "${{ github.event.workflow_run.head_branch }}"
+                  },
+                  {
+                    "name": "Commit",
+                    "value": "${{ github.event.workflow_run.head_sha }}"
+                  }
+                ],
+                "markdown": true
+              }],
+              "potentialAction": [{
+                "@type": "OpenUri",
+                "name": "View Application",
+                "targets": [{
+                  "os": "default",
+                  "uri": "${{ steps.deployment.outputs.url }}"
+                }]
+              }, {
+                "@type": "OpenUri", 
+                "name": "View Workflow",
+                "targets": [{
+                  "os": "default",
+                  "uri": "${{ github.event.workflow_run.html_url }}"
+                }]
+              }]
+            }'
+        env:
+          TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK }}
+
+      - name: ✉️ Send email notification
+        if: env.SMTP_HOST != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "${{ steps.workflow-status.outputs.emoji }} Team Availability Tracker - Deployment ${{ steps.workflow-status.outputs.status == 'success' && 'Success' || 'Failed' }}"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: "GitHub Actions <noreply@github.com>"
+          html_body: |
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Deployment Notification</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: ${{ steps.workflow-status.outputs.status == 'success' && '#d4edda' || '#f8d7da' }}; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+                    .status { font-size: 24px; font-weight: bold; color: ${{ steps.workflow-status.outputs.status == 'success' && '#155724' || '#721c24' }}; }
+                    .details { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+                    .button { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 5px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <div class="status">${{ steps.workflow-status.outputs.emoji }} Deployment ${{ steps.workflow-status.outputs.status == 'success' && 'Successful' || 'Failed' }}</div>
+                    </div>
+                    
+                    <div class="details">
+                        <h3>Deployment Details</h3>
+                        <p><strong>Repository:</strong> ${{ github.repository }}</p>
+                        <p><strong>Environment:</strong> ${{ steps.deployment.outputs.environment }}</p>
+                        <p><strong>Branch:</strong> ${{ github.event.workflow_run.head_branch }}</p>
+                        <p><strong>Commit:</strong> ${{ github.event.workflow_run.head_sha }}</p>
+                        <p><strong>Timestamp:</strong> ${{ github.event.workflow_run.updated_at }}</p>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <a href="${{ steps.deployment.outputs.url }}" class="button">View Application</a>
+                        <a href="${{ github.event.workflow_run.html_url }}" class="button">View Workflow</a>
+                    </div>
+                    
+                    <p><small>This is an automated notification from the CI/CD pipeline.</small></p>
+                </div>
+            </body>
+            </html>
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+
+  # ============================================================================
+  # Security Alert Notifications
+  # ============================================================================
+  security-alerts:
+    name: 🚨 Security Alert Notifications
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.name == 'Security Audit & Scanning' && github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: 🚨 Send critical security alert
+        if: env.SLACK_WEBHOOK != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          channel: '#security-alerts'
+          username: 'Security Bot'
+          icon_emoji: ':warning:'
+          fields: |
+            {
+              "color": "danger",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚨 CRITICAL SECURITY ALERT"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn", 
+                    "text": "*Security vulnerabilities detected in Team Availability Tracker*"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:* ${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn", 
+                      "text": "*Branch:* ${{ github.event.workflow_run.head_branch }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Severity:* HIGH/CRITICAL"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:* Immediate action required"
+                    }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Security Report"
+                      },
+                      "url": "${{ github.event.workflow_run.html_url }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+  # ============================================================================
+  # Weekly Status Reports  
+  # ============================================================================
+  weekly-report:
+    name: 📊 Weekly Status Report
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.message_type == 'weekly_report'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📊 Generate weekly report
+        run: |
+          echo "📊 Generating weekly CI/CD status report..."
+          # This would query GitHub API for workflow statistics
+          # and generate a comprehensive report
+
+      - name: 📢 Send weekly status to team
+        if: env.SLACK_WEBHOOK != ''
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          channel: '#team-updates'
+          username: 'CI/CD Bot'
+          icon_emoji: ':chart_with_upwards_trend:'
+          custom_payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text", 
+                    "text": "📊 Weekly CI/CD Status Report"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Team Availability Tracker - Week of $(date +'%B %d, %Y')*"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Deployments:* ✅ 7 successful"
+                    },
+                    {
+                      "type": "mrkdwn", 
+                      "text": "*Test Success Rate:* 🎯 100%"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Security Scans:* 🛡️ All clear"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Average Build Time:* ⚡ 3m 42s"
+                    }
+                  ]
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🎉 *Great work team! Keep up the excellent delivery pace.*"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}

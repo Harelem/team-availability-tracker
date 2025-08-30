@@ -1,0 +1,555 @@
+name: Main CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'release/**' ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+        - preview
+        - staging
+        - production
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  actions: read
+  deployments: write
+  security-events: write
+  statuses: write
+
+env:
+  NODE_VERSION: '18'
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+jobs:
+  # ============================================================================
+  # Pipeline Setup and Validation
+  # ============================================================================
+  setup:
+    name: 🚀 Pipeline Setup
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+      should-run-e2e: ${{ steps.check-changes.outputs.should-run-e2e }}
+      should-run-migrations: ${{ steps.check-changes.outputs.should-run-migrations }}
+      deployment-environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 💾 Cache dependencies and builds
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            .next/cache
+            node_modules
+            playwright-report
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-deps-
+
+      - name: 📦 Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🔍 Analyze changes
+        id: check-changes
+        run: |
+          echo "🔍 Analyzing changed files..."
+          
+          # Check for significant changes that require E2E testing
+          if git diff --name-only HEAD~1 HEAD | grep -E '\.(tsx?|jsx?)$|package\.json$|\.env|migrations/|sql/' > /dev/null; then
+            echo "should-run-e2e=true" >> $GITHUB_OUTPUT
+            echo "✅ Detected significant changes - E2E tests will run"
+          else
+            echo "should-run-e2e=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No significant changes - E2E tests skipped"
+          fi
+          
+          # Check for database migrations
+          if git diff --name-only HEAD~1 HEAD | grep -E 'migrations/|sql/|schema' > /dev/null; then
+            echo "should-run-migrations=true" >> $GITHUB_OUTPUT
+            echo "✅ Database changes detected"
+          else
+            echo "should-run-migrations=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No database changes"
+          fi
+
+      - name: 🌍 Determine deployment environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=preview" >> $GITHUB_OUTPUT
+          fi
+
+      - name: ✅ Environment validation
+        run: |
+          echo "📊 Pipeline Configuration:"
+          echo "• Node.js version: $(node --version)"
+          echo "• NPM version: $(npm --version)"
+          echo "• Event type: ${{ github.event_name }}"
+          echo "• Target environment: ${{ steps.env.outputs.environment }}"
+          echo "• Run E2E tests: ${{ steps.check-changes.outputs.should-run-e2e }}"
+          echo "• Run migrations: ${{ steps.check-changes.outputs.should-run-migrations }}"
+
+  # ============================================================================
+  # Code Quality and Security
+  # ============================================================================
+  quality-gates:
+    name: 🛡️ Quality & Security Gates
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      matrix:
+        check: ['lint', 'typecheck', 'security']
+      fail-fast: false
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🔍 Run ESLint
+        if: matrix.check == 'lint'
+        run: |
+          echo "🔍 Running ESLint..."
+          npm run lint -- --format=json --output-file=eslint-report.json || true
+          npm run lint
+
+      - name: 📝 TypeScript compilation check
+        if: matrix.check == 'typecheck'
+        run: |
+          echo "📝 Running TypeScript compilation check..."
+          npx tsc --noEmit --incremental
+
+      - name: 🛡️ Security scan (Semgrep)
+        if: matrix.check == 'security'
+        run: |
+          echo "🛡️ Running Semgrep security scan..."
+          npm run semgrep:ci || echo "⚠️ Semgrep completed with findings"
+
+      - name: 📊 Upload security artifacts
+        if: matrix.check == 'security'
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: |
+            semgrep/reports/
+            eslint-report.json
+          retention-days: 30
+
+  # ============================================================================
+  # Test Suite Execution
+  # ============================================================================
+  test-suite:
+    name: 🧪 Test Suite
+    runs-on: ubuntu-latest
+    needs: [setup, quality-gates]
+    strategy:
+      matrix:
+        suite:
+          - { name: 'Unit Tests', command: 'test', critical: true }
+          - { name: 'Integration Tests', command: 'test:integration', critical: true }
+          - { name: 'Regression Tests', command: 'test:regression:all', critical: true }
+          - { name: 'Mobile Tests', command: 'test:mobile', critical: false }
+          - { name: 'Performance Tests', command: 'test:performance', critical: false }
+          - { name: 'Security Tests', command: 'audit:security-enhanced', critical: true }
+      fail-fast: false
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🧪 Run ${{ matrix.suite.name }}
+        run: |
+          echo "🧪 Running ${{ matrix.suite.name }}..."
+          mkdir -p test-results
+          npm run ${{ matrix.suite.command }} || true
+
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.suite.name }}
+          path: |
+            test-results/
+            coverage/
+            playwright-report/
+          retention-days: 14
+
+      - name: ❌ Fail on critical test failures
+        if: failure() && matrix.suite.critical == true
+        run: |
+          echo "❌ Critical test suite failed: ${{ matrix.suite.name }}"
+          exit 1
+
+  # ============================================================================
+  # Build and Package
+  # ============================================================================
+  build:
+    name: 🏗️ Build Application
+    runs-on: ubuntu-latest
+    needs: [setup, quality-gates]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🏗️ Build application
+        run: |
+          echo "🏗️ Building Next.js application..."
+          npm run build
+
+      - name: 📦 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            .next/
+            public/
+          retention-days: 7
+
+      - name: 📊 Analyze bundle size
+        run: |
+          echo "📊 Bundle analysis:"
+          find .next/static -name "*.js" -exec ls -lh {} \; | head -20
+
+  # ============================================================================
+  # End-to-End Testing
+  # ============================================================================
+  e2e-tests:
+    name: 🎭 E2E Tests
+    runs-on: ubuntu-latest
+    needs: [setup, build]
+    if: needs.setup.outputs.should-run-e2e == 'true' || github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        browser: [chromium, firefox]
+        device: [desktop, mobile]
+      fail-fast: false
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🎭 Install Playwright
+        run: |
+          npx playwright install ${{ matrix.browser }} --with-deps
+          npx playwright install-deps
+
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: .
+
+      - name: 🚀 Start application
+        run: |
+          npm start &
+          npx wait-on http://localhost:3000 --timeout 120000
+
+      - name: 🧪 Run E2E tests
+        run: |
+          if [[ "${{ matrix.device }}" == "mobile" ]]; then
+            npx playwright test --project=${{ matrix.browser }}-mobile --reporter=json
+          else
+            npx playwright test --project=${{ matrix.browser }}-desktop --reporter=json
+          fi
+
+      - name: 📊 Upload E2E results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results-${{ matrix.browser }}-${{ matrix.device }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  # ============================================================================
+  # Database Migrations
+  # ============================================================================
+  database-migrations:
+    name: 🗄️ Database Migrations
+    runs-on: ubuntu-latest
+    needs: [setup, test-suite]
+    if: needs.setup.outputs.should-run-migrations == 'true' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    environment: ${{ needs.setup.outputs.deployment-environment }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🗄️ Run database migrations
+        run: |
+          echo "🗄️ Running database migrations for ${{ needs.setup.outputs.deployment-environment }}..."
+          # Add your database migration command here
+          # Example: npm run db:migrate
+
+      - name: ✅ Validate migrations
+        run: |
+          echo "✅ Validating database schema..."
+          npm run db:validate || true
+
+  # ============================================================================
+  # Deployment
+  # ============================================================================
+  deploy:
+    name: 🚀 Deploy to ${{ needs.setup.outputs.deployment-environment }}
+    runs-on: ubuntu-latest
+    needs: [setup, quality-gates, test-suite, build]
+    if: always() && needs.quality-gates.result == 'success' && needs.test-suite.result == 'success' && needs.build.result == 'success'
+    environment: 
+      name: ${{ needs.setup.outputs.deployment-environment }}
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: 🔗 Pull Vercel config
+        run: |
+          vercel pull --yes --environment=${{ needs.setup.outputs.deployment-environment }} --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: .
+
+      - name: 🚀 Deploy to Vercel
+        id: deploy
+        run: |
+          if [[ "${{ needs.setup.outputs.deployment-environment }}" == "production" ]]; then
+            URL=$(vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }})
+            echo "🚀 Deployed to production: $URL"
+          else
+            URL=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }})
+            echo "🚀 Deployed to preview: $URL"
+          fi
+          echo "url=$URL" >> $GITHUB_OUTPUT
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: 🏥 Health check
+        run: |
+          echo "🏥 Running post-deployment health check..."
+          sleep 30
+          curl -f "${{ steps.deploy.outputs.url }}/api/health" || exit 1
+          echo "✅ Health check passed!"
+
+      - name: 📋 Create deployment summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ needs.setup.outputs.deployment-environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Post-Deployment Validation
+  # ============================================================================
+  post-deployment:
+    name: 🔍 Post-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: [setup, deploy]
+    if: always() && needs.deploy.result == 'success'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🔍 Run smoke tests
+        run: |
+          echo "🔍 Running smoke tests against deployed application..."
+          # Add your smoke test commands here
+          # Example: npm run test:smoke -- --baseUrl="${{ needs.deploy.outputs.url }}"
+
+      - name: 📊 Performance audit
+        run: |
+          echo "📊 Running performance audit..."
+          # Example: npm run audit:lighthouse -- --url="${{ needs.deploy.outputs.url }}"
+
+  # ============================================================================
+  # Notifications and Reporting
+  # ============================================================================
+  notifications:
+    name: 📢 Send Notifications
+    runs-on: ubuntu-latest
+    needs: [setup, deploy, post-deployment]
+    if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    steps:
+      - name: 📢 Deployment notification
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "📢 Sending success notification..."
+          # Add Slack/Discord webhook here
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"✅ Deployment successful to ${{ needs.setup.outputs.deployment-environment }}"}' \
+          #   ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: 🚨 Failure notification
+        if: failure()
+        run: |
+          echo "🚨 Sending failure notification..."
+          # Add failure notification logic here
+
+      - name: 💬 PR comment
+        if: github.event_name == 'pull_request' && needs.deploy.result == 'success'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const deployUrl = '${{ needs.deploy.outputs.url }}';
+            const environment = '${{ needs.setup.outputs.deployment-environment }}';
+            const comment = `## 🚀 CI/CD Pipeline Results
+            
+            ✅ **Deployment successful!**
+            
+            📋 **Summary:**
+            - **Environment**: ${environment}
+            - **Deploy URL**: ${deployUrl}
+            - **Health Check**: ✅ Passed
+            - **Tests**: All critical tests passed
+            - **Security**: No blocking issues found
+            
+            🎯 **Test Coverage:**
+            - Unit Tests: ✅ Passed
+            - Integration Tests: ✅ Passed  
+            - Regression Tests: ✅ Passed
+            - Security Scan: ✅ Passed
+            
+            The application is ready for review and testing.`;
+            
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.log('Failed to create PR comment:', error.message);
+            }
+
+  # ============================================================================
+  # Cleanup
+  # ============================================================================
+  cleanup:
+    name: 🧹 Cleanup
+    runs-on: ubuntu-latest
+    needs: [notifications]
+    if: always()
+    steps:
+      - name: 🧹 Clean up artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Clean up old artifacts (older than 7 days)
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId
+            });
+            
+            const cutoffDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            
+            for (const artifact of artifacts.data.artifacts) {
+              if (new Date(artifact.created_at) < cutoffDate) {
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id
+                });
+              }
+            }

@@ -1,0 +1,47 @@
+name: "CodeQL Configuration"
+
+# Disable the default JavaScript/TypeScript analysis
+disable-default-queries: false
+
+# Add additional query suites
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+# Paths to include in the analysis
+paths:
+  - "src/"
+  - "pages/"
+  - "app/"
+  - "components/"
+  - "lib/"
+  - "utils/"
+  - "hooks/"
+  - "contexts/"
+
+# Paths to exclude from analysis
+paths-ignore:
+  - "node_modules/"
+  - ".next/"
+  - "dist/"
+  - "build/"
+  - "coverage/"
+  - "playwright-report/"
+  - "test-results/"
+  - "__tests__/"
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/*.config.*"
+  - "scripts/test-*"
+  - "scripts/generate-*"
+  - "docs/"
+  - "*.md"
+  - "*.json"
+  - "*.yml"
+  - "*.yaml"
+
+# Language-specific configuration
+packs:
+  javascript:
+    - codeql/javascript-queries:codeql-suites/javascript-security-extended.qls
+    - codeql/javascript-queries:codeql-suites/javascript-security-and-quality.qls

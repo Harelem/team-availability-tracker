@@ -1,0 +1,106 @@
+version: 2
+updates:
+  # Enable version updates for npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "harel"
+    assignees:
+      - "harel"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    # Group updates to reduce PR noise
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        patterns:
+          - "@supabase/*"
+          - "next"
+          - "react"
+          - "react-dom"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "@types/*"
+          - "@testing-library/*"
+          - "@playwright/*"
+          - "jest"
+          - "typescript"
+          - "eslint*"
+        update-types:
+          - "minor"
+          - "patch"
+      security-updates:
+        dependency-type: "production"
+        update-types:
+          - "patch"
+    # Auto-approve and merge safe updates
+    labels:
+      - "dependencies"
+      - "automated"
+    # Ignore specific packages that need manual review
+    ignore:
+      - dependency-name: "react"
+        versions: ["19.x"]
+      - dependency-name: "next"
+        versions: ["> 15.x"]
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "harel"
+    assignees:
+      - "harel"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "github-actions"
+      - "automated"
+    # Group all GitHub Actions updates together
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+
+  # Enable version updates for Docker (if using)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "11:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "harel"
+    assignees:
+      - "harel"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "docker"
+      - "automated"
