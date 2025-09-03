@@ -1,0 +1,12 @@
+
+<svg width="384" height="384" viewBox="0 0 384 384" xmlns="http://www.w3.org/2000/svg">
+  <rect width="384" height="384" fill="#3b82f6"/>
+  <circle cx="192" cy="192" r="128" fill="white" opacity="0.9"/>
+  <text x="192" y="192" 
+        font-family="Arial, sans-serif" 
+        font-size="96px" 
+        font-weight="bold" 
+        fill="#3b82f6" 
+        text-anchor="middle" 
+        dominant-baseline="middle">TAT</text>
+</svg>

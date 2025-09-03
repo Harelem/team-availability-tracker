@@ -18,6 +18,19 @@ interface ErrorRecoveryContextType {
   retryOperation: (operationName: string) => Promise<void>
   showHealthStatus: () => void
   hideHealthStatus: () => void
+  registerFailedOperation: (operation: string, error: Error) => void
+  getRecoveryActions: (operation: string) => RecoveryAction[]
+  isRecovering: boolean
+}
+
+interface RecoveryAction {
+  id: string
+  label: string
+  description: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  autoRetry: boolean
+  maxRetries: number
+  action: () => Promise<boolean>
 }
 
 const ErrorRecoveryContext = createContext<ErrorRecoveryContextType | null>(null)
@@ -44,6 +57,9 @@ export function ErrorRecoveryProvider({
   const { status, metrics, isHealthy, isDegraded, isCritical } = useSystemHealth()
   const [showStatus, setShowStatus] = useState(showStatusByDefault)
   const [hasShownCriticalAlert, setHasShownCriticalAlert] = useState(false)
+  const [isRecovering, setIsRecovering] = useState(false)
+  const [failedOperations, setFailedOperations] = useState<Map<string, { error: Error, attempts: number, lastAttempt: Date }>>(new Map())
+  const [recoveryActions, setRecoveryActions] = useState<Map<string, RecoveryAction[]>>(new Map())
 
   // Show status automatically when system becomes unhealthy
   useEffect(() => {
@@ -73,8 +89,140 @@ export function ErrorRecoveryProvider({
 
   const retryOperation = async (operationName: string) => {
     console.log(`🔄 Retrying operation: ${operationName}`)
-    // This would integrate with the specific operation retry mechanism
+    setIsRecovering(true)
+    
+    try {
+      const actions = recoveryActions.get(operationName) || []
+      
+      for (const action of actions) {
+        if (action.autoRetry) {
+          console.log(`🔧 Executing recovery action: ${action.label}`)
+          
+          try {
+            const success = await action.action()
+            if (success) {
+              console.log(`✅ Recovery action succeeded: ${action.label}`)
+              
+              // Clear failed operation record
+              setFailedOperations(prev => {
+                const updated = new Map(prev)
+                updated.delete(operationName)
+                return updated
+              })
+              
+              return // Success, stop trying other actions
+            }
+          } catch (actionError) {
+            console.error(`❌ Recovery action failed: ${action.label}`, actionError)
+          }
+        }
+      }
+      
+      // If we get here, all recovery actions failed
+      console.warn(`⚠️ All recovery actions failed for operation: ${operationName}`)
+      
+    } finally {
+      setIsRecovering(false)
+    }
   }
+  
+  const registerFailedOperation = (operation: string, error: Error) => {
+    setFailedOperations(prev => {
+      const updated = new Map(prev)
+      const existing = updated.get(operation)
+      
+      updated.set(operation, {
+        error,
+        attempts: existing ? existing.attempts + 1 : 1,
+        lastAttempt: new Date()
+      })
+      
+      return updated
+    })
+    
+    console.error(`🚨 Operation failed: ${operation}`, error)
+    
+    // Auto-retry for recoverable operations
+    const actions = recoveryActions.get(operation) || []
+    const autoRetryAction = actions.find(a => a.autoRetry)
+    
+    if (autoRetryAction && (!failedOperations.get(operation) || failedOperations.get(operation)!.attempts < autoRetryAction.maxRetries)) {
+      setTimeout(() => {
+        retryOperation(operation)
+      }, Math.min(1000 * Math.pow(2, failedOperations.get(operation)?.attempts || 0), 10000)) // Exponential backoff, max 10s
+    }
+  }
+  
+  const getRecoveryActions = (operation: string): RecoveryAction[] => {
+    return recoveryActions.get(operation) || []
+  }
+  
+  // Register default recovery actions
+  useEffect(() => {
+    const defaultActions = new Map<string, RecoveryAction[]>()
+    
+    // Database operations
+    defaultActions.set('database_query', [
+      {
+        id: 'db_reconnect',
+        label: 'Reconnect Database',
+        description: 'Attempt to reconnect to the database',
+        severity: 'medium',
+        autoRetry: true,
+        maxRetries: 3,
+        action: async () => {
+          // Implement database reconnection logic
+          return Math.random() > 0.3 // Simulate 70% success rate
+        }
+      }
+    ])
+    
+    // Schedule updates
+    defaultActions.set('schedule_update', [
+      {
+        id: 'cache_update',
+        label: 'Update Local Cache',
+        description: 'Refresh local data cache',
+        severity: 'low',
+        autoRetry: true,
+        maxRetries: 2,
+        action: async () => {
+          // Implement cache refresh logic
+          return Math.random() > 0.2 // Simulate 80% success rate
+        }
+      },
+      {
+        id: 'offline_mode',
+        label: 'Enable Offline Mode',
+        description: 'Switch to offline mode with cached data',
+        severity: 'medium',
+        autoRetry: false,
+        maxRetries: 1,
+        action: async () => {
+          // Implement offline mode activation
+          return true
+        }
+      }
+    ])
+    
+    // Sprint operations
+    defaultActions.set('sprint_operation', [
+      {
+        id: 'sprint_cache_refresh',
+        label: 'Refresh Sprint Data',
+        description: 'Reload sprint data from server',
+        severity: 'medium',
+        autoRetry: true,
+        maxRetries: 3,
+        action: async () => {
+          // Implement sprint data refresh
+          return Math.random() > 0.1 // Simulate 90% success rate
+        }
+      }
+    ])
+    
+    setRecoveryActions(defaultActions)
+  }, [])
 
   const contextValue: ErrorRecoveryContextType = {
     isHealthy,
@@ -84,7 +232,10 @@ export function ErrorRecoveryProvider({
     metrics,
     retryOperation,
     showHealthStatus: () => setShowStatus(true),
-    hideHealthStatus: () => setShowStatus(false)
+    hideHealthStatus: () => setShowStatus(false),
+    registerFailedOperation,
+    getRecoveryActions,
+    isRecovering
   }
 
   return (

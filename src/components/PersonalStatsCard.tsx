@@ -70,7 +70,7 @@ const colorClasses = {
   }
 };
 
-export default function PersonalStatsCard({
+const PersonalStatsCard = React.memo(function PersonalStatsCard({
   title,
   value,
   icon: Icon,
@@ -91,26 +91,30 @@ export default function PersonalStatsCard({
   );
 
   return (
-    <div className={cardClasses} onClick={onClick}>
+    <div className={cardClasses} onClick={onClick} style={{ minHeight: '120px' }}>
       <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 ${colors.iconBg} rounded-lg flex items-center justify-center`}>
+        <div className={`w-10 h-10 ${colors.iconBg} rounded-lg flex items-center justify-center flex-shrink-0`}>
           <Icon className={`w-5 h-5 ${colors.iconText}`} />
         </div>
       </div>
       
       <div className="space-y-1">
-        <p className={`text-sm font-medium ${colors.title}`}>
+        <p className={`text-sm font-medium ${colors.title}`} style={{ minHeight: '20px' }}>
           {title}
         </p>
-        <p className={`text-2xl font-bold ${colors.value}`}>
+        <p className={`text-2xl font-bold ${colors.value}`} style={{ minHeight: '32px' }}>
           {value}
         </p>
-        {description && (
-          <p className={`text-xs ${colors.description}`}>
-            {description}
-          </p>
-        )}
+        <div style={{ minHeight: '16px' }}>
+          {description && (
+            <p className={`text-xs ${colors.description}`}>
+              {description}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
-}
+});
+
+export default PersonalStatsCard;

@@ -13,6 +13,7 @@ import { operation, debug, error as logError } from '@/utils/debugLogger'
 import { connectionRetry } from '@/utils/connectionRetry'
 import { queryBatcher } from './QueryBatcher'
 import { validateTeamMemberData, validateReasonText, normalizeNameForComparison, type TeamMemberInput } from './input-validation'
+import { subscriptionHelpers } from './SubscriptionManager'
 import logger from '@/utils/logger'
 
 // Sprint History interfaces
@@ -1368,11 +1369,24 @@ export const DatabaseService = {
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diffDays > 90) {
-      console.warn('getPaginatedScheduleEntries: Date range exceeds 90 days, limiting to current + next week');
+      // Only log warning in development to reduce console noise
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('getPaginatedScheduleEntries: Date range exceeds 90 days, optimizing query range');
+      }
+      
+      // Smart date range optimization: use sprint context when available
       const today = new Date();
-      const limitedEnd = new Date(today);
-      limitedEnd.setDate(today.getDate() + 14); // Limit to 2 weeks
-      endDate = limitedEnd.toISOString().split('T')[0];
+      const sprintStart = new Date(today);
+      sprintStart.setDate(today.getDate() - 7); // Include past week for context
+      const sprintEnd = new Date(today);
+      sprintEnd.setDate(today.getDate() + 21); // Include 3 weeks ahead
+      
+      // Use string comparison for dates in YYYY-MM-DD format
+      const sprintStartStr = sprintStart.toISOString().split('T')[0];
+      const sprintEndStr = sprintEnd.toISOString().split('T')[0];
+      
+      startDate = startDate > sprintStartStr ? startDate : sprintStartStr;
+      endDate = endDate < sprintEndStr ? endDate : sprintEndStr;
     }
 
     try {
@@ -1517,34 +1531,29 @@ export const DatabaseService = {
       return {}
     }
 
-    // 🔍 DATABASE DEBUG - Log getScheduleEntries parameters
-    console.log('🔍 DATABASE DEBUG - getScheduleEntries called:', {
-      startDate,
-      endDate,
-      teamId,
-      forceRefresh,
-      dateRange: {
-        start: new Date(startDate).toLocaleDateString(),
-        end: new Date(endDate).toLocaleDateString(),
-        daysDiff: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
-      }
-    });
+    // Reduced debug logging for better performance - only log if needed
+    if (process.env.NODE_ENV === 'development' && forceRefresh) {
+      console.log('🔍 DATABASE DEBUG - getScheduleEntries called:', {
+        startDate,
+        endDate,
+        teamId,
+        forceRefresh,
+        dayRange: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+      });
+    }
 
     // Use optimized pagination with reduced limit to prevent egress overload
     // 50 items = ~20KB instead of 200 items = ~80KB (75% reduction)
     const result = await this.getPaginatedScheduleEntries(startDate, endDate, teamId, { limit: 50 });
     
-    // 🔍 DATABASE DEBUG - Log getScheduleEntries results
-    console.log('🔍 DATABASE DEBUG - getScheduleEntries results:', {
-      startDate,
-      endDate,
-      teamId,
-      resultKeys: Object.keys(result.data),
-      totalMembers: Object.keys(result.data).length,
-      hasMoreData: result.hasMore,
-      sampleMemberIds: Object.keys(result.data).slice(0, 5),
-      totalEntries: Object.values(result.data).reduce((sum: number, memberData) => sum + Object.keys(memberData as Record<string, any>).length, 0)
-    });
+    // Optimized debug logging - only show key metrics in development
+    if (process.env.NODE_ENV === 'development' && Object.keys(result.data).length === 0) {
+      console.warn('⚠️ DATABASE DEBUG - No schedule data found:', {
+        startDate,
+        endDate,
+        teamId
+      });
+    }
     
     return result.data;
   },
@@ -1614,95 +1623,31 @@ export const DatabaseService = {
       return
     }
     
-    try {
-      if (value === null) {
-        // Delete the entry
-        const { error } = await supabase
-          .from('schedule_entries')
-          .delete()
-          .eq('member_id', memberId)
-          .eq('date', date)
-        
-        if (error) {
-          console.error('Error deleting schedule entry:', error)
-          throw error
-        }
-      } else {
-        // Use cached sprint data to avoid blocking calls
-        let sprintUuid = null;
-        
-        try {
-          // Try to get sprint from cache first (non-blocking)
-          const currentSprint = await Promise.race([
-            this.getCurrentGlobalSprint(),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Sprint fetch timeout')), 2000)
-            )
-          ]) as any;
-          
-          if (currentSprint) {
-            // Convert sprint ID to UUID format (consistent with migration)
-            if (typeof currentSprint.id === 'string' && currentSprint.id.includes('-')) {
-              sprintUuid = currentSprint.id; // Already a UUID
-            } else {
-              // Convert integer ID to deterministic UUID format
-              const paddedId = String(currentSprint.id).padStart(12, '0');
-              sprintUuid = `00000000-0000-0000-0000-${paddedId}`;
-            }
-          }
-        } catch (sprintError) {
-          // Sprint fetch failed or timed out - proceed without sprint association
-          console.warn('Failed to fetch current sprint, proceeding without sprint association:', sprintError);
-        }
-        
-        console.log('🔗 Associating schedule entry with sprint:', { 
-          memberId, 
-          date, 
-          value, 
-          sprintUuid: sprintUuid || 'none' 
-        });
-        
-        // Upsert the entry - sprint association is optional for performance
-        const { error } = await supabase
-          .from('schedule_entries')
-          .upsert({
-            member_id: memberId,
-            date,
-            value,
-            reason: reason || null,
-            sprint_id: sprintUuid, // Optional: Associate with current sprint using UUID
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'member_id,date' })
-        
-        if (error) {
-          console.error('Error updating schedule entry:', error)
-          throw error
-        }
-      }
+    // PERFORMANCE FIX: Use enhanced schedule update manager for non-blocking operations
+    // This provides optimistic updates, request deduplication, and async cache invalidation
+    const { scheduleUpdateManager } = await import('./scheduleUpdateManager')
+    
+    return scheduleUpdateManager.updateScheduleEntry(memberId, date, value, reason)
+  },
 
-      // Batch cache invalidation operations to reduce blocking
-      try {
-        const cacheOperations = [
-          dataConsistencyManager.invalidateCachePattern(/^schedule_entries_/),
-          dataConsistencyManager.invalidateCachePattern(/^company_hours_status_/),
-          dataConsistencyManager.invalidateCache(CacheKeys.COO_DASHBOARD_DATA)
-        ];
-        
-        // Run cache operations in parallel but don't wait for them
-        Promise.all(cacheOperations).catch(cacheError => {
-          console.warn('Cache invalidation failed (non-critical):', cacheError);
-        });
-      } catch (cacheError) {
-        // Cache errors should not block the main operation
-        console.warn('Cache invalidation error (non-critical):', cacheError);
-      }
-      
-      console.log(`✅ Schedule entry updated for member ${memberId} on ${date}`);
-      
-    } catch (error) {
-      console.error('Error in updateScheduleEntry:', error);
-      throw error;
+  // EMERGENCY DEBUG: Direct database update for testing persistence issues
+  async updateScheduleEntryDirect(
+    memberId: number,
+    date: string,
+    value: '1' | '0.5' | 'X' | null,
+    reason?: string
+  ): Promise<void> {
+    if (!isSupabaseConfigured()) {
+      return
     }
+    
+    const { scheduleUpdateManager } = await import('./scheduleUpdateManager')
+    return scheduleUpdateManager.updateScheduleEntryDirect(memberId, date, value, reason)
+  },
+
+  // DEBUG: Get direct access to Supabase client for testing
+  getSupabaseClient() {
+    return supabase
   },
 
   // Real-time subscription (team-aware) using centralized SubscriptionManager
@@ -1710,20 +1655,31 @@ export const DatabaseService = {
     startDate: string,
     endDate: string,
     teamId: number,
-    onUpdate: (payload: unknown) => void
+    onUpdate: (payload: unknown) => void,
+    options: { throttleMs?: number, debounceMs?: number } = {}
   ) {
     if (!isSupabaseConfigured()) {
       return { unsubscribe: () => {} }
     }
     
     // Use the centralized subscription manager for better memory management
-    const { subscriptionHelpers } = require('./SubscriptionManager')
     return subscriptionHelpers.subscribeToScheduleChanges(
       startDate,
       endDate,
       teamId,
-      onUpdate
+      onUpdate,
+      options
     )
+  },
+
+  /**
+   * Mark a local update to prevent subscription loops
+   */
+  markLocalUpdate(teamId: number, startDate: string, endDate: string, timeout?: number) {
+    if (!isSupabaseConfigured()) return
+    
+    const subscriptionKey = `schedule_changes_team_${teamId}_${startDate}_${endDate}`
+    subscriptionHelpers.markLocalUpdate(subscriptionKey, timeout)
   },
 
   // Global Sprint Management

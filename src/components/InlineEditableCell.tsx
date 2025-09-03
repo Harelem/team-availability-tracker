@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, startTransition } from 'react';
+import React, { useState, useRef, useEffect, useCallback, startTransition, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { DatabaseService } from '@/lib/database';
 import ClientOnly from '@/components/ClientOnly';
+import { useOptimisticScheduleUpdatesForMember } from '@/hooks/useOptimisticScheduleUpdates';
 
 export interface CellValue {
   value: '1' | '0.5' | 'X' | null;
@@ -21,17 +22,20 @@ interface InlineEditableCellProps {
   className?: string;
 }
 
-export default function InlineEditableCell({
+// PERFORMANCE FIX: Enhanced memo comparison for better re-render prevention
+const InlineEditableCell = React.memo(function InlineEditableCell({
   value,
   date,
   memberId,
-  teamId: _teamId, // Unused but kept for potential future use
+  teamId: _teamId,
   isManagerView,
   onSave,
   className = ''
 }: InlineEditableCellProps) {
+  // PERFORMANCE FIX: State management with React 18 optimizations
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [currentValue, setCurrentValue] = useState<CellValue | null>(value);
   const [reason, setReason] = useState(value?.reason || '');
   const [showReasonInput, setShowReasonInput] = useState(false);
@@ -39,11 +43,26 @@ export default function InlineEditableCell({
   const cellRef = useRef<HTMLDivElement>(null);
   const reasonInputRef = useRef<HTMLInputElement>(null);
 
-  // Update local state when prop value changes
+  // Use optimistic updates for this member
+  const { getValueForDate, isPendingForDate, hasFailedForDate } = useOptimisticScheduleUpdatesForMember(parseInt(memberId));
+
+  // Update local state when prop value changes or optimistic updates change
   useEffect(() => {
-    setCurrentValue(value);
-    setReason(value?.reason || '');
-  }, [value]);
+    const optimisticValue = getValueForDate(date);
+    if (optimisticValue) {
+      // Use optimistic value if available
+      const cellValue: CellValue = {
+        value: optimisticValue.value,
+        reason: optimisticValue.reason
+      };
+      setCurrentValue(cellValue);
+      setReason(optimisticValue.reason || '');
+    } else {
+      // Fall back to prop value
+      setCurrentValue(value);
+      setReason(value?.reason || '');
+    }
+  }, [value, getValueForDate, date]);
 
   // Close editing on outside click
   useEffect(() => {
@@ -66,21 +85,77 @@ export default function InlineEditableCell({
     }
   }, [showReasonInput]);
 
-  const handleCellClick = () => {
+  // PERFORMANCE FIX: Memoized cell click handler
+  const handleCellClick = useCallback(() => {
     if (isManagerView && !isEditing && !isSaving) {
-      setIsEditing(true);
+      startTransition(() => {
+        setIsEditing(true);
+      });
     }
-  };
+  }, [isManagerView, isEditing, isSaving]);
 
-  const handleValueSelect = async (selectedValue: '1' | '0.5' | 'X') => {
-    // Show reason input for half day or sick/OOO
+  // PERFORMANCE FIX: Enhanced save function with React 18 concurrent features
+  const saveValue = useCallback(async (newValue: CellValue) => {
+    // Close editing UI immediately for instant feedback using startTransition
+    startTransition(() => {
+      setIsEditing(false);
+      setShowReasonInput(false);
+      setReason('');
+    });
+    
+    try {
+      // PERFORMANCE FIX: Set saving state with concurrent features
+      startTransition(() => {
+        setIsSaving(true);
+      });
+      
+      // Send the update to the server using the scheduleUpdateManager
+      const { scheduleUpdateManager } = await import('@/lib/scheduleUpdateManager');
+      
+      await scheduleUpdateManager.updateScheduleEntry(
+        parseInt(memberId),
+        date,
+        newValue.value,
+        newValue.reason
+      );
+      
+      // Call the provided onSave callback
+      onSave?.(newValue);
+      
+      // Success handling
+      startTransition(() => {
+        setIsSaving(false);
+        setError(null);
+      });
+      
+      console.log('✅ Cell value saved successfully');
+      
+    } catch (error: any) {
+      console.error('❌ Error saving cell value:', error);
+      
+      // Re-enable editing on error with batched state updates
+      startTransition(() => {
+        setIsEditing(true);
+        setIsSaving(false);
+        setError(error.message || 'Failed to save');
+        if (newValue.value === '0.5' || newValue.value === 'X') {
+          setShowReasonInput(true);
+          setReason(newValue.reason || '');
+        }
+      });
+    }
+  }, [memberId, date, onSave]);
+
+  // PERFORMANCE FIX: Optimized value selection with batched state updates
+  const handleValueSelect = useCallback(async (selectedValue: '1' | '0.5' | 'X') => {
     if (selectedValue === '0.5' || selectedValue === 'X') {
       if (!showReasonInput) {
-        setShowReasonInput(true);
+        startTransition(() => {
+          setShowReasonInput(true);
+        });
         return;
       }
       
-      // If reason input is showing but empty, require reason
       if (!reason.trim()) {
         return;
       }
@@ -93,58 +168,19 @@ export default function InlineEditableCell({
     };
 
     await saveValue(newValue);
-  };
+  }, [showReasonInput, reason, saveValue]);
 
-  const saveValue = async (newValue: CellValue) => {
-    // Optimistic UI update - update immediately for better UX
-    const previousValue = currentValue;
-    setCurrentValue(newValue);
-    setIsEditing(false);
-    setShowReasonInput(false);
-    setReason('');
-    
-    // Show saving state without blocking UI
-    setIsSaving(true);
-    
-    // Use startTransition to make database update non-blocking
-    startTransition(() => {
-      // Perform database update asynchronously
-      DatabaseService.updateScheduleEntry(
-        parseInt(memberId),
-        date,
-        newValue.value,
-        newValue.reason
-      ).then(() => {
-        // Success - optimistic update was correct
-        onSave?.(newValue);
-        console.log(`✅ Schedule entry saved for member ${memberId} on ${date}`);
-      }).catch((error) => {
-        console.error('Error saving schedule entry:', error);
-        
-        // Rollback optimistic update on error
-        setCurrentValue(previousValue);
-        
-        // Re-enable editing so user can try again
-        setIsEditing(true);
-        if (newValue.value === '0.5' || newValue.value === 'X') {
-          setShowReasonInput(true);
-          setReason(newValue.reason || '');
-        }
-        
-        // TODO: Add error toast notification
-      }).finally(() => {
-        setIsSaving(false);
-      });
-    });
-  };
-
+  // PERFORMANCE FIX: Batched cancel edit handler
   const handleCancelEdit = useCallback(() => {
-    setIsEditing(false);
-    setShowReasonInput(false);
-    setReason(value?.reason || '');
+    startTransition(() => {
+      setIsEditing(false);
+      setShowReasonInput(false);
+      setReason(value?.reason || '');
+    });
   }, [value?.reason]);
 
-  const handleKeyDown = (event: React.KeyboardEvent) => {
+  // PERFORMANCE FIX: Memoized keyboard event handler
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     switch (event.key) {
       case 'Escape':
         handleCancelEdit();
@@ -162,7 +198,7 @@ export default function InlineEditableCell({
         }
         break;
       case '5':
-        if (isEditing && !showReasonInput && event.key === '5') {
+        if (isEditing && !showReasonInput) {
           event.preventDefault();
           handleValueSelect('0.5');
         }
@@ -175,24 +211,21 @@ export default function InlineEditableCell({
         }
         break;
     }
-  };
+  }, [handleCancelEdit, showReasonInput, reason, currentValue, isEditing, handleValueSelect]);
 
-  const getCellDisplayValue = () => {
+  // PERFORMANCE FIX: Memoized display value and style calculations
+  const cellDisplayValue = useMemo(() => {
     if (!currentValue || !currentValue.value) return '';
     
     switch (currentValue.value) {
-      case '1':
-        return '1';
-      case '0.5':
-        return '½';
-      case 'X':
-        return 'X';
-      default:
-        return '';
+      case '1': return '1';
+      case '0.5': return '½';
+      case 'X': return 'X';
+      default: return '';
     }
-  };
+  }, [currentValue]);
 
-  const getCellStyle = () => {
+  const cellStyle = useMemo(() => {
     if (!currentValue || !currentValue.value) {
       return 'bg-white hover:bg-gray-50 text-gray-400';
     }
@@ -207,7 +240,7 @@ export default function InlineEditableCell({
       default:
         return 'bg-white hover:bg-gray-50 text-gray-400';
     }
-  };
+  }, [currentValue]);
 
   return (
     <ClientOnly fallback={
@@ -220,13 +253,26 @@ export default function InlineEditableCell({
       <div
         ref={cellRef}
         data-testid="inline-editable-cell"
-        className={`relative min-w-[120px] h-12 border transition-all duration-200 ${getCellStyle()} ${
+        className={`relative min-w-[120px] h-12 border transition-all duration-200 ${cellStyle} ${
           isEditing ? 'ring-2 ring-blue-500 ring-offset-1' : ''
         } ${isManagerView ? 'cursor-pointer' : 'cursor-default'} ${className}`}
         onClick={handleCellClick}
         onKeyDown={handleKeyDown}
         tabIndex={isManagerView ? 0 : -1}
       >
+      {/* Show pending state indicator */}
+      {isPendingForDate(date) && (
+        <div className="absolute inset-0 bg-blue-50 bg-opacity-75 flex items-center justify-center z-10">
+          <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+        </div>
+      )}
+
+      {/* Show failed state indicator */}
+      {hasFailedForDate(date) && (
+        <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full z-10" 
+             title="Update failed - click to retry"></div>
+      )}
+
       {isSaving && (
         <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
           <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
@@ -235,8 +281,8 @@ export default function InlineEditableCell({
 
       {!isEditing ? (
         <div className="flex items-center justify-center h-full">
-          <span className="font-medium text-sm">
-            {getCellDisplayValue()}
+          <span className={`font-medium text-sm ${isPendingForDate(date) ? 'text-blue-600' : ''} ${hasFailedForDate(date) ? 'text-red-600' : ''}`}>
+            {cellDisplayValue}
           </span>
           {currentValue?.reason && (
             <div className="absolute bottom-0 right-0 w-2 h-2 bg-blue-400 rounded-full"></div>
@@ -302,4 +348,19 @@ export default function InlineEditableCell({
       </div>
     </ClientOnly>
   );
-}
+});
+
+// PERFORMANCE FIX: Enhanced memo comparison to prevent unnecessary re-renders
+const InlineEditableCellMemo = React.memo(InlineEditableCell, (prevProps, nextProps) => {
+  // Only re-render if essential props change
+  return (
+    prevProps.value?.value === nextProps.value?.value &&
+    prevProps.value?.reason === nextProps.value?.reason &&
+    prevProps.date === nextProps.date &&
+    prevProps.memberId === nextProps.memberId &&
+    prevProps.isManagerView === nextProps.isManagerView &&
+    prevProps.className === nextProps.className
+  );
+});
+
+export default InlineEditableCellMemo;

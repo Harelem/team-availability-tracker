@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { ReasonDialogData } from '@/types';
 
@@ -12,7 +12,7 @@ interface ReasonDialogProps {
   isManager?: boolean;
 }
 
-export default function ReasonDialog({ isOpen, onClose, onSave, data, isManager = false }: ReasonDialogProps) {
+const ReasonDialog = React.memo(function ReasonDialog({ isOpen, onClose, onSave, data, isManager = false }: ReasonDialogProps) {
   const [reason, setReason] = useState('');
 
   if (!isOpen || !data) return null;
@@ -130,4 +130,6 @@ export default function ReasonDialog({ isOpen, onClose, onSave, data, isManager 
       </div>
     </div>
   );
-}
+});
+
+export default ReasonDialog;

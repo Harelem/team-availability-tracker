@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, startTransition, useRef } from 'react';
 // import { } from 'lucide-react'; // No icons used directly in this component
 import { TeamMember, Team, WorkOption, ReasonDialogData } from '@/types';
 import ReasonDialog from './ReasonDialog';
@@ -56,7 +56,7 @@ const workOptions: WorkOption[] = [
 
 // const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']; // Used in EnhancedAvailabilityTable
 
-export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, viewMode = 'week', sprintDates }: ScheduleTableProps) {
+const ScheduleTable = React.memo(function ScheduleTable({ currentUser, teamMembers, selectedTeam, viewMode = 'week', sprintDates }: ScheduleTableProps) {
   // Local state management (temporarily replacing centralized state)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +82,17 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
     return startOfWeek;
   });
-  const [navigationMode, setNavigationMode] = useState<'sprint' | 'week'>('week'); // 🔧 CHANGED: Default to week mode for testing
+  const [navigationMode, setNavigationMode] = useState<'sprint' | 'week'>('week');
+  
+  // PERFORMANCE FIX: Add refs for cleanup
+  const isMountedRef = useRef(true);
+
+  // Cleanup effect to mark component as unmounted
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   // Sprint data from GlobalSprintContext
   const { currentSprint } = useGlobalSprint();
@@ -106,93 +116,101 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
   const setSchedulesLoading = setLoading;
   const setSchedulesError = setError;
   
-  // Debounced schedule entry updates to reduce re-renders
-  const updateScheduleEntryImmediate = useCallback((memberId: number, date: Date, value: string | null, reason?: string) => {
-    const updateStart = performance?.now() || 0;
-    const dateKey = date.toISOString().split('T')[0];
-    if (!dateKey) return;
+  // PERFORMANCE FIX: Batched schedule entry updates to prevent cascade renders
+  const batchedUpdatesRef = useRef<Map<string, { memberId: number; date: Date; value: string | null; reason?: string }>>(new Map());
+  const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const processBatchedUpdates = useCallback(() => {
+    const updates = Array.from(batchedUpdatesRef.current.values());
+    if (updates.length === 0) return;
     
-    setScheduleData((prev: any) => {
-      const updated = {
-        ...prev,
-        [memberId]: {
-          ...prev[memberId],
-          [dateKey]: { value, reason }
-        }
-      };
-      
-      logPerformanceMetric('Schedule entry update', updateStart);
-      return updated;
+    // Clear the batch
+    batchedUpdatesRef.current.clear();
+    
+    // Apply all updates in a single state update using React 18 automatic batching
+    startTransition(() => {
+      setScheduleData((prev: any) => {
+        const updated = { ...prev };
+        
+        updates.forEach(({ memberId, date, value, reason }) => {
+          const dateKey = date.toISOString().split('T')[0];
+          if (!dateKey) return;
+          
+          if (!updated[memberId]) {
+            updated[memberId] = {};
+          }
+          updated[memberId][dateKey] = { value, reason };
+        });
+        
+        return updated;
+      });
     });
   }, []);
   
-  // Debounced version for batch updates
-  const updateScheduleEntry = useDebounce(updateScheduleEntryImmediate, 200);
+  const updateScheduleEntry = useCallback((memberId: number, date: Date, value: string | null, reason?: string) => {
+    const updateKey = `${memberId}-${date.toISOString().split('T')[0]}`;
+    
+    // Add to batch
+    batchedUpdatesRef.current.set(updateKey, { memberId, date, value, reason });
+    
+    // Clear existing timeout and set new one
+    if (batchTimeoutRef.current) {
+      clearTimeout(batchTimeoutRef.current);
+    }
+    
+    // Process batch after 100ms of inactivity (React 18 automatic batching)
+    batchTimeoutRef.current = setTimeout(processBatchedUpdates, 100);
+  }, [processBatchedUpdates]);
   
   // Mock refresh function
   const refreshSchedules = () => {
   };
 
-  // FIXED: Week navigation functions - NO DATA REFETCH, only change display
-  const goToPreviousWeek = () => {
-    setCurrentWeek(prev => {
-      const newWeek = new Date(prev);
-      newWeek.setDate(prev.getDate() - 7);
-      
-      // FIXED: Added safety check for backward navigation
-      if (newWeek >= prev) {
-        console.error('❌ Navigation error: Previous week is not actually previous!', {
-          original: prev.toDateString(),
-          calculated: newWeek.toDateString()
-        });
-      }
-      
-      console.log(`📅 NAVIGATION: Previous week - ${newWeek.toDateString()} (display only, no refetch)`);
-      return newWeek;
+  // PERFORMANCE FIX: Memoized navigation functions to prevent re-renders
+  const goToPreviousWeek = useCallback(() => {
+    startTransition(() => {
+      setCurrentWeek(prev => {
+        const newWeek = new Date(prev);
+        newWeek.setDate(prev.getDate() - 7);
+        return newWeek;
+      });
     });
-    // NO data refetch - data is already loaded for full sprint range
-  };
+  }, []);
 
-  const goToNextWeek = () => {
-    setCurrentWeek(prev => {
-      const newWeek = new Date(prev);
-      newWeek.setDate(prev.getDate() + 7);
-      
-      // FIXED: Added debug logging to track potential date cycling issues
-      if (newWeek.getMonth() === 8 && newWeek.getDate() <= 7 && prev.getMonth() === 7) {
-        console.warn('⚠️ Potential date cycling detected! Previous:', prev.toDateString(), 'New:', newWeek.toDateString());
-      }
-      
-      console.log(`📅 NAVIGATION: Next week - ${newWeek.toDateString()} (display only, no refetch)`);
-      return newWeek;
+  const goToNextWeek = useCallback(() => {
+    startTransition(() => {
+      setCurrentWeek(prev => {
+        const newWeek = new Date(prev);
+        newWeek.setDate(prev.getDate() + 7);
+        return newWeek;
+      });
     });
-    // NO data refetch - data is already loaded for full sprint range
-  };
+  }, []);
 
-  const goToCurrentWeek = () => {
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
-    setCurrentWeek(startOfWeek);
-    console.log(`📅 NAVIGATION: Current week - ${startOfWeek.toDateString()} (display only, no refetch)`);
-    // NO data refetch - data is already loaded for full sprint range
-  };
+  const goToCurrentWeek = useCallback(() => {
+    startTransition(() => {
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      setCurrentWeek(startOfWeek);
+    });
+  }, []);
 
-  // Generate week days for current week
-  const getWeekDays = (startDate: Date): Date[] => {
+  // PERFORMANCE FIX: Memoized week days calculation
+  const getWeekDays = useMemo(() => (startDate: Date): Date[] => {
     const days: Date[] = [];
-    for (let i = 0; i < 5; i++) { // Sunday to Thursday
+    for (let i = 0; i < 5; i++) {
       const day = new Date(startDate);
       day.setDate(startDate.getDate() + i);
       days.push(day);
     }
     return days;
-  };
+  }, []);
 
-  // Get current week string for display
-  const getCurrentWeekString = (): string => {
+  // PERFORMANCE FIX: Memoized current week string calculation
+  const getCurrentWeekString = useCallback((): string => {
     const endOfWeek = new Date(currentWeek);
-    endOfWeek.setDate(currentWeek.getDate() + 4); // Thursday
+    endOfWeek.setDate(currentWeek.getDate() + 4);
     
     const formatDate = (date: Date) => {
       const month = date.toLocaleDateString('en-US', { month: 'short' });
@@ -200,9 +218,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       return `${month} ${day}`;
     };
     
-    const weekString = `${formatDate(currentWeek)} - ${formatDate(endOfWeek)}`;
-    return weekString;
-  };
+    return `${formatDate(currentWeek)} - ${formatDate(endOfWeek)}`;
+  }, [currentWeek]);
   
   // Modal state objects to match the old API
   const reasonDialog = {
@@ -497,16 +514,25 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       }
     };
 
-    loadAllScheduleData();
+    if (isMountedRef.current) {
+      loadAllScheduleData();
+    }
   }, [
-    // FIXED: Reduced dependencies - only fetch data when team changes or sprint context changes
-    // NO LONGER dependent on navigationMode, currentWeek, or currentSprintOffset!
     selectedTeam.id,
-    // Use enhanced sprint data as primary source
     sprintDataResult.sprint?.current_sprint_number || currentSprint?.current_sprint_number,
     sprintDataResult.sprint?.sprint_start_date || currentSprint?.sprint_start_date,
     sprintDataResult.sprint?.sprint_end_date || currentSprint?.sprint_end_date
-  ]); // Single data fetch - view mode changes only affect display, not data fetching
+  ]);
+  
+  // PERFORMANCE FIX: Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (batchTimeoutRef.current) {
+        clearTimeout(batchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Set up real-time subscription for the FULL date range (covers both views)
   useEffect(() => {
@@ -536,28 +562,56 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       startDate,
       endDate,
       selectedTeam.id,
-      () => {
+      (payload) => {
+        // Add additional throttling at component level to prevent UI flooding
+        const now = Date.now();
+        const lastReload = (subscription as any).lastReload || 0;
+        if (now - lastReload < 2000) { // Minimum 2 seconds between reloads
+          console.log('🔄 REALTIME: Throttling reload - too frequent updates');
+          return;
+        }
+        
         // Reload data when changes occur - using same full range
         const reloadScheduleData = async () => {
           try {
+            (subscription as any).lastReload = Date.now();
+            console.log('🔄 REALTIME: Processing subscription update:', (payload as any)?.eventType);
+            
             const data = await DatabaseService.getScheduleEntries(startDate, endDate, selectedTeam.id);
-            setScheduleData(data);
-            console.log('🔄 REALTIME: Data refresh successful for full range');
+            if (isMountedRef.current) {
+              setScheduleData(data);
+              console.log('🔄 REALTIME: Data refresh successful for full range');
+            }
           } catch (error: any) {
             console.error('Error reloading schedule data from realtime:', error);
-            if (error?.code === 'PGRST301' || error?.message?.includes('401')) {
-              setAuthError(true);
-              setConnectionError(false);
-            } else {
-              setConnectionError(true);
+            if (isMountedRef.current) {
+              if (error?.code === 'PGRST301' || error?.message?.includes('401')) {
+                setAuthError(true);
+                setConnectionError(false);
+              } else {
+                setConnectionError(true);
+              }
             }
           }
         };
-        reloadScheduleData();
+        
+        // Debounce the reload to prevent excessive calls
+        if ((subscription as any).reloadTimer) {
+          clearTimeout((subscription as any).reloadTimer);
+        }
+        (subscription as any).reloadTimer = setTimeout(reloadScheduleData, 300);
+      },
+      {
+        throttleMs: 1000, // 1 second throttling at subscription level
+        debounceMs: 200   // 200ms debouncing
       }
     );
 
     return () => {
+      // Clear any pending reload timer
+      if ((subscription as any).reloadTimer) {
+        clearTimeout((subscription as any).reloadTimer);
+      }
       subscription.unsubscribe();
     };
   }, [
@@ -655,31 +709,33 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     return `${sprintLabel} (${formatDate(startDate)} - ${formatDate(endDate)})`;
   };
 
-  const isToday = (date: Date) => {
+  // PERFORMANCE FIX: Memoized date utility functions
+  const isToday = useCallback((date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
-  };
+  }, []);
 
-  const isPastDate = (date: Date) => {
+  const isPastDate = useCallback((date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const compareDate = new Date(date);
     compareDate.setHours(0, 0, 0, 0);
     return compareDate < today;
-  };
+  }, []);
 
 
-  const updateSchedule = async (memberId: number, date: Date, value: string | null, reason?: string) => {
-    // Only allow users to edit their own schedule (unless they're a manager)
-    if (!currentUser.isManager && memberId !== currentUser.id) return;
+  // PERFORMANCE FIX: Memoized and optimized schedule update function
+  const updateSchedule = useCallback(async (memberId: number, date: Date, value: string | null, reason?: string) => {
+    if (!isMountedRef.current || (!currentUser.isManager && memberId !== currentUser.id)) return;
 
     const dateKey = date.toISOString().split('T')[0];
-    if (!dateKey) {
-      console.error('Invalid date key generated');
-      return;
-    }
+    if (!dateKey) return;
     
     try {
+      // Update UI immediately with optimistic update
+      updateScheduleEntry(memberId, date, value, reason);
+      
+      // Then sync with server
       await DatabaseService.updateScheduleEntry(
         memberId,
         dateKey,
@@ -687,17 +743,19 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         reason
       );
       
-      // Update centralized state
-      updateScheduleEntry(memberId, date, value, reason);
-      
-      showSuccess('Schedule Updated', 'Schedule entry updated successfully');
+      if (isMountedRef.current) {
+        showSuccess('Schedule Updated', 'Schedule entry updated successfully');
+      }
     } catch (error) {
       console.error('Error updating schedule:', error);
-      showError('Update Error', 'Failed to update schedule entry');
+      if (isMountedRef.current) {
+        showError('Update Error', 'Failed to update schedule entry');
+      }
     }
-  };
+  }, [currentUser.isManager, currentUser.id, updateScheduleEntry, showSuccess, showError]);
 
-  const handleWorkOptionClick = (memberId: number, date: Date, value: string, reason?: string) => {
+  // PERFORMANCE FIX: Memoized click handler to prevent child re-renders
+  const handleWorkOptionClick = useCallback((memberId: number, date: Date, value: string, reason?: string) => {
     // Only allow users to edit their own schedule (unless they're a manager)
     if (!currentUser.isManager && memberId !== currentUser.id) return;
 
@@ -723,7 +781,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       // For value '1', update directly
       updateSchedule(memberId, date, value);
     }
-  };
+  }, [currentUser.isManager, currentUser.id, scheduleData, updateSchedule, reasonDialog]);
 
   const handleReasonSave = (reason: string) => {
     if (reasonDialogData) {
@@ -759,7 +817,8 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     }
   };
 
-  const calculateSprintHours = (memberId: number) => {
+  // PERFORMANCE FIX: Memoized hours calculations to prevent recalculation on every render
+  const calculateSprintHours = useCallback((memberId: number) => {
     let totalHours = 0;
     const memberData = scheduleData[memberId] || {};
 
@@ -772,11 +831,11 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       }
     });
     return totalHours;
-  };
+  }, [scheduleData, currentSprintDays]);
 
-  const getTeamTotalHours = () => {
+  const getTeamTotalHours = useCallback(() => {
     return teamMembers.reduce((total, member) => total + calculateSprintHours(member.id), 0);
-  };
+  }, [teamMembers, calculateSprintHours]);
 
   const handleMembersUpdated = () => {
     // Trigger a refresh using centralized state
@@ -875,17 +934,20 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
     );
   }
 
+  // PERFORMANCE FIX: Memoized team summary props to prevent unnecessary re-renders
+  const teamSummaryProps = useMemo(() => ({
+    team: selectedTeam,
+    currentSprint: sprintDataResult.sprint || currentSprint,
+    teamMembers,
+    className: "mb-2"
+  }), [selectedTeam, sprintDataResult.sprint, currentSprint, teamMembers]);
+  
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Mobile Team Summary - Only for Managers */}
       {currentUser.isManager && (
         <div className="md:hidden">
-          <TeamSummaryOverview
-            team={selectedTeam}
-            currentSprint={sprintDataResult.sprint || currentSprint}
-            teamMembers={teamMembers}
-            className="mb-2"
-          />
+          <TeamSummaryOverview {...teamSummaryProps} />
         </div>
       )}
 
@@ -943,9 +1005,7 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
         {/* Team Summary Overview - Only for Managers */}
         {currentUser.isManager && (
           <TeamSummaryOverview
-            team={selectedTeam}
-            currentSprint={sprintDataResult.sprint || currentSprint}
-            teamMembers={teamMembers}
+            {...teamSummaryProps}
             className="mt-0"
           />
         )}
@@ -1073,4 +1133,6 @@ export default function ScheduleTable({ currentUser, teamMembers, selectedTeam, 
       />
     </div>
   );
-}
+});
+
+export default ScheduleTable;

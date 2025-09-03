@@ -5,7 +5,17 @@
  * for team availability reminders, sprint updates, and alerts.
  */
 
-import webpush from 'web-push';
+// Server-side only - this file should only be imported in API routes
+let webpush: any = null;
+
+// Only import web-push on the server side
+if (typeof window === 'undefined') {
+  try {
+    webpush = require('web-push');
+  } catch (e) {
+    console.warn('web-push not available - push notifications disabled');
+  }
+}
 
 // Notification types
 export type NotificationType = 
@@ -72,25 +82,30 @@ interface NotificationPreferences {
   };
 }
 
-// VAPID keys configuration - MUST be set as environment variables in production
-const VAPID_KEYS = {
-  publicKey: process.env.VAPID_PUBLIC_KEY || (() => {
-    throw new Error('VAPID_PUBLIC_KEY environment variable is required');
-  })(),
-  privateKey: process.env.VAPID_PRIVATE_KEY || (() => {
-    throw new Error('VAPID_PRIVATE_KEY environment variable is required');
-  })(),
-  email: process.env.VAPID_EMAIL || (() => {
-    throw new Error('VAPID_EMAIL environment variable is required');
-  })()
-};
+// VAPID keys configuration - Server-side only
+let VAPID_KEYS: any = null;
 
-// Configure web-push
-webpush.setVapidDetails(
-  VAPID_KEYS.email,
-  VAPID_KEYS.publicKey,
-  VAPID_KEYS.privateKey
-);
+// Only initialize VAPID keys on the server side
+if (typeof window === 'undefined' && webpush) {
+  VAPID_KEYS = {
+    publicKey: process.env.VAPID_PUBLIC_KEY || (() => {
+      throw new Error('VAPID_PUBLIC_KEY environment variable is required');
+    })(),
+    privateKey: process.env.VAPID_PRIVATE_KEY || (() => {
+      throw new Error('VAPID_PRIVATE_KEY environment variable is required');
+    })(),
+    email: process.env.VAPID_EMAIL || (() => {
+      throw new Error('VAPID_EMAIL environment variable is required');
+    })()
+  };
+
+  // Configure web-push
+  webpush.setVapidDetails(
+    VAPID_KEYS.email,
+    VAPID_KEYS.publicKey,
+    VAPID_KEYS.privateKey
+  );
+}
 
 /**
  * Push Notification Manager
@@ -104,8 +119,13 @@ class PushNotificationManager {
   }> = [];
 
   constructor() {
-    this.loadSubscriptions();
-    this.startNotificationProcessor();
+    // Only initialize on server side
+    if (typeof window === 'undefined' && webpush && VAPID_KEYS) {
+      this.loadSubscriptions();
+      this.startNotificationProcessor();
+    } else {
+      console.warn('PushNotificationManager: Server-side only, skipping initialization');
+    }
   }
 
   /**

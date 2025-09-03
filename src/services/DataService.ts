@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { dataConsistencyManager, CacheKeys } from '@/utils/dataConsistencyManager'
 // Database types temporarily disabled for production
 // import type { Database } from '../types/database'
 
@@ -251,7 +252,8 @@ class DataService {
   }
 
   /**
-   * Invalidate cache entries by pattern
+   * LEGACY: Invalidate cache entries by pattern (now optimized internally)
+   * For new code, prefer dataConsistencyManager.surgicalInvalidate()
    */
   invalidateCache(pattern?: string): void {
     if (!pattern) {
@@ -259,9 +261,29 @@ class DataService {
       return
     }
 
-    for (const key of this.cache.keys()) {
-      if (key.includes(pattern)) {
-        this.cache.delete(key)
+    // For pattern-based invalidation, use the optimized approach when possible
+    try {
+      const matchingKeys: string[] = []
+      
+      for (const key of this.cache.keys()) {
+        if (key.includes(pattern)) {
+          matchingKeys.push(key)
+        }
+      }
+      
+      if (matchingKeys.length > 0) {
+        // Use surgical invalidation for better performance
+        dataConsistencyManager.surgicalInvalidate(matchingKeys, {
+          includeDependent: false,
+          priority: 'low'
+        })
+      }
+    } catch {
+      // Fallback to legacy approach if optimized approach fails
+      for (const key of this.cache.keys()) {
+        if (key.includes(pattern)) {
+          this.cache.delete(key)
+        }
       }
     }
   }
@@ -495,10 +517,12 @@ class DataService {
       throw error
     }
 
-    // Invalidate relevant caches
-    this.invalidateCache('absence_stats')
-    this.invalidateCache('team_capacity')
-    this.invalidateCache('batch_capacity')
+    // OPTIMIZED: Use surgical cache invalidation for absence operations
+    dataConsistencyManager.surgicalInvalidate([
+      'absence_stats',
+      'team_capacity', 
+      'batch_capacity'
+    ], { includeDependent: false, priority: 'low' })
 
     return data[0]
   }
@@ -518,10 +542,12 @@ class DataService {
       throw error
     }
 
-    // Invalidate relevant caches
-    this.invalidateCache('absence_stats')
-    this.invalidateCache('team_capacity')
-    this.invalidateCache('batch_capacity')
+    // OPTIMIZED: Use surgical cache invalidation for absence operations
+    dataConsistencyManager.surgicalInvalidate([
+      'absence_stats',
+      'team_capacity', 
+      'batch_capacity'
+    ], { includeDependent: false, priority: 'low' })
 
     return data[0]
   }
@@ -540,10 +566,12 @@ class DataService {
       throw error
     }
 
-    // Invalidate relevant caches
-    this.invalidateCache('absence_stats')
-    this.invalidateCache('team_capacity')
-    this.invalidateCache('batch_capacity')
+    // OPTIMIZED: Use surgical cache invalidation for absence operations
+    dataConsistencyManager.surgicalInvalidate([
+      'absence_stats',
+      'team_capacity', 
+      'batch_capacity'
+    ], { includeDependent: false, priority: 'low' })
   }
 
   /**
@@ -828,30 +856,81 @@ class DataService {
   }
 
   /**
-   * Smart cache invalidation based on data relationships
+   * OPTIMIZED: Smart cache operations with surgical updates (replaces broad invalidation)
    */
   smartInvalidateCache(changeType: 'team' | 'member' | 'sprint' | 'absence', entityId?: string): void {
-    console.log(`🧹 Smart cache invalidation: ${changeType}${entityId ? ` (${entityId})` : ''}`)
+    console.log(`🎯 Optimized cache operations: ${changeType}${entityId ? ` (${entityId})` : ''}`)
+    
+    // Use optimized cache utilities
     
     switch (changeType) {
-      case 'team':
-        this.invalidateCache('team')
-        this.invalidateCache('capacity')
+      case 'team': {
+        const teamId = entityId ? parseInt(entityId) : undefined
+        if (teamId) {
+          // Surgical invalidation for specific team
+          dataConsistencyManager.surgicalInvalidate([
+            CacheKeys.TEAM_MEMBERS(teamId),
+            CacheKeys.TEAM_DASHBOARD_DATA(teamId)
+          ], { includeDependent: false, priority: 'medium' })
+        } else {
+          // Only invalidate necessary team-wide caches
+          dataConsistencyManager.surgicalInvalidate([
+            CacheKeys.OPERATIONAL_TEAMS,
+            CacheKeys.TEAM_MEMBERS()
+          ], { includeDependent: false, priority: 'medium' })
+        }
         break
-      case 'member':
-        this.invalidateCache('team_members')
-        this.invalidateCache('capacity')
-        this.invalidateCache('analytics')
+      }
+      case 'member': {
+        const memberId = entityId ? parseInt(entityId) : undefined
+        if (memberId) {
+          // Surgical invalidation for specific member
+          dataConsistencyManager.surgicalInvalidate([
+            CacheKeys.MEMBER_SCHEDULE(memberId)
+          ], { includeDependent: false, priority: 'high' })
+          
+          // Only invalidate team cache if we can identify the team
+          // This prevents cascade invalidation across all teams
+        } else {
+          // Fallback to minimal invalidation
+          this.invalidateCache('team_members')
+        }
         break
-      case 'sprint':
-        this.invalidateCache('sprint')
-        this.invalidateCache('capacity')
-        this.invalidateCache('analytics')
+      }
+      case 'sprint': {
+        const sprintId = entityId ? parseInt(entityId) : undefined
+        if (sprintId) {
+          // Surgical invalidation for specific sprint
+          dataConsistencyManager.surgicalInvalidate([
+            CacheKeys.COMPANY_HOURS_STATUS(sprintId),
+            CacheKeys.SPRINT_FOR_DATE(new Date().toISOString().split('T')[0])
+          ], { includeDependent: false, priority: 'medium' })
+        } else {
+          // Only invalidate current sprint cache
+          dataConsistencyManager.surgicalInvalidate([
+            CacheKeys.CURRENT_GLOBAL_SPRINT
+          ], { includeDependent: false, priority: 'high' })
+        }
         break
-      case 'absence':
-        this.invalidateCache('absence')
-        this.invalidateCache('capacity')
+      }
+      case 'absence': {
+        // Absence changes only affect capacity calculations
+        // Use targeted invalidation instead of broad patterns
+        if (entityId) {
+          const [memberId, date] = entityId.split('_')
+          if (memberId && date) {
+            const memberIdNum = parseInt(memberId)
+            dataConsistencyManager.surgicalInvalidate([
+              CacheKeys.CAPACITY_DATA(0, date), // Team-agnostic capacity
+              CacheKeys.MEMBER_SCHEDULE(memberIdNum)
+            ], { includeDependent: false, priority: 'low' })
+          }
+        } else {
+          // Generic absence update - minimal invalidation
+          this.invalidateCache('absence_stats')
+        }
         break
+      }
     }
   }
 

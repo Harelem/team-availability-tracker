@@ -9,21 +9,41 @@ import { subscriptionManager, type SubscriptionConfig } from '../lib/Subscriptio
 /**
  * Enhanced hook for real-time subscriptions with automatic cleanup and optimization
  */
-export function useEnhancedSubscription<T = any>(config: Omit<SubscriptionConfig, 'callback'>) {
+export function useEnhancedSubscription<T = any>(
+  config: Omit<SubscriptionConfig, 'callback'> | null,
+  options: {
+    throttleMs?: number
+    debounceMs?: number
+    enabled?: boolean
+  } = {}
+) {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<Error | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [connectionStats, setConnectionStats] = useState<ReturnType<typeof subscriptionManager.getMemoryStats> | null>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)
+  const lastUpdateRef = useRef<number>(0)
+
+  const { enabled = true, throttleMs = 1000, debounceMs = 200 } = options
 
   const handleData = useCallback((payload: any) => {
+    const now = Date.now()
+    
+    // Additional throttling at hook level to prevent React state flooding
+    if (now - lastUpdateRef.current < throttleMs) {
+      return
+    }
+    
+    lastUpdateRef.current = now
     setData(payload)
     setError(null)
     setIsConnected(true)
     
-    // Update connection stats periodically
-    setConnectionStats(subscriptionManager.getMemoryStats())
-  }, [])
+    // Update connection stats periodically (less frequent)
+    if (Math.random() < 0.1) { // 10% chance to update stats
+      setConnectionStats(subscriptionManager.getMemoryStats())
+    }
+  }, [throttleMs])
 
   const handleError = useCallback((err: Error) => {
     setError(err)
@@ -31,10 +51,21 @@ export function useEnhancedSubscription<T = any>(config: Omit<SubscriptionConfig
   }, [])
 
   useEffect(() => {
+    if (!config || !enabled) {
+      // Cleanup any existing subscription if disabled
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current()
+        unsubscribeRef.current = null
+      }
+      setIsConnected(false)
+      return
+    }
+
     const subscriptionConfig: SubscriptionConfig = {
       ...config,
       callback: handleData,
-      debounceMs: config.debounceMs || 200 // Default 200ms debouncing
+      debounceMs: debounceMs,
+      throttleMs: throttleMs
     }
 
     try {
@@ -55,7 +86,17 @@ export function useEnhancedSubscription<T = any>(config: Omit<SubscriptionConfig
         unsubscribeRef.current = null
       }
     }
-  }, [config.key, config.channel, config.table, config.filter, handleData, handleError])
+  }, [
+    config?.key, 
+    config?.channel, 
+    config?.table, 
+    config?.filter, 
+    enabled, 
+    throttleMs, 
+    debounceMs, 
+    handleData, 
+    handleError
+  ])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -90,52 +131,61 @@ export function useTeamScheduleSubscription(
   options: { 
     enabled?: boolean
     debounceMs?: number
+    throttleMs?: number
   } = {}
 ) {
-  const { enabled = true, debounceMs = 200 } = options
+  const { enabled = true, debounceMs = 200, throttleMs = 1000 } = options
 
   const config = enabled ? {
     key: `team_schedule_${teamId}_${startDate}_${endDate}`,
     channel: `team_schedule_${teamId}`,
     table: 'schedule_entries' as const,
-    filter: `date=gte.${startDate}&date=lte.${endDate}`,
-    debounceMs
+    filter: `date=gte.${startDate}&date=lte.${endDate}`
   } : null
 
-  return useEnhancedSubscription(config)
+  return useEnhancedSubscription(config, { enabled, debounceMs, throttleMs })
 }
 
 /**
  * Hook for global sprint changes subscription
  */
-export function useSprintChangesSubscription(options: { enabled?: boolean } = {}) {
-  const { enabled = true } = options
+export function useSprintChangesSubscription(
+  options: { 
+    enabled?: boolean
+    throttleMs?: number
+  } = {}
+) {
+  const { enabled = true, throttleMs = 500 } = options
 
   const config = enabled ? {
     key: 'global_sprint_changes',
     channel: 'sprint_changes',
-    table: 'global_sprint_settings' as const,
-    debounceMs: 100 // Faster for sprint changes
+    table: 'global_sprint_settings' as const
   } : null
 
-  return useEnhancedSubscription(config)
+  return useEnhancedSubscription(config, { enabled, throttleMs, debounceMs: 100 })
 }
 
 /**
  * Hook for team member changes subscription
  */
-export function useTeamMemberChangesSubscription(teamId: number, options: { enabled?: boolean } = {}) {
-  const { enabled = true } = options
+export function useTeamMemberChangesSubscription(
+  teamId: number, 
+  options: { 
+    enabled?: boolean
+    throttleMs?: number
+  } = {}
+) {
+  const { enabled = true, throttleMs = 2000 } = options
 
   const config = enabled ? {
     key: `team_members_${teamId}`,
     channel: `team_members_${teamId}`,
     table: 'team_members' as const,
-    filter: `team_id.eq.${teamId}`,
-    debounceMs: 300 // Slower debounce for team member changes
+    filter: `team_id.eq.${teamId}`
   } : null
 
-  return useEnhancedSubscription(config)
+  return useEnhancedSubscription(config, { enabled, throttleMs, debounceMs: 300 })
 }
 
 /**

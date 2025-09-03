@@ -20,6 +20,17 @@ export interface TableColumnCheck {
   optionalColumns?: string[];
 }
 
+// PERFORMANCE FIX: Cache for schema validation to prevent duplicate checks
+let validationCache: {
+  result: SchemaValidationResult | null;
+  timestamp: number;
+} = {
+  result: null,
+  timestamp: 0
+};
+
+const VALIDATION_CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache
+
 // Critical schema requirements
 const REQUIRED_SCHEMA: TableColumnCheck[] = [
   {
@@ -48,6 +59,12 @@ const REQUIRED_SCHEMA: TableColumnCheck[] = [
  * Validate database schema by attempting to query required columns
  */
 export async function validateDatabaseSchema(): Promise<SchemaValidationResult> {
+  // PERFORMANCE FIX: Check cache first to prevent duplicate validations
+  const now = Date.now();
+  if (validationCache.result && (now - validationCache.timestamp) < VALIDATION_CACHE_TTL) {
+    return validationCache.result;
+  }
+
   const result: SchemaValidationResult = {
     isValid: true,
     errors: [],
@@ -56,7 +73,7 @@ export async function validateDatabaseSchema(): Promise<SchemaValidationResult> 
     invalidTables: []
   };
 
-  console.log('🔍 Starting database schema validation...');
+  // PERFORMANCE FIX: Remove debug logging for production performance
 
   for (const tableCheck of REQUIRED_SCHEMA) {
     try {
@@ -80,10 +97,10 @@ export async function validateDatabaseSchema(): Promise<SchemaValidationResult> 
           result.errors.push(`❌ Schema error in table '${table}': ${error.message}`);
         }
         
-        console.error(`❌ Schema validation failed for table '${table}':`, error.message);
+        // PERFORMANCE FIX: Remove individual table error logging
       } else {
         result.validTables.push(table);
-        console.log(`✅ Schema validation passed for table '${table}'`);
+        // PERFORMANCE FIX: Remove individual table success logging
       }
     } catch (error) {
       result.isValid = false;
@@ -93,11 +110,15 @@ export async function validateDatabaseSchema(): Promise<SchemaValidationResult> 
     }
   }
 
-  // Log summary
-  if (result.isValid) {
-    console.log(`✅ Database schema validation completed successfully - ${result.validTables.length} tables validated`);
-  } else {
-    console.error(`❌ Database schema validation failed - ${result.errors.length} errors found`);
+  // PERFORMANCE FIX: Cache the result to prevent duplicate validations
+  validationCache = {
+    result: { ...result }, // Create a copy to prevent mutations
+    timestamp: Date.now()
+  };
+
+  // PERFORMANCE FIX: Remove completion logging for production performance
+  // Still log critical errors for debugging
+  if (!result.isValid) {
     result.errors.forEach(error => console.error(error));
   }
 

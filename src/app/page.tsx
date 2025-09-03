@@ -334,18 +334,12 @@ function HomeContent() {
 
   // Show loading state during initial data loading only
   if (loading && teams.length === 0) {
-    return <div suppressHydrationWarning><LoadingState mode="fullscreen" testId="initial-loading" /></div>;
+    return <LoadingState mode="fullscreen" testId="initial-loading" />;
   }
 
-  // Team loading state - hydration safe with inline mode to match container structure
+  // Team loading state - use fullscreen mode for consistency
   if (selectedTeam && loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex items-center justify-center p-4">
-          <LoadingState testId="team-members-loading" mode="inline" />
-        </div>
-      </div>
-    );
+    return <LoadingState mode="fullscreen" testId="team-members-loading" />;
   }
 
   // Show user selection for selected team
@@ -494,12 +488,12 @@ function HomeContent() {
         
         {/* User Type Detection and Dashboard Rendering with Suspense boundaries */}
         <div suppressHydrationWarning={true}>
-          <Suspense fallback={<LoadingState testId="dashboard-suspense-loading" showText text="Loading dashboard..." />}>
+          <Suspense fallback={<LoadingState mode="inline" testId="dashboard-suspense-loading" showText text="Loading dashboard..." />}>
             {canViewSprints(selectedUser) && selectedTeam && selectedUser && (
               <GlobalSprintProvider teamId={selectedTeam.id}>
-                <Suspense fallback={<LoadingState testId="sprint-dashboard-loading" showText text="Loading sprint data..." />}>
+                <Suspense fallback={<LoadingState mode="inline" testId="sprint-dashboard-loading" showText text="Loading sprint data..." />}>
                   {selectedUser.isManager ? (
-                    <React.Suspense fallback={<LoadingState testId="manager-dashboard-loading" showText text="Loading manager dashboard..." />}>
+                    <React.Suspense fallback={<LoadingState mode="inline" testId="manager-dashboard-loading" showText text="Loading manager dashboard..." />}>
                       <ManagerDashboardErrorBoundary>
                         <LazyManagerDashboard 
                           user={selectedUser}
@@ -521,9 +515,9 @@ function HomeContent() {
             
             {/* Show basic dashboard without sprint features if user can't view sprints */}
             {!canViewSprints(selectedUser) && selectedTeam && selectedUser && (
-              <Suspense fallback={<LoadingState testId="basic-dashboard-loading" showText text="Loading dashboard..." />}>
+              <Suspense fallback={<LoadingState mode="inline" testId="basic-dashboard-loading" showText text="Loading dashboard..." />}>
                 {selectedUser.isManager ? (
-                  <React.Suspense fallback={<LoadingState testId="manager-dashboard-basic-loading" showText text="Loading manager dashboard..." />}>
+                  <React.Suspense fallback={<LoadingState mode="inline" testId="manager-dashboard-basic-loading" showText text="Loading manager dashboard..." />}>
                     <ManagerDashboardErrorBoundary>
                       <LazyManagerDashboard 
                         user={selectedUser}
@@ -551,9 +545,11 @@ function HomeContent() {
 export default function Home() {
   return (
     <TeamProvider>
-      <Suspense fallback={<LoadingState testId="suspense-loading" />}>
-        <HomeContent />
-      </Suspense>
+      <div suppressHydrationWarning={true}>
+        <Suspense fallback={<LoadingState mode="fullscreen" testId="suspense-loading" />}>
+          <HomeContent />
+        </Suspense>
+      </div>
     </TeamProvider>
   );
 }

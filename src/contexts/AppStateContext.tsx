@@ -89,10 +89,11 @@ export function AppStateProvider({
     }
   }, [state.initialized, dispatch]);
 
-  // DevTools integration (development only)
+  // DevTools integration (development only) - optimized to prevent excessive updates
+  const devToolsRef = React.useRef<any>(null);
   useEffect(() => {
-    if (enableDevTools && typeof window !== 'undefined') {
-      // Expose state management to window for debugging
+    if (enableDevTools && typeof window !== 'undefined' && !devToolsRef.current) {
+      // Expose state management to window for debugging (once)
       (window as any).__APP_STATE__ = {
         getState: () => state,
         dispatch,
@@ -102,9 +103,9 @@ export function AppStateProvider({
         history: state.history
       };
 
-      // Redux DevTools Extension integration
+      // Redux DevTools Extension integration (once)
       if ((window as any).__REDUX_DEVTOOLS_EXTENSION__) {
-        const devTools = (window as any).__REDUX_DEVTOOLS_EXTENSION__.connect({
+        devToolsRef.current = (window as any).__REDUX_DEVTOOLS_EXTENSION__.connect({
           name: 'Team Availability Tracker',
           features: {
             pause: true,
@@ -121,33 +122,46 @@ export function AppStateProvider({
         });
 
         // Send initial state
-        devTools.send({ type: '@@INIT' }, state);
-
-        // Monitor state changes
-        const unsubscribe = () => {
-          // Clean up subscription
-        };
-
-        return unsubscribe;
+        devToolsRef.current.send({ type: '@@INIT' }, state);
       }
     }
-  }, [state, dispatch, selectors, actions, debug, enableDevTools]);
-
-  // Performance monitoring (development only)
+    
+    return () => {
+      devToolsRef.current = null;
+    };
+  }, [enableDevTools]); // Only depend on enableDevTools, not state
+  
+  // Separate effect for state updates to DevTools (throttled)
+  const lastDevToolsUpdate = React.useRef<number>(0);
   useEffect(() => {
+    if (devToolsRef.current && enableDevTools) {
+      const now = Date.now();
+      if (now - lastDevToolsUpdate.current > 100) { // Throttle to 10 updates per second max
+        devToolsRef.current.send({ type: 'STATE_UPDATE' }, state);
+        lastDevToolsUpdate.current = now;
+      }
+    }
+  }, [state, enableDevTools]);
+
+  // Performance monitoring (development only) - properly memoized to prevent infinite loops
+  const renderTimeRef = React.useRef<number>(0);
+  React.useLayoutEffect(() => {
     if (enableDevTools && state.debugMode) {
-      const startTime = performance.now();
-      
-      return () => {
-        const endTime = performance.now();
-        const renderTime = endTime - startTime;
-        
-        if (renderTime > 16) { // More than one frame (16ms)
-          console.warn(`🐌 Slow render detected: ${renderTime.toFixed(2)}ms`);
-        }
-      };
+      renderTimeRef.current = performance.now();
     }
   });
+  
+  React.useLayoutEffect(() => {
+    if (enableDevTools && state.debugMode && renderTimeRef.current > 0) {
+      const endTime = performance.now();
+      const renderTime = endTime - renderTimeRef.current;
+      
+      if (renderTime > 16) { // More than one frame (16ms)
+        console.warn(`🐌 Slow render detected: ${renderTime.toFixed(2)}ms`);
+      }
+      renderTimeRef.current = 0;
+    }
+  }, [enableDevTools, state.debugMode]);
 
   // Error boundary for state-related errors
   useEffect(() => {
@@ -216,9 +230,17 @@ export function AppStateProvider({
     }
   }, [state.initialized, dispatch]);
 
-  // Cache invalidation cleanup (batched and non-blocking)
+  // Cache invalidation cleanup (batched and non-blocking) - optimized to prevent excessive re-runs
+  const lastCacheCheck = React.useRef<number>(0);
   useEffect(() => {
     const cleanup = () => {
+      // Throttle cache checks to prevent excessive computation
+      const now = Date.now();
+      if (now - lastCacheCheck.current < 30000) { // Only check every 30 seconds minimum
+        return;
+      }
+      lastCacheCheck.current = now;
+      
       startTransition(() => {
         // Collect all cache operations to batch them
         const invalidationActions: any[] = [];
@@ -245,7 +267,7 @@ export function AppStateProvider({
       });
     };
 
-    const interval = setInterval(cleanup, 60000); // Check every minute
+    const interval = setInterval(cleanup, 120000); // Check every 2 minutes instead of 1
     return () => {
       clearInterval(interval);
       // Cleanup timeout refs on unmount
@@ -253,7 +275,7 @@ export function AppStateProvider({
         clearTimeout(preferencesTimeoutRef.current);
       }
     };
-  }, [state.cache.policies, state.cache.timestamps, dispatch]);
+  }, []); // Remove dependencies to prevent constant re-subscription
 
   const contextValue: AppStateContextType = {
     state,

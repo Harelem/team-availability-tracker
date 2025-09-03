@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { Users, Clock, Calendar, AlertCircle, TrendingUp, Settings, BarChart3, Table } from 'lucide-react';
 import { TeamMember, Team, CurrentGlobalSprint } from '@/types';
 import PersonalDashboard from './PersonalDashboard';
@@ -60,8 +60,6 @@ export default function ManagerDashboard({
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading, error: sprintError } = useGlobalSprint();
   
-  // ManagerDashboard render logging removed for performance
-  
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   
@@ -79,6 +77,10 @@ export default function ManagerDashboard({
   
   const [memberSubmissionStatuses, setMemberSubmissionStatuses] = useState<TeamMemberSubmissionStatus[]>([]);
   const [isLoadingTeamData, setIsLoadingTeamData] = useState(true);
+  
+  // PERFORMANCE FIX: Add updating state to prevent expensive recalculations during calendar updates
+  const [isUpdatingData, setIsUpdatingData] = useState(false);
+  const updateDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calculate working days in sprint (excluding weekends)
   const sprintWorkingDays = useMemo(() => {
@@ -157,11 +159,7 @@ export default function ManagerDashboard({
       const fallbackWorkingDays = Math.max(sprintWorkingDays.length, 10); // Use actual working days or fallback
       const fallbackPotentialHours = teamMembers.length * fallbackWorkingDays * 7;
       
-      console.log('⚠️ Using initial fallback - missing sprint/team data:', {
-        workingDays: fallbackWorkingDays,
-        teamSize: teamMembers.length,
-        potentialHours: fallbackPotentialHours
-      });
+      // PERFORMANCE FIX: Remove fallback logging for production performance
       
       setTeamCompletionData({
         totalMembers: teamMembers.length,
@@ -180,17 +178,10 @@ export default function ManagerDashboard({
       const startDate = sprintWorkingDays[0]?.toISOString().split('T')[0];
       const endDate = sprintWorkingDays[sprintWorkingDays.length - 1]?.toISOString().split('T')[0];
       
-      console.log('🔍 Sprint hours debug:', {
-        sprintWorkingDaysCount: sprintWorkingDays.length,
-        startDate,
-        endDate,
-        teamMembersCount: teamMembers.length,
-        teamId: team.id,
-        sprintId: currentSprint?.id
-      });
+      // PERFORMANCE FIX: Remove debug logging for production performance
       
       if (!startDate || !endDate) {
-        console.warn('❌ Invalid date range, using emergency fallback calculation');
+        // PERFORMANCE FIX: Remove warning logging for production performance
         
         // Emergency fallback with working days calculation
         const emergencyWorkingDays = Math.max(sprintWorkingDays.length, 10); // Fallback to 10 if empty
@@ -243,13 +234,7 @@ export default function ManagerDashboard({
         const directTotal = scheduleEntries?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0;
         const directPotential = teamMembers.length * sprintWorkingDays.length * 7;
         
-        console.log('🏛️ Direct database query result:', {
-          entriesCount: scheduleEntries?.length || 0,
-          totalSubmittedHours: directTotal,
-          sprintPotentialHours: directPotential,
-          sprintUuid,
-          memberIds
-        });
+        // PERFORMANCE FIX: Remove database query result logging for production performance
         
         // Use direct query result if service returns zero but DB has data
         if (teamStats.totalSubmittedHours === 0 && directTotal > 0) {
@@ -323,12 +308,44 @@ export default function ManagerDashboard({
     }
   }, [currentSprint, team?.id, teamMembers, sprintWorkingDays]);
 
+  // PERFORMANCE FIX: Debounced update function to prevent cascade recalculations
+  const debouncedLoadTeamStats = useCallback(() => {
+    if (updateDebounceRef.current) {
+      clearTimeout(updateDebounceRef.current);
+    }
+    
+    setIsUpdatingData(true);
+    
+    updateDebounceRef.current = setTimeout(() => {
+      loadTeamStats().finally(() => {
+        setIsUpdatingData(false);
+      });
+    }, 500); // 500ms debounce to batch multiple rapid updates
+  }, [loadTeamStats]);
+
   // Load team stats on mount and when dependencies change
   React.useEffect(() => {
     loadTeamStats();
   }, [loadTeamStats]);
 
+  // PERFORMANCE FIX: Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (updateDebounceRef.current) {
+        clearTimeout(updateDebounceRef.current);
+      }
+    };
+  }, []);
+
   const teamStats = useMemo(() => {
+    // PERFORMANCE FIX: Skip expensive calculations during updates
+    if (isUpdatingData && teamCompletionData) {
+      return {
+        ...teamCompletionData,
+        sprintLength: sprintWorkingDays.length
+      };
+    }
+    
     if (!teamCompletionData) {
       // Calculate basic fallback values when real calculation fails
       const estimatedHours = Math.max(teamMembers.length * sprintWorkingDays.length * 7 * 0.5, 0);
@@ -348,20 +365,23 @@ export default function ManagerDashboard({
     const calculatedPotentialHours = teamMembers.length * sprintWorkingDays.length * 7;
     const finalPotentialHours = teamCompletionData.sprintPotentialHours || calculatedPotentialHours;
     
-    console.log('📊 Final teamStats calculation:', {
-      dataSourcePotential: teamCompletionData.sprintPotentialHours,
-      calculatedPotential: calculatedPotentialHours,
-      finalPotentialUsed: finalPotentialHours,
-      workingDays: sprintWorkingDays.length,
-      teamSize: teamMembers.length
-    });
+    // PERFORMANCE FIX: Reduced logging frequency
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) { // Only 10% of calculations log
+      console.log('📊 Final teamStats calculation:', {
+        dataSourcePotential: teamCompletionData.sprintPotentialHours,
+        calculatedPotential: calculatedPotentialHours,
+        finalPotentialUsed: finalPotentialHours,
+        workingDays: sprintWorkingDays.length,
+        teamSize: teamMembers.length
+      });
+    }
 
     return {
       ...teamCompletionData,
       sprintPotentialHours: finalPotentialHours,
       sprintLength: sprintWorkingDays.length
     };
-  }, [teamCompletionData, teamMembers.length, sprintWorkingDays.length]);
+  }, [teamCompletionData, teamMembers.length, sprintWorkingDays.length, isUpdatingData]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -488,12 +508,12 @@ export default function ManagerDashboard({
                 selectedTeam={team}
                 currentSprint={currentSprint}
                 onWorkOptionClick={async (memberId, date, value) => {
-                  // Handle schedule updates
-                  console.log('Schedule update:', { memberId, date, value });
-                  loadTeamStats(); // Reload stats after update
+                  // Handle schedule updates - PERFORMANCE FIX: Use debounced update
+                  debouncedLoadTeamStats();
                 }}
                 onMemberUpdate={() => {
-                  loadTeamStats(); // Reload stats after member update
+                  // PERFORMANCE FIX: Use debounced update to prevent cascade recalculations
+                  debouncedLoadTeamStats();
                 }}
               />
             </div>
@@ -518,7 +538,7 @@ export default function ManagerDashboard({
                 <TeamMemberManagement 
                   currentUser={user}
                   selectedTeam={team}
-                  onMembersUpdated={loadTeamStats}
+                  onMembersUpdated={debouncedLoadTeamStats}
                 />
               </div>
             </div>
@@ -530,14 +550,72 @@ export default function ManagerDashboard({
     }
   };
 
-  // Show loading state while sprint is loading
+  // Show loading state while sprint is loading - PERFORMANCE FIX: Precise skeleton to prevent CLS
   if (sprintLoading) {
     return (
-      <div className={combineClasses('space-y-6', className)}>
-        <div className="bg-white rounded-lg border border-gray-200 p-8">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading sprint and team data...</span>
+      <div className={combineClasses('space-y-6', className)} style={{ minHeight: '1000px' }}>
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 border border-purple-100" style={{ minHeight: '120px' }}>
+          <div className="animate-pulse">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="h-6 bg-gray-200 rounded mb-2 w-64"></div>
+                <div className="h-4 bg-gray-200 rounded w-48"></div>
+              </div>
+              <div className="text-right">
+                <div className="h-8 bg-gray-200 rounded w-16 mb-1"></div>
+                <div className="h-4 bg-gray-200 rounded w-24"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation Skeleton */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="border-b border-gray-200 p-6">
+            <div className="animate-pulse flex space-x-8">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-12 bg-gray-200 rounded w-32"></div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Content Skeleton */}
+          <div className="p-6">
+            <div className="animate-pulse space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="bg-gray-50 border border-gray-200 rounded-md p-4" style={{ minHeight: '120px' }}>
+                    <div className="h-4 bg-gray-200 rounded mb-2 w-20"></div>
+                    <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-32"></div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Main Content */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6" style={{ minHeight: '400px' }}>
+                <div className="h-6 bg-gray-200 rounded mb-4 w-48"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        <div>
+                          <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
+                          <div className="h-3 bg-gray-200 rounded w-16"></div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="h-4 bg-gray-200 rounded w-12"></div>
+                        <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

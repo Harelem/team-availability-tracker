@@ -82,6 +82,13 @@ export default function PersonalScheduleTable({
   const [showReasonTooltips, setShowReasonTooltips] = useState<{[key: string]: boolean}>({});
   const reasonTooltipRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
   
+  // Enhanced loading and operation states
+  const [isUpdatingSchedule, setIsUpdatingSchedule] = useState(false);
+  const [updatingDate, setUpdatingDate] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const [optimisticUpdates, setOptimisticUpdates] = useState<{[key: string]: {value: string | null; reason?: string}}>({});
+  const [retryAttempts, setRetryAttempts] = useState(0);
+  
   // Navigation state for week/sprint navigation - DISPLAY ONLY
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [displayDates, setDisplayDates] = useState<Date[]>(sprintDates);
@@ -203,7 +210,25 @@ export default function PersonalScheduleTable({
       return;
     }
     
+    setIsUpdatingSchedule(true);
+    setUpdatingDate(dateKey);
+    setOperationError(null);
+    
+    // Store original value for potential rollback
+    const originalValue = scheduleData[memberId]?.[dateKey];
+    
     try {
+      // Optimistic update
+      setOptimisticUpdates(prev => ({
+        ...prev,
+        [dateKey]: { value, reason }
+      }));
+      
+      // Add haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(25);
+      }
+      
       await DatabaseService.updateScheduleEntry(
         memberId,
         dateKey,
@@ -211,7 +236,7 @@ export default function PersonalScheduleTable({
         reason
       );
       
-      // Update local state
+      // Success - update actual data
       const newData = {
         ...scheduleData,
         [memberId]: {
@@ -224,9 +249,39 @@ export default function PersonalScheduleTable({
         onDataChange(newData);
       }
       
+      console.log(`✅ Schedule updated successfully for ${dateKey}`);
+      setRetryAttempts(0);
+      
+      // Clear optimistic update after successful operation
+      setTimeout(() => {
+        setOptimisticUpdates(prev => {
+          const updated = { ...prev };
+          delete updated[dateKey];
+          return updated;
+        });
+      }, 500);
+      
     } catch (error) {
       console.error('Error updating schedule:', error);
-      // You could add a toast notification here
+      
+      // Revert optimistic update
+      setOptimisticUpdates(prev => {
+        const updated = { ...prev };
+        delete updated[dateKey];
+        return updated;
+      });
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setOperationError(`Failed to update schedule: ${errorMessage}`);
+      
+      // Stronger haptic feedback for error
+      if ('vibrate' in navigator) {
+        navigator.vibrate([50, 50, 50]);
+      }
+      
+    } finally {
+      setIsUpdatingSchedule(false);
+      setUpdatingDate(null);
     }
   }, [scheduleData, onDataChange]);
 
@@ -250,10 +305,12 @@ export default function PersonalScheduleTable({
 
   // Enhanced cell click handler for 1-click cycling
   const handleCellClick = (date: Date) => {
-    if (!editable) return;
+    if (!editable || isUpdatingSchedule) return;
     
     const dateKey = date.toISOString().split('T')[0];
-    const currentValue = dateKey ? scheduleData[user.id]?.[dateKey]?.value : undefined;
+    if (updatingDate === dateKey) return; // Prevent double-clicks during update
+    
+    const currentValue = getValueForDate(date);
     const nextStatus = getNextStatus(currentValue);
     
     // If next status requires reason, show quick reasons
@@ -269,10 +326,12 @@ export default function PersonalScheduleTable({
   };
 
   const handleWorkOptionClick = (date: Date, value: string) => {
-    if (!editable) return;
+    if (!editable || isUpdatingSchedule) return;
     
     const dateKey = date.toISOString().split('T')[0];
-    const currentValue = dateKey ? scheduleData[user.id]?.[dateKey]?.value : undefined;
+    if (updatingDate === dateKey) return; // Prevent clicks during update
+    
+    const currentValue = getValueForDate(date);
     
     // If clicking the same value, deselect it
     if (currentValue === value) {
@@ -335,6 +394,19 @@ export default function PersonalScheduleTable({
     }));
   };
 
+  // Auto-retry mechanism for failed operations
+  useEffect(() => {
+    if (operationError && retryAttempts < 3) {
+      const retryTimeout = setTimeout(() => {
+        console.log(`🔄 Auto-retrying failed schedule update (attempt ${retryAttempts + 1}/3)`);
+        setRetryAttempts(prev => prev + 1);
+        setOperationError(null);
+      }, 2000 * (retryAttempts + 1)); // Progressive backoff
+      
+      return () => clearTimeout(retryTimeout);
+    }
+  }, [operationError, retryAttempts]);
+  
   // Handle keyboard events for modal
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -379,12 +451,26 @@ export default function PersonalScheduleTable({
 
   const getValueForDate = (date: Date) => {
     const dateKey = date.toISOString().split('T')[0];
-    return dateKey ? scheduleData[user.id]?.[dateKey]?.value || null : null;
+    if (!dateKey) return null;
+    
+    // Check optimistic updates first
+    if (optimisticUpdates[dateKey]) {
+      return optimisticUpdates[dateKey].value;
+    }
+    
+    return scheduleData[user.id]?.[dateKey]?.value || null;
   };
 
   const getReasonForDate = (date: Date) => {
     const dateKey = date.toISOString().split('T')[0];
-    return dateKey ? scheduleData[user.id]?.[dateKey]?.reason || null : null;
+    if (!dateKey) return null;
+    
+    // Check optimistic updates first
+    if (optimisticUpdates[dateKey]) {
+      return optimisticUpdates[dateKey].reason;
+    }
+    
+    return scheduleData[user.id]?.[dateKey]?.reason || null;
   };
 
   // Group dates by week for better display
@@ -426,9 +512,49 @@ export default function PersonalScheduleTable({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-elevation-3 overflow-hidden border-2 border-gray-100">
+    <div className="bg-white rounded-2xl shadow-elevation-3 overflow-hidden border-2 border-gray-100 relative">
+      {/* Operation Error Banner */}
+      {operationError && (
+        <div className="absolute top-0 left-0 right-0 z-20 bg-red-50 border-b border-red-200 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 text-red-600">
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-red-800 font-medium text-sm">{operationError}</p>
+              {retryAttempts > 0 && (
+                <p className="text-red-600 text-xs mt-1">Auto-retry attempt {retryAttempts}/3...</p>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setOperationError(null);
+                setRetryAttempts(0);
+              }}
+              className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100 transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Loading overlay */}
+      {isUpdatingSchedule && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+          <div className="bg-white rounded-lg shadow-lg p-4 flex items-center gap-3">
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-gray-700 font-medium">Updating schedule...</span>
+          </div>
+        </div>
+      )}
+      
       {/* Enhanced Statistics Header - Matching Team Schedule Style */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 px-6 py-4">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 px-6 py-4" style={{marginTop: operationError ? '60px' : '0'}}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">

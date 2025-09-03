@@ -60,23 +60,15 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
     setError(null);
     
     try {
-      console.log('🔍 GlobalSprintContext: Starting sprint data loading...');
+      // PERFORMANCE FIX: Remove sprint data loading logs for production performance
       
       // Use the new centralized sprint data handler
       const sprintResult = await sprintDataHandler.getCurrentSprint();
       
-      console.log('📊 GlobalSprintContext: Sprint result:', {
-        success: sprintResult.success,
-        source: sprintResult.source,
-        cached: sprintResult.cached,
-        hasSprint: !!sprintResult.sprint,
-        sprintId: sprintResult.sprint?.id,
-        warnings: sprintResult.warnings,
-        errors: sprintResult.errors
-      });
+      // PERFORMANCE FIX: Remove sprint result logging for production performance
       
       if (sprintResult.success) {
-        console.log('✅ GlobalSprintContext: Setting currentSprint:', sprintResult.sprint);
+        // PERFORMANCE FIX: Remove current sprint logging for production performance
         
         // Use startTransition for non-blocking state updates
         startTransition(() => {

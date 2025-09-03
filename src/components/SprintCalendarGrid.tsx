@@ -25,6 +25,8 @@ interface SprintCalendarGridProps {
   onDateRangeSelect: (startDate: Date, endDate: Date) => void;
   onSprintClick: (sprint: SprintHistoryEntry) => void;
   selectedSprint?: SprintHistoryEntry | null;
+  isLoading?: boolean;
+  operationInProgress?: boolean;
 }
 
 export default function SprintCalendarGrid({
@@ -33,7 +35,9 @@ export default function SprintCalendarGrid({
   sprints,
   onDateRangeSelect,
   onSprintClick,
-  selectedSprint
+  selectedSprint,
+  isLoading = false,
+  operationInProgress = false
 }: SprintCalendarGridProps) {
   const [dragSelection, setDragSelection] = useState<DragSelection>({
     startDate: null,
@@ -115,6 +119,12 @@ export default function SprintCalendarGrid({
 
   // Handle mouse down (start drag selection)
   const handleMouseDown = (date: Date, event: React.MouseEvent) => {
+    // Disable interaction during operations
+    if (operationInProgress || isLoading) {
+      event.preventDefault();
+      return;
+    }
+    
     // Only start selection on empty areas or when holding Shift
     if (event.shiftKey || event.target === event.currentTarget) {
       event.preventDefault();
@@ -140,6 +150,16 @@ export default function SprintCalendarGrid({
 
   // Handle mouse up (complete drag selection)
   const handleMouseUp = () => {
+    // Don't complete selection during operations
+    if (operationInProgress || isLoading) {
+      setDragSelection({
+        startDate: null,
+        endDate: null,
+        isSelecting: false
+      });
+      return;
+    }
+    
     if (dragSelection.isSelecting && dragSelection.startDate && dragSelection.endDate) {
       const startDate = new Date(Math.min(dragSelection.startDate.getTime(), dragSelection.endDate.getTime()));
       const endDate = new Date(Math.max(dragSelection.startDate.getTime(), dragSelection.endDate.getTime()));
@@ -150,6 +170,11 @@ export default function SprintCalendarGrid({
       
       const alignedEnd = new Date(endDate);
       alignedEnd.setDate(endDate.getDate() + (6 - endDate.getDay())); // Go to Saturday
+      
+      // Provide haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
       
       onDateRangeSelect(alignedStart, alignedEnd);
     }
@@ -222,14 +247,26 @@ export default function SprintCalendarGrid({
           return (
             <div
               key={`${sprint.id}-${index}`}
-              className={`h-1.5 rounded-sm border pointer-events-auto cursor-pointer transition-all hover:h-2 ${
+              className={`h-1.5 rounded-sm border pointer-events-auto cursor-pointer transition-all duration-200 hover:h-2 hover:shadow-sm active:scale-95 ${
                 getSprintColor(sprint)
-              } ${isSprintSelected(sprint) ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+              } ${isSprintSelected(sprint) ? 'ring-2 ring-blue-500 ring-offset-1 shadow-md' : ''} ${
+                operationInProgress ? 'opacity-60 cursor-not-allowed' : ''
+              }`}
               onClick={(e) => {
+                if (operationInProgress || isLoading) {
+                  e.preventDefault();
+                  return;
+                }
                 e.stopPropagation();
+                
+                // Haptic feedback
+                if ('vibrate' in navigator) {
+                  navigator.vibrate(25);
+                }
+                
                 onSprintClick(sprint);
               }}
-              title={`Sprint #${sprint.sprint_number}${sprint.sprint_name ? `: ${sprint.sprint_name}` : ''} (${sprint.status})`}
+              title={`Sprint #${sprint.sprint_number}${sprint.sprint_name ? `: ${sprint.sprint_name}` : ''} (${sprint.status})${operationInProgress ? ' - Operation in progress...' : ''}`}
               style={{
                 borderTopLeftRadius: isFirstDay ? '0.25rem' : '0',
                 borderBottomLeftRadius: isFirstDay ? '0.25rem' : '0',
@@ -290,7 +327,7 @@ export default function SprintCalendarGrid({
         {calendarDays.map((day, index) => (
           <div
             key={index}
-            className={`relative border-r border-b min-h-[120px] cursor-pointer transition-colors select-none ${
+            className={`relative border-r border-b min-h-[120px] cursor-pointer transition-all duration-200 select-none touch-manipulation ${
               !day.isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'
             } ${
               day.isToday ? 'bg-blue-50 border-blue-200' : ''
@@ -300,6 +337,8 @@ export default function SprintCalendarGrid({
               hoveredDate?.toDateString() === day.date.toDateString() ? 'bg-gray-100' : ''
             } ${
               day.isWeekend && day.isCurrentMonth ? 'bg-gray-25' : ''
+            } ${
+              (operationInProgress || isLoading) ? 'opacity-75 cursor-not-allowed pointer-events-none' : 'hover:bg-gray-50 active:bg-gray-100'
             }`}
             onMouseDown={(e) => handleMouseDown(day.date, e)}
             onMouseEnter={() => handleMouseEnter(day.date)}
@@ -337,15 +376,24 @@ export default function SprintCalendarGrid({
       </div>
 
       {/* Instructions */}
-      <div className="p-3 bg-gray-50 border-t text-xs text-gray-600">
+      <div className={`p-3 bg-gray-50 border-t text-xs text-gray-600 transition-opacity duration-200 ${
+        operationInProgress ? 'opacity-50' : ''
+      }`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span>💡 <strong>Drag to select:</strong> Click and drag to select date range for new sprint</span>
+            <span className="flex items-center gap-2">
+              💡 
+              <strong>Drag to select:</strong> 
+              <span>Click and drag to select date range for new sprint</span>
+              {operationInProgress && (
+                <span className="text-orange-600 font-medium">(Disabled during operation)</span>
+              )}
+            </span>
             <span><strong>Sprint bars:</strong> Click to view sprint details</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-1.5 bg-green-100 border border-green-300 rounded-sm"></div>
+              <div className="w-3 h-1.5 bg-green-100 border border-green-300 rounded-sm animate-pulse"></div>
               <span>Active</span>
             </div>
             <div className="flex items-center gap-1">
@@ -358,16 +406,32 @@ export default function SprintCalendarGrid({
             </div>
           </div>
         </div>
+        
+        {/* Operation status indicator */}
+        {operationInProgress && (
+          <div className="mt-2 flex items-center gap-2 text-orange-600">
+            <div className="w-3 h-3 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
+            <span className="font-medium">Sprint operation in progress...</span>
+          </div>
+        )}
       </div>
 
-      {/* Drag selection tooltip */}
+      {/* Enhanced drag selection tooltip */}
       {dragSelection.isSelecting && dragSelection.startDate && dragSelection.endDate && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-black text-white px-3 py-2 rounded-lg text-sm font-medium pointer-events-none">
-          Sprint Range: {dragSelection.startDate.toLocaleDateString()} - {dragSelection.endDate.toLocaleDateString()}
-          <div className="text-xs opacity-75 mt-1">
-            {Math.ceil((dragSelection.endDate.getTime() - dragSelection.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1)} days
-            ({Math.ceil((dragSelection.endDate.getTime() - dragSelection.startDate.getTime()) / (1000 * 60 * 60 * 24 * 7) + 1)} weeks)
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-black text-white px-4 py-3 rounded-xl text-sm font-medium pointer-events-none shadow-2xl animate-in fade-in duration-200">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+            <span className="font-semibold">Creating Sprint Range</span>
           </div>
+          <div className="mt-2 text-center">
+            <div className="font-medium">{dragSelection.startDate.toLocaleDateString()} → {dragSelection.endDate.toLocaleDateString()}</div>
+            <div className="text-xs opacity-75 mt-1">
+              {Math.ceil((dragSelection.endDate.getTime() - dragSelection.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1)} days
+              • {Math.ceil((dragSelection.endDate.getTime() - dragSelection.startDate.getTime()) / (1000 * 60 * 60 * 24 * 7) + 1)} weeks
+            </div>
+          </div>
+          {/* Arrow indicator */}
+          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-black rotate-45" />
         </div>
       )}
       </div>

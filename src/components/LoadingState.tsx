@@ -56,7 +56,7 @@ interface LoadingStateProps {
  * Universal Loading State Component
  * Context-aware rendering prevents hydration mismatches
  */
-export default function LoadingState({
+const LoadingState = React.memo(function LoadingState({
   rows = 5,
   showText = false,
   text = "Loading...",
@@ -88,29 +88,32 @@ export default function LoadingState({
   
   const sizes = sizeClasses[size];
   
-  // Core loading content - always identical with proper testId handling
+  // Core loading content - always identical with proper testId handling and fixed dimensions for CLS
   const loadingContent = (
-    <div className={`bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-5xl w-full ${className}`}>
+    <div className={`bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-5xl w-full min-h-[400px] ${className}`}>
       <div className="animate-pulse" data-testid={testId || null}>
-        {/* Header skeleton */}
-        <div className={`${sizes.header} bg-gray-200 rounded mb-4`}></div>
+        {/* Header skeleton - fixed height */}
+        <div className={`${sizes.header} bg-gray-200 rounded mb-4 flex-shrink-0`} style={{ minHeight: '32px' }}></div>
         
-        {/* Subheader skeleton */}
-        <div className={`${sizes.subheader} bg-gray-200 rounded mx-auto mb-6`}></div>
+        {/* Subheader skeleton - fixed width and height */}
+        <div className={`${sizes.subheader} bg-gray-200 rounded mx-auto mb-6 flex-shrink-0`} style={{ minHeight: '16px' }}></div>
         
-        {/* Loading text (optional) */}
-        {showText && (
-          <div className="text-gray-600 text-sm mb-4">
-            {text}
-          </div>
-        )}
+        {/* Loading text (optional) - reserved space */}
+        <div className="mb-4 flex-shrink-0" style={{ minHeight: showText ? '20px' : '0px' }}>
+          {showText && (
+            <div className="text-gray-600 text-sm">
+              {text}
+            </div>
+          )}
+        </div>
         
-        {/* Skeleton rows */}
+        {/* Skeleton rows - fixed heights to prevent layout shift */}
         <div className="space-y-2">
           {Array.from({ length: rows }, (_, i) => (
             <div 
               key={i} 
-              className={`${sizes.row} bg-gray-200 rounded`}
+              className={`${sizes.row} bg-gray-200 rounded flex-shrink-0`}
+              style={{ minHeight: size === 'small' ? '32px' : size === 'large' ? '64px' : '48px' }}
             ></div>
           ))}
         </div>
@@ -123,13 +126,17 @@ export default function LoadingState({
     return loadingContent;
   }
   
-  // Fullscreen mode - identical structure every time with consistent styling
+  // Fullscreen mode - matches the established HTML pattern used throughout the app with stable layout
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" suppressHydrationWarning>
-      {loadingContent}
+    <div className="min-h-screen bg-gray-50" suppressHydrationWarning={true}>
+      <div className="flex items-center justify-center p-4 min-h-screen">
+        {loadingContent}
+      </div>
     </div>
   );
-}
+});
+
+export default LoadingState;
 
 /**
  * Compact Loading State for smaller contexts
@@ -142,7 +149,7 @@ export function CompactLoadingState({
   testId?: string;
 }) {
   return (
-    <div className={`animate-pulse ${className}`} data-testid={testId || undefined} suppressHydrationWarning>
+    <div className={`animate-pulse ${className}`} data-testid={testId || undefined}>
       <div className="h-6 bg-gray-200 rounded mb-2"></div>
       <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
       <div className="space-y-2">
@@ -167,7 +174,7 @@ export function InlineLoadingState({
   testId?: string;
 }) {
   return (
-    <div className={`flex items-center gap-2 ${className}`} data-testid={testId || undefined} suppressHydrationWarning>
+    <div className={`flex items-center gap-2 ${className}`} data-testid={testId || undefined}>
       <div className="h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
       <span className="text-gray-600 text-sm">{text}</span>
     </div>

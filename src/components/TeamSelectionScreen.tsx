@@ -36,7 +36,7 @@ export default React.memo(function TeamSelectionScreen({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="flex items-center justify-center p-4">
       <div className="bg-white rounded-lg p-6 sm:p-8 shadow-md max-w-5xl w-full">
         {/* Header */}
         <div className="text-center mb-10">

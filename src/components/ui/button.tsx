@@ -5,9 +5,10 @@
  * loading states, icons, and full accessibility features.
  */
 
-import React, { forwardRef, ReactNode } from 'react';
+import React, { forwardRef, ReactNode, useState, useRef, useEffect } from 'react';
 import { cx } from '@/design-system/theme';
 import { ButtonVariant, ButtonSize } from '@/design-system/variants';
+import { ResponsiveLoadingSpinner, LoadingSpinnerPresets } from './ResponsiveLoadingSpinner';
 
 // =============================================================================
 // TYPES
@@ -25,12 +26,21 @@ export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonE
   fullWidth?: boolean;
   className?: string;
   testId?: string;
+  
+  // Enhanced loading and interaction features
+  showProgress?: boolean;
+  progress?: number;
+  enableHaptics?: boolean;
+  confirmAction?: boolean;
+  confirmText?: string;
+  confirmTimeout?: number;
+  retryOnError?: boolean;
+  maxRetries?: number;
+  onRetry?: () => void;
+  errorMessage?: string;
 }
 
-// =============================================================================
-// LOADING SPINNER COMPONENT
-// =============================================================================
-
+// Legacy LoadingSpinner component for backwards compatibility
 const LoadingSpinner: React.FC<{ size: ButtonSize }> = ({ size }) => {
   const sizeClasses = {
     xs: 'w-3.5 h-3.5',
@@ -46,7 +56,6 @@ const LoadingSpinner: React.FC<{ size: ButtonSize }> = ({ size }) => {
         'animate-spin rounded-full',
         'border-2 border-current border-t-transparent',
         'motion-reduce:animate-pulse motion-reduce:border-solid',
-        // Enhanced spinner with subtle styling
         'drop-shadow-sm opacity-90',
         sizeClasses[size]
       )}
@@ -81,10 +90,29 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       className,
       testId,
       type = 'button',
+      
+      // Enhanced features
+      showProgress = false,
+      progress = 0,
+      enableHaptics = true,
+      confirmAction = false,
+      confirmText = 'Click again to confirm',
+      confirmTimeout = 3000,
+      retryOnError = false,
+      maxRetries = 3,
+      onRetry,
+      errorMessage,
+      
       ...props
     },
     ref
   ) => {
+    // Enhanced state management
+    const [isConfirming, setIsConfirming] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
+    const [hasError, setHasError] = useState(false);
+    const confirmTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastClickTime = useRef<number>(0);
     // =============================================================================
     // STYLES
     // =============================================================================
@@ -225,16 +253,39 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       variantClasses[variant],
       sizeClasses[size],
       fullWidth ? 'w-full justify-center' : '',
+      
+      // Enhanced loading states
       loading ? cx(
         'cursor-wait pointer-events-none',
         'opacity-80',
-        'transform-none hover:transform-none', // Disable hover effects when loading
-        'shadow-sm' // Reduce shadow when loading
+        'transform-none hover:transform-none',
+        'shadow-sm',
+        showProgress ? 'relative overflow-hidden' : ''
       ) : '',
+      
+      // Enhanced disabled states
       disabled ? cx(
         'transform-none hover:transform-none',
-        'shadow-none hover:shadow-none'
+        'shadow-none hover:shadow-none',
+        'cursor-not-allowed'
       ) : '',
+      
+      // Confirmation state
+      isConfirming ? cx(
+        'bg-opacity-90',
+        'animate-pulse',
+        'ring-2 ring-offset-2',
+        variant === 'primary' ? 'ring-blue-400' :
+        variant === 'success' ? 'ring-green-400' :
+        variant === 'error' ? 'ring-red-400' : 'ring-gray-400'
+      ) : '',
+      
+      // Error state
+      hasError ? cx(
+        'bg-red-100 border-red-300 text-red-700',
+        'hover:bg-red-200 active:bg-red-200'
+      ) : '',
+      
       className
     );
 
@@ -242,18 +293,120 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     // CONTENT RENDERING
     // =============================================================================
 
+    // Enhanced interaction handlers
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      // Prevent double-clicks
+      const now = Date.now();
+      if (now - lastClickTime.current < 300) {
+        event.preventDefault();
+        return;
+      }
+      lastClickTime.current = now;
+      
+      // Haptic feedback
+      if (enableHaptics && 'vibrate' in navigator) {
+        navigator.vibrate(25);
+      }
+      
+      // Error state reset
+      if (hasError) {
+        setHasError(false);
+      }
+      
+      // Confirmation logic
+      if (confirmAction && !isConfirming) {
+        setIsConfirming(true);
+        
+        // Auto-reset confirmation after timeout
+        confirmTimeoutRef.current = setTimeout(() => {
+          setIsConfirming(false);
+        }, confirmTimeout);
+        
+        return; // Don't execute the main action yet
+      }
+      
+      // Reset confirmation state
+      if (isConfirming) {
+        setIsConfirming(false);
+        if (confirmTimeoutRef.current) {
+          clearTimeout(confirmTimeoutRef.current);
+        }
+      }
+      
+      // Execute the original onClick
+      props.onClick?.(event);
+    };
+    
+    const handleRetry = () => {
+      if (retryCount < maxRetries) {
+        setRetryCount(prev => prev + 1);
+        setHasError(false);
+        onRetry?.();
+        
+        // Haptic feedback for retry
+        if (enableHaptics && 'vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+      }
+    };
+    
+    // Cleanup timeout on unmount
+    useEffect(() => {
+      return () => {
+        if (confirmTimeoutRef.current) {
+          clearTimeout(confirmTimeoutRef.current);
+        }
+      };
+    }, []);
+    
     const renderContent = () => {
+      // Error state with retry option
+      if (hasError && retryOnError) {
+        return (
+          <>
+            <span className="text-sm">⚠️</span>
+            {!iconOnly && (
+              <span className="ml-2">
+                {retryCount < maxRetries ? 'Retry' : 'Failed'}
+                {retryCount > 0 && ` (${retryCount}/${maxRetries})`}
+              </span>
+            )}
+          </>
+        );
+      }
+      
+      // Loading state with enhanced spinner
       if (loading) {
         return (
           <>
-            <LoadingSpinner size={size} />
+            <ResponsiveLoadingSpinner
+              {...LoadingSpinnerPresets.Button}
+              size={size === 'xs' ? 'xs' : size === 'sm' ? 'xs' : 'sm'}
+              color={variant === 'primary' || variant === 'success' || variant === 'warning' || variant === 'error' ? 'white' : 'primary'}
+              showProgress={showProgress}
+              progress={progress}
+              enableHaptics={enableHaptics}
+            />
             {loadingText && !iconOnly && (
               <span className="ml-2">{loadingText}</span>
             )}
           </>
         );
       }
+      
+      // Confirmation state
+      if (isConfirming) {
+        return (
+          <>
+            <span className="text-sm animate-pulse">✓</span>
+            {!iconOnly && (
+              <span className="ml-2">{confirmText}</span>
+            )}
+          </>
+        );
+      }
 
+      // Normal state
       return (
         <>
           {leftIcon && (
@@ -294,7 +447,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const accessibilityProps = {
       'aria-disabled': disabled || loading,
       'aria-busy': loading,
-      'data-testid': testId
+      'aria-describedby': hasError && errorMessage ? `${testId}-error` : undefined,
+      'aria-pressed': isConfirming ? true : undefined,
+      'data-testid': testId,
+      'data-retry-count': retryCount,
+      'data-confirming': isConfirming
     };
 
     // =============================================================================
@@ -302,16 +459,44 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     // =============================================================================
 
     return (
-      <button
-        ref={ref}
-        type={type}
-        className={buttonClasses}
-        disabled={disabled || loading}
-        {...accessibilityProps}
-        {...props}
-      >
-        {renderContent()}
-      </button>
+      <div className="relative inline-flex">
+        <button
+          ref={ref}
+          type={type}
+          className={buttonClasses}
+          disabled={disabled || loading}
+          {...accessibilityProps}
+          {...(props as any)}
+          onClick={handleClick}
+        >
+          {renderContent()}
+          
+          {/* Progress bar overlay */}
+          {loading && showProgress && (
+            <div className="absolute bottom-0 left-0 h-1 bg-white bg-opacity-30 rounded-full transition-all duration-300"
+                 style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+          )}
+        </button>
+        
+        {/* Error tooltip */}
+        {hasError && errorMessage && (
+          <div
+            id={`${testId}-error`}
+            className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-red-600 text-white text-xs rounded shadow-lg z-10 whitespace-nowrap"
+            role="tooltip"
+          >
+            {errorMessage}
+            {retryOnError && retryCount < maxRetries && (
+              <button
+                onClick={handleRetry}
+                className="ml-2 underline hover:no-underline"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     );
   }
 );

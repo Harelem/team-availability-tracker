@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { CheckCircle, AlertTriangle, XCircle, Calendar } from 'lucide-react';
 import { TeamMember, Team, CurrentGlobalSprint } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -23,19 +23,30 @@ interface PersonalHoursStatusProps {
   currentSprint: CurrentGlobalSprint;
 }
 
-export default function PersonalHoursStatus({ user, team, currentSprint }: PersonalHoursStatusProps) {
+const PersonalHoursStatus = React.memo(function PersonalHoursStatus({ user, team, currentSprint }: PersonalHoursStatusProps) {
   const [currentSprintStatus, setCurrentSprintStatus] = useState<PersonalHoursStatus | null>(null);
   const [nextSprintStatus, setNextSprintStatus] = useState<PersonalHoursStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user && team && currentSprint) {
-      loadPersonalHoursStatus();
+  // Memoize expensive calculations
+  const { currentPeriod, nextPeriod } = useMemo(() => {
+    if (!currentSprint || !currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+      return { currentPeriod: null, nextPeriod: null };
     }
-  }, [user, team, currentSprint]);
-
-  const loadPersonalHoursStatus = async () => {
+    
+    const currentPeriod = {
+      startDate: currentSprint.sprint_start_date,
+      endDate: currentSprint.sprint_end_date
+    };
+    const nextPeriod = calculateSprintPeriod(currentSprint, 1);
+    
+    return { currentPeriod, nextPeriod };
+  }, [currentSprint]);
+  
+  const loadPersonalHoursStatus = useCallback(async () => {
+    if (!currentPeriod || !nextPeriod) return;
+    
     setIsLoading(true);
     setError(null);
     
@@ -54,140 +65,25 @@ export default function PersonalHoursStatus({ user, team, currentSprint }: Perso
       return;
     }
     
-    if (!currentSprint || !currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
-      console.error('❌ PersonalHoursStatus: Invalid sprint data', { currentSprint });
-      setError('Invalid sprint data');
-      setIsLoading(false);
-      return;
-    }
-    
     try {
-      // Calculate sprint periods
-      const currentPeriod = calculateSprintPeriod(currentSprint, 0); // Current sprint
-      const nextPeriod = calculateSprintPeriod(currentSprint, 1); // Next sprint
-      
-      // 🔍 NEXT SPRINT DEBUG - Sprint calculation inputs
-      console.log('🔍 NEXT SPRINT DEBUG - Sprint calculation inputs:', {
-        currentSprint: {
-          id: currentSprint.id,
-          start_date: currentSprint.sprint_start_date,
-          end_date: currentSprint.sprint_end_date,
-          length_weeks: currentSprint.sprint_length_weeks
-        },
-        offset: 1
-      });
-      
-      // 🔍 NEXT SPRINT DEBUG - Calculated periods
-      const nextWorkingDaysCalculated = calculateWorkingDaysInPeriod(nextPeriod.startDate, nextPeriod.endDate);
-      console.log('🔍 NEXT SPRINT DEBUG - Calculated periods:', {
-        currentPeriod: { startDate: currentPeriod.startDate, endDate: currentPeriod.endDate },
-        nextPeriod: { startDate: nextPeriod.startDate, endDate: nextPeriod.endDate },
-        nextWorkingDays: nextWorkingDaysCalculated
-      });
-      
-      // POTENTIAL FIX: Use actual sprint dates instead of calculated periods if they differ significantly
-      const actualCurrentPeriod = {
-        startDate: currentSprint.sprint_start_date,
-        endDate: currentSprint.sprint_end_date
-      };
-      
-      // Check if calculated vs actual periods differ
-      const periodDiffers = (
-        currentPeriod.startDate !== actualCurrentPeriod.startDate ||
-        currentPeriod.endDate !== actualCurrentPeriod.endDate
-      );
-      
-      if (periodDiffers) {
-        console.warn('⚠️ PersonalHoursStatus: Calculated period differs from actual sprint dates', {
-          calculated: currentPeriod,
-          actual: actualCurrentPeriod
-        });
-      }
-      
-      // Use actual sprint dates for current sprint to ensure data consistency
-      const finalCurrentPeriod = actualCurrentPeriod;
-      
-      console.log('🔍 PersonalHoursStatus: Sprint periods calculated', {
-        currentSprint: {
-          id: currentSprint.id,
-          start_date: currentSprint.sprint_start_date,
-          end_date: currentSprint.sprint_end_date,
-          length_weeks: currentSprint.sprint_length_weeks
-        },
-        currentPeriod: {
-          startDate: currentPeriod.startDate,
-          endDate: currentPeriod.endDate
-        },
-        nextPeriod: {
-          startDate: nextPeriod.startDate, 
-          endDate: nextPeriod.endDate
-        },
-        userId: user.id,
-        teamId: team.id
-      });
-      
-      // 🔍 NEXT SPRINT DEBUG - Database query params
-      console.log('🔍 NEXT SPRINT DEBUG - Database query params:', {
-        nextPeriodStart: nextPeriod.startDate,
-        nextPeriodEnd: nextPeriod.endDate,  
-        teamId: team.id,
-        userId: user.id
-      });
-      
-      // Load data for both sprints (using corrected current period)
+      // Load data for both sprints in parallel
       const [currentData, nextData] = await Promise.all([
-        DatabaseService.getScheduleEntries(finalCurrentPeriod.startDate, finalCurrentPeriod.endDate, team.id),
+        DatabaseService.getScheduleEntries(currentPeriod.startDate, currentPeriod.endDate, team.id),
         DatabaseService.getScheduleEntries(nextPeriod.startDate, nextPeriod.endDate, team.id)
       ]);
       
-      // 🔍 NEXT SPRINT DEBUG - Next sprint raw data
-      console.log('🔍 NEXT SPRINT DEBUG - Next sprint raw data:', {
-        nextDataKeys: Object.keys(nextData),
-        totalMembersInNextData: Object.keys(nextData).length,
-        nextDataForUser: nextData[user.id],
-        nextUserDataKeys: nextData[user.id] ? Object.keys(nextData[user.id]) : [],
-        nextUserDataEntries: nextData[user.id] ? Object.entries(nextData[user.id]).slice(0, 5) : []
-      });
-      
-      console.log('📊 PersonalHoursStatus: Data fetched from database', {
-        currentData: {
-          totalMembers: Object.keys(currentData).length,
-          userHasData: !!currentData[user.id],
-          userEntryCount: currentData[user.id] ? Object.keys(currentData[user.id]).length : 0,
-          sampleUserEntries: currentData[user.id] ? Object.keys(currentData[user.id]).slice(0, 3) : []
-        },
-        nextData: {
-          totalMembers: Object.keys(nextData).length,
-          userHasData: !!nextData[user.id],
-          userEntryCount: nextData[user.id] ? Object.keys(nextData[user.id]).length : 0
-        }
-      });
-
-      // Process current sprint with safety checks
+      // Process current sprint
       const currentUserData = currentData[user.id] || {};
-      const currentWorkingDays = Math.max(0, calculateWorkingDaysInPeriod(finalCurrentPeriod.startDate, finalCurrentPeriod.endDate));
+      const currentWorkingDays = Math.max(0, calculateWorkingDaysInPeriod(currentPeriod.startDate, currentPeriod.endDate));
       const currentFilledDays = Math.max(0, Object.keys(currentUserData).length);
       
-      // Validate working days calculation
-      if (currentWorkingDays === 0) {
-        console.warn('⚠️ PersonalHoursStatus: Current working days is 0, check date calculation', {
-          startDate: finalCurrentPeriod.startDate,
-          endDate: finalCurrentPeriod.endDate
-        });
-      }
-      // Fix: Calculate hours from value field, not non-existent hours field
       const currentSubmittedHours = Object.values(currentUserData).reduce((sum: number, entry: any) => {
         if (!entry || !entry.value) return sum;
-        
         switch (entry.value) {
-          case '1':
-            return sum + 7; // Full day = 7 hours
-          case '0.5':
-            return sum + 3.5; // Half day = 3.5 hours
-          case 'X':
-            return sum + 0; // Absence = 0 hours
-          default:
-            return sum;
+          case '1': return sum + 7;
+          case '0.5': return sum + 3.5;
+          case 'X': return sum + 0;
+          default: return sum;
         }
       }, 0);
       
@@ -201,56 +97,20 @@ export default function PersonalHoursStatus({ user, team, currentSprint }: Perso
         totalPossibleHours: currentWorkingDays * 7
       };
       
-      console.log('✅ PersonalHoursStatus: Current sprint calculation complete', {
-        workingDays: currentWorkingDays,
-        filledDays: currentFilledDays,
-        submittedHours: currentSubmittedHours,
-        completionRate: currentSprintResult.completionRate,
-        status: currentSprintResult.status,
-        sampleUserData: currentUserData ? Object.entries(currentUserData).slice(0, 3) : []
-      });
-      
       setCurrentSprintStatus(currentSprintResult);
 
-      // Process next sprint with safety checks
+      // Process next sprint
       const nextUserData = nextData[user.id] || {};
       const nextWorkingDays = Math.max(0, calculateWorkingDaysInPeriod(nextPeriod.startDate, nextPeriod.endDate));
       const nextFilledDays = Math.max(0, Object.keys(nextUserData).length);
       
-      // 🔍 NEXT SPRINT DEBUG - Data processing breakdown
-      console.log('🔍 NEXT SPRINT DEBUG - Data processing breakdown:', {
-        nextUserData: nextUserData,
-        nextUserDataKeys: Object.keys(nextUserData),
-        nextWorkingDays: nextWorkingDays,
-        nextFilledDays: nextFilledDays,
-        calculationCheck: {
-          startDate: nextPeriod.startDate,
-          endDate: nextPeriod.endDate,
-          workingDaysFromCalculation: calculateWorkingDaysInPeriod(nextPeriod.startDate, nextPeriod.endDate)
-        }
-      });
-      
-      // Validate next sprint working days calculation  
-      if (nextWorkingDays === 0) {
-        console.warn('⚠️ PersonalHoursStatus: Next working days is 0, check date calculation', {
-          startDate: nextPeriod.startDate,
-          endDate: nextPeriod.endDate,
-          rawCalculation: calculateWorkingDaysInPeriod(nextPeriod.startDate, nextPeriod.endDate)
-        });
-      }
-      // Fix: Calculate hours from value field, not non-existent hours field
       const nextSubmittedHours = Object.values(nextUserData).reduce((sum: number, entry: any) => {
         if (!entry || !entry.value) return sum;
-        
         switch (entry.value) {
-          case '1':
-            return sum + 7; // Full day = 7 hours
-          case '0.5':
-            return sum + 3.5; // Half day = 3.5 hours
-          case 'X':
-            return sum + 0; // Absence = 0 hours
-          default:
-            return sum;
+          case '1': return sum + 7;
+          case '0.5': return sum + 3.5;
+          case 'X': return sum + 0;
+          default: return sum;
         }
       }, 0);
       
@@ -264,62 +124,31 @@ export default function PersonalHoursStatus({ user, team, currentSprint }: Perso
         totalPossibleHours: nextWorkingDays * 7
       };
       
-      console.log('✅ PersonalHoursStatus: Next sprint calculation complete', {
-        workingDays: nextWorkingDays,
-        filledDays: nextFilledDays,
-        submittedHours: nextSubmittedHours,
-        completionRate: nextSprintResult.completionRate,
-        status: nextSprintResult.status
-      });
-      
-      // 🔍 NEXT SPRINT DEBUG - Final result validation
-      console.log('🔍 NEXT SPRINT DEBUG - Final result validation:', {
-        nextSprintResult: nextSprintResult,
-        isResultEmpty: nextSprintResult.totalDays === 0 && nextSprintResult.filledDays === 0,
-        possibleIssues: {
-          noWorkingDays: nextWorkingDays === 0,
-          noUserData: Object.keys(nextUserData).length === 0,
-          noRawData: Object.keys(nextData).length === 0,
-          userNotInData: !nextData[user.id]
-        }
-      });
-      
       setNextSprintStatus(nextSprintResult);
 
     } catch (err) {
-      console.error('❌ PersonalHoursStatus: Error loading personal hours status:', err, {
-        userId: user.id,
-        teamId: team.id,
-        currentSprintId: currentSprint.id,
-        errorDetails: err
-      });
-      
-      // Set fallback data instead of just error message
-      setCurrentSprintStatus({
-        filledDays: 0,
-        totalDays: 0,
-        completionRate: 0,
-        isComplete: false,
-        status: 'missing',
-        submittedHours: 0,
-        totalPossibleHours: 0
-      });
-      
-      setNextSprintStatus({
-        filledDays: 0,
-        totalDays: 0,
-        completionRate: 0,
-        isComplete: false,
-        status: 'missing',
-        submittedHours: 0,
-        totalPossibleHours: 0
-      });
-      
+      console.error('❌ PersonalHoursStatus: Error loading personal hours status:', err);
       setError('Failed to load hours status - displaying default values');
+      
+      // Set fallback data
+      const fallbackStatus = {
+        filledDays: 0, totalDays: 0, completionRate: 0, isComplete: false,
+        status: 'missing' as const, submittedHours: 0, totalPossibleHours: 0
+      };
+      setCurrentSprintStatus(fallbackStatus);
+      setNextSprintStatus(fallbackStatus);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPeriod, nextPeriod, user, team]);
+  
+  useEffect(() => {
+    if (user && team && currentSprint && currentPeriod && nextPeriod) {
+      loadPersonalHoursStatus();
+    }
+  }, [loadPersonalHoursStatus]);
+
+  // This entire function is now replaced by the memoized loadPersonalHoursStatus callback above
 
   const getStatusIcon = (status: 'complete' | 'partial' | 'missing') => {
     switch (status) {
@@ -497,4 +326,6 @@ export default function PersonalHoursStatus({ user, team, currentSprint }: Perso
       </div>
     </div>
   );
-}
+});
+
+export default PersonalHoursStatus;

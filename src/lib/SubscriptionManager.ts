@@ -16,6 +16,8 @@ export interface SubscriptionConfig {
   retryCount?: number
   retryDelay?: number
   debounceMs?: number
+  throttleMs?: number
+  localUpdateTimeout?: number
 }
 
 interface ActiveSubscription {
@@ -28,6 +30,9 @@ interface ActiveSubscription {
   refCount: number
   lastUsed: Date
   debounceTimer?: NodeJS.Timeout
+  throttleTimer?: NodeJS.Timeout
+  lastThrottleTime?: number
+  lastLocalUpdate?: number
 }
 
 interface CircuitBreakerState {
@@ -48,11 +53,16 @@ export class SubscriptionManager {
   private connectionPool = new Map<string, { subscription: ActiveSubscription; subscribers: Set<string> }>()
   private circuitBreakers = new Map<string, CircuitBreakerState>()
   private debounceTimers = new Map<string, NodeJS.Timeout>()
+  private throttleTimers = new Map<string, NodeJS.Timeout>()
+  private localUpdateMarkers = new Map<string, number>()
+  private pendingUpdates = new Map<string, Set<string>>()
   private maxRetries = 3
   private baseRetryDelay = 1000 // 1 second
   private cleanupInterval: NodeJS.Timeout | null = null
   private isDestroyed = false
   private defaultDebounceMs = 200
+  private defaultThrottleMs = 1000 // 1 second throttling
+  private defaultLocalUpdateTimeout = 3000 // 3 seconds to ignore local updates
   private circuitBreakerThreshold = 5
   private circuitBreakerTimeout = 30000 // 30 seconds
   private maxPoolSize = 50
@@ -66,6 +76,76 @@ export class SubscriptionManager {
       window.addEventListener('beforeunload', () => this.cleanup())
       window.addEventListener('pagehide', () => this.cleanup())
     }
+  }
+
+  /**
+   * Mark a subscription key as having a local update to prevent subscription loops
+   */
+  markLocalUpdate(subscriptionKey: string, timeout: number = this.defaultLocalUpdateTimeout): void {
+    const now = Date.now()
+    this.localUpdateMarkers.set(subscriptionKey, now + timeout)
+    
+    // Clean up after timeout
+    setTimeout(() => {
+      const marker = this.localUpdateMarkers.get(subscriptionKey)
+      if (marker && marker <= Date.now()) {
+        this.localUpdateMarkers.delete(subscriptionKey)
+      }
+    }, timeout)
+  }
+
+  /**
+   * Check if a subscription should be ignored due to recent local update
+   */
+  private shouldIgnoreLocalUpdate(subscriptionKey: string): boolean {
+    const marker = this.localUpdateMarkers.get(subscriptionKey)
+    if (!marker) return false
+    
+    const now = Date.now()
+    if (now < marker) {
+      console.log(`🚫 Ignoring subscription update for ${subscriptionKey} - recent local update`)
+      return true
+    } else {
+      this.localUpdateMarkers.delete(subscriptionKey)
+      return false
+    }
+  }
+
+  /**
+   * Check if subscription should be throttled
+   */
+  private shouldThrottle(subscription: ActiveSubscription): boolean {
+    const throttleMs = subscription.config.throttleMs ?? this.defaultThrottleMs
+    if (throttleMs <= 0) return false
+    
+    const now = Date.now()
+    const lastThrottle = subscription.lastThrottleTime ?? 0
+    
+    return (now - lastThrottle) < throttleMs
+  }
+
+  /**
+   * Handle throttled callback execution
+   */
+  private handleThrottledCallback(subscription: ActiveSubscription, payload: any): void {
+    const throttleMs = subscription.config.throttleMs ?? this.defaultThrottleMs
+    
+    if (throttleMs <= 0) {
+      subscription.config.callback(payload)
+      return
+    }
+
+    // Clear existing throttle timer
+    if (subscription.throttleTimer) {
+      clearTimeout(subscription.throttleTimer)
+    }
+
+    // Set up throttled execution
+    subscription.throttleTimer = setTimeout(() => {
+      subscription.lastThrottleTime = Date.now()
+      subscription.config.callback(payload)
+      subscription.throttleTimer = undefined
+    }, throttleMs)
   }
 
   /**
@@ -308,12 +388,30 @@ export class SubscriptionManager {
         subscriptionConfig,
         (payload) => {
           try {
+            // Check for local update detection first
+            if (this.shouldIgnoreLocalUpdate(config.key)) {
+              return
+            }
+
+            // Get the subscription for throttling check
+            const activeSubscription = this.subscriptions.get(config.key)
+            if (!activeSubscription) return
+
+            // Check if we should throttle this update
+            if (this.shouldThrottle(activeSubscription)) {
+              console.log(`🔄 Throttling subscription update for ${config.key}`)
+              this.handleThrottledCallback(activeSubscription, payload)
+              return
+            }
+
             // If we have a date filter, apply it in the callback
             if (config.filter && config.filter.includes('date=')) {
               if (this.matchesDateFilter(payload, config.filter)) {
+                activeSubscription.lastThrottleTime = Date.now()
                 config.callback(payload)
               }
             } else {
+              activeSubscription.lastThrottleTime = Date.now()
               config.callback(payload)
             }
           } catch (error) {
@@ -473,6 +571,11 @@ export class SubscriptionManager {
         clearTimeout(subscription.debounceTimer)
       }
 
+      // Clear throttle timer if exists
+      if (subscription.throttleTimer) {
+        clearTimeout(subscription.throttleTimer)
+      }
+
       try {
         subscription.channel.unsubscribe()
         subscription.isActive = false
@@ -481,6 +584,16 @@ export class SubscriptionManager {
       }
 
       this.subscriptions.delete(key)
+      
+      // Remove local update marker
+      this.localUpdateMarkers.delete(key)
+      
+      // Remove from throttle timers
+      const throttleTimer = this.throttleTimers.get(key)
+      if (throttleTimer) {
+        clearTimeout(throttleTimer)
+        this.throttleTimers.delete(key)
+      }
       
       // Also remove from any pool
       for (const [poolKey, pooled] of this.connectionPool.entries()) {
@@ -551,11 +664,26 @@ export class SubscriptionManager {
     }
     this.debounceTimers.clear()
 
+    // Clear all throttle timers
+    for (const [key, timer] of this.throttleTimers) {
+      clearTimeout(timer)
+    }
+    this.throttleTimers.clear()
+
+    // Clear local update markers
+    this.localUpdateMarkers.clear()
+
+    // Clear pending updates
+    this.pendingUpdates.clear()
+
     // Clean up individual subscriptions
     for (const [key, subscription] of this.subscriptions) {
       try {
         if (subscription.debounceTimer) {
           clearTimeout(subscription.debounceTimer)
+        }
+        if (subscription.throttleTimer) {
+          clearTimeout(subscription.throttleTimer)
         }
         subscription.channel.unsubscribe()
         subscription.isActive = false
@@ -568,6 +696,9 @@ export class SubscriptionManager {
     // Clean up pooled connections
     for (const [poolKey, pooled] of this.connectionPool) {
       try {
+        if (pooled.subscription.throttleTimer) {
+          clearTimeout(pooled.subscription.throttleTimer)
+        }
         pooled.subscription.channel.unsubscribe()
       } catch (error) {
         console.warn(`Warning: Error cleaning up pooled connection ${poolKey}:`, error)
@@ -711,14 +842,18 @@ export const subscriptionHelpers = {
     startDate: string,
     endDate: string,
     teamId: number,
-    callback: (payload: any) => void
+    callback: (payload: any) => void,
+    options: { throttleMs?: number, debounceMs?: number } = {}
   ) {
+    const key = `schedule_changes_team_${teamId}_${startDate}_${endDate}`
     return subscriptionManager.subscribe({
-      key: `schedule_changes_team_${teamId}_${startDate}_${endDate}`,
+      key,
       channel: `schedule_changes_team_${teamId}`,
       table: 'schedule_entries',
       filter: `date=gte.${startDate}&date=lte.${endDate}`,
-      callback
+      callback,
+      throttleMs: options.throttleMs ?? 1000, // Default 1 second throttling
+      debounceMs: options.debounceMs ?? 200
     })
   },
 
@@ -731,7 +866,8 @@ export const subscriptionHelpers = {
       channel: `team_members_${teamId}`,
       table: 'team_members',
       filter: `team_id.eq.${teamId}`,
-      callback
+      callback,
+      throttleMs: 2000 // Slower throttling for team member changes
     })
   },
 
@@ -743,8 +879,16 @@ export const subscriptionHelpers = {
       key: 'sprint_changes',
       channel: 'sprint_changes',
       table: 'global_sprint_settings',
-      callback
+      callback,
+      throttleMs: 500 // Faster for sprint changes
     })
+  },
+
+  /**
+   * Mark a local update to prevent subscription loops
+   */
+  markLocalUpdate(subscriptionKey: string, timeout?: number) {
+    subscriptionManager.markLocalUpdate(subscriptionKey, timeout)
   }
 }
 

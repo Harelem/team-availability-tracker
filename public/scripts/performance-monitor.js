@@ -18,12 +18,23 @@
         try {
           new PerformanceObserver(function(list) {
             list.getEntries().forEach(function(entry) {
+              // Only log LCP in development mode or if it's poor (> 2500ms)
+            var isDevelopment = typeof window !== 'undefined' && 
+                               (window.location.hostname === 'localhost' || 
+                                window.location.hostname === '127.0.0.1' ||
+                                window.location.port !== '');
+            if (isDevelopment || entry.startTime > 2500) {
               console.log('LCP:', entry.startTime);
+            }
               // Send to analytics if needed
             });
           }).observe({ type: 'largest-contentful-paint', buffered: true });
         } catch (e) {
-          if (process.env.NODE_ENV === 'development') {
+          var isDevelopment = typeof window !== 'undefined' && 
+                             (window.location.hostname === 'localhost' || 
+                              window.location.hostname === '127.0.0.1' ||
+                              window.location.port !== '');
+          if (isDevelopment) {
             console.debug('LCP monitoring not supported in this browser');
           }
         }
@@ -32,12 +43,24 @@
         try {
           new PerformanceObserver(function(list) {
             list.getEntries().forEach(function(entry) {
-              console.log('FID:', entry.processingStart - entry.startTime);
+              // Only log FID in development mode or if it's poor (> 100ms)
+            var fidValue = entry.processingStart - entry.startTime;
+            var isDevelopment = typeof window !== 'undefined' && 
+                               (window.location.hostname === 'localhost' || 
+                                window.location.hostname === '127.0.0.1' ||
+                                window.location.port !== '');
+            if (isDevelopment || fidValue > 100) {
+              console.log('FID:', fidValue);
+            }
               // Send to analytics if needed
             });
           }).observe({ type: 'first-input', buffered: true });
         } catch (e) {
-          if (process.env.NODE_ENV === 'development') {
+          var isDevelopment = typeof window !== 'undefined' && 
+                             (window.location.hostname === 'localhost' || 
+                              window.location.hostname === '127.0.0.1' ||
+                              window.location.port !== '');
+          if (isDevelopment) {
             console.debug('FID monitoring not supported in this browser');
           }
         }
@@ -55,7 +78,10 @@
                   clsValue += entry.value;
                 }
               });
-              console.log('CLS:', clsValue);
+              // Only log significant CLS changes (> 0.1)
+              if (clsValue > 0.1) {
+                console.log('CLS:', clsValue);
+              }
               // Send to analytics if needed
             }).observe({ type: 'layout-shift', buffered: true });
           } else {
@@ -80,19 +106,26 @@
             }
             
             var loadTime = safeTiming(navTiming.loadEventEnd, navTiming.navigationStart);
-            console.log('Page load time:', loadTime + 'ms');
-            
-            // Track key metrics with safe calculations
-            var metrics = {
-              dns: safeTiming(navTiming.domainLookupEnd, navTiming.domainLookupStart),
-              tcp: safeTiming(navTiming.connectEnd, navTiming.connectStart),
-              ssl: navTiming.secureConnectionStart > 0 ? safeTiming(navTiming.connectEnd, navTiming.secureConnectionStart) : 0,
-              ttfb: safeTiming(navTiming.responseStart, navTiming.requestStart),
-              dom: safeTiming(navTiming.domInteractive, navTiming.responseStart),
-              load: loadTime
-            };
-            
-            console.log('Performance metrics:', metrics);
+            // Only log performance metrics in development mode or if load time is slow (> 3000ms)
+            var isDevelopment = typeof window !== 'undefined' && 
+                               (window.location.hostname === 'localhost' || 
+                                window.location.hostname === '127.0.0.1' ||
+                                window.location.port !== '');
+            if (isDevelopment || loadTime > 3000) {
+              console.log('Page load time:', loadTime + 'ms');
+              
+              // Track key metrics with safe calculations
+              var metrics = {
+                dns: safeTiming(navTiming.domainLookupEnd, navTiming.domainLookupStart),
+                tcp: safeTiming(navTiming.connectEnd, navTiming.connectStart),
+                ssl: navTiming.secureConnectionStart > 0 ? safeTiming(navTiming.connectEnd, navTiming.secureConnectionStart) : 0,
+                ttfb: safeTiming(navTiming.responseStart, navTiming.requestStart),
+                dom: safeTiming(navTiming.domInteractive, navTiming.responseStart),
+                load: loadTime
+              };
+              
+              console.log('Performance metrics:', metrics);
+            }
             // Send to analytics if needed
           }
         }, 0);

@@ -5,23 +5,29 @@ export interface SprintPeriod {
   endDate: string;
 }
 
+// PERFORMANCE FIX: Enhanced cache for sprint period calculations with TTL
+interface CachedSprintPeriod {
+  data: SprintPeriod;
+  timestamp: number;
+}
+
+const sprintPeriodCache = new Map<string, CachedSprintPeriod>();
+const SPRINT_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours cache
+
 export const calculateSprintPeriod = (currentSprint: CurrentGlobalSprint, offset: number = 0): SprintPeriod => {
+  // Create cache key
+  const cacheKey = `${currentSprint.sprint_start_date}_${currentSprint.sprint_length_weeks}_${offset}`;
+  
+  // PERFORMANCE FIX: Check cache with TTL
+  const cached = sprintPeriodCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < SPRINT_CACHE_TTL) {
+    return cached.data;
+  }
+  
   const sprintStart = new Date(currentSprint.sprint_start_date);
   const sprintWeeks = currentSprint.sprint_length_weeks;
   
-  // Add debugging for Next Sprint calculation
-  console.log('🔍 calculateSprintPeriod DEBUG:', {
-    input: {
-      sprint_start_date: currentSprint.sprint_start_date,
-      sprint_length_weeks: currentSprint.sprint_length_weeks,
-      offset: offset
-    },
-    sprintStart: sprintStart.toISOString(),
-    calculation: {
-      offsetDays: offset * sprintWeeks * 7,
-      sprintLengthDays: sprintWeeks * 7
-    }
-  });
+  // PERFORMANCE FIX: Remove all debug logging for performance
   
   // Calculate target sprint start (current + offset)
   const targetSprintStart = new Date(sprintStart);
@@ -35,11 +41,10 @@ export const calculateSprintPeriod = (currentSprint: CurrentGlobalSprint, offset
     endDate: targetSprintEnd.toISOString().split('T')[0]
   };
   
-  // Add debugging for result
-  console.log('🔍 calculateSprintPeriod RESULT:', {
-    offset: offset,
-    result: result,
-    workingDaysInPeriod: calculateWorkingDaysInPeriod(result.startDate, result.endDate)
+  // PERFORMANCE FIX: Cache with timestamp for TTL
+  sprintPeriodCache.set(cacheKey, {
+    data: result,
+    timestamp: Date.now()
   });
   
   return result;
@@ -59,7 +64,25 @@ export const getWorkingDayName = (dayOfWeek: number): string => {
   return days[dayOfWeek];
 };
 
+// PERFORMANCE FIX: Enhanced cache for working days calculations with TTL
+interface CachedWorkingDays {
+  data: number;
+  timestamp: number;
+}
+
+const workingDaysCache = new Map<string, CachedWorkingDays>();
+const WORKING_DAYS_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours cache (longer since working days don't change)
+
 export const calculateWorkingDaysInPeriod = (startDate: string, endDate: string): number => {
+  // Create cache key
+  const cacheKey = `${startDate}_${endDate}`;
+  
+  // PERFORMANCE FIX: Check cache with TTL
+  const cached = workingDaysCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < WORKING_DAYS_CACHE_TTL) {
+    return cached.data;
+  }
+  
   const start = new Date(startDate);
   const end = new Date(endDate);
   
@@ -67,9 +90,7 @@ export const calculateWorkingDaysInPeriod = (startDate: string, endDate: string)
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     console.error('🔍 calculateWorkingDaysInPeriod ERROR: Invalid dates', {
       startDate,
-      endDate,
-      startParsed: start.toISOString(),
-      endParsed: end.toISOString()
+      endDate
     });
     return 0;
   }
@@ -89,21 +110,19 @@ export const calculateWorkingDaysInPeriod = (startDate: string, endDate: string)
     // Use the helper function for consistency
     if (isWorkingDay(d)) {
       workingDays++;
-      workingDaysList.push(d.toISOString().split('T')[0]);
+      if (process.env.NODE_ENV === 'development') {
+        workingDaysList.push(d.toISOString().split('T')[0]);
+      }
     }
   }
   
-  // Add debugging for working days calculation
-  console.log('🔍 calculateWorkingDaysInPeriod DEBUG:', {
-    input: { startDate, endDate },
-    output: { workingDays },
-    details: {
-      totalDaysInRange: Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
-      workingDaysList: workingDaysList.slice(0, 10), // Show first 10 for debugging
-      firstWorkingDay: workingDaysList[0],
-      lastWorkingDay: workingDaysList[workingDaysList.length - 1]
-    }
+  // PERFORMANCE FIX: Cache with timestamp for TTL
+  workingDaysCache.set(cacheKey, {
+    data: workingDays,
+    timestamp: Date.now()
   });
+  
+  // PERFORMANCE FIX: Remove all debug logging for performance
   
   return workingDays;
 };

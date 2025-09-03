@@ -313,10 +313,5 @@ export function useThrottledCallback<T extends (...args: any[]) => any>(
   }, [])
 }
 
-// Import React types if available
-let React: any
-try {
-  React = require('react')
-} catch (e) {
-  // React not available, hooks won't work but other utilities will
-}
+// Import React types - handled at build time by Next.js
+import * as React from 'react'

@@ -66,7 +66,7 @@ class SprintDataManager {
         return result;
       }
       
-      console.log('🔍 SprintDataHandler: No cache hit, querying database');
+      // PERFORMANCE FIX: Remove cache miss logging for production performance
 
       // Try database first
       const dbResult = await this.getSprintFromDatabase();
@@ -142,7 +142,7 @@ class SprintDataManager {
     };
 
     try {
-      console.log('🔍 SprintDataHandler: Checking sprint_history table...');
+      // PERFORMANCE FIX: Remove sprint history table check logging
       
       // First, try to get from sprint_history table (preferred)
       const { data: historyData, error: historyError } = await supabase
@@ -152,18 +152,14 @@ class SprintDataManager {
         .order('created_at', { ascending: false })
         .limit(1);
 
-      console.log('📊 Sprint history query result:', { 
-        historyData, 
-        historyError, 
-        count: historyData?.length 
-      });
+      // PERFORMANCE FIX: Remove sprint history query result logging
 
       if (!historyError && historyData && historyData.length > 0) {
         const sprintRecord = historyData[0];
         const sprint = this.convertHistoryToCurrentSprint(sprintRecord);
         result.sprint = sprint;
         result.success = true;
-        console.log('✅ Found active sprint in sprint_history table:', sprintRecord);
+        // PERFORMANCE FIX: Remove found active sprint logging
         debug('Found active sprint in sprint_history table');
         return result;
       }
@@ -317,17 +313,13 @@ class SprintDataManager {
    * Convert sprint_history record to CurrentGlobalSprint format
    */
   private convertHistoryToCurrentSprint(record: any): CurrentGlobalSprint {
-    console.log('🔧 Converting history record to current sprint:', record);
+    // PERFORMANCE FIX: Remove history conversion logging
     
     const startDate = new Date(record.sprint_start_date);
     const endDate = new Date(record.sprint_end_date);
     const now = new Date();
     
-    console.log('📅 Date conversion:', {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      now: now.toISOString()
-    });
+    // PERFORMANCE FIX: Remove date conversion logging
     
     const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
     const elapsedDays = Math.max(0, Math.ceil((now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)));
@@ -355,7 +347,7 @@ class SprintDataManager {
       updated_by: record.created_by || 'system'
     };
     
-    console.log('✅ Converted sprint from history:', convertedSprint);
+    // PERFORMANCE FIX: Remove converted sprint logging
     return convertedSprint;
   }
 

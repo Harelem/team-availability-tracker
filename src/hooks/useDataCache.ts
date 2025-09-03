@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import DataService from '../services/DataService'
 
 export interface CacheOptions {
   ttl?: number // Time to live in milliseconds
@@ -291,7 +292,7 @@ export function useDataCache<T>(
  * Hook for cached team members
  */
 export function useTeamMembersCache() {
-  const dataService = require('../services/DataService').default
+  const dataService = DataService
   
   return useDataCache(
     'team_members',
@@ -304,7 +305,7 @@ export function useTeamMembersCache() {
  * Hook for cached absence statistics
  */
 export function useAbsenceStatsCache() {
-  const dataService = require('../services/DataService').default
+  const dataService = DataService
   
   return useDataCache(
     'absence_stats',
@@ -317,7 +318,7 @@ export function useAbsenceStatsCache() {
  * Hook for cached team capacity
  */
 export function useTeamCapacityCache(date: string) {
-  const dataService = require('../services/DataService').default
+  const dataService = DataService
   
   return useDataCache(
     `team_capacity_${date}`,
@@ -330,7 +331,7 @@ export function useTeamCapacityCache(date: string) {
  * Hook for batch team capacity
  */
 export function useBatchTeamCapacityCache(dates: string[]) {
-  const dataService = require('../services/DataService').default
+  const dataService = DataService
   const key = `batch_capacity_${dates.sort().join(',')}`
   
   return useDataCache(

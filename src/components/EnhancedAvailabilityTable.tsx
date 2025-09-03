@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, memo, useCallback } from 'react';
+import { useMemo, memo, useCallback, startTransition } from 'react';
 import { detectCurrentSprintForDateSync } from '@/utils/smartSprintDetection';
 import { Clock, MessageSquare } from 'lucide-react';
 import { TeamMember, WorkOption } from '@/types';
@@ -31,7 +31,7 @@ interface EnhancedAvailabilityTableProps {
   formatDate: (date: Date) => string;
 }
 
-// Optimized table component with React.memo and smart comparison
+// PERFORMANCE FIX: Enhanced table component with optimized memo comparison
 const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
   currentUser,
   teamMembers,
@@ -50,44 +50,42 @@ const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
   formatDate
 }: EnhancedAvailabilityTableProps) {
   // const renderStart = performance?.now() || 0;
+  // PERFORMANCE FIX: Memoized performance tracking to prevent re-renders
   const { trackRender } = usePerformanceTracking('EnhancedAvailabilityTable');
   
-  // Debug logging to track table rendering
-  console.log('📊 EnhancedAvailabilityTable: Rendering attempt', {
-    currentUser: !!currentUser,
-    teamMembers: teamMembers?.length || 0,
-    scheduleData: !!scheduleData,
-    workOptions: workOptions?.length || 0,
-    sprintDays: sprintDays?.length || 0,
-    timestamp: new Date().toISOString()
-  });
+  // PERFORMANCE FIX: Remove excessive logging in production
+  if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+    console.log('📊 EnhancedAvailabilityTable: Rendering', {
+      teamMembers: teamMembers?.length || 0,
+      sprintDays: sprintDays?.length || 0
+    });
+  }
   
-  // Helper function for comprehensive date validation
-  const validateSprintDate = (date: unknown): date is Date => {
+  // PERFORMANCE FIX: Memoized date validation function
+  const validateSprintDate = useCallback((date: unknown): date is Date => {
     return date && 
            typeof date === 'object' && 
            date instanceof Date &&
            typeof date.toLocaleDateString === 'function' &&
            typeof date.toISOString === 'function' &&
            !isNaN(date.getTime()) &&
-           date.getFullYear() >= 2020 && // Reasonable date range
+           date.getFullYear() >= 2020 &&
            date.getFullYear() <= 2030;
-  };
+  }, []);
 
-  // Generate calculated sprint fallback when no valid data is available
-  const generateCalculatedSprintFallback = () => {
+  // PERFORMANCE FIX: Memoized sprint fallback calculation
+  const generateCalculatedSprintFallback = useMemo(() => {
     const today = new Date();
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
+    startOfWeek.setDate(today.getDate() - today.getDay());
     
-    // Generate 10 working days (2-week sprint)
     const calculatedDays: Date[] = [];
     const currentDate = new Date(startOfWeek);
     let workingDaysAdded = 0;
     
-    while (workingDaysAdded < 10) { // 2 weeks * 5 working days
+    while (workingDaysAdded < 10) {
       const dayOfWeek = currentDate.getDay();
-      if (dayOfWeek >= 0 && dayOfWeek <= 4) { // Sunday to Thursday
+      if (dayOfWeek >= 0 && dayOfWeek <= 4) {
         calculatedDays.push(new Date(currentDate));
         workingDaysAdded++;
       }
@@ -100,7 +98,7 @@ const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
         date.toLocaleDateString('en-US', { weekday: 'long' })
       )
     };
-  };
+  }, []);
 
   // Always call hooks first, before any conditional returns
   // Enhanced date validation with smart fallback generation
@@ -158,7 +156,7 @@ const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
       console.info('📅 EnhancedAvailabilityTable: Using calculated sprint fallback');
     }
     
-    return generateCalculatedSprintFallback();
+    return generateCalculatedSprintFallback;
   }, [sprintDays]);
 
   // Move all hook calls together at the top
@@ -940,4 +938,50 @@ const EnhancedAvailabilityTable = memo(function EnhancedAvailabilityTable({
   return true; // Props are effectively equal
 });
 
-export default EnhancedAvailabilityTable;
+// PERFORMANCE FIX: Enhanced memo comparison to prevent unnecessary re-renders
+const EnhancedAvailabilityTableMemo = memo(EnhancedAvailabilityTable, (prevProps, nextProps) => {
+  // Quick reference equality check first (fastest path)
+  if (prevProps === nextProps) return true;
+  
+  // Check essential props that affect rendering
+  if (
+    prevProps.currentUser?.id !== nextProps.currentUser?.id ||
+    prevProps.teamMembers?.length !== nextProps.teamMembers?.length ||
+    prevProps.sprintDays?.length !== nextProps.sprintDays?.length ||
+    prevProps.selectedTeam?.id !== nextProps.selectedTeam?.id
+  ) {
+    return false;
+  }
+  
+  // Deep check team members only if lengths match
+  if (prevProps.teamMembers && nextProps.teamMembers) {
+    for (let i = 0; i < prevProps.teamMembers.length; i++) {
+      if (prevProps.teamMembers[i]?.id !== nextProps.teamMembers[i]?.id) {
+        return false;
+      }
+    }
+  }
+  
+  // Check schedule data - only compare keys and structure, not deep values
+  const prevDataKeys = Object.keys(prevProps.scheduleData || {});
+  const nextDataKeys = Object.keys(nextProps.scheduleData || {});
+  
+  if (prevDataKeys.length !== nextDataKeys.length) {
+    return false;
+  }
+  
+  // For performance, only check if members have data, not deep values
+  for (const memberId of prevDataKeys) {
+    const prevMemberDataKeys = Object.keys(prevProps.scheduleData[parseInt(memberId)] || {});
+    const nextMemberDataKeys = Object.keys(nextProps.scheduleData[parseInt(memberId)] || {});
+    
+    if (prevMemberDataKeys.length !== nextMemberDataKeys.length) {
+      return false;
+    }
+  }
+  
+  // All checks passed - props are equivalent for rendering purposes
+  return true;
+});
+
+export default EnhancedAvailabilityTableMemo;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Calendar, Clock, TrendingUp, CheckCircle, User, Award } from 'lucide-react';
 import { TeamMember, Team, CurrentGlobalSprint } from '@/types';
 import { DatabaseService } from '@/lib/database';
@@ -26,7 +26,7 @@ interface PersonalStats {
   submittedDays: number;
 }
 
-export default function PersonalDashboard({ 
+const PersonalDashboard = React.memo(function PersonalDashboard({ 
   user, 
   team, 
   teamMembers = [],
@@ -63,6 +63,57 @@ export default function PersonalDashboard({
     }
     return dates;
   }, [currentSprint]);
+
+  // PERFORMANCE FIX: Create stable references for PersonalCalendar props
+  const stableUser = useMemo(() => user, [user.id, user.name, user.hebrew]);
+  const stableTeam = useMemo(() => team, [team.id, team.name]);
+
+  // Memoized callback to prevent PersonalCalendar re-mounting - further stabilized
+  const handleDataChange = useCallback((newData: any) => {
+    setScheduleData(newData);
+    
+    // PERFORMANCE FIX: Use cached sprintWorkingDays reference to avoid recalculation
+    const currentWorkingDays = sprintWorkingDays;
+    
+    // Real-time stats recalculation
+    const userSchedule = newData[user.id] || {};
+    let totalHours = 0;
+    let submittedDays = 0;
+    
+    currentWorkingDays.forEach(date => {
+      const dateKey = date.toISOString().split('T')[0];
+      const entry = dateKey ? userSchedule[dateKey] : undefined;
+      
+      if (entry && entry.value) {
+        submittedDays++;
+        switch (entry.value) {
+          case '1': totalHours += 7; break;
+          case '0.5': totalHours += 3.5; break;
+          case 'X': totalHours += 0; break;
+        }
+      }
+    });
+    
+    const progressPercentage = currentWorkingDays.length > 0 
+      ? Math.round((submittedDays / currentWorkingDays.length) * 100) 
+      : 0;
+    
+    let completionStatus: PersonalStats['completionStatus'] = 'not-started';
+    if (progressPercentage === 100) {
+      completionStatus = 'completed';
+    } else if (progressPercentage > 0) {
+      completionStatus = 'partial';
+    }
+    
+    setPersonalStats({
+      hoursSubmitted: totalHours,
+      daysPresent: submittedDays,
+      sprintProgress: progressPercentage,
+      completionStatus,
+      totalSprintDays: currentWorkingDays.length,
+      submittedDays
+    });
+  }, [user.id, sprintWorkingDays]); // Keep dependencies minimal and stable
 
   // Load personal schedule data
   useEffect(() => {
@@ -151,15 +202,50 @@ export default function PersonalDashboard({
 
   if (loading || sprintLoading) {
     return (
-      <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded mb-4"></div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-24 bg-gray-200 rounded"></div>
-            ))}
+      <div className={`space-y-6 ${className}`} style={{ minHeight: '800px' }}>
+        {/* PERFORMANCE FIX: Precise skeleton loading to prevent CLS */}
+        {/* Personal Header Skeleton */}
+        <div className="bg-white rounded-lg shadow-sm p-6" style={{ minHeight: '140px' }}>
+          <div className="animate-pulse">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+              <div className="flex-1">
+                <div className="h-6 bg-gray-200 rounded mb-2 w-48"></div>
+                <div className="h-4 bg-gray-200 rounded w-32"></div>
+              </div>
+            </div>
+            <div className="bg-gray-100 rounded-lg p-4 h-16"></div>
           </div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-gray-50 border border-gray-200 rounded-md p-4" style={{ minHeight: '120px' }}>
+              <div className="animate-pulse">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  <div className="h-6 bg-gray-200 rounded w-12"></div>
+                  <div className="h-3 bg-gray-200 rounded w-24"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar Skeleton */}
+        <div className="bg-white rounded-lg shadow-sm" style={{ minHeight: '600px' }}>
+          <div className="animate-pulse p-6">
+            <div className="h-6 bg-gray-200 rounded mb-4 w-48"></div>
+            <div className="grid grid-cols-7 gap-2">
+              {Array.from({ length: 42 }, (_, i) => (
+                <div key={i} className="h-12 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -200,7 +286,7 @@ export default function PersonalDashboard({
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-6 ${className}`} style={{ minHeight: '800px' }}>
       {/* Personal Header */}
       <div className={combineClasses(
         DESIGN_SYSTEM.cards.default,
@@ -314,51 +400,11 @@ export default function PersonalDashboard({
           </div>
           
           <PersonalCalendar
-            user={user}
-            team={team}
+            key={`calendar-${user.id}-${team.id}`}
+            user={stableUser}
+            team={stableTeam}
             editable={true}
-            onDataChange={(newData) => {
-              setScheduleData(newData);
-              
-              // Real-time stats recalculation
-              const userSchedule = newData[user.id] || {};
-              let totalHours = 0;
-              let submittedDays = 0;
-              
-              sprintWorkingDays.forEach(date => {
-                const dateKey = date.toISOString().split('T')[0];
-                const entry = dateKey ? userSchedule[dateKey] : undefined;
-                
-                if (entry && entry.value) {
-                  submittedDays++;
-                  switch (entry.value) {
-                    case '1': totalHours += 7; break;
-                    case '0.5': totalHours += 3.5; break;
-                    case 'X': totalHours += 0; break;
-                  }
-                }
-              });
-              
-              const progressPercentage = sprintWorkingDays.length > 0 
-                ? Math.round((submittedDays / sprintWorkingDays.length) * 100) 
-                : 0;
-              
-              let completionStatus: PersonalStats['completionStatus'] = 'not-started';
-              if (progressPercentage === 100) {
-                completionStatus = 'completed';
-              } else if (progressPercentage > 0) {
-                completionStatus = 'partial';
-              }
-              
-              setPersonalStats({
-                hoursSubmitted: totalHours,
-                daysPresent: submittedDays,
-                sprintProgress: progressPercentage,
-                completionStatus,
-                totalSprintDays: sprintWorkingDays.length,
-                submittedDays
-              });
-            }}
+            onDataChange={handleDataChange}
           />
         </div>
       )}
@@ -383,4 +429,15 @@ export default function PersonalDashboard({
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // PERFORMANCE FIX: Custom memo comparison to prevent unnecessary re-renders
+  return (
+    prevProps.user.id === nextProps.user.id &&
+    prevProps.user.name === nextProps.user.name &&
+    prevProps.team.id === nextProps.team.id &&
+    prevProps.team.name === nextProps.team.name &&
+    prevProps.className === nextProps.className
+  );
+});
+
+export default PersonalDashboard;

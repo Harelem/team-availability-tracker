@@ -470,36 +470,87 @@ export default function SprintPlanningCalendar({ onSprintSelect }: SprintPlannin
           </div>
 
           {/* Calendar Grid */}
-          <div className="flex-1">
+          <div className="flex-1 relative">
+            {/* Operation Error Banner */}
+            {error && (
+              <div className="mx-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                <div className="w-5 h-5 text-red-600 mt-0.5">
+                  <svg viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-red-800 font-medium text-sm">{error}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setError(null);
+                  }}
+                  className="text-red-600 hover:text-red-800 p-1"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            
             {isLoading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  {/* Enhanced loading indicator with pulse effect */}
+                  <div className="absolute inset-0 rounded-full border-2 border-blue-200 animate-pulse opacity-30 mx-auto" style={{width: '48px', height: '48px', top: '0'}}></div>
+                </div>
                 {isInitializing ? (
-                  <div>
-                    <p className="text-gray-600 font-medium">Initializing Sprint Calendar...</p>
-                    <p className="text-gray-500 text-sm mt-2">Setting up database and checking table structure</p>
+                  <div className="space-y-3">
+                    <p className="text-gray-700 font-semibold">Initializing Sprint Calendar...</p>
+                    <p className="text-gray-500 text-sm">Setting up database and checking table structure</p>
                     {initMessage && (
-                      <p className="text-blue-600 text-xs mt-1 bg-blue-50 px-3 py-1 rounded-full inline-block">
-                        {initMessage}
-                      </p>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                        <p className="text-blue-700 text-sm bg-blue-50 px-4 py-2 rounded-full font-medium">
+                          {initMessage}
+                        </p>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      </div>
                     )}
                   </div>
                 ) : (
-                  <div>
-                    <p className="text-gray-600">Loading sprint calendar...</p>
-                    <p className="text-gray-500 text-sm mt-1">Fetching sprint history and data</p>
+                  <div className="space-y-2">
+                    <p className="text-gray-700 font-medium">Loading sprint calendar...</p>
+                    <p className="text-gray-500 text-sm">Fetching sprint history and data</p>
+                    <div className="flex justify-center gap-1 mt-3">
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
                   </div>
                 )}
               </div>
             ) : (
-              <SprintCalendarGrid
-                currentDate={currentDate}
-                viewMode={viewMode}
-                sprints={currentViewSprints}
-                onDateRangeSelect={handleDateRangeSelect}
-                onSprintClick={handleSprintSelect}
-                selectedSprint={selectedSprint}
-              />
+              <div className={`transition-opacity duration-300 ${isLoading ? 'opacity-75' : 'opacity-100'}`}>
+                <SprintCalendarGrid
+                  currentDate={currentDate}
+                  viewMode={viewMode}
+                  sprints={currentViewSprints}
+                  onDateRangeSelect={handleDateRangeSelect}
+                  onSprintClick={handleSprintSelect}
+                  selectedSprint={selectedSprint}
+                />
+                
+                {/* Loading overlay for operations */}
+                {isLoading && (
+                  <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
+                    <div className="bg-white rounded-lg shadow-lg p-6 flex items-center gap-3">
+                      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-gray-700 font-medium">
+                        Loading...
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

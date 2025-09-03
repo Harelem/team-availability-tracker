@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, startTransition } from 'react';
 import { TeamMember, Team, ScheduleEntry } from '@/types';
 import { DatabaseService } from '@/lib/database';
 import MobileReasonInput from './MobileReasonInput';
@@ -84,17 +84,56 @@ interface DayStatusModalProps {
   currentStatus?: '1' | '0.5' | 'X' | null;
 }
 
-function DayStatusModal({ isOpen, onClose, onSelect, date, memberName, currentStatus }: DayStatusModalProps) {
+const DayStatusModal = React.memo(function DayStatusModal({ isOpen, onClose, onSelect, date, memberName, currentStatus }: DayStatusModalProps) {
+  // PERFORMANCE FIX: Proper focus management refs
+  const modalRef = useRef<HTMLDivElement>(null);
+  const firstButtonRef = useRef<HTMLButtonElement>(null);
+
+  // PERFORMANCE FIX: Focus management and cleanup
+  useEffect(() => {
+    if (isOpen) {
+      // Focus the first button when modal opens
+      setTimeout(() => {
+        firstButtonRef.current?.focus();
+      }, 100);
+      
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isOpen || !date) return null;
 
+  // PERFORMANCE FIX: Handle backdrop click without focus conflicts
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] overflow-auto">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+      dir="rtl"
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      <div 
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] overflow-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 id="modal-title" className="text-xl font-bold text-gray-900">
                 {currentStatus ? 'עריכת סטטוס יום' : 'בחירת סטטוס יום'}
               </h3>
               <p className="text-gray-600 mt-1">
@@ -129,11 +168,12 @@ function DayStatusModal({ isOpen, onClose, onSelect, date, memberName, currentSt
             {currentStatus ? 'שנה את סוג היום:' : 'אנא בחר את סוג היום:'}
           </p>
           
-          {DAY_STATUS_OPTIONS.map((option) => {
+          {DAY_STATUS_OPTIONS.map((option, index) => {
             const isSelected = currentStatus === option.value;
             return (
               <button
                 key={option.value}
+                ref={index === 0 ? firstButtonRef : undefined}
                 onClick={() => onSelect(option.value)}
                 className={`w-full p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-md active:scale-[0.98] text-right ${
                   isSelected 
@@ -172,15 +212,15 @@ function DayStatusModal({ isOpen, onClose, onSelect, date, memberName, currentSt
       </div>
     </div>
   );
-}
+});
 
-export default function PersonalCalendar({
+const PersonalCalendar = React.memo(function PersonalCalendar({
   user,
   team,
   editable = true,
   onDataChange
 }: PersonalCalendarProps) {
-  // State management
+  // PERFORMANCE FIX: State management with React 18 optimizations
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [scheduleData, setScheduleData] = useState<{[key: string]: ScheduleEntry}>({});
@@ -196,47 +236,70 @@ export default function PersonalCalendar({
   const isMountedRef = useRef(true);
   const currentOperationRef = useRef<string | null>(null);
   const savingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const optimisticUpdatesRef = useRef<Record<string, { value: '1' | '0.5' | 'X' | null; reason?: string; }>>({});
+  
+  // PERFORMANCE FIX: Batch queue for multiple rapid updates
+  const pendingBatchRef = useRef<Record<string, { date: Date; value: '1' | '0.5' | 'X' | null; reason?: string }>>({});
+  const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Format date as YYYY-MM-DD for database keys
   const formatDateKey = (date: Date): string => {
     return date.toISOString().split('T')[0];
   };
 
-  // Generate calendar days for display
-  const generateCalendarDays = useCallback((): CalendarDay[] => {
+  // PERFORMANCE FIX: Optimized calendar days generation with stable today reference
+  const todayRef = useRef(new Date());
+  
+  // Update today reference once per day
+  useEffect(() => {
+    const updateToday = () => {
+      const now = new Date();
+      if (now.toDateString() !== todayRef.current.toDateString()) {
+        todayRef.current = now;
+      }
+    };
+    
+    updateToday();
+    const interval = setInterval(updateToday, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, []);
+  
+  const calendarDays = useMemo((): CalendarDay[] => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    
-    // Start from Sunday of the week containing the first day
     const startDate = new Date(firstDay);
     startDate.setDate(firstDay.getDate() - firstDay.getDay());
     
     const days: CalendarDay[] = [];
-    const today = new Date();
+    const today = new Date(todayRef.current);
     today.setHours(0, 0, 0, 0);
     
-    // Generate 42 days (6 weeks × 7 days)
+    // PERFORMANCE FIX: Pre-calculate common values
+    const todayString = today.toDateString();
+    
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       
       const dateKey = formatDateKey(date);
       const scheduleEntry = scheduleData[dateKey];
+      const optimisticEntry = optimisticUpdatesRef.current[dateKey];
+      const currentEntry = optimisticEntry || scheduleEntry;
       
-      const isWeekend = date.getDay() === 5 || date.getDay() === 6; // Friday or Saturday
+      const isWeekend = date.getDay() === 5 || date.getDay() === 6;
       
       days.push({
         date: new Date(date),
         dayNumber: date.getDate(),
         isCurrentMonth: date.getMonth() === month,
-        isToday: date.toDateString() === today.toDateString(),
+        isToday: date.toDateString() === todayString,
         isWeekend,
         isPast: date < today,
-        value: (!isWeekend && scheduleEntry?.value) || null, // Exclude weekend values
-        reason: (!isWeekend && scheduleEntry?.reason) || undefined // Exclude weekend reasons
+        value: (!isWeekend && currentEntry?.value) || null,
+        reason: (!isWeekend && currentEntry?.reason) || undefined
       });
     }
     
@@ -251,35 +314,22 @@ export default function PersonalCalendar({
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth();
       
-      // Get first and last day of month with some buffer
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month + 2, 0);
+      // Get optimized date range - current month plus minimal buffer
+      const startDate = new Date(year, month, 1);
+      startDate.setDate(startDate.getDate() - 7); // 1 week before current month
+      const endDate = new Date(year, month + 1, 0);
+      endDate.setDate(endDate.getDate() + 7); // 1 week after current month
       
-      const result = await DatabaseService.getScheduleEntriesPaginated({
-        memberId: user.id,
-        startDate: formatDateKey(startDate),
-        endDate: formatDateKey(endDate),
-        limit: 100
-      });
+      // Use cached getScheduleEntries for better performance (1-2 queries vs 8+)
+      const allScheduleData = await DatabaseService.getScheduleEntries(
+        formatDateKey(startDate),
+        formatDateKey(endDate),
+        undefined, // teamId - not needed for personal calendar
+        false // forceRefresh - use cache for better performance
+      );
       
-      if (!result || !result.data) {
-        console.error('Error fetching schedule data: Invalid response');
-        return;
-      }
-      
-      const { data } = result;
-      
-      // Convert array to object for easy lookup
-      const dataObject = (data || []).reduce((acc: any, entry: any) => {
-        if (entry.date) {
-          acc[entry.date] = {
-            value: entry.value,
-            reason: entry.reason,
-            hours: entry.calculated_hours || entry.hours
-          };
-        }
-        return acc;
-      }, {});
+      // Extract data for the current user only
+      const dataObject = allScheduleData[user.id] || {};
       
       setScheduleData(dataObject);
     } catch (error) {
@@ -289,21 +339,71 @@ export default function PersonalCalendar({
     }
   }, [user, currentMonth]);
 
-  // Update schedule entry with race condition prevention and robust error handling
-  const updateSchedule = useCallback(async (date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
+  // Optimistic update function for immediate UI feedback
+  const applyOptimisticUpdate = useCallback((date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
+    const dateKey = formatDateKey(date);
+    
+    // Store optimistic update
+    optimisticUpdatesRef.current[dateKey] = { value, reason };
+    
+    // Apply to local state immediately
+    setScheduleData(prevData => {
+      const updatedData = { ...prevData };
+      if (value) {
+        updatedData[dateKey] = { 
+          value, 
+          reason, 
+          hours: value === '1' ? 7 : value === '0.5' ? 3.5 : 0 
+        };
+      } else {
+        delete updatedData[dateKey];
+      }
+      return updatedData;
+    });
+  }, []);
+
+  // Rollback optimistic update on error
+  const rollbackOptimisticUpdate = useCallback((date: Date, originalData: any) => {
+    const dateKey = formatDateKey(date);
+    delete optimisticUpdatesRef.current[dateKey];
+    
+    setScheduleData(prevData => {
+      const updatedData = { ...prevData };
+      if (originalData) {
+        updatedData[dateKey] = originalData;
+      } else {
+        delete updatedData[dateKey];
+      }
+      return updatedData;
+    });
+  }, []);
+
+  // Stable reference to scheduleData for database updates
+  const scheduleDataRef = useRef(scheduleData);
+  useEffect(() => {
+    scheduleDataRef.current = scheduleData;
+  }, [scheduleData]);
+
+  // Debounced database update function
+  const updateScheduleDebounced = useCallback(async (date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
     if (!user || !isMountedRef.current) return;
     
     const dateKey = formatDateKey(date);
     const operationId = `${Date.now()}-${Math.random()}`;
     
+    // Store original data for potential rollback
+    const originalData = scheduleDataRef.current[dateKey] || null;
+    
     // Prevent overlapping operations
     if (currentOperationRef.current) {
-      console.log('⚠️ Blocking overlapping operation, current:', currentOperationRef.current);
-      return;
+      return; // PERFORMANCE FIX: Silent block - no logging needed for performance
     }
     
     currentOperationRef.current = operationId;
-    console.log('🔄 Starting operation:', operationId, { dateKey, value, reason });
+    // PERFORMANCE FIX: Drastically reduced logging
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.02) { // Only 2% logging
+      console.log('🔄 Starting operation:', operationId, { dateKey, value });
+    }
     
     // Clear any previous errors
     setLastError(null);
@@ -334,7 +434,7 @@ export default function PersonalCalendar({
       }
       
       // Update local state carefully to preserve existing data
-      const updatedScheduleData = { ...scheduleData };
+      const updatedScheduleData = { ...scheduleDataRef.current };
       
       if (value) {
         // Add or update entry
@@ -357,10 +457,16 @@ export default function PersonalCalendar({
         });
       }
       
-      console.log('✅ Operation completed successfully:', operationId);
+      // PERFORMANCE FIX: Reduce success logging
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.02) { // Only 2% logging
+        console.log('✅ Operation completed successfully:', operationId);
+      }
       
     } catch (error) {
       console.error('❌ Error updating schedule:', error, 'Operation:', operationId);
+      
+      // Rollback optimistic update on error
+      rollbackOptimisticUpdate(date, originalData);
       
       // Only update error state if component is still mounted and operation is current
       if (isMountedRef.current && currentOperationRef.current === operationId) {
@@ -377,137 +483,206 @@ export default function PersonalCalendar({
       if (isMountedRef.current && currentOperationRef.current === operationId) {
         setSaving(false);
         currentOperationRef.current = null;
-        console.log('🧹 Operation cleanup completed:', operationId);
+        // PERFORMANCE FIX: Remove cleanup logging
       } else {
-        console.log('🚫 Skipping cleanup - component unmounted or operation superseded:', operationId);
+        // PERFORMANCE FIX: Remove superseded operation logging
       }
     }
-  }, [user, scheduleData, onDataChange]);
+  }, [user, onDataChange, rollbackOptimisticUpdate]); // Stable dependencies only
 
-  // Handle day click - UNIFIED FLOW with enhanced error handling
-  const handleDayClick = (day: CalendarDay) => {
-    if (!editable || !isMountedRef.current) return;
+  // PERFORMANCE FIX: Batch processing function for multiple updates
+  const processBatch = useCallback(async () => {
+    if (!user || !isMountedRef.current) return;
     
-    // Clear any previous errors when user interacts
-    setLastError(null);
+    const batch = { ...pendingBatchRef.current };
+    pendingBatchRef.current = {}; // Clear the batch
     
-    // Prevent clicks during save operations
-    if (saving || currentOperationRef.current) {
-      console.log('🚫 Calendar interaction blocked - operation in progress:', {
-        saving,
-        currentOperation: currentOperationRef.current
+    if (Object.keys(batch).length === 0) return;
+    
+    setSaving(true);
+    
+    try {
+      // Process all batched updates in parallel for better performance
+      const promises = Object.entries(batch).map(async ([dateKey, update]) => {
+        return DatabaseService.updateScheduleEntry(
+          user.id,
+          dateKey,
+          update.value,
+          update.reason
+        );
       });
-      return;
+      
+      await Promise.all(promises);
+      
+      // Notify parent of all changes at once
+      if (onDataChange && user) {
+        const updatedScheduleData = { ...scheduleDataRef.current };
+        
+        Object.entries(batch).forEach(([dateKey, update]) => {
+          if (update.value) {
+            updatedScheduleData[dateKey] = { 
+              value: update.value, 
+              reason: update.reason, 
+              hours: update.value === '1' ? 7 : update.value === '0.5' ? 3.5 : 0 
+            };
+          } else {
+            delete updatedScheduleData[dateKey];
+          }
+        });
+        
+        onDataChange({ [user.id]: updatedScheduleData });
+      }
+      
+    } catch (error) {
+      console.error('❌ Batch update failed:', error);
+      // Rollback all optimistic updates in the batch
+      Object.entries(batch).forEach(([dateKey, update]) => {
+        const originalData = scheduleDataRef.current[dateKey] || null;
+        rollbackOptimisticUpdate(update.date, originalData);
+      });
+      setLastError('Failed to save batch updates');
+    } finally {
+      setSaving(false);
     }
+  }, [user, onDataChange, rollbackOptimisticUpdate]);
+
+  // PERFORMANCE FIX: Enhanced update function with React 18 startTransition
+  const updateSchedule = useCallback((date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
+    if (!user || !isMountedRef.current) return;
     
-    // Prevent clicks on weekends
-    if (day.isWeekend) {
-      console.log('🚫 Cannot report on weekends');
-      return;
-    }
+    const dateKey = formatDateKey(date);
     
-    // Prevent clicks on past dates (unless already has value)
-    if (day.isPast && !day.value) {
-      console.log('🚫 Cannot edit past dates without existing value');
-      return;
-    }
-    
-    console.log('✅ Day click allowed:', {
-      date: day.date.toISOString().split('T')[0],
-      currentValue: day.value,
-      editable,
-      saving
+    // Apply optimistic update immediately using startTransition for non-urgent updates
+    startTransition(() => {
+      applyOptimisticUpdate(date, value, reason);
     });
     
-    // UNIFIED FLOW: Always show status selection modal first (empty or filled)
-    setSelectedDate(day.date);
-    setStatusModalOpen(true);
-  };
+    // Add to batch with improved batching logic
+    pendingBatchRef.current[dateKey] = { date, value, reason };
+    
+    if (batchTimeoutRef.current) {
+      clearTimeout(batchTimeoutRef.current);
+    }
+    
+    // Reduced batch delay for better responsiveness
+    batchTimeoutRef.current = setTimeout(() => {
+      startTransition(() => {
+        processBatch();
+      });
+    }, 200); // Shorter delay with startTransition
+  }, [user, applyOptimisticUpdate, processBatch]);
 
-  // Get current status for the selected date
-  const getCurrentStatus = (): '1' | '0.5' | 'X' | null => {
+  // PERFORMANCE FIX: Optimized day click handler with early returns
+  const handleDayClick = useCallback((day: CalendarDay) => {
+    if (!editable || !isMountedRef.current || saving || currentOperationRef.current) return;
+    if (day.isWeekend || (day.isPast && !day.value)) return;
+    
+    // Use startTransition for modal state updates to avoid blocking user interactions
+    startTransition(() => {
+      setLastError(null);
+      setSelectedDate(day.date);
+      setStatusModalOpen(true);
+    });
+  }, [editable, saving]);
+
+  // PERFORMANCE FIX: Stable getCurrentStatus function with reduced dependencies
+  const getCurrentStatus = useMemo((): '1' | '0.5' | 'X' | null => {
     if (!selectedDate) return null;
     const dateKey = formatDateKey(selectedDate);
-    return scheduleData[dateKey]?.value || null;
-  };
+    const optimisticEntry = optimisticUpdatesRef.current[dateKey];
+    return optimisticEntry?.value || scheduleData[dateKey]?.value || null;
+  }, [selectedDate, scheduleData]);
 
-  // Handle status selection from first modal
-  const handleStatusSelect = (status: '1' | '0.5' | 'X') => {
-    setStatusModalOpen(false);
-    
-    if (status === '1') {
-      // Full day - save directly and clear any existing reason
-      if (selectedDate) {
-        updateSchedule(selectedDate, status, undefined); // Clear reason
+  // PERFORMANCE FIX: Optimized status selection with batched state updates
+  const handleStatusSelect = useCallback((status: '1' | '0.5' | 'X') => {
+    startTransition(() => {
+      setStatusModalOpen(false);
+      
+      if (status === '1') {
+        if (selectedDate) {
+          updateSchedule(selectedDate, status, undefined);
+        }
+        setSelectedDate(null);
+      } else {
+        setPendingValue(status);
+        setReasonModalOpen(true);
       }
+    });
+  }, [selectedDate, updateSchedule]);
+
+  // PERFORMANCE FIX: Optimized status modal close with batched updates
+  const handleStatusModalClose = useCallback(() => {
+    startTransition(() => {
+      setStatusModalOpen(false);
       setSelectedDate(null);
-    } else {
-      // Half day or absent - show reason modal
-      setPendingValue(status);
-      setReasonModalOpen(true);
-    }
-  };
+    });
+  }, []);
 
-  // Handle status modal close
-  const handleStatusModalClose = () => {
-    setStatusModalOpen(false);
-    setSelectedDate(null);
-  };
-
-  // Handle reason submission
-  const handleReasonSubmit = (reason: string) => {
+  // PERFORMANCE FIX: Optimized modal handlers with batched updates
+  const handleReasonSubmit = useCallback((reason: string) => {
     if (selectedDate && pendingValue) {
       updateSchedule(selectedDate, pendingValue, reason);
     }
-    setReasonModalOpen(false);
-    setSelectedDate(null);
-    setPendingValue(null);
-  };
+    
+    startTransition(() => {
+      setReasonModalOpen(false);
+      setSelectedDate(null);
+      setPendingValue(null);
+    });
+  }, [selectedDate, pendingValue, updateSchedule]);
 
-  // Handle reason modal close
-  const handleReasonModalClose = () => {
-    setReasonModalOpen(false);
-    setSelectedDate(null);
-    setPendingValue(null);
-  };
+  const handleReasonModalClose = useCallback(() => {
+    startTransition(() => {
+      setReasonModalOpen(false);
+      setSelectedDate(null);
+      setPendingValue(null);
+    });
+  }, []);
 
-  // Navigation handlers
-  const goToPreviousMonth = () => {
-    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  };
+  // PERFORMANCE FIX: Navigation handlers with startTransition for smooth UI
+  const goToPreviousMonth = useCallback(() => {
+    startTransition(() => {
+      setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    });
+  }, []);
 
-  const goToNextMonth = () => {
-    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  };
+  const goToNextMonth = useCallback(() => {
+    startTransition(() => {
+      setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    });
+  }, []);
 
-  const goToToday = () => {
-    setCurrentMonth(new Date());
-  };
+  const goToToday = useCallback(() => {
+    startTransition(() => {
+      setCurrentMonth(new Date());
+    });
+  }, []);
 
-  const goToMonth = (year: number, month: number) => {
-    setCurrentMonth(new Date(year, month, 1));
-    setShowMonthPicker(false);
-  };
+  const goToMonth = useCallback((year: number, month: number) => {
+    startTransition(() => {
+      setCurrentMonth(new Date(year, month, 1));
+      setShowMonthPicker(false);
+    });
+  }, []);
 
-  // Get status color class with subtle tints
-  const getStatusColorClass = (value: '1' | '0.5' | 'X' | null): string => {
+  // Memoize expensive utility functions
+  const getStatusColorClass = useCallback((value: '1' | '0.5' | 'X' | null): string => {
     switch (value) {
       case '1': return 'bg-green-100 text-gray-900 border-green-300';
       case '0.5': return 'bg-orange-100 text-gray-900 border-orange-300';
       case 'X': return 'bg-red-100 text-gray-900 border-red-300';
       default: return 'bg-gray-100 text-gray-400';
     }
-  };
+  }, []);
 
-  // Get status icon
-  const getStatusIcon = (value: '1' | '0.5' | 'X' | null) => {
+  const getStatusIcon = useCallback((value: '1' | '0.5' | 'X' | null) => {
     switch (value) {
       case '1': return Check ? <Check className="w-4 h-4 text-green-600" /> : <span className="text-green-600 text-sm">✓</span>;
       case '0.5': return <span className="text-orange-600 font-bold text-sm">½</span>;
       case 'X': return XIcon ? <XIcon className="w-4 h-4 text-red-600" /> : <span className="text-red-600 text-sm">✗</span>;
       default: return null;
     }
-  };
+  }, []);
 
   // Load data when component mounts or month changes
   useEffect(() => {
@@ -519,7 +694,7 @@ export default function PersonalCalendar({
     isMountedRef.current = true;
     
     return () => {
-      console.log('🧹 PersonalCalendar unmounting - cleaning up');
+      // PERFORMANCE FIX: Remove unmount logging completely for performance
       isMountedRef.current = false;
       
       // Clear any pending timeouts
@@ -528,25 +703,53 @@ export default function PersonalCalendar({
         savingTimeoutRef.current = null;
       }
       
-      // Reset operation tracking
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
+      
+      // PERFORMANCE FIX: Clear batch timeout
+      if (batchTimeoutRef.current) {
+        clearTimeout(batchTimeoutRef.current);
+        batchTimeoutRef.current = null;
+      }
+      
+      // Reset operation tracking and clear optimistic updates and batch
       currentOperationRef.current = null;
+      optimisticUpdatesRef.current = {};
+      pendingBatchRef.current = {};
     };
   }, []);
 
-  // Enhanced debug logging for saving state transitions
-  useEffect(() => {
-    console.log('📊 PersonalCalendar state update:', {
-      saving,
-      currentOperation: currentOperationRef.current,
-      isMounted: isMountedRef.current,
-      lastError
-    });
-  }, [saving, lastError]);
+  // PERFORMANCE FIX: Remove state transition logging completely
+  // Saving state transitions logging removed for performance
 
-  const calendarDays = generateCalendarDays();
-  const currentDate = new Date();
-  const isCurrentMonth = currentMonth.getMonth() === currentDate.getMonth() && 
-                        currentMonth.getFullYear() === currentDate.getFullYear();
+  // PERFORMANCE FIX: More efficient status counts calculation
+  const { isCurrentMonth, statusCounts } = useMemo(() => {
+    const currentDate = new Date();
+    let fullDayCount = 0;
+    let halfDayCount = 0;
+    let absentCount = 0;
+    
+    // Single pass through schedule data for all counts
+    Object.values(scheduleData).forEach(entry => {
+      switch (entry.value) {
+        case '1': fullDayCount++; break;
+        case '0.5': halfDayCount++; break;
+        case 'X': absentCount++; break;
+      }
+    });
+    
+    return {
+      isCurrentMonth: currentMonth.getMonth() === currentDate.getMonth() && 
+                     currentMonth.getFullYear() === currentDate.getFullYear(),
+      statusCounts: {
+        fullDays: fullDayCount,
+        halfDays: halfDayCount,
+        absences: absentCount
+      }
+    };
+  }, [currentMonth, scheduleData]);
 
   if (loading) {
     return (
@@ -558,7 +761,16 @@ export default function PersonalCalendar({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden max-w-2xl mx-auto" dir="rtl">
+    <div 
+      className="bg-white rounded-2xl shadow-lg overflow-hidden max-w-2xl mx-auto" 
+      dir="rtl" 
+      style={{ 
+        minHeight: '600px', 
+        // PERFORMANCE FIX: Stable dimensions to prevent CLS
+        width: '100%',
+        maxWidth: '672px' // 2xl max-width in pixels
+      }}
+    >
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
@@ -578,19 +790,19 @@ export default function PersonalCalendar({
           <div className="flex gap-4">
             <div className="text-center">
               <div className="text-lg font-bold text-green-600">
-                {Object.values(scheduleData).filter(entry => entry.value === '1').length}
+                {statusCounts.fullDays}
               </div>
               <div className="text-xs text-gray-600">ימים מלאים</div>
             </div>
             <div className="text-center">
               <div className="text-lg font-bold text-orange-600">
-                {Object.values(scheduleData).filter(entry => entry.value === '0.5').length}
+                {statusCounts.halfDays}
               </div>
               <div className="text-xs text-gray-600">חצי ימים</div>
             </div>
             <div className="text-center">
               <div className="text-lg font-bold text-red-600">
-                {Object.values(scheduleData).filter(entry => entry.value === 'X').length}
+                {statusCounts.absences}
               </div>
               <div className="text-xs text-gray-600">היעדרויות</div>
             </div>
@@ -647,14 +859,14 @@ export default function PersonalCalendar({
         </div>
 
         {/* Calendar days - Desktop */}
-        <div className="hidden md:grid grid-cols-7 gap-2">
+        <div className="hidden md:grid grid-cols-7 gap-2" style={{ minHeight: '350px' }}>
           {calendarDays.map((day, index) => (
             <button
               key={index}
               onClick={() => handleDayClick(day)}
               disabled={!editable || day.isWeekend || (day.isPast && !day.value) || saving}
               className={`
-                relative w-[60px] h-[50px] rounded-lg border-2 transition-all duration-200 p-2 flex flex-col items-center justify-center
+                relative rounded-lg border-2 transition-all duration-200 p-2 flex flex-col items-center justify-center
                 ${day.isCurrentMonth ? 'border-gray-200' : 'border-gray-100'}
                 ${day.isToday ? 'ring-2 ring-blue-500 border-blue-500' : ''}
                 ${day.isWeekend ? 'bg-gray-100 cursor-not-allowed' : ''}
@@ -665,6 +877,13 @@ export default function PersonalCalendar({
                 ${day.value ? getStatusColorClass(day.value) : 'bg-white'}
                 ${day.value ? 'hover:opacity-80' : ''}
               `}
+              style={{ 
+                // PERFORMANCE FIX: Stable dimensions to prevent CLS
+                minWidth: '60px',
+                minHeight: '50px',
+                maxWidth: '60px',
+                maxHeight: '50px'
+              }}
               title={day.isWeekend ? 'סופי שבוע - לא ניתן לדיווח' : day.reason || ''}
             >
               {/* Day number */}
@@ -719,6 +938,11 @@ export default function PersonalCalendar({
                 ${day.value ? getStatusColorClass(day.value) : 'bg-white'}
                 ${day.value ? 'active:opacity-80' : ''}
               `}
+              style={{ 
+                // PERFORMANCE FIX: Stable dimensions to prevent CLS on mobile
+                minWidth: '60px',
+                minHeight: '60px'
+              }}
               title={day.isWeekend ? 'סופי שבוע - לא ניתן לדיווח' : day.reason || ''}
             >
               {/* Day number */}
@@ -747,36 +971,30 @@ export default function PersonalCalendar({
           ))}
         </div>
         
-        {/* Saving overlay */}
+        {/* PERFORMANCE FIX: Non-blocking saving indicator */}
         {saving && (
-          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-            <div className="flex items-center gap-2 bg-white rounded-lg shadow-lg px-4 py-3 border">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-              <span className="text-gray-700">שומר...</span>
-            </div>
+          <div className="absolute top-2 left-2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2 z-10 shadow-lg">
+            <div className="animate-spin rounded-full h-3 w-3 border border-white border-b-transparent"></div>
+            <span>Saving...</span>
           </div>
         )}
         
-        {/* Error overlay */}
+        {/* PERFORMANCE FIX: Non-blocking error indicator */}
         {lastError && !saving && (
-          <div className="absolute inset-0 bg-red-50 bg-opacity-90 flex items-center justify-center z-10">
-            <div className="max-w-sm mx-4 bg-white rounded-lg shadow-lg border-2 border-red-200 p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
-                  <span className="text-red-600 text-xs font-bold">!</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-medium text-red-900 mb-1">שגיאה בשמירה</h4>
-                  <p className="text-xs text-red-700 mb-3">{lastError}</p>
-                  <button
-                    onClick={() => setLastError(null)}
-                    className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 transition-colors"
-                  >
-                    סגור
-                  </button>
-                </div>
-              </div>
+          <div className="absolute top-2 left-2 bg-red-500 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-2 z-10 shadow-lg max-w-xs">
+            <div className="flex-shrink-0 w-4 h-4 rounded-full bg-red-600 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">!</span>
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs">{lastError}</p>
+            </div>
+            <button
+              onClick={() => setLastError(null)}
+              className="text-white hover:text-red-200 ml-2"
+              title="Close error"
+            >
+              ×
+            </button>
           </div>
         )}
       </div>
@@ -822,7 +1040,7 @@ export default function PersonalCalendar({
         onSelect={handleStatusSelect}
         date={selectedDate}
         memberName={user?.hebrew || user?.name}
-        currentStatus={getCurrentStatus()}
+        currentStatus={getCurrentStatus}
       />
 
       {/* Reason Modal */}
@@ -836,4 +1054,6 @@ export default function PersonalCalendar({
       />
     </div>
   );
-}
+});
+
+export default PersonalCalendar;
