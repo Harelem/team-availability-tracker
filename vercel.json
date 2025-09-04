@@ -6,8 +6,9 @@
   "outputDirectory": ".next",
   "regions": ["iad1"],
   "functions": {
-    "pages/api/**/*.js": {
-      "runtime": "nodejs18.x"
+    "app/api/**/*": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 10
     }
   },
   "build": {
