@@ -13,6 +13,12 @@ import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { DESIGN_SYSTEM, combineClasses } from '@/utils/designSystem';
 import { RealTimeCalculationService, type TeamMemberSubmissionStatus } from '@/lib/realTimeCalculationService';
 import { supabase } from '@/lib/supabase';
+import { 
+  SprintType, 
+  getSprintDatesByType, 
+  getSprintNumber, 
+  calculateDaysUntilSprintStart 
+} from '@/utils/sprintCalculations';
 
 interface ManagerDashboardProps {
   user: TeamMember;
@@ -62,6 +68,9 @@ export default function ManagerDashboard({
   
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  
+  // Sprint toggle state
+  const [selectedSprint, setSelectedSprint] = useState<SprintType>('current');
   
   // Modal state
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -675,6 +684,69 @@ export default function ManagerDashboard({
               <p className="text-sm text-yellow-700 mt-1">
                 The manager dashboard requires sprint data to function properly. Please contact your administrator.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sprint Toggle Navigation */}
+      {currentSprint && (
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            {/* Sprint Toggle Tabs */}
+            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+              {['previous', 'current', 'next'].map((sprintType) => {
+                const isActive = selectedSprint === sprintType;
+                const sprintLabels = {
+                  previous: 'ספרינט קודם',
+                  current: 'ספרינט נוכחי', 
+                  next: 'ספרינט הבא'
+                };
+                
+                return (
+                  <button
+                    key={sprintType}
+                    onClick={() => setSelectedSprint(sprintType as SprintType)}
+                    className={combineClasses(
+                      'px-4 py-2 text-sm font-medium rounded-md transition-colors',
+                      isActive
+                        ? 'bg-blue-500 text-white shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    )}
+                  >
+                    {sprintLabels[sprintType as keyof typeof sprintLabels]}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sprint Info Badge */}
+            <div className="text-right text-sm">
+              {(() => {
+                const sprintDates = getSprintDatesByType(currentSprint, selectedSprint);
+                const sprintNumber = getSprintNumber(currentSprint, selectedSprint);
+                const startDate = new Date(sprintDates.startDate);
+                const endDate = new Date(sprintDates.endDate);
+                
+                return (
+                  <div className="space-y-1">
+                    <div className="font-semibold text-gray-900">
+                      Sprint {sprintNumber}
+                    </div>
+                    <div className="text-gray-600">
+                      {startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}
+                    </div>
+                    {selectedSprint === 'next' && (() => {
+                      const daysUntilStart = calculateDaysUntilSprintStart(sprintDates.startDate);
+                      return daysUntilStart > 0 ? (
+                        <div className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                          מתחיל בעוד {daysUntilStart} ימים
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

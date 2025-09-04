@@ -140,6 +140,64 @@ export const getSprintDescription = (offset: number): string => {
   }
 };
 
+// Sprint date calculation functions for Sprint Toggle feature
+export const getPreviousSprintDates = (currentSprint: CurrentGlobalSprint): SprintPeriod => {
+  return calculateSprintPeriod(currentSprint, -1);
+};
+
+export const getCurrentSprintDates = (currentSprint: CurrentGlobalSprint): SprintPeriod => {
+  return calculateSprintPeriod(currentSprint, 0);
+};
+
+export const getNextSprintDates = (currentSprint: CurrentGlobalSprint): SprintPeriod => {
+  return calculateSprintPeriod(currentSprint, 1);
+};
+
+// Get sprint dates by type for easier usage
+export type SprintType = 'previous' | 'current' | 'next';
+
+export const getSprintDatesByType = (currentSprint: CurrentGlobalSprint, sprintType: SprintType): SprintPeriod => {
+  switch (sprintType) {
+    case 'previous':
+      return getPreviousSprintDates(currentSprint);
+    case 'current':
+      return getCurrentSprintDates(currentSprint);
+    case 'next':
+      return getNextSprintDates(currentSprint);
+    default:
+      return getCurrentSprintDates(currentSprint);
+  }
+};
+
+// Calculate days until sprint starts (for next sprint badge)
+export const calculateDaysUntilSprintStart = (sprintStartDate: string): number => {
+  const today = new Date();
+  const startDate = new Date(sprintStartDate);
+  
+  // Reset time to start of day for accurate day calculation
+  today.setHours(0, 0, 0, 0);
+  startDate.setHours(0, 0, 0, 0);
+  
+  const diffInTime = startDate.getTime() - today.getTime();
+  const diffInDays = Math.ceil(diffInTime / (1000 * 3600 * 24));
+  
+  return Math.max(0, diffInDays);
+};
+
+// Get sprint number for a given sprint type
+export const getSprintNumber = (currentSprint: CurrentGlobalSprint, sprintType: SprintType): number => {
+  switch (sprintType) {
+    case 'previous':
+      return (currentSprint.current_sprint_number || 1) - 1;
+    case 'current':
+      return currentSprint.current_sprint_number || 1;
+    case 'next':
+      return (currentSprint.current_sprint_number || 1) + 1;
+    default:
+      return currentSprint.current_sprint_number || 1;
+  }
+};
+
 // Calculate working days remaining from today to end date (inclusive)
 export const calculateRemainingWorkingDaysFromToday = (endDate: string): number => {
   const today = new Date();
