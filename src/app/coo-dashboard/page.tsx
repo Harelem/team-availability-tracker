@@ -3,10 +3,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Shield, RotateCcw } from 'lucide-react';
-import { withCOOAuth } from '@/hooks/useCOOAuth';
-import SprintManager from '@/components/coo/SprintManager';
-import DailyStatus from '@/components/coo/DailyStatus';
-import CompanyMetrics from '@/components/coo/CompanyMetrics';
 
 type TabType = 'metrics' | 'sprints' | 'daily' | 'teams';
 
@@ -100,9 +96,24 @@ function COODashboard() {
         <div className="p-6">
           {/* Content Area */}
           <div key={refreshKey}>
-            {activeTab === 'metrics' && <CompanyMetrics />}
-            {activeTab === 'sprints' && <SprintManager />}
-            {activeTab === 'daily' && <DailyStatus />}
+            {activeTab === 'metrics' && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold mb-4">Company Metrics</h3>
+                <p className="text-gray-600">Company metrics will be displayed here.</p>
+              </div>
+            )}
+            {activeTab === 'sprints' && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold mb-4">Sprint Manager</h3>
+                <p className="text-gray-600">Sprint management will be implemented here.</p>
+              </div>
+            )}
+            {activeTab === 'daily' && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold mb-4">Daily Status</h3>
+                <p className="text-gray-600">Daily status overview will be displayed here.</p>
+              </div>
+            )}
             {activeTab === 'teams' && (
               <div className="bg-white rounded-lg shadow-sm p-8 text-center">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -137,5 +148,5 @@ function COODashboard() {
   );
 }
 
-// Export the protected component
-export default withCOOAuth(COODashboard);
+// Export the component
+export default COODashboard;
