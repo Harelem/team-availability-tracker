@@ -12,6 +12,7 @@
 import { supabase } from './supabase'
 import { queryBatcher } from './QueryBatcher'
 import { dataConsistencyManager, CacheKeys, CacheDependencies } from '@/utils/dataConsistencyManager'
+import { formatDateKey } from '@/utils/dateUtils'
 import logger from '@/utils/logger'
 
 // Types for optimistic updates
@@ -406,8 +407,8 @@ export class ScheduleUpdateManager {
       const endOfWeek = new Date(startOfWeek)
       endOfWeek.setDate(startOfWeek.getDate() + 6)
 
-      const startDate = startOfWeek.toISOString().split('T')[0]
-      const endDate = endOfWeek.toISOString().split('T')[0]
+      const startDate = formatDateKey(startOfWeek)
+      const endDate = formatDateKey(endOfWeek)
 
       // Import and use the subscription helpers to mark local update
       const { subscriptionHelpers } = await import('./SubscriptionManager')

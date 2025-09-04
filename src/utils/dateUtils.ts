@@ -5,6 +5,17 @@
 import { WeekExportType } from '@/types';
 
 /**
+ * Format date as YYYY-MM-DD using local timezone (no UTC conversion)
+ * This prevents timezone-related date shifts that cause data mismatches
+ */
+export const formatDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
  * Get the start of week (Sunday) for a given date
  */
 export const getWeekStart = (date: Date): Date => {

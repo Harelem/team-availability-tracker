@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { TeamMember, Team, GlobalSprintSettings, CurrentGlobalSprint, CurrentEnhancedSprint, TeamSprintStats, TeamSprintAnalytics, EnhancedSprintConfig, SprintWorkingDay, MemberSprintCapacity, TeamDashboardData, CompanyCapacityMetrics, TeamCapacityStatus, COODashboardData, COOUser, DetailedCompanyScheduleData, DetailedTeamScheduleData, DetailedMemberScheduleData, MemberDaySchedule, MemberReasonEntry, DailyCompanyStatusData, DailyMemberStatus, DailyStatusSummary, TeamDailyStatus } from '@/types'
+import { formatDateKey } from '@/utils/dateUtils'
 // Template types temporarily disabled for production
 // import { AvailabilityTemplate, CreateTemplateRequest, UpdateTemplateRequest, TemplateFilters, TemplateQueryOptions, TemplateSearchResult } from '@/types/templateTypes'
 // RECOGNITION FEATURES TEMPORARILY DISABLED FOR PRODUCTION
@@ -1368,25 +1369,25 @@ export const DatabaseService = {
     
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (diffDays > 90) {
-      // Only log warning in development to reduce console noise
+    // Remove aggressive date range optimization for calendar view
+    // Calendar needs to show full months, not just sprint windows
+    if (diffDays > 365) {
+      // Only limit if requesting more than a year of data
       if (process.env.NODE_ENV === 'development') {
-        console.warn('getPaginatedScheduleEntries: Date range exceeds 90 days, optimizing query range');
+        console.warn('getPaginatedScheduleEntries: Date range exceeds 365 days, limiting to 1 year');
       }
       
-      // Smart date range optimization: use sprint context when available
-      const today = new Date();
-      const sprintStart = new Date(today);
-      sprintStart.setDate(today.getDate() - 7); // Include past week for context
-      const sprintEnd = new Date(today);
-      sprintEnd.setDate(today.getDate() + 21); // Include 3 weeks ahead
+      // Limit to 1 year max to prevent excessive queries
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const oneYearAhead = new Date();
+      oneYearAhead.setFullYear(oneYearAhead.getFullYear() + 1);
       
-      // Use string comparison for dates in YYYY-MM-DD format
-      const sprintStartStr = sprintStart.toISOString().split('T')[0];
-      const sprintEndStr = sprintEnd.toISOString().split('T')[0];
+      const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+      const oneYearAheadStr = oneYearAhead.toISOString().split('T')[0];
       
-      startDate = startDate > sprintStartStr ? startDate : sprintStartStr;
-      endDate = endDate < sprintEndStr ? endDate : sprintEndStr;
+      if (startDate < oneYearAgoStr) startDate = oneYearAgoStr;
+      if (endDate > oneYearAheadStr) endDate = oneYearAheadStr;
     }
 
     try {
@@ -1428,6 +1429,19 @@ export const DatabaseService = {
 
       // Transform data to expected format
       const scheduleData: Record<number, Record<string, { value: '1' | '0.5' | 'X'; reason?: string; created_at?: string; updated_at?: string }>> = {};
+      
+      // Debug log raw data
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 PAGINATED RESULTS DEBUG:', {
+          totalEntries: data ? data.length : 0,
+          dateRange: `${startDate} to ${endDate}`,
+          queryParams: { teamId, limit, offset },
+          sampleEntry: data && data.length > 0 ? data[0] : null,
+          uniqueMembers: data ? [...new Set(data.map((e: any) => e.member_id))] : [],
+          uniqueDates: data ? [...new Set(data.map((e: any) => e.date))].slice(0, 10) : [],
+          hasMoreData: data && data.length === limit
+        });
+      }
       
       data?.forEach((entry: any) => {
         if (!scheduleData[entry.member_id]) {
@@ -1531,22 +1545,21 @@ export const DatabaseService = {
       return {}
     }
 
-    // Reduced debug logging for better performance - only log if needed
+    // Debug logging for development
     if (process.env.NODE_ENV === 'development' && forceRefresh) {
       console.log('🔍 DATABASE DEBUG - getScheduleEntries called:', {
         startDate,
         endDate,
         teamId,
-        forceRefresh,
         dayRange: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
       });
     }
 
-    // Use optimized pagination with reduced limit to prevent egress overload
-    // 50 items = ~20KB instead of 200 items = ~80KB (75% reduction)
-    const result = await this.getPaginatedScheduleEntries(startDate, endDate, teamId, { limit: 50 });
+    // Use optimized pagination with a higher limit for calendar view
+    // Personal calendar needs all entries for the visible month
+    const result = await this.getPaginatedScheduleEntries(startDate, endDate, teamId, { limit: 500 });
     
-    // Optimized debug logging - only show key metrics in development
+    // Debug logging for empty results
     if (process.env.NODE_ENV === 'development' && Object.keys(result.data).length === 0) {
       console.warn('⚠️ DATABASE DEBUG - No schedule data found:', {
         startDate,
@@ -1692,7 +1705,7 @@ export const DatabaseService = {
    * @returns Sprint data from sprint_history table, or null if no sprint found
    */
   async getSprintForDate(targetDate: Date = new Date()): Promise<CurrentGlobalSprint | null> {
-    const targetDateString = targetDate.toISOString().split('T')[0];
+    const targetDateString = formatDateKey(targetDate);
     
     // Use caching for performance optimization
     return dataConsistencyManager.getCachedOrFetch(

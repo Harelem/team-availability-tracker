@@ -26,12 +26,26 @@ interface PersonalStats {
   submittedDays: number;
 }
 
+// Component render counter for debugging
+let dashboardRenderCounter = 0;
+
 const PersonalDashboard = React.memo(function PersonalDashboard({ 
   user, 
   team, 
   teamMembers = [],
   className = '' 
 }: PersonalDashboardProps) {
+  // RENDER TRACKING
+  const renderId = ++dashboardRenderCounter;
+  console.log(`🎨 DASHBOARD RENDER: PersonalDashboard render #${renderId}`, {
+    userId: user?.id,
+    userName: user?.name,
+    teamId: team?.id,
+    teamName: team?.name,
+    teamMembersCount: teamMembers?.length,
+    className
+  });
+  
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading } = useGlobalSprint();
   const [personalStats, setPersonalStats] = useState<PersonalStats>({
@@ -65,11 +79,29 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
   }, [currentSprint]);
 
   // PERFORMANCE FIX: Create stable references for PersonalCalendar props
-  const stableUser = useMemo(() => user, [user.id, user.name, user.hebrew]);
-  const stableTeam = useMemo(() => team, [team.id, team.name]);
+  const stableUser = useMemo(() => {
+    console.log(`🔄 STABLE USER: Creating stable user reference for render #${renderId}`, {
+      userId: user.id,
+      userName: user.name,
+      userHebrew: user.hebrew
+    });
+    return user;
+  }, [user.id, user.name, user.hebrew]);
+  
+  const stableTeam = useMemo(() => {
+    console.log(`🔄 STABLE TEAM: Creating stable team reference for render #${renderId}`, {
+      teamId: team.id,
+      teamName: team.name
+    });
+    return team;
+  }, [team.id, team.name]);
 
   // Memoized callback to prevent PersonalCalendar re-mounting - further stabilized
   const handleDataChange = useCallback((newData: any) => {
+    console.log(`📊 DATA CHANGE: handleDataChange called in render #${renderId}`, {
+      dataKeys: Object.keys(newData),
+      userIds: Object.keys(newData)
+    });
     setScheduleData(newData);
     
     // PERFORMANCE FIX: Use cached sprintWorkingDays reference to avoid recalculation
@@ -431,13 +463,28 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
   );
 }, (prevProps, nextProps) => {
   // PERFORMANCE FIX: Custom memo comparison to prevent unnecessary re-renders
-  return (
+  const arePropsEqual = (
     prevProps.user.id === nextProps.user.id &&
     prevProps.user.name === nextProps.user.name &&
     prevProps.team.id === nextProps.team.id &&
     prevProps.team.name === nextProps.team.name &&
-    prevProps.className === nextProps.className
+    prevProps.className === nextProps.className &&
+    // Compare teamMembers array by length and IDs
+    prevProps.teamMembers.length === nextProps.teamMembers.length &&
+    prevProps.teamMembers.every((member, index) => 
+      member.id === nextProps.teamMembers[index]?.id
+    )
   );
+  
+  if (!arePropsEqual) {
+    console.log('🔄 DASHBOARD MEMO: Props changed, will re-render:', {
+      userChanged: prevProps.user.id !== nextProps.user.id,
+      teamChanged: prevProps.team.id !== nextProps.team.id,
+      membersChanged: prevProps.teamMembers.length !== nextProps.teamMembers.length
+    });
+  }
+  
+  return arePropsEqual;
 });
 
 export default PersonalDashboard;

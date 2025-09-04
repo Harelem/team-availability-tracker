@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, startTransition } from 'react';
 import { TeamMember, Team, ScheduleEntry } from '@/types';
 import { DatabaseService } from '@/lib/database';
+import { formatDateKey } from '@/utils/dateUtils';
 import MobileReasonInput from './MobileReasonInput';
 import { 
   ChevronLeft, 
@@ -214,17 +215,183 @@ const DayStatusModal = React.memo(function DayStatusModal({ isOpen, onClose, onS
   );
 });
 
+// Component mount counter for debugging multiple initializations
+let mountCounter = 0;
+
 const PersonalCalendar = React.memo(function PersonalCalendar({
   user,
   team,
   editable = true,
   onDataChange
 }: PersonalCalendarProps) {
-  // PERFORMANCE FIX: State management with React 18 optimizations
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  // COMPONENT MOUNT TRACKING
+  const mountId = ++mountCounter;
+  console.log(`🏗️ COMPONENT MOUNT: PersonalCalendar instance #${mountId} initializing`, {
+    userId: user?.id,
+    teamId: team?.id,
+    editable,
+    hasOnDataChange: !!onDataChange
+  });
+  
+  // PERFORMANCE FIX: State management with React 18 optimizations + Enhanced Month persistence
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    // Restore last viewed month from robust storage, fallback to current date
+    console.log('🔄 MONTH PERSISTENCE: Initializing calendar component...');
+    
+    if (typeof window !== 'undefined') {
+      console.log('🌐 MONTH PERSISTENCE: Window is available, checking storage...');
+      
+      // Use helper method to load from storage with fallback
+      let savedMonth = null;
+      let storageType = 'none';
+      
+      // Try localStorage first
+      try {
+        savedMonth = localStorage.getItem('personal-calendar-month');
+        if (savedMonth) {
+          storageType = 'localStorage';
+        }
+      } catch (error) {
+        console.warn('⚠️ MONTH PERSISTENCE: localStorage read failed:', error);
+      }
+      
+      // Fallback to sessionStorage
+      if (!savedMonth) {
+        try {
+          savedMonth = sessionStorage.getItem('personal-calendar-month');
+          if (savedMonth) {
+            storageType = 'sessionStorage';
+          }
+        } catch (error) {
+          console.warn('⚠️ MONTH PERSISTENCE: sessionStorage read failed:', error);
+        }
+      }
+      
+      console.log('📂 MONTH PERSISTENCE: Retrieved from storage:', { 
+        savedMonth, 
+        storageType,
+        localStorageAvailable: !!window.localStorage,
+        sessionStorageAvailable: !!window.sessionStorage
+      });
+      
+      if (savedMonth) {
+        try {
+          // Handle both new format (YYYY-MM) and legacy format (ISO date)
+          let restoredDate: Date;
+          
+          if (savedMonth.match(/^\d{4}-\d{2}$/)) {
+            // New format: "2025-09"
+            const [year, month] = savedMonth.split('-').map(Number);
+            restoredDate = new Date(year, month - 1, 1); // month - 1 because Date months are 0-indexed
+            console.log('📅 MONTH PERSISTENCE: Parsing new format month string:', {
+              originalValue: savedMonth,
+              year: year,
+              month: month,
+              parsedDate: restoredDate,
+              storageSource: storageType
+            });
+          } else {
+            // Legacy format: ISO date string
+            restoredDate = new Date(savedMonth);
+            console.log('📅 MONTH PERSISTENCE: Parsing legacy ISO date:', {
+              originalValue: savedMonth,
+              parsedDate: restoredDate,
+              isValidDate: !isNaN(restoredDate.getTime()),
+              storageSource: storageType
+            });
+          }
+          
+          // Validate restored date - ensure it's not invalid or too far in the future
+          const now = new Date();
+          const twoYearsFromNow = new Date(now.getFullYear() + 2, now.getMonth(), 1);
+          
+          if (!isNaN(restoredDate.getTime()) && restoredDate <= twoYearsFromNow) {
+            console.log('✅ MONTH PERSISTENCE: Successfully restored month from storage:', {
+              month: restoredDate.getMonth() + 1,
+              year: restoredDate.getFullYear(),
+              savedValue: savedMonth,
+              storageSource: storageType
+            });
+            
+            // Sync between storages if one is missing
+            if (storageType === 'sessionStorage') {
+              try {
+                localStorage.setItem('personal-calendar-month', savedMonth);
+                console.log('🔄 MONTH PERSISTENCE: Synced from sessionStorage to localStorage');
+              } catch (syncError) {
+                console.warn('⚠️ MONTH PERSISTENCE: Could not sync to localStorage:', syncError);
+              }
+            }
+            
+            return restoredDate;
+          } else {
+            console.warn('⚠️ MONTH PERSISTENCE: Invalid saved month detected, cleaning up', {
+              restoredDate: restoredDate.toString(),
+              isNaN: isNaN(restoredDate.getTime()),
+              isFuture: restoredDate > twoYearsFromNow,
+              storageSource: storageType
+            });
+            
+            // Clear from both storages
+            try {
+              localStorage.removeItem('personal-calendar-month');
+              sessionStorage.removeItem('personal-calendar-month');
+            } catch (clearError) {
+              console.warn('⚠️ MONTH PERSISTENCE: Could not clear invalid data:', clearError);
+            }
+          }
+        } catch (error) {
+          console.error('❌ MONTH PERSISTENCE: Error parsing saved month:', error);
+          // Clear corrupted data
+          try {
+            localStorage.removeItem('personal-calendar-month');
+            sessionStorage.removeItem('personal-calendar-month');
+          } catch (clearError) {
+            console.warn('⚠️ MONTH PERSISTENCE: Could not clear corrupted data:', clearError);
+          }
+        }
+      } else {
+        console.log('📭 MONTH PERSISTENCE: No saved month found in any storage');
+      }
+    } else {
+      console.warn('⚠️ MONTH PERSISTENCE: Window is undefined, cannot access storage');
+    }
+    
+    const currentDate = new Date();
+    console.log('📅 MONTH PERSISTENCE: Using current date as fallback:', {
+      month: currentDate.getMonth() + 1,
+      year: currentDate.getFullYear()
+    });
+    return currentDate;
+  });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [scheduleData, setScheduleData] = useState<{[key: string]: ScheduleEntry}>({});
+  const [scheduleData, setScheduleDataInternal] = useState<{[key: string]: ScheduleEntry}>({});
   const [isReasonModalOpen, setReasonModalOpen] = useState(false);
+  
+  // Wrapper function to log all schedule data state changes
+  const setScheduleData = useCallback((updater: any) => {
+    if (typeof updater === 'function') {
+      setScheduleDataInternal(prevData => {
+        const newData = updater(prevData);
+        console.log('📊 SCHEDULE STATE: Data updated via function:', {
+          previousCount: Object.keys(prevData).length,
+          newCount: Object.keys(newData).length,
+          changedKeys: Object.keys(newData).filter(key => 
+            JSON.stringify(newData[key]) !== JSON.stringify(prevData[key])
+          ),
+          operation: 'function update'
+        });
+        return newData;
+      });
+    } else {
+      console.log('📊 SCHEDULE STATE: Data set directly:', {
+        entryCount: Object.keys(updater).length,
+        dateKeys: Object.keys(updater),
+        operation: 'direct set'
+      });
+      setScheduleDataInternal(updater);
+    }
+  }, []);
   const [isStatusModalOpen, setStatusModalOpen] = useState(false);
   const [pendingValue, setPendingValue] = useState<'0.5' | 'X' | null>(null);
   const [loading, setLoading] = useState(true);
@@ -237,16 +404,106 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
   const currentOperationRef = useRef<string | null>(null);
   const savingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const optimisticUpdatesRef = useRef<Record<string, { value: '1' | '0.5' | 'X' | null; reason?: string; }>>({});
+  // External schedule update manager reference for integration
+  const scheduleUpdateManagerRef = useRef<any>(null);
   
-  // PERFORMANCE FIX: Batch queue for multiple rapid updates
-  const pendingBatchRef = useRef<Record<string, { date: Date; value: '1' | '0.5' | 'X' | null; reason?: string }>>({});
+  // Legacy batch refs kept for cleanup compatibility
   const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Format date as YYYY-MM-DD for database keys
-  const formatDateKey = (date: Date): string => {
-    return date.toISOString().split('T')[0];
-  };
+  // Enhanced storage helper methods
+  const saveMonthToStorage = useCallback((monthValue: string) => {
+    const storageOperations = [];
+    
+    // Try to save to both localStorage and sessionStorage for redundancy
+    try {
+      localStorage.setItem('personal-calendar-month', monthValue);
+      storageOperations.push('localStorage');
+    } catch (error) {
+      console.warn('⚠️ MONTH PERSISTENCE: localStorage save failed:', error);
+    }
+    
+    try {
+      sessionStorage.setItem('personal-calendar-month', monthValue);
+      storageOperations.push('sessionStorage');
+    } catch (error) {
+      console.warn('⚠️ MONTH PERSISTENCE: sessionStorage save failed:', error);
+    }
+    
+    console.log('💾 MONTH PERSISTENCE: Saved to storage:', {
+      monthValue,
+      savedTo: storageOperations,
+      timestamp: new Date().toISOString()
+    });
+    
+    return storageOperations.length > 0;
+  }, []);
+
+  const loadMonthFromStorage = useCallback((): string | null => {
+    if (typeof window === 'undefined') return null;
+    
+    let savedMonth = null;
+    let storageType = 'none';
+    
+    // Try localStorage first
+    try {
+      savedMonth = localStorage.getItem('personal-calendar-month');
+      if (savedMonth) {
+        storageType = 'localStorage';
+      }
+    } catch (error) {
+      console.warn('⚠️ MONTH PERSISTENCE: localStorage read failed:', error);
+    }
+    
+    // Fallback to sessionStorage
+    if (!savedMonth) {
+      try {
+        savedMonth = sessionStorage.getItem('personal-calendar-month');
+        if (savedMonth) {
+          storageType = 'sessionStorage';
+          // Sync back to localStorage if possible
+          try {
+            localStorage.setItem('personal-calendar-month', savedMonth);
+            console.log('🔄 MONTH PERSISTENCE: Synced from sessionStorage to localStorage');
+          } catch (syncError) {
+            console.warn('⚠️ MONTH PERSISTENCE: Could not sync to localStorage:', syncError);
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ MONTH PERSISTENCE: sessionStorage read failed:', error);
+      }
+    }
+    
+    console.log('📂 MONTH PERSISTENCE: Retrieved from storage:', { 
+      savedMonth, 
+      storageType,
+      timestamp: new Date().toISOString()
+    });
+    
+    return savedMonth;
+  }, []);
+
+  const clearMonthFromStorage = useCallback(() => {
+    const clearOperations = [];
+    
+    try {
+      localStorage.removeItem('personal-calendar-month');
+      clearOperations.push('localStorage');
+    } catch (error) {
+      console.warn('⚠️ MONTH PERSISTENCE: localStorage clear failed:', error);
+    }
+    
+    try {
+      sessionStorage.removeItem('personal-calendar-month');
+      clearOperations.push('sessionStorage');
+    } catch (error) {
+      console.warn('⚠️ MONTH PERSISTENCE: sessionStorage clear failed:', error);
+    }
+    
+    console.log('🚮 MONTH PERSISTENCE: Cleared from storage:', {
+      clearedFrom: clearOperations
+    });
+  }, []);
+
 
   // PERFORMANCE FIX: Optimized calendar days generation with stable today reference
   const todayRef = useRef(new Date());
@@ -265,9 +522,24 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     return () => clearInterval(interval);
   }, []);
   
+  // Get optimistic updates from external schedule update manager
+  const getOptimisticValue = useCallback((memberId: number, dateKey: string) => {
+    if (scheduleUpdateManagerRef.current) {
+      return scheduleUpdateManagerRef.current.getOptimisticValue(memberId, dateKey);
+    }
+    return null;
+  }, []);
+  
   const calendarDays = useMemo((): CalendarDay[] => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
+    
+    // DEBUG: Log calendar generation
+    console.log('📆 CALENDAR GENERATION:', {
+      currentMonth: `${year}-${String(month + 1).padStart(2, '0')}`,
+      scheduleDataKeys: Object.keys(scheduleData).length,
+      sampleKeys: Object.keys(scheduleData).slice(0, 5)
+    });
     
     const firstDay = new Date(year, month, 1);
     const startDate = new Date(firstDay);
@@ -286,8 +558,30 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       
       const dateKey = formatDateKey(date);
       const scheduleEntry = scheduleData[dateKey];
-      const optimisticEntry = optimisticUpdatesRef.current[dateKey];
-      const currentEntry = optimisticEntry || scheduleEntry;
+      
+      // DEBUG: Log data lookup for September dates and show complete comparison
+      if (date.getMonth() === 8 && i < 10) { // September is month 8 (0-indexed)
+        console.log(`📍 DAY DATA CHECK for ${dateKey}:`, {
+          dateKey,
+          hasEntry: !!scheduleEntry,
+          entryValue: scheduleEntry?.value,
+          scheduleDataHasKey: dateKey in scheduleData,
+          // Show comparison for debugging
+          allAvailableKeys: Object.keys(scheduleData).slice(0, 10),
+          exactMatch: scheduleData[dateKey],
+          similarKeys: Object.keys(scheduleData).filter(key => 
+            key.includes(String(date.getDate()).padStart(2, '0'))
+          )
+        });
+      }
+      
+      // Get optimistic update from external manager if available
+      const optimisticUpdate = user ? getOptimisticValue(user.id, dateKey) : null;
+      const currentEntry = optimisticUpdate ? {
+        value: optimisticUpdate.value,
+        reason: optimisticUpdate.reason
+        // optimistic: true
+      } : scheduleEntry;
       
       const isWeekend = date.getDay() === 5 || date.getDay() === 6;
       
@@ -304,11 +598,20 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     }
     
     return days;
-  }, [currentMonth, scheduleData]);
+  }, [currentMonth, scheduleData, user, getOptimisticValue]);
 
   // Fetch schedule data for the visible month
   const fetchMonthData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('📅 DATA FETCH: Skipped - no user available');
+      return;
+    }
+    
+    console.log('📅 DATA FETCH: Starting data fetch for month:', {
+      month: currentMonth.getMonth() + 1,
+      year: currentMonth.getFullYear(),
+      userId: user.id
+    });
     
     try {
       const year = currentMonth.getFullYear();
@@ -320,18 +623,94 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       const endDate = new Date(year, month + 1, 0);
       endDate.setDate(endDate.getDate() + 7); // 1 week after current month
       
+      const startDateKey = formatDateKey(startDate);
+      const endDateKey = formatDateKey(endDate);
+      
+      console.log('📅 DATA FETCH: Query parameters:', {
+        startDateKey,
+        endDateKey,
+        dateRange: `${startDateKey} to ${endDateKey}`
+      });
+      
       // Use cached getScheduleEntries for better performance (1-2 queries vs 8+)
       const allScheduleData = await DatabaseService.getScheduleEntries(
-        formatDateKey(startDate),
-        formatDateKey(endDate),
+        startDateKey,
+        endDateKey,
         undefined, // teamId - not needed for personal calendar
         false // forceRefresh - use cache for better performance
       );
       
+      console.log('📅 DATA FETCH: Raw database response:', {
+        totalUsers: Object.keys(allScheduleData).length,
+        hasCurrentUser: user.id in allScheduleData,
+        allUserIds: Object.keys(allScheduleData)
+      });
+      
       // Extract data for the current user only
       const dataObject = allScheduleData[user.id] || {};
       
+      console.log('📅 DATA FETCH: User data extracted:', {
+        userId: user.id,
+        entryCount: Object.keys(dataObject).length,
+        dateKeys: Object.keys(dataObject),
+        sampleEntries: Object.keys(dataObject).slice(0, 5).map(key => ({
+          date: key,
+          value: dataObject[key]?.value,
+          reason: dataObject[key]?.reason
+        }))
+      });
+      
+      // CRITICAL DEBUG: Show exact date formats
+      console.log('🔑 DATE KEY ANALYSIS:', {
+        firstDateKey: Object.keys(dataObject)[0],
+        lastDateKey: Object.keys(dataObject)[Object.keys(dataObject).length - 1],
+        allDateKeys: Object.keys(dataObject).slice(0, 10),
+        currentMonthString: `${year}-${String(month + 1).padStart(2, '0')}`,
+        septemberDates: Object.keys(dataObject).filter(key => key.startsWith('2025-09')),
+        // New debugging for format verification
+        formatTestToday: formatDateKey(new Date()),
+        formatTestSep1: formatDateKey(new Date('2025-09-01')),
+        formatTestSep15: formatDateKey(new Date('2025-09-15'))
+      });
+      
+      // DATE FORMAT DEBUG: Check if recently saved dates exist in fetched data
+      const today = new Date();
+      const recentDates = [];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateKey = formatDateKey(date);
+        recentDates.push({
+          dateKey,
+          exists: dateKey in dataObject,
+          value: dataObject[dateKey]?.value,
+          displayDate: date.toDateString()
+        });
+      }
+      
+      console.log('🔍 DATE FORMAT DEBUG: Recent dates check:', {
+        recentDatesFound: recentDates.filter(d => d.exists),
+        recentDatesMissing: recentDates.filter(d => !d.exists),
+        formatExample: `formatDateKey creates: ${formatDateKey(today)}`,
+        todayFormatted: formatDateKey(today)
+      });
+      
       setScheduleData(dataObject);
+      
+      console.log('📅 DATA FETCH: Successfully updated schedule data state with', Object.keys(dataObject).length, 'entries');
+      
+      // CRITICAL DEBUG: Show the actual schedule data structure
+      console.log('🔍 SCHEDULE DATA SAMPLE:', {
+        totalEntries: Object.keys(dataObject).length,
+        firstFewEntries: Object.keys(dataObject).slice(0, 5).reduce((acc, key) => {
+          acc[key] = dataObject[key];
+          return acc;
+        }, {} as Record<string, any>),
+        septemberEntries: Object.keys(dataObject).filter(key => key.startsWith('2025-09')).reduce((acc, key) => {
+          acc[key] = dataObject[key];
+          return acc;
+        }, {} as Record<string, any>)
+      });
     } catch (error) {
       console.error('Error fetching month data:', error);
     } finally {
@@ -339,33 +718,54 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     }
   }, [user, currentMonth]);
 
-  // Optimistic update function for immediate UI feedback
+  // Effect to ensure data is fetched when month changes
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📅 Personal Calendar: Viewing', HEBREW_MONTHS[currentMonth.getMonth()], currentMonth.getFullYear());
+    }
+    fetchMonthData();
+  }, [currentMonth, fetchMonthData]);
+
+  // Optimistic update function for immediate UI feedback - integrated with scheduleUpdateManager
   const applyOptimisticUpdate = useCallback((date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
     const dateKey = formatDateKey(date);
     
-    // Store optimistic update
-    optimisticUpdatesRef.current[dateKey] = { value, reason };
-    
-    // Apply to local state immediately
+    // Apply to local state immediately for instant UI feedback
     setScheduleData(prevData => {
       const updatedData = { ...prevData };
       if (value) {
         updatedData[dateKey] = { 
           value, 
           reason, 
-          hours: value === '1' ? 7 : value === '0.5' ? 3.5 : 0 
+          hours: value === '1' ? 7 : value === '0.5' ? 3.5 : 0
+          // optimistic: true // Mark as optimistic for UI differentiation
         };
       } else {
         delete updatedData[dateKey];
       }
       return updatedData;
     });
-  }, []);
+    
+    // Also notify parent component immediately for responsive UI
+    if (onDataChange && user) {
+      const updatedScheduleData = { ...scheduleDataRef.current };
+      if (value) {
+        updatedScheduleData[dateKey] = { 
+          value, 
+          reason, 
+          hours: value === '1' ? 7 : value === '0.5' ? 3.5 : 0
+          // optimistic: true
+        };
+      } else {
+        delete updatedScheduleData[dateKey];
+      }
+      onDataChange({ [user.id]: updatedScheduleData });
+    }
+  }, [onDataChange, user]);
 
   // Rollback optimistic update on error
   const rollbackOptimisticUpdate = useCallback((date: Date, originalData: any) => {
     const dateKey = formatDateKey(date);
-    delete optimisticUpdatesRef.current[dateKey];
     
     setScheduleData(prevData => {
       const updatedData = { ...prevData };
@@ -376,7 +776,18 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       }
       return updatedData;
     });
-  }, []);
+    
+    // Also rollback parent component state
+    if (onDataChange && user) {
+      const rolledBackScheduleData = { ...scheduleDataRef.current };
+      if (originalData) {
+        rolledBackScheduleData[dateKey] = originalData;
+      } else {
+        delete rolledBackScheduleData[dateKey];
+      }
+      onDataChange({ [user.id]: rolledBackScheduleData });
+    }
+  }, [onDataChange, user]);
 
   // Stable reference to scheduleData for database updates
   const scheduleDataRef = useRef(scheduleData);
@@ -384,193 +795,85 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     scheduleDataRef.current = scheduleData;
   }, [scheduleData]);
 
-  // Debounced database update function
-  const updateScheduleDebounced = useCallback(async (date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
-    if (!user || !isMountedRef.current) return;
-    
-    const dateKey = formatDateKey(date);
-    const operationId = `${Date.now()}-${Math.random()}`;
-    
-    // Store original data for potential rollback
-    const originalData = scheduleDataRef.current[dateKey] || null;
-    
-    // Prevent overlapping operations
-    if (currentOperationRef.current) {
-      return; // PERFORMANCE FIX: Silent block - no logging needed for performance
-    }
-    
-    currentOperationRef.current = operationId;
-    // PERFORMANCE FIX: Drastically reduced logging
-    if (process.env.NODE_ENV === 'development' && Math.random() < 0.02) { // Only 2% logging
-      console.log('🔄 Starting operation:', operationId, { dateKey, value });
-    }
-    
-    // Clear any previous errors
-    setLastError(null);
-    
-    // Set saving with failsafe timeout
-    setSaving(true);
-    savingTimeoutRef.current = setTimeout(() => {
-      console.error('⚠️ Force clearing saving state - operation timeout');
-      if (isMountedRef.current && currentOperationRef.current === operationId) {
-        setSaving(false);
-        currentOperationRef.current = null;
-        setLastError('Operation timed out. Please try again.');
-      }
-    }, 10000); // 10-second timeout
-    
-    try {
-      await DatabaseService.updateScheduleEntry(
-        user.id,
-        dateKey,
-        value,
-        reason
-      );
-      
-      // Only proceed if this is still the current operation and component is mounted
-      if (!isMountedRef.current || currentOperationRef.current !== operationId) {
-        console.log('🚫 Operation cancelled or superseded:', operationId);
-        return;
-      }
-      
-      // Update local state carefully to preserve existing data
-      const updatedScheduleData = { ...scheduleDataRef.current };
-      
-      if (value) {
-        // Add or update entry
-        updatedScheduleData[dateKey] = { 
-          value, 
-          reason, 
-          hours: value === '1' ? 7 : value === '0.5' ? 3.5 : 0 
-        };
-      } else {
-        // Remove entry (delete case)
-        delete updatedScheduleData[dateKey];
-      }
-      
-      setScheduleData(updatedScheduleData);
-      
-      // Notify parent component of data change
-      if (onDataChange && user) {
-        onDataChange({
-          [user.id]: updatedScheduleData
-        });
-      }
-      
-      // PERFORMANCE FIX: Reduce success logging
-      if (process.env.NODE_ENV === 'development' && Math.random() < 0.02) { // Only 2% logging
-        console.log('✅ Operation completed successfully:', operationId);
-      }
-      
-    } catch (error) {
-      console.error('❌ Error updating schedule:', error, 'Operation:', operationId);
-      
-      // Rollback optimistic update on error
-      rollbackOptimisticUpdate(date, originalData);
-      
-      // Only update error state if component is still mounted and operation is current
-      if (isMountedRef.current && currentOperationRef.current === operationId) {
-        setLastError(`Failed to save schedule: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    } finally {
-      // Clean up timeout
-      if (savingTimeoutRef.current) {
-        clearTimeout(savingTimeoutRef.current);
-        savingTimeoutRef.current = null;
-      }
-      
-      // Only clear saving state if component is mounted and this is the current operation
-      if (isMountedRef.current && currentOperationRef.current === operationId) {
-        setSaving(false);
-        currentOperationRef.current = null;
-        // PERFORMANCE FIX: Remove cleanup logging
-      } else {
-        // PERFORMANCE FIX: Remove superseded operation logging
-      }
-    }
-  }, [user, onDataChange, rollbackOptimisticUpdate]); // Stable dependencies only
+  // Legacy debounced function removed - functionality moved to scheduleUpdateManager
+  // All database operations now handled by external scheduleUpdateManager for better consistency
 
-  // PERFORMANCE FIX: Batch processing function for multiple updates
-  const processBatch = useCallback(async () => {
-    if (!user || !isMountedRef.current) return;
-    
-    const batch = { ...pendingBatchRef.current };
-    pendingBatchRef.current = {}; // Clear the batch
-    
-    if (Object.keys(batch).length === 0) return;
-    
-    setSaving(true);
-    
-    try {
-      // Process all batched updates in parallel for better performance
-      const promises = Object.entries(batch).map(async ([dateKey, update]) => {
-        return DatabaseService.updateScheduleEntry(
-          user.id,
-          dateKey,
-          update.value,
-          update.reason
-        );
-      });
-      
-      await Promise.all(promises);
-      
-      // Notify parent of all changes at once
-      if (onDataChange && user) {
-        const updatedScheduleData = { ...scheduleDataRef.current };
-        
-        Object.entries(batch).forEach(([dateKey, update]) => {
-          if (update.value) {
-            updatedScheduleData[dateKey] = { 
-              value: update.value, 
-              reason: update.reason, 
-              hours: update.value === '1' ? 7 : update.value === '0.5' ? 3.5 : 0 
-            };
-          } else {
-            delete updatedScheduleData[dateKey];
-          }
-        });
-        
-        onDataChange({ [user.id]: updatedScheduleData });
-      }
-      
-    } catch (error) {
-      console.error('❌ Batch update failed:', error);
-      // Rollback all optimistic updates in the batch
-      Object.entries(batch).forEach(([dateKey, update]) => {
-        const originalData = scheduleDataRef.current[dateKey] || null;
-        rollbackOptimisticUpdate(update.date, originalData);
-      });
-      setLastError('Failed to save batch updates');
-    } finally {
-      setSaving(false);
-    }
-  }, [user, onDataChange, rollbackOptimisticUpdate]);
+  // LEGACY: Batch processing function removed - now handled by scheduleUpdateManager
+  // Functionality moved to external scheduleUpdateManager for better performance and consistency
 
-  // PERFORMANCE FIX: Enhanced update function with React 18 startTransition
-  const updateSchedule = useCallback((date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
-    if (!user || !isMountedRef.current) return;
+  // PERFORMANCE FIX: Enhanced update function integrated with scheduleUpdateManager
+  const updateSchedule = useCallback(async (date: Date, value: '1' | '0.5' | 'X' | null, reason?: string) => {
+    if (!user || !isMountedRef.current) {
+      return;
+    }
     
-    const dateKey = formatDateKey(date);
-    
-    // Apply optimistic update immediately using startTransition for non-urgent updates
+    // Apply local optimistic update immediately for instant UI feedback
     startTransition(() => {
       applyOptimisticUpdate(date, value, reason);
     });
     
-    // Add to batch with improved batching logic
-    pendingBatchRef.current[dateKey] = { date, value, reason };
-    
-    if (batchTimeoutRef.current) {
-      clearTimeout(batchTimeoutRef.current);
-    }
-    
-    // Reduced batch delay for better responsiveness
-    batchTimeoutRef.current = setTimeout(() => {
-      startTransition(() => {
-        processBatch();
+    try {
+      // Use external schedule update manager for database operations
+      if (!scheduleUpdateManagerRef.current) {
+        const { scheduleUpdateManager } = await import('../lib/scheduleUpdateManager');
+        scheduleUpdateManagerRef.current = scheduleUpdateManager;
+      }
+      
+      // Ensure the month containing this date is persisted for page refresh recovery
+      if (typeof window !== 'undefined') {
+        // Use timezone-neutral month format instead of ISO date to avoid timezone bugs
+        const monthValue = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        const saveSuccess = saveMonthToStorage(monthValue);
+        if (saveSuccess) {
+          console.log('✅ MONTH PERSISTENCE: Successfully saved month to storage:', {
+            date: date.toDateString(),
+            savedMonth: date.getMonth() + 1,
+            savedYear: date.getFullYear(),
+            storedValue: monthValue
+          });
+        } else {
+          console.error('❌ MONTH PERSISTENCE: All storage methods failed');
+        }
+      } else {
+        console.warn('⚠️ MONTH PERSISTENCE: window is undefined, cannot save to localStorage');
+      }
+      
+      // Call external update manager (handles optimistic updates, retries, etc.)
+      await scheduleUpdateManagerRef.current.updateScheduleEntry(
+        user.id,
+        formatDateKey(date),
+        value,
+        reason,
+        { priority: 'normal' }
+      );
+      
+      // On success, sync local state with the confirmed data
+      const dateKey = formatDateKey(date);
+      setScheduleData(prevData => {
+        const updatedData = { ...prevData };
+        if (value) {
+          updatedData[dateKey] = { 
+            value, 
+            reason, 
+            hours: value === '1' ? 7 : value === '0.5' ? 3.5 : 0
+          };
+        } else {
+          delete updatedData[dateKey];
+        }
+        return updatedData;
       });
-    }, 200); // Shorter delay with startTransition
-  }, [user, applyOptimisticUpdate, processBatch]);
+      
+    } catch (error) {
+      console.error('❌ Update failed, rolling back optimistic update:', error);
+      // Get original data for rollback
+      const dateKey = formatDateKey(date);
+      const originalData = scheduleDataRef.current[dateKey] || null;
+      rollbackOptimisticUpdate(date, originalData);
+      
+      setLastError(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [user, applyOptimisticUpdate, rollbackOptimisticUpdate]);
 
   // PERFORMANCE FIX: Optimized day click handler with early returns
   const handleDayClick = useCallback((day: CalendarDay) => {
@@ -587,27 +890,56 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
 
   // PERFORMANCE FIX: Stable getCurrentStatus function with reduced dependencies
   const getCurrentStatus = useMemo((): '1' | '0.5' | 'X' | null => {
-    if (!selectedDate) return null;
+    if (!selectedDate || !user) return null;
     const dateKey = formatDateKey(selectedDate);
-    const optimisticEntry = optimisticUpdatesRef.current[dateKey];
-    return optimisticEntry?.value || scheduleData[dateKey]?.value || null;
-  }, [selectedDate, scheduleData]);
+    const optimisticUpdate = getOptimisticValue(user.id, dateKey);
+    return optimisticUpdate?.value || scheduleData[dateKey]?.value || null;
+  }, [selectedDate, scheduleData, user, getOptimisticValue]);
 
   // PERFORMANCE FIX: Optimized status selection with batched state updates
   const handleStatusSelect = useCallback((status: '1' | '0.5' | 'X') => {
-    startTransition(() => {
+    // Add timeout protection to prevent infinite hanging
+    const statusSelectTimeout = setTimeout(() => {
+      console.error('⚠️ STATUS SELECT TIMEOUT - Force clearing modal states');
+      setStatusModalOpen(false);
+      setReasonModalOpen(false);
+      setSelectedDate(null);
+      setPendingValue(null);
+    }, 5000);
+    
+    try {
       setStatusModalOpen(false);
       
       if (status === '1') {
         if (selectedDate) {
-          updateSchedule(selectedDate, status, undefined);
+          console.log('💾 MONTH PERSISTENCE: Initiating full day save for:', {
+            date: selectedDate.toDateString(),
+            status: status,
+            month: selectedDate.getMonth() + 1,
+            year: selectedDate.getFullYear()
+          });
+          // Set saving state for immediate UI feedback
+          setSaving(true);
+          updateSchedule(selectedDate, status, undefined).finally(() => {
+            setSaving(false);
+          });
         }
         setSelectedDate(null);
+        clearTimeout(statusSelectTimeout);
       } else {
         setPendingValue(status);
         setReasonModalOpen(true);
+        clearTimeout(statusSelectTimeout);
       }
-    });
+    } catch (error) {
+      console.error('❌ Error in handleStatusSelect:', error);
+      clearTimeout(statusSelectTimeout);
+      // Force cleanup on error
+      setStatusModalOpen(false);
+      setReasonModalOpen(false);
+      setSelectedDate(null);
+      setPendingValue(null);
+    }
   }, [selectedDate, updateSchedule]);
 
   // PERFORMANCE FIX: Optimized status modal close with batched updates
@@ -620,50 +952,103 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
 
   // PERFORMANCE FIX: Optimized modal handlers with batched updates
   const handleReasonSubmit = useCallback((reason: string) => {
-    if (selectedDate && pendingValue) {
-      updateSchedule(selectedDate, pendingValue, reason);
-    }
-    
-    startTransition(() => {
+    // Add timeout protection to prevent infinite hanging
+    const reasonSubmitTimeout = setTimeout(() => {
+      console.error('⚠️ REASON SUBMIT TIMEOUT - Force clearing modal states');
       setReasonModalOpen(false);
       setSelectedDate(null);
       setPendingValue(null);
-    });
+    }, 5000);
+    
+    try {
+      // Capture current values to prevent race conditions
+      const currentDate = selectedDate;
+      const currentPendingValue = pendingValue;
+      
+      if (currentDate && currentPendingValue) {
+        console.log('💾 MONTH PERSISTENCE: Initiating partial/absent save for:', {
+          date: currentDate.toDateString(),
+          status: currentPendingValue,
+          reason: reason,
+          month: currentDate.getMonth() + 1,
+          year: currentDate.getFullYear()
+        });
+        // Set saving state for immediate UI feedback
+        setSaving(true);
+        updateSchedule(currentDate, currentPendingValue, reason).finally(() => {
+          setSaving(false);
+        });
+      }
+      
+      // Clean up modal state immediately - don't wait for startTransition
+      setReasonModalOpen(false);
+      setSelectedDate(null);
+      setPendingValue(null);
+      
+      clearTimeout(reasonSubmitTimeout);
+    } catch (error) {
+      console.error('❌ Error in handleReasonSubmit:', error);
+      clearTimeout(reasonSubmitTimeout);
+      // Force cleanup on error
+      setReasonModalOpen(false);
+      setSelectedDate(null);
+      setPendingValue(null);
+    }
   }, [selectedDate, pendingValue, updateSchedule]);
 
   const handleReasonModalClose = useCallback(() => {
-    startTransition(() => {
-      setReasonModalOpen(false);
-      setSelectedDate(null);
-      setPendingValue(null);
-    });
+    // Clean up modal state immediately - don't wait for startTransition
+    setReasonModalOpen(false);
+    setSelectedDate(null);
+    setPendingValue(null);
   }, []);
 
-  // PERFORMANCE FIX: Navigation handlers with startTransition for smooth UI
+  // Helper function to persist month changes
+  const updateCurrentMonth = useCallback((newMonth: Date) => {
+    setCurrentMonth(newMonth);
+    // Persist month to localStorage for page refresh recovery
+    if (typeof window !== 'undefined') {
+      // Use timezone-neutral month format instead of ISO date to avoid timezone bugs
+      const monthValue = `${newMonth.getFullYear()}-${String(newMonth.getMonth() + 1).padStart(2, '0')}`;
+      
+      const saveSuccess = saveMonthToStorage(monthValue);
+      if (saveSuccess) {
+        console.log('📅 MONTH PERSISTENCE: Navigation updated month in storage:', {
+          month: newMonth.getMonth() + 1,
+          year: newMonth.getFullYear(),
+          storedValue: monthValue
+        });
+      } else {
+        console.error('❌ MONTH PERSISTENCE: Navigation storage failed for all methods');
+      }
+    } else {
+      console.warn('⚠️ MONTH PERSISTENCE: window undefined during navigation, cannot save');
+    }
+  }, [saveMonthToStorage]);
+
+  // PERFORMANCE FIX: Navigation handlers with startTransition for smooth UI + Month persistence
   const goToPreviousMonth = useCallback(() => {
     startTransition(() => {
-      setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+      const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+      updateCurrentMonth(newMonth);
     });
-  }, []);
+  }, [currentMonth, updateCurrentMonth]);
 
   const goToNextMonth = useCallback(() => {
     startTransition(() => {
-      setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+      const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+      updateCurrentMonth(newMonth);
     });
-  }, []);
+  }, [currentMonth, updateCurrentMonth]);
 
   const goToToday = useCallback(() => {
     startTransition(() => {
-      setCurrentMonth(new Date());
+      updateCurrentMonth(new Date());
     });
-  }, []);
+  }, [updateCurrentMonth]);
 
-  const goToMonth = useCallback((year: number, month: number) => {
-    startTransition(() => {
-      setCurrentMonth(new Date(year, month, 1));
-      setShowMonthPicker(false);
-    });
-  }, []);
+  // Month navigation functionality removed - not currently used in this component
+  // Month picker would be added here if needed for future UI enhancements
 
   // Memoize expensive utility functions
   const getStatusColorClass = useCallback((value: '1' | '0.5' | 'X' | null): string => {
@@ -689,12 +1074,70 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     fetchMonthData();
   }, [fetchMonthData]);
 
-  // Component lifecycle management and cleanup
+  // Component lifecycle management and real-time optimistic update event listeners
   useEffect(() => {
     isMountedRef.current = true;
     
+    // Listen for external optimistic update events
+    const handleOptimisticUpdate = (event: CustomEvent) => {
+      const { key, update } = event.detail;
+      if (user && key.startsWith(`${user.id}-`)) {
+        // Update triggered by this user, sync local state
+        const dateKey = key.split('-').slice(1).join('-'); // Remove member ID prefix
+        
+        setScheduleData(prevData => {
+          const updatedData = { ...prevData };
+          if (update.value) {
+            updatedData[dateKey] = {
+              value: update.value,
+              reason: update.reason,
+              hours: update.value === '1' ? 7 : update.value === '0.5' ? 3.5 : 0
+            };
+          } else {
+            delete updatedData[dateKey];
+          }
+          return updatedData;
+        });
+      }
+    };
+    
+    const handleOptimisticRollback = (event: CustomEvent) => {
+      const { key, update } = event.detail;
+      if (user && key.startsWith(`${user.id}-`)) {
+        // Rollback triggered by this user, restore original state
+        const dateKey = key.split('-').slice(1).join('-');
+        const originalData = update.rollbackData;
+        
+        setScheduleData(prevData => {
+          const updatedData = { ...prevData };
+          if (originalData?.originalValue) {
+            updatedData[dateKey] = {
+              value: originalData.originalValue,
+              reason: originalData.originalReason,
+              hours: originalData.originalValue === '1' ? 7 : originalData.originalValue === '0.5' ? 3.5 : 0
+            };
+          } else {
+            delete updatedData[dateKey];
+          }
+          return updatedData;
+        });
+      }
+    };
+    
+    const handleOptimisticClear = () => {
+      // Clear any optimistic updates and refresh data
+      fetchMonthData();
+    };
+    
+    // Add event listeners for external optimistic update integration
+    if (typeof window !== 'undefined') {
+      window.addEventListener('schedule-optimistic-update', handleOptimisticUpdate as EventListener);
+      window.addEventListener('schedule-optimistic-rollback', handleOptimisticRollback as EventListener);
+      window.addEventListener('schedule-optimistic-clear', handleOptimisticClear);
+    }
+    
     return () => {
-      // PERFORMANCE FIX: Remove unmount logging completely for performance
+      console.log(`🗑️ COMPONENT UNMOUNT: PersonalCalendar instance #${mountId} cleaning up`);
       isMountedRef.current = false;
       
       // Clear any pending timeouts
@@ -708,18 +1151,23 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
         debounceTimeoutRef.current = null;
       }
       
-      // PERFORMANCE FIX: Clear batch timeout
+      // Clear batch timeout
       if (batchTimeoutRef.current) {
         clearTimeout(batchTimeoutRef.current);
         batchTimeoutRef.current = null;
       }
       
-      // Reset operation tracking and clear optimistic updates and batch
+      // Reset operation tracking
       currentOperationRef.current = null;
-      optimisticUpdatesRef.current = {};
-      pendingBatchRef.current = {};
+      
+      // Remove event listeners
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('schedule-optimistic-update', handleOptimisticUpdate as EventListener);
+        window.removeEventListener('schedule-optimistic-rollback', handleOptimisticRollback as EventListener);
+        window.removeEventListener('schedule-optimistic-clear', handleOptimisticClear);
+      }
     };
-  }, []);
+  }, [user, fetchMonthData]);
 
   // PERFORMANCE FIX: Remove state transition logging completely
   // Saving state transitions logging removed for performance
@@ -860,9 +1308,9 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
 
         {/* Calendar days - Desktop */}
         <div className="hidden md:grid grid-cols-7 gap-2" style={{ minHeight: '350px' }}>
-          {calendarDays.map((day, index) => (
+          {calendarDays.map((day, dayIndex) => (
             <button
-              key={index}
+              key={dayIndex}
               onClick={() => handleDayClick(day)}
               disabled={!editable || day.isWeekend || (day.isPast && !day.value) || saving}
               className={`
@@ -921,9 +1369,9 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
 
         {/* Calendar days - Mobile */}
         <div className="md:hidden grid grid-cols-7 gap-1">
-          {calendarDays.map((day, index) => (
+          {calendarDays.map((day, dayIndex) => (
             <button
-              key={index}
+              key={dayIndex}
               onClick={() => handleDayClick(day)}
               disabled={!editable || day.isWeekend || (day.isPast && !day.value) || saving}
               className={`
@@ -1053,6 +1501,15 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
         date={selectedDate || undefined}
       />
     </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  return (
+    prevProps.user?.id === nextProps.user?.id &&
+    prevProps.user?.name === nextProps.user?.name &&
+    prevProps.user?.hebrew === nextProps.user?.hebrew &&
+    prevProps.editable === nextProps.editable &&
+    prevProps.onScheduleUpdate === nextProps.onScheduleUpdate
   );
 });
 

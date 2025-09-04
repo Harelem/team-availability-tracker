@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -105,6 +105,51 @@ function HomeContent() {
   const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // PERFORMANCE: Create stable references for PersonalDashboard props to prevent unnecessary re-renders
+  const stableSelectedUser = useMemo(() => selectedUser, [selectedUser?.id, selectedUser?.name, selectedUser?.isManager]);
+  const stableSelectedTeam = useMemo(() => selectedTeam, [selectedTeam?.id, selectedTeam?.name]);
+  const stableTeamMembers = useMemo(() => teamMembers, [teamMembers.length, teamMembers.map(m => m.id).join(',')]);
+
+  // DEBUG: Track when stable refs are recreated
+  useEffect(() => {
+    console.log('🔄 STABLE PROPS: Selected user reference updated:', {
+      userId: stableSelectedUser?.id,
+      userName: stableSelectedUser?.name,
+      isManager: stableSelectedUser?.isManager
+    });
+  }, [stableSelectedUser]);
+  
+  useEffect(() => {
+    console.log('🔄 STABLE PROPS: Team members reference updated:', {
+      memberCount: stableTeamMembers.length,
+      memberIds: stableTeamMembers.map(m => m.id)
+    });
+  }, [stableTeamMembers]);
+  
+  // DEBUG: Track prop changes to PersonalDashboard
+  useEffect(() => {
+    console.log('🏠 PAGE STATE: selectedUser changed:', {
+      userId: selectedUser?.id,
+      userName: selectedUser?.name,
+      hasUser: !!selectedUser
+    });
+  }, [selectedUser]);
+  
+  useEffect(() => {
+    console.log('🏠 PAGE STATE: teamMembers changed:', {
+      memberCount: teamMembers.length,
+      memberIds: teamMembers.map(m => m.id)
+    });
+  }, [teamMembers]);
+  
+  useEffect(() => {
+    console.log('🏠 PAGE STATE: selectedTeam changed:', {
+      teamId: selectedTeam?.id,
+      teamName: selectedTeam?.name,
+      hasTeam: !!selectedTeam
+    });
+  }, [selectedTeam]);
   const searchParams = useSearchParams();
   
   const [teams, setTeams] = useState<Team[]>([]);
@@ -496,17 +541,17 @@ function HomeContent() {
                     <React.Suspense fallback={<LoadingState mode="inline" testId="manager-dashboard-loading" showText text="Loading manager dashboard..." />}>
                       <ManagerDashboardErrorBoundary>
                         <LazyManagerDashboard 
-                          user={selectedUser}
-                          team={selectedTeam}
-                          teamMembers={teamMembers}
+                          user={stableSelectedUser}
+                          team={stableSelectedTeam}
+                          teamMembers={stableTeamMembers}
                         />
                       </ManagerDashboardErrorBoundary>
                     </React.Suspense>
                   ) : (
                     <PersonalDashboard 
-                      user={selectedUser}
-                      team={selectedTeam}
-                      teamMembers={teamMembers}
+                      user={stableSelectedUser}
+                      team={stableSelectedTeam}
+                      teamMembers={stableTeamMembers}
                     />
                   )}
                 </Suspense>
@@ -520,17 +565,17 @@ function HomeContent() {
                   <React.Suspense fallback={<LoadingState mode="inline" testId="manager-dashboard-basic-loading" showText text="Loading manager dashboard..." />}>
                     <ManagerDashboardErrorBoundary>
                       <LazyManagerDashboard 
-                        user={selectedUser}
-                        team={selectedTeam}
-                        teamMembers={teamMembers}
+                        user={stableSelectedUser}
+                        team={stableSelectedTeam}
+                        teamMembers={stableTeamMembers}
                       />
                     </ManagerDashboardErrorBoundary>
                   </React.Suspense>
                 ) : (
                   <PersonalDashboard 
-                    user={selectedUser}
-                    team={selectedTeam}
-                    teamMembers={teamMembers}
+                    user={stableSelectedUser}
+                    team={stableSelectedTeam}
+                    teamMembers={stableTeamMembers}
                   />
                 )}
               </Suspense>
