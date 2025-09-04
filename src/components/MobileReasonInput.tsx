@@ -50,12 +50,31 @@ export default function MobileReasonInput({
 
   const handleSave = () => {
     const finalReason = selectedQuickReason || customReason.trim();
-    if (finalReason) {
-      // Add haptic feedback
-      if ('vibrate' in navigator) {
-        navigator.vibrate(100);
+    
+    // Add timeout protection to prevent infinite hanging
+    const saveTimeout = setTimeout(() => {
+      console.error('⚠️ MOBILE REASON INPUT SAVE TIMEOUT - Force closing');
+      handleClose();
+    }, 3000);
+    
+    try {
+      if (finalReason) {
+        // Add haptic feedback
+        if ('vibrate' in navigator) {
+          navigator.vibrate(100);
+        }
+        
+        onSave(finalReason);
+        handleClose();
+        
+        clearTimeout(saveTimeout);
+      } else {
+        clearTimeout(saveTimeout);
       }
-      onSave(finalReason);
+    } catch (error) {
+      console.error('❌ Error in MobileReasonInput handleSave:', error);
+      clearTimeout(saveTimeout);
+      // Force close on error to prevent hanging
       handleClose();
     }
   };

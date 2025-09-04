@@ -21,14 +21,37 @@ export default function BottomSheetModal({
   const [isAnimating, setIsAnimating] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clean up any pending timeouts on unmount
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
+      // Clear any pending close timeout
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+      
       setIsAnimating(true);
       // Prevent body scroll
       document.body.style.overflow = 'hidden';
     } else {
-      // Re-enable body scroll
+      // When modal is closed, start close animation immediately
+      setIsAnimating(false);
+      // Re-enable body scroll immediately
       document.body.style.overflow = 'unset';
     }
 
@@ -44,8 +67,7 @@ export default function BottomSheetModal({
   };
 
   const handleClose = () => {
-    setIsAnimating(false);
-    setTimeout(onClose, 200); // Wait for animation to complete
+    onClose();
   };
 
   if (!isOpen && !isAnimating) return null;

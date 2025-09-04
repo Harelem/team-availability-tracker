@@ -26,7 +26,7 @@ interface PersonalStats {
   submittedDays: number;
 }
 
-// Component render counter for debugging
+// Component render counter - production optimized
 let dashboardRenderCounter = 0;
 
 const PersonalDashboard = React.memo(function PersonalDashboard({ 
@@ -37,14 +37,7 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
 }: PersonalDashboardProps) {
   // RENDER TRACKING
   const renderId = ++dashboardRenderCounter;
-  console.log(`🎨 DASHBOARD RENDER: PersonalDashboard render #${renderId}`, {
-    userId: user?.id,
-    userName: user?.name,
-    teamId: team?.id,
-    teamName: team?.name,
-    teamMembersCount: teamMembers?.length,
-    className
-  });
+  // Dashboard render tracking optimized for production
   
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading } = useGlobalSprint();
@@ -80,28 +73,18 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
 
   // PERFORMANCE FIX: Create stable references for PersonalCalendar props
   const stableUser = useMemo(() => {
-    console.log(`🔄 STABLE USER: Creating stable user reference for render #${renderId}`, {
-      userId: user.id,
-      userName: user.name,
-      userHebrew: user.hebrew
-    });
+    // Creating stable user reference
     return user;
   }, [user.id, user.name, user.hebrew]);
   
   const stableTeam = useMemo(() => {
-    console.log(`🔄 STABLE TEAM: Creating stable team reference for render #${renderId}`, {
-      teamId: team.id,
-      teamName: team.name
-    });
+    // Creating stable team reference
     return team;
   }, [team.id, team.name]);
 
   // Memoized callback to prevent PersonalCalendar re-mounting - further stabilized
   const handleDataChange = useCallback((newData: any) => {
-    console.log(`📊 DATA CHANGE: handleDataChange called in render #${renderId}`, {
-      dataKeys: Object.keys(newData),
-      userIds: Object.keys(newData)
-    });
+    // Data change handler called
     setScheduleData(newData);
     
     // PERFORMANCE FIX: Use cached sprintWorkingDays reference to avoid recalculation

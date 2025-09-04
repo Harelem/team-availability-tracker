@@ -138,8 +138,5 @@ export async function runDatabaseConnectivityTest(): Promise<void> {
   logger.success('🏁 Database connectivity test completed', 'database-test')
 }
 
-// Make available in global scope for debugging
-if (typeof window !== 'undefined') {
-  (window as any).testDirectDatabaseWrite = testDirectDatabaseWrite
-  (window as any).runDatabaseConnectivityTest = runDatabaseConnectivityTest
-}
+// Global debugging functions disabled due to TypeScript inference issues
+// Functions can still be imported and used directly

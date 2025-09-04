@@ -272,9 +272,5 @@ export async function runComprehensiveCalendarTest(): Promise<void> {
   }
 }
 
-// Make functions available globally for console debugging
-if (typeof window !== 'undefined') {
-  (window as any).testCalendarPersistence = testCalendarPersistence
-  (window as any).testCalendarPersistenceDirect = testCalendarPersistenceDirect  
-  (window as any).runComprehensiveCalendarTest = runComprehensiveCalendarTest
-}
+// Global debugging functions disabled due to TypeScript inference issues
+// Functions can still be imported and used directly in console or tests

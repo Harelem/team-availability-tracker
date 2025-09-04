@@ -215,7 +215,7 @@ const DayStatusModal = React.memo(function DayStatusModal({ isOpen, onClose, onS
   );
 });
 
-// Component mount counter for debugging multiple initializations
+// Component mount counter - production optimized
 let mountCounter = 0;
 
 const PersonalCalendar = React.memo(function PersonalCalendar({
@@ -226,12 +226,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
 }: PersonalCalendarProps) {
   // COMPONENT MOUNT TRACKING
   const mountId = ++mountCounter;
-  console.log(`🏗️ COMPONENT MOUNT: PersonalCalendar instance #${mountId} initializing`, {
-    userId: user?.id,
-    teamId: team?.id,
-    editable,
-    hasOnDataChange: !!onDataChange
-  });
+  // Component initialization - production optimized
   
   // PERFORMANCE FIX: State management with React 18 optimizations + Enhanced Month persistence
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -600,12 +595,23 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     return days;
   }, [currentMonth, scheduleData, user, getOptimisticValue]);
 
+  // Add request deduplication to prevent multiple simultaneous fetches
+  const fetchInProgressRef = useRef<string | null>(null);
+
   // Fetch schedule data for the visible month
   const fetchMonthData = useCallback(async () => {
     if (!user) {
       console.log('📅 DATA FETCH: Skipped - no user available');
       return;
     }
+
+    // Prevent duplicate requests for the same month
+    const monthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}-${user.id}`;
+    if (fetchInProgressRef.current === monthKey) {
+      console.log('📅 DATA FETCH: Skipped - already in progress for this month');
+      return;
+    }
+    fetchInProgressRef.current = monthKey;
     
     console.log('📅 DATA FETCH: Starting data fetch for month:', {
       month: currentMonth.getMonth() + 1,
@@ -715,6 +721,8 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       console.error('Error fetching month data:', error);
     } finally {
       setLoading(false);
+      // Clear the in-progress flag
+      fetchInProgressRef.current = null;
     }
   }, [user, currentMonth]);
 
