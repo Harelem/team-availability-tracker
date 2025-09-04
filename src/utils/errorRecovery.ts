@@ -54,7 +54,7 @@ export function saveOfflineData(teams: Team[], members: { [teamId: number]: Team
     };
 
     localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(offlineData));
-    console.log(`💾 Offline data saved: ${teams.length} teams, ${Object.keys(members).length} team member sets`);
+    // Offline data saved
   } catch (error) {
     console.error('Failed to save offline data:', error);
   }
@@ -325,7 +325,7 @@ export function initializeOfflineMode(): void {
   });
 
   // Log initial connection status
-  console.log(`🌐 Initial connection status: ${isOnline() ? 'Online' : 'Offline'}`);
+  // Initial connection status checked
 }
 
 export default {

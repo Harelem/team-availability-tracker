@@ -12,9 +12,9 @@ interface LoggerConfig {
 
 class Logger {
   private config: LoggerConfig = {
-    level: process.env.NODE_ENV === 'production' ? 'warn' : 'debug',
-    enableConsole: true,
-    enableEmoji: true
+    level: process.env.NODE_ENV === 'production' ? 'error' : 'error', // Changed to only show errors
+    enableConsole: process.env.NODE_ENV === 'production' ? false : false, // Disable console logging
+    enableEmoji: false // Disable emojis for production performance
   }
 
   private logLevels: Record<LogLevel, number> = {

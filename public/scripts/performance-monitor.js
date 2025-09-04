@@ -23,9 +23,7 @@
                                (window.location.hostname === 'localhost' || 
                                 window.location.hostname === '127.0.0.1' ||
                                 window.location.port !== '');
-            if (isDevelopment || entry.startTime > 2500) {
-              console.log('LCP:', entry.startTime);
-            }
+            // LCP logging disabled for performance
               // Send to analytics if needed
             });
           }).observe({ type: 'largest-contentful-paint', buffered: true });
@@ -35,7 +33,7 @@
                               window.location.hostname === '127.0.0.1' ||
                               window.location.port !== '');
           if (isDevelopment) {
-            console.debug('LCP monitoring not supported in this browser');
+            // LCP monitoring not supported
           }
         }
 
@@ -49,9 +47,7 @@
                                (window.location.hostname === 'localhost' || 
                                 window.location.hostname === '127.0.0.1' ||
                                 window.location.port !== '');
-            if (isDevelopment || fidValue > 100) {
-              console.log('FID:', fidValue);
-            }
+            // FID logging disabled for performance
               // Send to analytics if needed
             });
           }).observe({ type: 'first-input', buffered: true });
@@ -61,7 +57,7 @@
                               window.location.hostname === '127.0.0.1' ||
                               window.location.port !== '');
           if (isDevelopment) {
-            console.debug('FID monitoring not supported in this browser');
+            // FID monitoring not supported
           }
         }
 
@@ -80,17 +76,17 @@
               });
               // Only log significant CLS changes (> 0.1)
               if (clsValue > 0.1) {
-                console.log('CLS:', clsValue);
+                // CLS logging disabled for performance
               }
               // Send to analytics if needed
             }).observe({ type: 'layout-shift', buffered: true });
           } else {
             // Layout shift monitoring not supported - skip silently
-            console.debug('Layout shift monitoring not supported in this browser');
+            // Layout shift monitoring not supported
           }
         } catch (e) {
           // Silently handle any other PerformanceObserver errors
-          console.debug('Performance monitoring error:', e.message);
+          // Performance monitoring error (logging disabled)
         }
       }
 
@@ -112,7 +108,7 @@
                                 window.location.hostname === '127.0.0.1' ||
                                 window.location.port !== '');
             if (isDevelopment || loadTime > 3000) {
-              console.log('Page load time:', loadTime + 'ms');
+              // Page load time logging disabled
               
               // Track key metrics with safe calculations
               var metrics = {
@@ -124,7 +120,7 @@
                 load: loadTime
               };
               
-              console.log('Performance metrics:', metrics);
+              // Performance metrics logging disabled
             }
             // Send to analytics if needed
           }
@@ -137,14 +133,14 @@
           list.getEntries().forEach(function(entry) {
             // Log slow resources (>2s)
             if (entry.duration > 2000) {
-              console.warn('Slow resource:', entry.name, entry.duration + 'ms');
+              // Slow resource warning disabled
             }
           });
         }).observe({ type: 'resource', buffered: true });
       }
 
     } catch (error) {
-      console.error('Performance monitoring initialization error:', error);
+      // Performance monitoring initialization error (logging disabled)
     }
   }
 })();

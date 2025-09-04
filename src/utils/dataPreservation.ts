@@ -197,13 +197,7 @@ export const performDataPersistenceCheck = async (): Promise<DataVerificationRes
     });
   }
 
-  // Log results
-  console.log('📋 Data Persistence Check Results:');
-  checks.forEach(check => {
-    const emoji = check.status === 'PASS' ? '✅' : 
-                  check.status === 'WARNING' ? '⚠️' : '❌';
-    console.log(`${emoji} ${check.check}: ${check.data}`);
-  });
+  // Data persistence check completed - logging disabled for performance
 
   return checks;
 };
@@ -224,10 +218,7 @@ export const hasExistingUserData = async (): Promise<boolean> => {
 
     const hasData = Boolean((scheduleCount && scheduleCount > 0) || (membersCount && membersCount > 0));
     
-    console.log(hasData ? 
-      '✅ Existing user data found - PRESERVATION MODE ENABLED' : 
-      '⚠️ No existing user data found - safe to initialize'
-    );
+    // Data preservation check completed
 
     return hasData;
   } catch (error) {
