@@ -1033,7 +1033,7 @@ export const DatabaseService = {
       const totalTeams = allTeams?.length || 0
       const operationalTeams = allTeams?.filter(t => t.name !== 'Management Team') || []
       
-      console.log(`📊 FINAL STATE: ${totalTeams} total teams (${operationalTeams.length} operational + Management Team)`)
+      // Final team state calculated
 
       return {
         success: true,
@@ -1432,15 +1432,7 @@ export const DatabaseService = {
       
       // Debug log raw data
       if (process.env.NODE_ENV === 'development') {
-        console.log('📊 PAGINATED RESULTS DEBUG:', {
-          totalEntries: data ? data.length : 0,
-          dateRange: `${startDate} to ${endDate}`,
-          queryParams: { teamId, limit, offset },
-          sampleEntry: data && data.length > 0 ? data[0] : null,
-          uniqueMembers: data ? [...new Set(data.map((e: any) => e.member_id))] : [],
-          uniqueDates: data ? [...new Set(data.map((e: any) => e.date))].slice(0, 10) : [],
-          hasMoreData: data && data.length === limit
-        });
+        // Paginated results debug - production optimized
       }
       
       data?.forEach((entry: any) => {

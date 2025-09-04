@@ -215,8 +215,7 @@ const DayStatusModal = React.memo(function DayStatusModal({ isOpen, onClose, onS
   );
 });
 
-// Component mount counter - production optimized
-let mountCounter = 0;
+// Component mount counter removed for production performance
 
 const PersonalCalendar = React.memo(function PersonalCalendar({
   user,
@@ -224,14 +223,12 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
   editable = true,
   onDataChange
 }: PersonalCalendarProps) {
-  // COMPONENT MOUNT TRACKING
-  const mountId = ++mountCounter;
-  // Component initialization - production optimized
+  // Component initialization
   
   // PERFORMANCE FIX: State management with React 18 optimizations + Enhanced Month persistence
   const [currentMonth, setCurrentMonth] = useState(() => {
     // Restore last viewed month from robust storage, fallback to current date
-    console.log('🔄 MONTH PERSISTENCE: Initializing calendar component...');
+    // Initializing calendar component
     
     if (typeof window !== 'undefined') {
       console.log('🌐 MONTH PERSISTENCE: Window is available, checking storage...');
@@ -601,14 +598,14 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
   // Fetch schedule data for the visible month
   const fetchMonthData = useCallback(async () => {
     if (!user) {
-      console.log('📅 DATA FETCH: Skipped - no user available');
+      // Data fetch skipped - no user available
       return;
     }
 
     // Prevent duplicate requests for the same month
     const monthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}-${user.id}`;
     if (fetchInProgressRef.current === monthKey) {
-      console.log('📅 DATA FETCH: Skipped - already in progress for this month');
+      // Data fetch skipped - already in progress
       return;
     }
     fetchInProgressRef.current = monthKey;

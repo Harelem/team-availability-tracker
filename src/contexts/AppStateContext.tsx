@@ -40,7 +40,7 @@ export function AppStateProvider({
   // Only log initialization once and avoid console.log in render
   React.useEffect(() => {
     if (!initializationRef.current && process.env.NODE_ENV === 'development') {
-      console.log('🔄 AppStateProvider initializing...');
+      // AppStateProvider initializing
       initializationRef.current = true;
       setHasInitialized(true);
       
@@ -71,7 +71,7 @@ export function AppStateProvider({
     
     // Only log in development and once
     if (process.env.NODE_ENV === 'development' && hasInitialized) {
-      console.log('✅ AppStateProvider fully initialized');
+      // AppStateProvider fully initialized
     }
     
     // Cleanup on unmount

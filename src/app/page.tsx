@@ -111,45 +111,7 @@ function HomeContent() {
   const stableSelectedTeam = useMemo(() => selectedTeam, [selectedTeam?.id, selectedTeam?.name]);
   const stableTeamMembers = useMemo(() => teamMembers, [teamMembers.length, teamMembers.map(m => m.id).join(',')]);
 
-  // DEBUG: Track when stable refs are recreated
-  useEffect(() => {
-    console.log('🔄 STABLE PROPS: Selected user reference updated:', {
-      userId: stableSelectedUser?.id,
-      userName: stableSelectedUser?.name,
-      isManager: stableSelectedUser?.isManager
-    });
-  }, [stableSelectedUser]);
-  
-  useEffect(() => {
-    console.log('🔄 STABLE PROPS: Team members reference updated:', {
-      memberCount: stableTeamMembers.length,
-      memberIds: stableTeamMembers.map(m => m.id)
-    });
-  }, [stableTeamMembers]);
-  
-  // DEBUG: Track prop changes to PersonalDashboard
-  useEffect(() => {
-    console.log('🏠 PAGE STATE: selectedUser changed:', {
-      userId: selectedUser?.id,
-      userName: selectedUser?.name,
-      hasUser: !!selectedUser
-    });
-  }, [selectedUser]);
-  
-  useEffect(() => {
-    console.log('🏠 PAGE STATE: teamMembers changed:', {
-      memberCount: teamMembers.length,
-      memberIds: teamMembers.map(m => m.id)
-    });
-  }, [teamMembers]);
-  
-  useEffect(() => {
-    console.log('🏠 PAGE STATE: selectedTeam changed:', {
-      teamId: selectedTeam?.id,
-      teamName: selectedTeam?.name,
-      hasTeam: !!selectedTeam
-    });
-  }, [selectedTeam]);
+  // Stable prop tracking removed for production performance
   const searchParams = useSearchParams();
   
   const [teams, setTeams] = useState<Team[]>([]);
@@ -199,7 +161,7 @@ function HomeContent() {
         setLoading(true);
         
         // SIMPLIFIED: Direct team loading without blocking validation
-        console.log('Loading teams from database');
+        // Loading teams from database
         
         // Direct call to DatabaseService without complex wrappers
         const teamsData = await DatabaseService.getTeams();
@@ -210,7 +172,7 @@ function HomeContent() {
         setTeams(teamsData || []);
         
         if (teamsData && teamsData.length > 0) {
-          console.log(`Successfully loaded ${teamsData.length} teams`);
+          // Successfully loaded teams
           
           // Save to offline storage for future use - dynamically loaded
           import('@/utils/errorRecovery').then(({ saveOfflineData }) => {
@@ -231,7 +193,7 @@ function HomeContent() {
                 if (!result.isValid) {
                   console.warn('Schema validation warnings (non-blocking)', result.errors);
                 } else {
-                  console.log('Schema validation passed');
+                  // Schema validation passed
                 }
               }).catch(err => {
                 console.warn('Schema validation check failed (non-critical)', err);

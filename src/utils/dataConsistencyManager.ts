@@ -177,7 +177,7 @@ class DataConsistencyManager {
     if (!forceRefresh && isStaticDataType && this.EGRESS_REDUCTION_MODE) {
       const localStorageData = this.getFromLocalStorage<T>(cacheKey);
       if (localStorageData !== null) {
-        console.log(`🔥 EGRESS REDUCTION: LocalStorage HIT for key: ${cacheKey}`);
+        // LocalStorage cache hit
         return localStorageData;
       }
     }
@@ -186,7 +186,7 @@ class DataConsistencyManager {
     if (!forceRefresh) {
       const cached = this.getCachedData<T>(cacheKey);
       if (cached !== null) {
-        console.log(`📦 Memory Cache HIT for key: ${cacheKey}`);
+        // Memory cache hit
         return cached;
       }
     }

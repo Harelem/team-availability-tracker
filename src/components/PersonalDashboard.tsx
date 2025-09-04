@@ -26,8 +26,7 @@ interface PersonalStats {
   submittedDays: number;
 }
 
-// Component render counter - production optimized
-let dashboardRenderCounter = 0;
+// Component render counter removed for production performance
 
 const PersonalDashboard = React.memo(function PersonalDashboard({ 
   user, 
@@ -35,9 +34,7 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
   teamMembers = [],
   className = '' 
 }: PersonalDashboardProps) {
-  // RENDER TRACKING
-  const renderId = ++dashboardRenderCounter;
-  // Dashboard render tracking optimized for production
+  // Component initialization
   
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading } = useGlobalSprint();
@@ -459,13 +456,7 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
     )
   );
   
-  if (!arePropsEqual) {
-    console.log('🔄 DASHBOARD MEMO: Props changed, will re-render:', {
-      userChanged: prevProps.user.id !== nextProps.user.id,
-      teamChanged: prevProps.team.id !== nextProps.team.id,
-      membersChanged: prevProps.teamMembers.length !== nextProps.teamMembers.length
-    });
-  }
+  // Component memoization check optimized for production
   
   return arePropsEqual;
 });
