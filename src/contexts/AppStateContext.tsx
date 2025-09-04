@@ -47,7 +47,7 @@ export function AppStateProvider({
       // Global initialization guard
       if (typeof window !== 'undefined') {
         if (window.__APP_STATE_PROVIDER_INITIALIZED__) {
-          console.warn('⚠️ Multiple AppStateProvider instances detected');
+          // console.warn('⚠️ Multiple AppStateProvider instances detected');
         } else {
           window.__APP_STATE_PROVIDER_INITIALIZED__ = true;
         }
@@ -157,7 +157,7 @@ export function AppStateProvider({
       const renderTime = endTime - renderTimeRef.current;
       
       if (renderTime > 16) { // More than one frame (16ms)
-        console.warn(`🐌 Slow render detected: ${renderTime.toFixed(2)}ms`);
+        // console.warn(`🐌 Slow render detected: ${renderTime.toFixed(2)}ms`);
       }
       renderTimeRef.current = 0;
     }
@@ -166,12 +166,12 @@ export function AppStateProvider({
   // Error boundary for state-related errors
   useEffect(() => {
     if (selectors.hasError()) {
-      console.error('🚨 App State Errors:', {
-        errors: Object.entries(state.ui.errors)
-          .filter(([, error]) => error !== null)
-          .reduce((acc, [key, error]) => ({ ...acc, [key]: error }), {}),
-        timestamp: new Date().toISOString()
-      });
+      // console.error('🚨 App State Errors:', {
+      //   errors: Object.entries(state.ui.errors)
+      //     .filter(([, error]) => error !== null)
+      //     .reduce((acc, [key, error]) => ({ ...acc, [key]: error }), {}),
+      //   timestamp: new Date().toISOString()
+      // });
     }
   }, [selectors, state.ui.errors]);
 
@@ -195,7 +195,7 @@ export function AppStateProvider({
             localStorage.setItem('userPreferences', JSON.stringify(state.user.preferences));
             preferencesRef.current = state.user.preferences;
           } catch (error) {
-            console.warn('Failed to save user preferences:', error);
+            // console.warn('Failed to save user preferences:', error);
           }
         });
       }, 500); // 500ms debounce
@@ -224,7 +224,7 @@ export function AppStateProvider({
             });
           }
         } catch (error) {
-          console.warn('Failed to load user preferences:', error);
+          // console.warn('Failed to load user preferences:', error);
         }
       });
     }
@@ -309,7 +309,7 @@ export function useAppState(): AppStateContextType {
       pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown'
     };
     
-    console.error('🚨 AppStateProvider Context Error:', errorDetails);
+    // console.error('🚨 AppStateProvider Context Error:', errorDetails);
     
     // Check if we're in SSR or hydration
     if (typeof window === 'undefined') {
@@ -321,7 +321,7 @@ export function useAppState(): AppStateContextType {
     
     // Check if we're during React hydration
     if (typeof window !== 'undefined' && !window.__APP_STATE__) {
-      console.warn('⚠️ useAppState called before AppStateProvider is fully initialized');
+      // console.warn('⚠️ useAppState called before AppStateProvider is fully initialized');
     }
     
     throw new Error(
@@ -346,15 +346,15 @@ export function useStateDebugger() {
   return {
     // State inspection
     inspectState: () => {
-      console.group('🔍 App State Inspector');
-      console.log('Current State:', state);
-      console.log('Loading States:', state.ui.loading);
-      console.log('Error States:', state.ui.errors);
-      console.log('Modal States:', state.ui.modals);
-      console.log('Navigation State:', state.ui.navigation);
-      console.log('User State:', state.user);
-      console.log('Cache State:', state.cache);
-      console.groupEnd();
+      // console.group('🔍 App State Inspector');
+      // console.log('Current State:', state);
+      // console.log('Loading States:', state.ui.loading);
+      // console.log('Error States:', state.ui.errors);
+      // console.log('Modal States:', state.ui.modals);
+      // console.log('Navigation State:', state.ui.navigation);
+      // console.log('User State:', state.user);
+      // console.log('Cache State:', state.cache);
+      // console.groupEnd();
     },
 
     // Performance analysis
@@ -362,28 +362,28 @@ export function useStateDebugger() {
       const loadTimes = state.data.dashboards.performanceData.loadTimes;
       const errorRates = state.data.dashboards.performanceData.errorRates;
       
-      console.group('⚡ Performance Analysis');
-      console.log('Load Times:', loadTimes);
-      console.log('Error Rates:', errorRates);
-      console.log('User Interactions:', state.data.dashboards.performanceData.userInteractions.slice(-10));
-      console.groupEnd();
+      // console.group('⚡ Performance Analysis');
+      // console.log('Load Times:', loadTimes);
+      // console.log('Error Rates:', errorRates);
+      // console.log('User Interactions:', state.data.dashboards.performanceData.userInteractions.slice(-10));
+      // console.groupEnd();
     },
 
     // State history
     showHistory: (limit = 10) => {
-      console.group(`📋 State History (last ${limit})`);
+      // console.group(`📋 State History (last ${limit})`);
       state.history.slice(-limit).forEach((entry, index) => {
-        console.log(`${index + 1}. ${entry.action} - ${entry.timestamp.toISOString()}`);
+        // console.log(`${index + 1}. ${entry.action} - ${entry.timestamp.toISOString()}`);
       });
-      console.groupEnd();
+      // console.groupEnd();
     },
 
     // Cache analysis
     analyzeCaches: () => {
-      console.group('💾 Cache Analysis');
-      console.log('Timestamps:', state.cache.timestamps);
-      console.log('Invalidation Flags:', state.cache.invalidation);
-      console.log('Policies:', state.cache.policies);
+      // console.group('💾 Cache Analysis');
+      // console.log('Timestamps:', state.cache.timestamps);
+      // console.log('Invalidation Flags:', state.cache.invalidation);
+      // console.log('Policies:', state.cache.policies);
       
       // Calculate cache ages
       const now = Date.now();
@@ -396,8 +396,8 @@ export function useStateDebugger() {
         return acc;
       }, {} as Record<string, string>);
       
-      console.log('Cache Ages:', cacheAges);
-      console.groupEnd();
+      // console.log('Cache Ages:', cacheAges);
+      // console.groupEnd();
     },
 
     // Export/Import utilities
@@ -450,7 +450,7 @@ export class AppStateErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('🚨 App State Error Boundary caught an error:', error, errorInfo);
+    // console.error('🚨 App State Error Boundary caught an error:', error, errorInfo);
   }
 
   render() {

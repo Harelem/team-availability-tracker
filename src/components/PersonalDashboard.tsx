@@ -140,14 +140,14 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
         
         // Get schedule data for the entire sprint period
         if (sprintWorkingDays.length === 0) {
-          console.warn('No sprint working days available');
+          // console.warn('No sprint working days available');
           return;
         }
         const startDate = sprintWorkingDays[0]?.toISOString().split('T')[0];
         const endDate = sprintWorkingDays[sprintWorkingDays.length - 1]?.toISOString().split('T')[0];
         
         if (!startDate || !endDate) {
-          console.warn('Invalid sprint dates');
+          // console.warn('Invalid sprint dates');
           return;
         }
         
@@ -203,7 +203,7 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
         });
         
       } catch (error) {
-        console.error('Error loading personal data:', error);
+        // console.error('Error loading personal data:', error);
       } finally {
         setLoading(false);
       }

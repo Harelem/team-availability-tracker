@@ -20,7 +20,7 @@ export interface DatabaseState {
  * CRITICAL: This ensures we don't lose user data during deployments
  */
 export const verifyDatabaseState = async (): Promise<DatabaseState> => {
-  console.log('🔍 Verifying current database state...');
+  // Verifying current database state
 
   try {
     // Check schedule entries (user's critical data)
@@ -30,7 +30,7 @@ export const verifyDatabaseState = async (): Promise<DatabaseState> => {
       .order('created_at', { ascending: true });
 
     if (scheduleError && !scheduleError.message.includes('does not exist')) {
-      console.error('❌ Error fetching schedule entries:', scheduleError);
+      // Error fetching schedule entries - continuing with empty data
     }
 
     // Check team members
@@ -40,7 +40,7 @@ export const verifyDatabaseState = async (): Promise<DatabaseState> => {
       .order('created_at', { ascending: true });
 
     if (membersError && !membersError.message.includes('does not exist')) {
-      console.error('❌ Error fetching team members:', membersError);
+      // Error fetching team members - continuing with empty data
     }
 
     // Check teams
@@ -50,7 +50,7 @@ export const verifyDatabaseState = async (): Promise<DatabaseState> => {
       .order('created_at', { ascending: true });
 
     if (teamsError && !teamsError.message.includes('does not exist')) {
-      console.error('❌ Error fetching teams:', teamsError);
+      // Error fetching teams - continuing with empty data
     }
 
     const state: DatabaseState = {
@@ -61,17 +61,11 @@ export const verifyDatabaseState = async (): Promise<DatabaseState> => {
       newestEntry: scheduleEntries?.[scheduleEntries.length - 1]?.created_at
     };
 
-    console.log('📊 Database State:', {
-      '📅 Schedule Entries': state.totalScheduleEntries,
-      '👥 Team Members': state.totalTeamMembers,
-      '🏢 Teams': state.totalTeams,
-      '📆 Oldest Entry': state.oldestEntry,
-      '📆 Newest Entry': state.newestEntry
-    });
+    // Database state verified successfully
 
     return state;
   } catch (error) {
-    console.error('❌ Error verifying database state:', error);
+    // Error verifying database state, returning empty state
     return {
       totalScheduleEntries: 0,
       totalTeamMembers: 0,
@@ -85,7 +79,7 @@ export const verifyDatabaseState = async (): Promise<DatabaseState> => {
  * CRITICAL: This ensures user data survives deployments
  */
 export const performDataPersistenceCheck = async (): Promise<DataVerificationResult[]> => {
-  console.log('🔍 Performing data persistence verification...');
+  // Performing data persistence verification
   
   const checks: DataVerificationResult[] = [];
 
@@ -222,7 +216,7 @@ export const hasExistingUserData = async (): Promise<boolean> => {
 
     return hasData;
   } catch (error) {
-    console.error('❌ Error checking for existing data:', error);
+    // Error checking for existing data - assuming no data exists for safety
     return false; // Assume no data if check fails (safer)
   }
 };
@@ -233,22 +227,15 @@ export const hasExistingUserData = async (): Promise<boolean> => {
  */
 export const backupCriticalData = async (): Promise<{ success: boolean; message: string }> => {
   try {
-    console.log('💾 Creating backup of critical data...');
+    // Creating backup of critical data
 
     const state = await verifyDatabaseState();
     
     // Log current state for recovery purposes
-    console.log('💾 BACKUP SNAPSHOT:', {
-      timestamp: new Date().toISOString(),
-      scheduleEntries: state.totalScheduleEntries,
-      teamMembers: state.totalTeamMembers,
-      teams: state.totalTeams,
-      oldestEntry: state.oldestEntry,
-      newestEntry: state.newestEntry
-    });
+    // Backup snapshot created with current state
 
     if (state.totalScheduleEntries > 0) {
-      console.log('🔒 USER DATA DETECTED - Deployment must preserve existing data!');
+      // User data detected - ensuring data preservation
       return {
         success: true,
         message: `Backup logged: ${state.totalScheduleEntries} schedule entries, ${state.totalTeamMembers} members, ${state.totalTeams} teams`
@@ -260,7 +247,7 @@ export const backupCriticalData = async (): Promise<{ success: boolean; message:
       message: 'No user data to backup - safe for fresh initialization'
     };
   } catch (error) {
-    console.error('❌ Error creating backup:', error);
+    // Error creating backup - continuing with caution
     return {
       success: false,
       message: `Backup failed: ${(error as Error).message}`

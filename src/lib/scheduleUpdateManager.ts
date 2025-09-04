@@ -396,7 +396,7 @@ export class ScheduleUpdateManager {
         .single()
       
       if (error || !memberData) {
-        console.warn(`Could not find team for member ${memberId}, skipping local update marking`)
+        // console.warn(`Could not find team for member ${memberId}, skipping local update marking`)
         return
       }
 
@@ -415,10 +415,10 @@ export class ScheduleUpdateManager {
       const subscriptionKey = `schedule_changes_team_${memberData.team_id}_${startDate}_${endDate}`
       subscriptionHelpers.markLocalUpdate(subscriptionKey, 3000) // 3 second timeout
       
-      console.log(`🔄 Marked local update for subscription: ${subscriptionKey}`)
+      // console.log(`🔄 Marked local update for subscription: ${subscriptionKey}`)
     } catch (error) {
       // Don't fail the update if we can't mark local update
-      console.warn('Failed to mark local update:', error)
+      // console.warn('Failed to mark local update:', error)
     }
   }
   

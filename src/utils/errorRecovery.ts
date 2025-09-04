@@ -56,7 +56,7 @@ export function saveOfflineData(teams: Team[], members: { [teamId: number]: Team
     localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(offlineData));
     // Offline data saved
   } catch (error) {
-    console.error('Failed to save offline data:', error);
+    // Failed to save offline data - continuing without offline storage
   }
 }
 
@@ -75,22 +75,22 @@ export function loadOfflineData(): OfflineData | null {
     // Check if data is too old
     const dataAge = Date.now() - offlineData.lastUpdated;
     if (dataAge > OFFLINE_DATA_EXPIRY) {
-      console.warn('⏰ Offline data expired, removing...');
+      // Offline data expired - removing
       clearOfflineData();
       return null;
     }
 
     // Check version compatibility
     if (offlineData.version !== OFFLINE_DATA_VERSION) {
-      console.warn('📦 Offline data version mismatch, clearing...');
+      // Offline data version mismatch - clearing
       clearOfflineData();
       return null;
     }
 
-    console.log(`📱 Offline data loaded: ${offlineData.teams.length} teams from ${new Date(offlineData.lastUpdated).toLocaleString()}`);
+    // Offline data loaded successfully
     return offlineData;
   } catch (error) {
-    console.error('Failed to load offline data:', error);
+    // Failed to load offline data - continuing without offline storage
     return null;
   }
 }
@@ -103,9 +103,9 @@ export function clearOfflineData(): void {
 
   try {
     localStorage.removeItem(OFFLINE_STORAGE_KEY);
-    console.log('🗑️ Offline data cleared');
+    // Offline data cleared successfully
   } catch (error) {
-    console.error('Failed to clear offline data:', error);
+    // Failed to clear offline data - continuing
   }
 }
 
@@ -130,7 +130,7 @@ export async function retryWithBackoff<T>(
       const data = await operation();
       
       if (attempt > 0) {
-        console.log(`✅ Operation succeeded after ${attempt} retries`);
+        // Operation succeeded after retries
       }
       
       return {
@@ -142,7 +142,7 @@ export async function retryWithBackoff<T>(
       lastError = error instanceof Error ? error : new Error(String(error));
       
       if (attempt === options.maxRetries) {
-        console.error(`❌ Operation failed after ${options.maxRetries} retries:`, lastError.message);
+        // Operation failed after maximum retries
         break;
       }
       
@@ -152,7 +152,7 @@ export async function retryWithBackoff<T>(
         options.maxDelay
       );
       
-      console.warn(`⚠️ Attempt ${attempt + 1}/${options.maxRetries + 1} failed, retrying in ${delay}ms:`, lastError.message);
+      // Retry attempt scheduled
       
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -175,7 +175,7 @@ export async function safeOperationWithOffline<T>(
   operationName: string,
   retryOptions?: RetryOptions
 ): Promise<RecoveryResult<T>> {
-  console.log(`🔄 Starting safe operation: ${operationName}`);
+  // Starting safe operation
 
   // First try with retries
   const result = await retryWithBackoff(operation, retryOptions);
@@ -185,13 +185,13 @@ export async function safeOperationWithOffline<T>(
   }
 
   // If operation failed, try offline fallback
-  console.warn(`⚠️ ${operationName} failed, attempting offline fallback...`);
+  // Operation failed - attempting offline fallback
   
   try {
     const offlineData = offlineFallback();
     
     if (offlineData !== null) {
-      console.log(`📱 ${operationName} using offline data`);
+      // Using offline data
       return {
         success: true,
         data: offlineData,
@@ -199,10 +199,10 @@ export async function safeOperationWithOffline<T>(
         retriesAttempted: result.retriesAttempted
       };
     } else {
-      console.error(`❌ No offline data available for ${operationName}`);
+      // No offline data available
     }
   } catch (error) {
-    console.error(`❌ Offline fallback failed for ${operationName}:`, error);
+    // Offline fallback failed
   }
 
   return {
@@ -317,11 +317,11 @@ export function initializeOfflineMode(): void {
   if (typeof window === 'undefined') return;
 
   window.addEventListener('online', () => {
-    console.log('🌐 Network connection restored');
+    // Network connection restored
   });
 
   window.addEventListener('offline', () => {
-    console.log('📱 Network connection lost - offline mode activated');
+    // Network connection lost - offline mode activated
   });
 
   // Log initial connection status

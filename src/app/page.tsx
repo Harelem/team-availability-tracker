@@ -46,7 +46,7 @@ class ManagerDashboardErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('ManagerDashboard Error Boundary caught:', error, errorInfo);
+    // console.error('ManagerDashboard Error Boundary caught:', error, errorInfo);
   }
 
   render() {
@@ -129,13 +129,13 @@ function HomeContent() {
           await performDataPersistenceCheck();
           setBackgroundDataLoaded(true);
         } catch (error) {
-          console.warn('Background data loading failed (non-critical)', error);
+          // console.warn('Background data loading failed (non-critical)', error);
           setBackgroundDataLoaded(true); // Set anyway to prevent retries
         }
       }, 2000); // Delay 2 seconds after initial load
       
     } catch (error) {
-      console.warn('Background data loading failed (non-critical)', error);
+      // console.warn('Background data loading failed (non-critical)', error);
       setBackgroundDataLoaded(true);
     }
   }, [backgroundDataLoaded]);
@@ -146,7 +146,7 @@ function HomeContent() {
     import('@/utils/errorRecovery').then(({ initializeOfflineMode }) => {
       initializeOfflineMode();
     }).catch(error => {
-      console.warn('Failed to initialize offline mode:', error);
+      // console.warn('Failed to initialize offline mode:', error);
     });
   }, []);
 
@@ -178,10 +178,10 @@ function HomeContent() {
           import('@/utils/errorRecovery').then(({ saveOfflineData }) => {
             saveOfflineData(teamsData);
           }).catch(error => {
-            console.warn('Failed to save offline data (non-critical)', error);
+            // console.warn('Failed to save offline data (non-critical)', error);
           });
         } else {
-          console.warn('No teams found in database - this may be expected for new installations');
+          // console.warn('No teams found in database - this may be expected for new installations');
         }
         
         // BACKGROUND: Run validation and other checks non-blocking with dynamic imports
@@ -191,15 +191,15 @@ function HomeContent() {
             import('@/utils/schemaValidator').then(({ validateDatabaseSchema }) => {
               validateDatabaseSchema().then(result => {
                 if (!result.isValid) {
-                  console.warn('Schema validation warnings (non-blocking)', result.errors);
+                  // console.warn('Schema validation warnings (non-blocking)', result.errors);
                 } else {
                   // Schema validation passed
                 }
               }).catch(err => {
-                console.warn('Schema validation check failed (non-critical)', err);
+                // console.warn('Schema validation check failed (non-critical)', err);
               });
             }).catch(err => {
-              console.warn('Failed to load schema validator (non-critical)', err);
+              // console.warn('Failed to load schema validator (non-critical)', err);
             });
             
             // Load other background data
@@ -213,24 +213,24 @@ function HomeContent() {
         // Dynamically import error utilities for fallback
         import('@/utils/errorRecovery').then(({ getErrorMessage, loadOfflineData, saveOfflineData }) => {
           const errorMessage = getErrorMessage(error);
-          console.error('Failed to load teams', errorMessage);
+          // console.error('Failed to load teams', errorMessage);
           
           // FALLBACK: Try offline mode only for real failures
           try {
             const offlineData = loadOfflineData();
             if (offlineData && offlineData.teams && offlineData.teams.length > 0) {
-              console.log('Using offline data - some information may not be current');
+              // console.log('Using offline data - some information may not be current');
               setTeams(offlineData.teams);
             } else {
-              console.warn('No offline data available');
+              // console.warn('No offline data available');
               setTeams([]);
             }
           } catch (fallbackError) {
-            console.error('Offline fallback also failed', fallbackError);
+            // console.error('Offline fallback also failed', fallbackError);
             setTeams([]);
           }
         }).catch(fallbackImportError => {
-          console.error('Failed to load error recovery utilities', fallbackImportError);
+          // console.error('Failed to load error recovery utilities', fallbackImportError);
           setTeams([]);
         });
       } finally {
@@ -274,7 +274,7 @@ function HomeContent() {
       } catch (error) {
         if (!mounted) return;
         
-        console.error(`Error loading team members for team: ${selectedTeam?.name}`, error);
+        // console.error(`Error loading team members for team: ${selectedTeam?.name}`, error);
         // Show meaningful error but don't block UI
         setTeamMembers([]);
       } finally {
@@ -311,7 +311,7 @@ function HomeContent() {
       if (targetTeam) {
         setSelectedTeam(targetTeam);
       } else {
-        console.warn(`Team with ID ${teamId} not found in available teams`);
+        // console.warn(`Team with ID ${teamId} not found in available teams`);
       }
     }
   }, [searchParams, teams, selectedTeam, setSelectedTeam]);

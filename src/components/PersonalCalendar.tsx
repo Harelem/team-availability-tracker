@@ -231,7 +231,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     // Initializing calendar component
     
     if (typeof window !== 'undefined') {
-      console.log('🌐 MONTH PERSISTENCE: Window is available, checking storage...');
+      // console.log('🌐 MONTH PERSISTENCE: Window is available, checking storage...');
       
       // Use helper method to load from storage with fallback
       let savedMonth = null;
@@ -244,7 +244,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
           storageType = 'localStorage';
         }
       } catch (error) {
-        console.warn('⚠️ MONTH PERSISTENCE: localStorage read failed:', error);
+        // console.warn('⚠️ MONTH PERSISTENCE: localStorage read failed:', error);
       }
       
       // Fallback to sessionStorage
@@ -255,16 +255,16 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
             storageType = 'sessionStorage';
           }
         } catch (error) {
-          console.warn('⚠️ MONTH PERSISTENCE: sessionStorage read failed:', error);
+          // console.warn('⚠️ MONTH PERSISTENCE: sessionStorage read failed:', error);
         }
       }
       
-      console.log('📂 MONTH PERSISTENCE: Retrieved from storage:', { 
-        savedMonth, 
-        storageType,
-        localStorageAvailable: !!window.localStorage,
-        sessionStorageAvailable: !!window.sessionStorage
-      });
+      // console.log('📂 MONTH PERSISTENCE: Retrieved from storage:', { 
+      //   savedMonth, 
+      //   storageType,
+      //   localStorageAvailable: !!window.localStorage,
+      //   sessionStorageAvailable: !!window.sessionStorage
+      // });
       
       if (savedMonth) {
         try {
@@ -275,22 +275,22 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
             // New format: "2025-09"
             const [year, month] = savedMonth.split('-').map(Number);
             restoredDate = new Date(year, month - 1, 1); // month - 1 because Date months are 0-indexed
-            console.log('📅 MONTH PERSISTENCE: Parsing new format month string:', {
-              originalValue: savedMonth,
-              year: year,
-              month: month,
-              parsedDate: restoredDate,
-              storageSource: storageType
-            });
+            // console.log('📅 MONTH PERSISTENCE: Parsing new format month string:', {
+//             //   originalValue: savedMonth,
+//             //   year: year,
+//             //   month: month,
+//             //   parsedDate: restoredDate,
+//             //   storageSource: storageType
+//             // });
           } else {
             // Legacy format: ISO date string
             restoredDate = new Date(savedMonth);
-            console.log('📅 MONTH PERSISTENCE: Parsing legacy ISO date:', {
-              originalValue: savedMonth,
-              parsedDate: restoredDate,
-              isValidDate: !isNaN(restoredDate.getTime()),
-              storageSource: storageType
-            });
+            // console.log('📅 MONTH PERSISTENCE: Parsing legacy ISO date:', {
+//             //   originalValue: savedMonth,
+//             //   parsedDate: restoredDate,
+//             //   isValidDate: !isNaN(restoredDate.getTime()),
+//             //   storageSource: storageType
+//             // });
           }
           
           // Validate restored date - ensure it's not invalid or too far in the future
@@ -298,62 +298,62 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
           const twoYearsFromNow = new Date(now.getFullYear() + 2, now.getMonth(), 1);
           
           if (!isNaN(restoredDate.getTime()) && restoredDate <= twoYearsFromNow) {
-            console.log('✅ MONTH PERSISTENCE: Successfully restored month from storage:', {
-              month: restoredDate.getMonth() + 1,
-              year: restoredDate.getFullYear(),
-              savedValue: savedMonth,
-              storageSource: storageType
-            });
+            // console.log('✅ MONTH PERSISTENCE: Successfully restored month from storage:', {
+//             //   month: restoredDate.getMonth() + 1,
+//             //   year: restoredDate.getFullYear(),
+//             //   savedValue: savedMonth,
+//             //   storageSource: storageType
+//             // });
             
             // Sync between storages if one is missing
             if (storageType === 'sessionStorage') {
               try {
                 localStorage.setItem('personal-calendar-month', savedMonth);
-                console.log('🔄 MONTH PERSISTENCE: Synced from sessionStorage to localStorage');
+                // console.log('🔄 MONTH PERSISTENCE: Synced from sessionStorage to localStorage');
               } catch (syncError) {
-                console.warn('⚠️ MONTH PERSISTENCE: Could not sync to localStorage:', syncError);
+                // console.warn('⚠️ MONTH PERSISTENCE: Could not sync to localStorage:', syncError);
               }
             }
             
             return restoredDate;
           } else {
-            console.warn('⚠️ MONTH PERSISTENCE: Invalid saved month detected, cleaning up', {
-              restoredDate: restoredDate.toString(),
-              isNaN: isNaN(restoredDate.getTime()),
-              isFuture: restoredDate > twoYearsFromNow,
-              storageSource: storageType
-            });
+            // console.warn('⚠️ MONTH PERSISTENCE: Invalid saved month detected, cleaning up', {
+//             //   restoredDate: restoredDate.toString(),
+//             //   isNaN: isNaN(restoredDate.getTime()),
+//             //   isFuture: restoredDate > twoYearsFromNow,
+//             //   storageSource: storageType
+//             // });
             
             // Clear from both storages
             try {
               localStorage.removeItem('personal-calendar-month');
               sessionStorage.removeItem('personal-calendar-month');
             } catch (clearError) {
-              console.warn('⚠️ MONTH PERSISTENCE: Could not clear invalid data:', clearError);
+              // console.warn('⚠️ MONTH PERSISTENCE: Could not clear invalid data:', clearError);
             }
           }
         } catch (error) {
-          console.error('❌ MONTH PERSISTENCE: Error parsing saved month:', error);
+          // console.error('❌ MONTH PERSISTENCE: Error parsing saved month:', error);
           // Clear corrupted data
           try {
             localStorage.removeItem('personal-calendar-month');
             sessionStorage.removeItem('personal-calendar-month');
           } catch (clearError) {
-            console.warn('⚠️ MONTH PERSISTENCE: Could not clear corrupted data:', clearError);
+            // console.warn('⚠️ MONTH PERSISTENCE: Could not clear corrupted data:', clearError);
           }
         }
       } else {
-        console.log('📭 MONTH PERSISTENCE: No saved month found in any storage');
+        // console.log('📭 MONTH PERSISTENCE: No saved month found in any storage');
       }
     } else {
-      console.warn('⚠️ MONTH PERSISTENCE: Window is undefined, cannot access storage');
+      // console.warn('⚠️ MONTH PERSISTENCE: Window is undefined, cannot access storage');
     }
     
     const currentDate = new Date();
-    console.log('📅 MONTH PERSISTENCE: Using current date as fallback:', {
-      month: currentDate.getMonth() + 1,
-      year: currentDate.getFullYear()
-    });
+    // console.log('📅 MONTH PERSISTENCE: Using current date as fallback:', {
+//     //   month: currentDate.getMonth() + 1,
+//     //   year: currentDate.getFullYear()
+//     // });
     return currentDate;
   });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -365,22 +365,22 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     if (typeof updater === 'function') {
       setScheduleDataInternal(prevData => {
         const newData = updater(prevData);
-        console.log('📊 SCHEDULE STATE: Data updated via function:', {
-          previousCount: Object.keys(prevData).length,
-          newCount: Object.keys(newData).length,
-          changedKeys: Object.keys(newData).filter(key => 
-            JSON.stringify(newData[key]) !== JSON.stringify(prevData[key])
-          ),
-          operation: 'function update'
-        });
+        // console.log('📊 SCHEDULE STATE: Data updated via function:', {
+//         //   previousCount: Object.keys(prevData).length,
+//         //   newCount: Object.keys(newData).length,
+//         //   changedKeys: Object.keys(newData).filter(key => 
+//         //     JSON.stringify(newData[key]) !== JSON.stringify(prevData[key])
+//         //   ),
+//         //   operation: 'function update'
+//         // });
         return newData;
       });
     } else {
-      console.log('📊 SCHEDULE STATE: Data set directly:', {
-        entryCount: Object.keys(updater).length,
-        dateKeys: Object.keys(updater),
-        operation: 'direct set'
-      });
+      // console.log('📊 SCHEDULE STATE: Data set directly:', {
+//       //   entryCount: Object.keys(updater).length,
+//       //   dateKeys: Object.keys(updater),
+//       //   operation: 'direct set'
+//       // });
       setScheduleDataInternal(updater);
     }
   }, []);
@@ -411,21 +411,21 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       localStorage.setItem('personal-calendar-month', monthValue);
       storageOperations.push('localStorage');
     } catch (error) {
-      console.warn('⚠️ MONTH PERSISTENCE: localStorage save failed:', error);
+      // console.warn('⚠️ MONTH PERSISTENCE: localStorage save failed:', error);
     }
     
     try {
       sessionStorage.setItem('personal-calendar-month', monthValue);
       storageOperations.push('sessionStorage');
     } catch (error) {
-      console.warn('⚠️ MONTH PERSISTENCE: sessionStorage save failed:', error);
+      // console.warn('⚠️ MONTH PERSISTENCE: sessionStorage save failed:', error);
     }
     
-    console.log('💾 MONTH PERSISTENCE: Saved to storage:', {
-      monthValue,
-      savedTo: storageOperations,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('💾 MONTH PERSISTENCE: Saved to storage:', {
+//     //   monthValue,
+//     //   savedTo: storageOperations,
+//     //   timestamp: new Date().toISOString()
+//     // });
     
     return storageOperations.length > 0;
   }, []);
@@ -443,7 +443,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
         storageType = 'localStorage';
       }
     } catch (error) {
-      console.warn('⚠️ MONTH PERSISTENCE: localStorage read failed:', error);
+      // console.warn('⚠️ MONTH PERSISTENCE: localStorage read failed:', error);
     }
     
     // Fallback to sessionStorage
@@ -455,21 +455,21 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
           // Sync back to localStorage if possible
           try {
             localStorage.setItem('personal-calendar-month', savedMonth);
-            console.log('🔄 MONTH PERSISTENCE: Synced from sessionStorage to localStorage');
+            // console.log('🔄 MONTH PERSISTENCE: Synced from sessionStorage to localStorage');
           } catch (syncError) {
-            console.warn('⚠️ MONTH PERSISTENCE: Could not sync to localStorage:', syncError);
+            // console.warn('⚠️ MONTH PERSISTENCE: Could not sync to localStorage:', syncError);
           }
         }
       } catch (error) {
-        console.warn('⚠️ MONTH PERSISTENCE: sessionStorage read failed:', error);
+        // console.warn('⚠️ MONTH PERSISTENCE: sessionStorage read failed:', error);
       }
     }
     
-    console.log('📂 MONTH PERSISTENCE: Retrieved from storage:', { 
-      savedMonth, 
-      storageType,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('📂 MONTH PERSISTENCE: Retrieved from storage:', { 
+    //   savedMonth, 
+    //   storageType,
+    //   timestamp: new Date().toISOString()
+    // });
     
     return savedMonth;
   }, []);
@@ -481,19 +481,19 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       localStorage.removeItem('personal-calendar-month');
       clearOperations.push('localStorage');
     } catch (error) {
-      console.warn('⚠️ MONTH PERSISTENCE: localStorage clear failed:', error);
+      // console.warn('⚠️ MONTH PERSISTENCE: localStorage clear failed:', error);
     }
     
     try {
       sessionStorage.removeItem('personal-calendar-month');
       clearOperations.push('sessionStorage');
     } catch (error) {
-      console.warn('⚠️ MONTH PERSISTENCE: sessionStorage clear failed:', error);
+      // console.warn('⚠️ MONTH PERSISTENCE: sessionStorage clear failed:', error);
     }
     
-    console.log('🚮 MONTH PERSISTENCE: Cleared from storage:', {
-      clearedFrom: clearOperations
-    });
+    // console.log('🚮 MONTH PERSISTENCE: Cleared from storage:', {
+//       clearedFrom: clearOperations
+//     });
   }, []);
 
 
@@ -527,11 +527,11 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     const month = currentMonth.getMonth();
     
     // DEBUG: Log calendar generation
-    console.log('📆 CALENDAR GENERATION:', {
-      currentMonth: `${year}-${String(month + 1).padStart(2, '0')}`,
-      scheduleDataKeys: Object.keys(scheduleData).length,
-      sampleKeys: Object.keys(scheduleData).slice(0, 5)
-    });
+    // console.log('📆 CALENDAR GENERATION:', {
+//     //   currentMonth: `${year}-${String(month + 1).padStart(2, '0')}`,
+//     //   scheduleDataKeys: Object.keys(scheduleData).length,
+//     //   sampleKeys: Object.keys(scheduleData).slice(0, 5)
+//     // });
     
     const firstDay = new Date(year, month, 1);
     const startDate = new Date(firstDay);
@@ -553,18 +553,18 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       
       // DEBUG: Log data lookup for September dates and show complete comparison
       if (date.getMonth() === 8 && i < 10) { // September is month 8 (0-indexed)
-        console.log(`📍 DAY DATA CHECK for ${dateKey}:`, {
-          dateKey,
-          hasEntry: !!scheduleEntry,
-          entryValue: scheduleEntry?.value,
-          scheduleDataHasKey: dateKey in scheduleData,
-          // Show comparison for debugging
-          allAvailableKeys: Object.keys(scheduleData).slice(0, 10),
-          exactMatch: scheduleData[dateKey],
-          similarKeys: Object.keys(scheduleData).filter(key => 
-            key.includes(String(date.getDate()).padStart(2, '0'))
-          )
-        });
+        // console.log(`📍 DAY DATA CHECK for ${dateKey}:`, {
+//         //   dateKey,
+//         //   hasEntry: !!scheduleEntry,
+//         //   entryValue: scheduleEntry?.value,
+//         //   scheduleDataHasKey: dateKey in scheduleData,
+//         //   // Show comparison for debugging
+//         //   allAvailableKeys: Object.keys(scheduleData).slice(0, 10),
+//         //   exactMatch: scheduleData[dateKey],
+//         //   similarKeys: Object.keys(scheduleData).filter(key => 
+//         //     key.includes(String(date.getDate()).padStart(2, '0'))
+//         //   )
+//         // });
       }
       
       // Get optimistic update from external manager if available
@@ -610,11 +610,11 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     }
     fetchInProgressRef.current = monthKey;
     
-    console.log('📅 DATA FETCH: Starting data fetch for month:', {
-      month: currentMonth.getMonth() + 1,
-      year: currentMonth.getFullYear(),
-      userId: user.id
-    });
+    // console.log('📅 DATA FETCH: Starting data fetch for month:', {
+//     //   month: currentMonth.getMonth() + 1,
+//     //   year: currentMonth.getFullYear(),
+//     //   userId: user.id
+//     // });
     
     try {
       const year = currentMonth.getFullYear();
@@ -629,11 +629,11 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       const startDateKey = formatDateKey(startDate);
       const endDateKey = formatDateKey(endDate);
       
-      console.log('📅 DATA FETCH: Query parameters:', {
-        startDateKey,
-        endDateKey,
-        dateRange: `${startDateKey} to ${endDateKey}`
-      });
+      // console.log('📅 DATA FETCH: Query parameters:', {
+//         startDateKey,
+//         endDateKey,
+//         dateRange: `${startDateKey} to ${endDateKey}`
+//       });
       
       // Use cached getScheduleEntries for better performance (1-2 queries vs 8+)
       const allScheduleData = await DatabaseService.getScheduleEntries(
@@ -643,38 +643,38 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
         false // forceRefresh - use cache for better performance
       );
       
-      console.log('📅 DATA FETCH: Raw database response:', {
-        totalUsers: Object.keys(allScheduleData).length,
-        hasCurrentUser: user.id in allScheduleData,
-        allUserIds: Object.keys(allScheduleData)
-      });
+      // console.log('📅 DATA FETCH: Raw database response:', {
+//         totalUsers: Object.keys(allScheduleData).length,
+//         hasCurrentUser: user.id in allScheduleData,
+//         allUserIds: Object.keys(allScheduleData)
+//       });
       
       // Extract data for the current user only
       const dataObject = allScheduleData[user.id] || {};
       
-      console.log('📅 DATA FETCH: User data extracted:', {
-        userId: user.id,
-        entryCount: Object.keys(dataObject).length,
-        dateKeys: Object.keys(dataObject),
-        sampleEntries: Object.keys(dataObject).slice(0, 5).map(key => ({
-          date: key,
-          value: dataObject[key]?.value,
-          reason: dataObject[key]?.reason
-        }))
-      });
+      // console.log('📅 DATA FETCH: User data extracted:', {
+//         userId: user.id,
+//         entryCount: Object.keys(dataObject).length,
+//         dateKeys: Object.keys(dataObject),
+//         sampleEntries: Object.keys(dataObject).slice(0, 5).map(key => ({
+//           date: key,
+//           value: dataObject[key]?.value,
+//           reason: dataObject[key]?.reason
+//         }))
+//       });
       
       // CRITICAL DEBUG: Show exact date formats
-      console.log('🔑 DATE KEY ANALYSIS:', {
-        firstDateKey: Object.keys(dataObject)[0],
-        lastDateKey: Object.keys(dataObject)[Object.keys(dataObject).length - 1],
-        allDateKeys: Object.keys(dataObject).slice(0, 10),
-        currentMonthString: `${year}-${String(month + 1).padStart(2, '0')}`,
-        septemberDates: Object.keys(dataObject).filter(key => key.startsWith('2025-09')),
-        // New debugging for format verification
-        formatTestToday: formatDateKey(new Date()),
-        formatTestSep1: formatDateKey(new Date('2025-09-01')),
-        formatTestSep15: formatDateKey(new Date('2025-09-15'))
-      });
+      // console.log('🔑 DATE KEY ANALYSIS:', {
+//         firstDateKey: Object.keys(dataObject)[0],
+//         lastDateKey: Object.keys(dataObject)[Object.keys(dataObject).length - 1],
+//         allDateKeys: Object.keys(dataObject).slice(0, 10),
+//         currentMonthString: `${year}-${String(month + 1).padStart(2, '0')}`,
+//         septemberDates: Object.keys(dataObject).filter(key => key.startsWith('2025-09')),
+//         // New debugging for format verification
+//         formatTestToday: formatDateKey(new Date()),
+//         formatTestSep1: formatDateKey(new Date('2025-09-01')),
+//         formatTestSep15: formatDateKey(new Date('2025-09-15'))
+//       });
       
       // DATE FORMAT DEBUG: Check if recently saved dates exist in fetched data
       const today = new Date();
@@ -691,31 +691,31 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
         });
       }
       
-      console.log('🔍 DATE FORMAT DEBUG: Recent dates check:', {
-        recentDatesFound: recentDates.filter(d => d.exists),
-        recentDatesMissing: recentDates.filter(d => !d.exists),
-        formatExample: `formatDateKey creates: ${formatDateKey(today)}`,
-        todayFormatted: formatDateKey(today)
-      });
+      // console.log('🔍 DATE FORMAT DEBUG: Recent dates check:', {
+//         recentDatesFound: recentDates.filter(d => d.exists),
+//         recentDatesMissing: recentDates.filter(d => !d.exists),
+//         formatExample: `formatDateKey creates: ${formatDateKey(today)}`,
+//         todayFormatted: formatDateKey(today)
+//       });
       
       setScheduleData(dataObject);
       
-      console.log('📅 DATA FETCH: Successfully updated schedule data state with', Object.keys(dataObject).length, 'entries');
+      // console.log('📅 DATA FETCH: Successfully updated schedule data state with', Object.keys(dataObject).length, 'entries');
       
       // CRITICAL DEBUG: Show the actual schedule data structure
-      console.log('🔍 SCHEDULE DATA SAMPLE:', {
-        totalEntries: Object.keys(dataObject).length,
-        firstFewEntries: Object.keys(dataObject).slice(0, 5).reduce((acc, key) => {
-          acc[key] = dataObject[key];
-          return acc;
-        }, {} as Record<string, any>),
-        septemberEntries: Object.keys(dataObject).filter(key => key.startsWith('2025-09')).reduce((acc, key) => {
-          acc[key] = dataObject[key];
-          return acc;
-        }, {} as Record<string, any>)
-      });
+      // console.log('🔍 SCHEDULE DATA SAMPLE:', {
+//         totalEntries: Object.keys(dataObject).length,
+//         firstFewEntries: Object.keys(dataObject).slice(0, 5).reduce((acc, key) => {
+//           acc[key] = dataObject[key];
+//           return acc;
+//         }, {} as Record<string, any>),
+//         septemberEntries: Object.keys(dataObject).filter(key => key.startsWith('2025-09')).reduce((acc, key) => {
+//           acc[key] = dataObject[key];
+//           return acc;
+//         }, {} as Record<string, any>)
+//       });
     } catch (error) {
-      console.error('Error fetching month data:', error);
+      // console.error('Error fetching month data:', error);
     } finally {
       setLoading(false);
       // Clear the in-progress flag
@@ -726,7 +726,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
   // Effect to ensure data is fetched when month changes
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('📅 Personal Calendar: Viewing', HEBREW_MONTHS[currentMonth.getMonth()], currentMonth.getFullYear());
+      // console.log('📅 Personal Calendar: Viewing', HEBREW_MONTHS[currentMonth.getMonth()], currentMonth.getFullYear());
     }
     fetchMonthData();
   }, [currentMonth, fetchMonthData]);
@@ -831,17 +831,17 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
         
         const saveSuccess = saveMonthToStorage(monthValue);
         if (saveSuccess) {
-          console.log('✅ MONTH PERSISTENCE: Successfully saved month to storage:', {
-            date: date.toDateString(),
-            savedMonth: date.getMonth() + 1,
-            savedYear: date.getFullYear(),
-            storedValue: monthValue
-          });
+          // console.log('✅ MONTH PERSISTENCE: Successfully saved month to storage:', {
+//             date: date.toDateString(),
+//             savedMonth: date.getMonth() + 1,
+//             savedYear: date.getFullYear(),
+//             storedValue: monthValue
+//           });
         } else {
-          console.error('❌ MONTH PERSISTENCE: All storage methods failed');
+          // console.error('❌ MONTH PERSISTENCE: All storage methods failed');
         }
       } else {
-        console.warn('⚠️ MONTH PERSISTENCE: window is undefined, cannot save to localStorage');
+        // console.warn('⚠️ MONTH PERSISTENCE: window is undefined, cannot save to localStorage');
       }
       
       // Call external update manager (handles optimistic updates, retries, etc.)
@@ -870,7 +870,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       });
       
     } catch (error) {
-      console.error('❌ Update failed, rolling back optimistic update:', error);
+      // console.error('❌ Update failed, rolling back optimistic update:', error);
       // Get original data for rollback
       const dateKey = formatDateKey(date);
       const originalData = scheduleDataRef.current[dateKey] || null;
@@ -905,7 +905,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
   const handleStatusSelect = useCallback((status: '1' | '0.5' | 'X') => {
     // Add timeout protection to prevent infinite hanging
     const statusSelectTimeout = setTimeout(() => {
-      console.error('⚠️ STATUS SELECT TIMEOUT - Force clearing modal states');
+      // console.error('⚠️ STATUS SELECT TIMEOUT - Force clearing modal states');
       setStatusModalOpen(false);
       setReasonModalOpen(false);
       setSelectedDate(null);
@@ -917,12 +917,12 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       
       if (status === '1') {
         if (selectedDate) {
-          console.log('💾 MONTH PERSISTENCE: Initiating full day save for:', {
-            date: selectedDate.toDateString(),
-            status: status,
-            month: selectedDate.getMonth() + 1,
-            year: selectedDate.getFullYear()
-          });
+          // console.log('💾 MONTH PERSISTENCE: Initiating full day save for:', {
+//             date: selectedDate.toDateString(),
+//             status: status,
+//             month: selectedDate.getMonth() + 1,
+//             year: selectedDate.getFullYear()
+//           });
           // Set saving state for immediate UI feedback
           setSaving(true);
           updateSchedule(selectedDate, status, undefined).finally(() => {
@@ -937,7 +937,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
         clearTimeout(statusSelectTimeout);
       }
     } catch (error) {
-      console.error('❌ Error in handleStatusSelect:', error);
+      // console.error('❌ Error in handleStatusSelect:', error);
       clearTimeout(statusSelectTimeout);
       // Force cleanup on error
       setStatusModalOpen(false);
@@ -959,7 +959,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
   const handleReasonSubmit = useCallback((reason: string) => {
     // Add timeout protection to prevent infinite hanging
     const reasonSubmitTimeout = setTimeout(() => {
-      console.error('⚠️ REASON SUBMIT TIMEOUT - Force clearing modal states');
+      // console.error('⚠️ REASON SUBMIT TIMEOUT - Force clearing modal states');
       setReasonModalOpen(false);
       setSelectedDate(null);
       setPendingValue(null);
@@ -971,13 +971,13 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       const currentPendingValue = pendingValue;
       
       if (currentDate && currentPendingValue) {
-        console.log('💾 MONTH PERSISTENCE: Initiating partial/absent save for:', {
-          date: currentDate.toDateString(),
-          status: currentPendingValue,
-          reason: reason,
-          month: currentDate.getMonth() + 1,
-          year: currentDate.getFullYear()
-        });
+        // console.log('💾 MONTH PERSISTENCE: Initiating partial/absent save for:', {
+//           date: currentDate.toDateString(),
+//           status: currentPendingValue,
+//           reason: reason,
+//           month: currentDate.getMonth() + 1,
+//           year: currentDate.getFullYear()
+//         });
         // Set saving state for immediate UI feedback
         setSaving(true);
         updateSchedule(currentDate, currentPendingValue, reason).finally(() => {
@@ -992,7 +992,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       
       clearTimeout(reasonSubmitTimeout);
     } catch (error) {
-      console.error('❌ Error in handleReasonSubmit:', error);
+      // console.error('❌ Error in handleReasonSubmit:', error);
       clearTimeout(reasonSubmitTimeout);
       // Force cleanup on error
       setReasonModalOpen(false);
@@ -1018,16 +1018,16 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
       
       const saveSuccess = saveMonthToStorage(monthValue);
       if (saveSuccess) {
-        console.log('📅 MONTH PERSISTENCE: Navigation updated month in storage:', {
-          month: newMonth.getMonth() + 1,
-          year: newMonth.getFullYear(),
-          storedValue: monthValue
-        });
+        // console.log('📅 MONTH PERSISTENCE: Navigation updated month in storage:', {
+//           month: newMonth.getMonth() + 1,
+//           year: newMonth.getFullYear(),
+//           storedValue: monthValue
+//         });
       } else {
-        console.error('❌ MONTH PERSISTENCE: Navigation storage failed for all methods');
+        // console.error('❌ MONTH PERSISTENCE: Navigation storage failed for all methods');
       }
     } else {
-      console.warn('⚠️ MONTH PERSISTENCE: window undefined during navigation, cannot save');
+      // console.warn('⚠️ MONTH PERSISTENCE: window undefined during navigation, cannot save');
     }
   }, [saveMonthToStorage]);
 
@@ -1142,7 +1142,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     }
     
     return () => {
-      console.log(`🗑️ COMPONENT UNMOUNT: PersonalCalendar instance #${mountId} cleaning up`);
+      // console.log(`🗑️ COMPONENT UNMOUNT: PersonalCalendar instance #${mountId} cleaning up`);
       isMountedRef.current = false;
       
       // Clear any pending timeouts

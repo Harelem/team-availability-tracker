@@ -164,7 +164,7 @@ class DataConsistencyManager {
       // If there's a pending request for the same key, wait for it
       if (this.requestDeduplicationMap.has(cacheKey)) {
         if (process.env.NODE_ENV === 'development') {
-          console.log(`🔄 Deduplicating request for: ${cacheKey}`);
+          // console.log(`🔄 Deduplicating request for: ${cacheKey}`);
         }
         return this.requestDeduplicationMap.get(cacheKey)!;
       }
@@ -217,14 +217,14 @@ class DataConsistencyManager {
       if (!forceRefresh) {
         const cached = this.getCachedData<T>(cacheKey);
         if (cached !== null) {
-          console.log(`📷 Cache hit during deduplication: ${cacheKey}`);
+          // console.log(`📷 Cache hit during deduplication: ${cacheKey}`);
           return cached;
         }
       }
 
       // Execute request with circuit breaker protection
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🚀 New request initiated for key: ${cacheKey}`);
+        // console.log(`🚀 New request initiated for key: ${cacheKey}`);
       }
       
       try {
@@ -233,12 +233,12 @@ class DataConsistencyManager {
         // Cache the result
         this.setCachedData(cacheKey, data, cacheDuration, requestId);
         if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ Request completed and cached: ${cacheKey}`);
+          // console.log(`✅ Request completed and cached: ${cacheKey}`);
         }
         
         return data;
       } catch (error) {
-        console.error(`❌ Request failed for key: ${cacheKey}`, error);
+        // console.error(`❌ Request failed for key: ${cacheKey}`, error);
         throw error;
       }
     });
@@ -289,7 +289,7 @@ class DataConsistencyManager {
     // EGRESS REDUCTION: Also store static data in localStorage
     if (this.isStaticData(cacheKey) && this.EGRESS_REDUCTION_MODE) {
       this.saveToLocalStorage(cacheKey, data, expiresAt);
-      console.log(`🔥 EGRESS REDUCTION: Saved to LocalStorage: ${cacheKey} (v${version})`);
+      // console.log(`🔥 EGRESS REDUCTION: Saved to LocalStorage: ${cacheKey} (v${version})`);
     }
   }
 
@@ -328,7 +328,7 @@ class DataConsistencyManager {
       });
     });
     
-    console.log(`🗑️ Queued cache invalidation: ${matchingKeys.length} entries`);
+    // console.log(`🗑️ Queued cache invalidation: ${matchingKeys.length} entries`);
     return matchingKeys.length;
   }
 
@@ -338,7 +338,7 @@ class DataConsistencyManager {
   clearAll(): void {
     this.cache.clear();
     this.pendingRequests.clear();
-    console.log(`🗑️ All cache and pending requests cleared`);
+    // console.log(`🗑️ All cache and pending requests cleared`);
   }
 
   /**
@@ -374,12 +374,12 @@ class DataConsistencyManager {
    */
   debugCacheState(): void {
     const stats = this.getCacheStats();
-    console.group('📊 Data Consistency Manager - Cache State');
-    console.log('Valid entries:', stats.validEntries);
-    console.log('Expired entries:', stats.expiredEntries);
-    console.log('Pending requests:', stats.pendingRequests);
-    console.log('Cache keys:', stats.cacheKeys);
-    console.groupEnd();
+    // console.group('📊 Data Consistency Manager - Cache State');
+    // console.log('Valid entries:', stats.validEntries);
+    // console.log('Expired entries:', stats.expiredEntries);
+    // console.log('Pending requests:', stats.pendingRequests);
+    // console.log('Cache keys:', stats.cacheKeys);
+    // console.groupEnd();
   }
 
   /**
@@ -409,7 +409,7 @@ class DataConsistencyManager {
     }
 
     if (expiredCount > 0 || timeoutCount > 0) {
-      console.log(`🧹 Cleanup: ${expiredCount} expired cache entries, ${timeoutCount} timed-out requests`);
+      // console.log(`🧹 Cleanup: ${expiredCount} expired cache entries, ${timeoutCount} timed-out requests`);
     }
   }
 
@@ -608,10 +608,10 @@ class DataConsistencyManager {
           existing.timestamp = operation.timestamp;
           existing.version = operation.version || existing.version;
           
-          console.log(`🔧 Surgical cache update: ${operation.cacheKey}`);
+          // console.log(`🔧 Surgical cache update: ${operation.cacheKey}`);
         }
       } catch (error) {
-        console.warn(`Failed to update cache entry ${operation.cacheKey}:`, error);
+        // console.warn(`Failed to update cache entry ${operation.cacheKey}:`, error);
       }
     }
   }
@@ -646,7 +646,7 @@ class DataConsistencyManager {
       }
     }
     
-    console.log(`🗑️ Async cache invalidation: ${invalidatedCount} entries`);
+    // console.log(`🗑️ Async cache invalidation: ${invalidatedCount} entries`);
   }
 
   /**
@@ -659,10 +659,10 @@ class DataConsistencyManager {
         if (existing && operation.version) {
           existing.version = operation.version;
           this.cacheVersions.set(operation.cacheKey, operation.version);
-          console.log(`🔢 Version bump: ${operation.cacheKey} -> v${operation.version}`);
+          // console.log(`🔢 Version bump: ${operation.cacheKey} -> v${operation.version}`);
         }
       } catch (error) {
-        console.warn(`Failed to bump version for ${operation.cacheKey}:`, error);
+        // console.warn(`Failed to bump version for ${operation.cacheKey}:`, error);
       }
     }
   }
@@ -727,7 +727,7 @@ class DataConsistencyManager {
       });
     });
     
-    console.log(`🎯 Surgical invalidation queued: ${keysToInvalidate.size} entries (${priority} priority)`);
+    // console.log(`🎯 Surgical invalidation queued: ${keysToInvalidate.size} entries (${priority} priority)`);
   }
 
   /**
@@ -829,12 +829,12 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   setInterval(() => {
     const stats = dataConsistencyManager.getOptimizedCacheStats();
     if (stats.totalEntries > 0) {
-      console.group('📈 Cache Performance Stats');
-      console.log('Valid entries:', stats.validEntries);
-      console.log('Queued operations:', stats.queuedOperations);
-      console.log('Processing updates:', stats.processingUpdates);
-      console.log('Dependency graph size:', stats.dependencyGraphSize);
-      console.groupEnd();
+      // console.group('📈 Cache Performance Stats');
+      // console.log('Valid entries:', stats.validEntries);
+      // console.log('Queued operations:', stats.queuedOperations);
+      // console.log('Processing updates:', stats.processingUpdates);
+      // console.log('Dependency graph size:', stats.dependencyGraphSize);
+      // console.groupEnd();
     }
   }, 30000);
 }

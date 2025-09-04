@@ -153,7 +153,7 @@ export const DatabaseService = {
 
     } catch (error) {
       // Log the full error for debugging
-      console.error('❌ Failed to fetch teams - full error:', error);
+      // Error details captured for debugging
       
       // Re-throw to let caller handle
       throw error;
@@ -230,7 +230,7 @@ export const DatabaseService = {
         additionalData: { teamId }
       })
       
-      console.error('Failed to fetch team members:', appError.userMessage)
+      // console.error('Failed to fetch team members:', appError.userMessage)
       return []
     }
   },
@@ -300,7 +300,7 @@ export const DatabaseService = {
         additionalData: { options }
       })
       
-      console.error('Failed to fetch paginated schedule entries:', appError.userMessage)
+      // console.error('Failed to fetch paginated schedule entries:', appError.userMessage)
       return { data: [] }
     }
   },
@@ -411,7 +411,7 @@ export const DatabaseService = {
         additionalData: { teamId, options }
       });
 
-      console.error('Failed to fetch batched team data:', appError.userMessage);
+      // console.error('Failed to fetch batched team data:', appError.userMessage);
       return { team: null, members: [], scheduleEntries: [] };
     }
   },
@@ -422,18 +422,18 @@ export const DatabaseService = {
    */
   async safeInitializeTeams(): Promise<{ success: boolean; preserved: boolean; message: string }> {
     if (!isSupabaseConfigured()) {
-      console.warn('⚠️ Supabase not configured - skipping team initialization');
+      // console.warn('⚠️ Supabase not configured - skipping team initialization');
       return { success: false, preserved: false, message: 'Supabase not configured' };
     }
     
     try {
-      console.log('🔍 Checking for existing teams...');
+      // console.log('🔍 Checking for existing teams...');
       const existingTeams = await this.getTeams();
       
       if (existingTeams.length > 0) {
-        console.log(`✅ Found ${existingTeams.length} existing teams - PRESERVING DATA`);
+        // console.log(`✅ Found ${existingTeams.length} existing teams - PRESERVING DATA`);
         existingTeams.forEach(team => {
-          console.log(`  - ${team.name} (ID: ${team.id})`);
+          // console.log(`  - ${team.name} (ID: ${team.id})`);
         });
         return { 
           success: true, 
@@ -442,7 +442,7 @@ export const DatabaseService = {
         };
       }
 
-      console.log('🆕 No teams found - safe to create initial teams');
+      // console.log('🆕 No teams found - safe to create initial teams');
       await this.createInitialTeamsIfMissing();
       
       return { 
@@ -451,7 +451,7 @@ export const DatabaseService = {
         message: 'Created initial team structure' 
       };
     } catch (error) {
-      console.error('❌ Error in safe team initialization:', error);
+      // console.error('❌ Error in safe team initialization:', error);
       return { 
         success: false, 
         preserved: false, 
@@ -466,16 +466,16 @@ export const DatabaseService = {
    */
   async safeInitializeTeamMembers(): Promise<{ success: boolean; preserved: boolean; message: string }> {
     if (!isSupabaseConfigured()) {
-      console.warn('⚠️ Supabase not configured - skipping member initialization');
+      // console.warn('⚠️ Supabase not configured - skipping member initialization');
       return { success: false, preserved: false, message: 'Supabase not configured' };
     }
     
     try {
-      console.log('🔍 Checking for existing team members...');
+      // console.log('🔍 Checking for existing team members...');
       const existingMembers = await this.getTeamMembers();
       
       if (existingMembers.length > 0) {
-        console.log(`✅ Found ${existingMembers.length} existing team members - PRESERVING DATA`);
+        // console.log(`✅ Found ${existingMembers.length} existing team members - PRESERVING DATA`);
         
         // Group by team for better logging
         const membersByTeam = existingMembers.reduce((acc, member) => {
@@ -485,7 +485,7 @@ export const DatabaseService = {
         }, {} as Record<number, string[]>);
         
         Object.entries(membersByTeam).forEach(([teamId, names]) => {
-          console.log(`  Team ${teamId}: ${(names as string[]).join(', ')}`);
+          // console.log(`  Team ${teamId}: ${(names as string[]).join(', ')}`);
         });
         
         return { 
@@ -495,7 +495,7 @@ export const DatabaseService = {
         };
       }
 
-      console.log('🆕 No team members found - safe to create initial members');
+      // console.log('🆕 No team members found - safe to create initial members');
       await this.createInitialTeamMembersIfMissing();
       
       return { 
@@ -504,7 +504,7 @@ export const DatabaseService = {
         message: 'Created initial team members' 
       };
     } catch (error) {
-      console.error('❌ Error in safe team member initialization:', error);
+      // console.error('❌ Error in safe team member initialization:', error);
       return { 
         success: false, 
         preserved: false, 
@@ -536,7 +536,7 @@ export const DatabaseService = {
           .single();
 
         if (existing) {
-          console.log(`✅ Team already exists: ${team.name}`);
+          // console.log(`✅ Team already exists: ${team.name}`);
           continue;
         }
 
@@ -546,12 +546,12 @@ export const DatabaseService = {
           .insert([team]);
 
         if (error) {
-          console.error(`❌ Error creating team ${team.name}:`, error);
+          // console.error(`❌ Error creating team ${team.name}:`, error);
         } else {
-          console.log(`✅ Created team: ${team.name}`);
+          // console.log(`✅ Created team: ${team.name}`);
         }
       } catch (error) {
-        console.error(`❌ Error checking/creating team ${team.name}:`, error);
+        // console.error(`❌ Error checking/creating team ${team.name}:`, error);
       }
     }
   },
@@ -561,13 +561,13 @@ export const DatabaseService = {
    * CRITICAL: This preserves existing members and their schedule data
    */
   async createInitialTeamMembersIfMissing(): Promise<void> {
-    console.log('👥 Creating initial team members (preserving existing)...');
+    // console.log('👥 Creating initial team members (preserving existing)...');
     
     try {
       // Get teams with IDs
       const teams = await this.getTeams();
       if (teams.length === 0) {
-        console.warn('⚠️ No teams found - cannot create team members');
+        // console.warn('⚠️ No teams found - cannot create team members');
         return;
       }
 
@@ -632,12 +632,12 @@ export const DatabaseService = {
                   .eq('id', existing.id);
 
                 if (updateError) {
-                  console.error(`❌ Error updating team_id for ${member.name}:`, updateError);
+                  // console.error(`❌ Error updating team_id for ${member.name}:`, updateError);
                 } else {
-                  console.log(`🔧 Updated team assignment: ${member.name} → ${team.name}`);
+                  // console.log(`🔧 Updated team assignment: ${member.name} → ${team.name}`);
                 }
               } else {
-                console.log(`✅ Member already assigned: ${member.name} in team ${existing.team_id}`);
+                // console.log(`✅ Member already assigned: ${member.name} in team ${existing.team_id}`);
               }
               continue;
             }
@@ -651,19 +651,19 @@ export const DatabaseService = {
               }]);
 
             if (error) {
-              console.error(`❌ Error creating member ${member.name}:`, error);
+              // console.error(`❌ Error creating member ${member.name}:`, error);
             } else {
-              console.log(`✅ Created member: ${member.name} in ${team.name}`);
+              // console.log(`✅ Created member: ${member.name} in ${team.name}`);
             }
           } catch (error) {
-            console.error(`❌ Error checking/creating member ${member.name}:`, error);
+            // console.error(`❌ Error checking/creating member ${member.name}:`, error);
           }
         }
       }
 
 
     } catch (error) {
-      console.error('❌ Error in team member initialization:', error);
+      // console.error('❌ Error in team member initialization:', error);
       throw error;
     }
   },
@@ -673,18 +673,18 @@ export const DatabaseService = {
    */
   async fixNirShiloDataIssue(): Promise<boolean> {
     if (!isSupabaseConfigured()) {
-      console.log('⚠️ Supabase not configured, skipping Nir Shilo data fix');
+      // console.log('⚠️ Supabase not configured, skipping Nir Shilo data fix');
       return false;
     }
 
     // Prevent multiple simultaneous executions
     if (dataFixInProgress) {
-      console.log('⚠️ Data fix already in progress, skipping...');
+      // console.log('⚠️ Data fix already in progress, skipping...');
       return true;
     }
 
     dataFixInProgress = true;
-    console.log('🔧 Fixing Nir Shilo data issue...');
+    // console.log('🔧 Fixing Nir Shilo data issue...');
     
     try {
       // Step 1: Get or create Management Team safely
@@ -703,7 +703,7 @@ export const DatabaseService = {
       
       if (existingTeam) {
         managementTeam = existingTeam;
-        console.log('✅ Management team already exists');
+        // console.log('✅ Management team already exists');
       } else {
         // Only create if it doesn't exist
         const { data: newTeam, error: insertError } = await supabase
@@ -724,17 +724,17 @@ export const DatabaseService = {
               .eq('name', 'Management Team')
               .single();
             managementTeam = retryTeam;
-            console.log('✅ Management team exists (created by concurrent operation)');
+            // console.log('✅ Management team exists (created by concurrent operation)');
           } else {
             throw insertError;
           }
         } else {
           managementTeam = newTeam;
-          console.log('✅ Management team created successfully');
+          // console.log('✅ Management team created successfully');
         }
       }
       
-      console.log('✅ Management team created/verified');
+      // console.log('✅ Management team created/verified');
       
       // Step 2: Remove Nir from Data Team if he exists there
       const { data: dataTeam } = await supabase
@@ -750,7 +750,7 @@ export const DatabaseService = {
           .eq('name', 'Nir Shilo')
           .eq('team_id', dataTeam.id);
         
-        console.log('✅ Removed Nir from Data Team');
+        // console.log('✅ Removed Nir from Data Team');
       }
       
       // Step 3: Remove any duplicate Nir Shilo entries
@@ -771,7 +771,7 @@ export const DatabaseService = {
             .eq('id', nir.id);
         }
         
-        console.log(`✅ Removed ${nirsToDelete.length} duplicate Nir entries`);
+        // console.log(`✅ Removed ${nirsToDelete.length} duplicate Nir entries`);
       }
       
       // Step 4: Ensure proper COO Nir Shilo exists in Management Team
@@ -786,7 +786,7 @@ export const DatabaseService = {
       
       if (upsertError) throw upsertError;
       
-      console.log('✅ COO Nir Shilo properly configured in Management Team');
+      // console.log('✅ COO Nir Shilo properly configured in Management Team');
       
       // Step 5: Verify the fix
       const { data: nirCheck } = await supabase
@@ -799,12 +799,12 @@ export const DatabaseService = {
         `)
         .eq('name', 'Nir Shilo');
       
-      console.log('🔍 Verification - Nir Shilo records:', nirCheck);
+      // console.log('🔍 Verification - Nir Shilo records:', nirCheck);
       
       return true;
       
     } catch (error) {
-      console.error('❌ Error fixing Nir Shilo data:', error);
+      // console.error('❌ Error fixing Nir Shilo data:', error);
       return false;
     } finally {
       dataFixInProgress = false;
@@ -818,7 +818,7 @@ export const DatabaseService = {
     }
 
     try {
-      console.log('🔧 Cleaning up duplicate teams...')
+      // console.log('🔧 Cleaning up duplicate teams...')
 
       // Check for duplicate Management Teams
       const { data: managementTeams, error: queryError } = await supabase
@@ -828,19 +828,19 @@ export const DatabaseService = {
         .order('created_at', { ascending: true })
 
       if (queryError) {
-        console.error('Error querying Management Teams:', queryError)
+        // console.error('Error querying Management Teams:', queryError)
         return { success: false, message: `Query error: ${queryError.message}` }
       }
 
-      console.log(`🔍 Found ${managementTeams?.length || 0} Management Team entries`)
+      // console.log(`🔍 Found ${managementTeams?.length || 0} Management Team entries`)
 
       if (managementTeams && managementTeams.length > 1) {
         // Keep the first one (oldest), delete the rest
         const keepTeam = managementTeams[0]
         const deleteTeams = managementTeams.slice(1)
         
-        console.log(`🗑️ Keeping Management Team ID: ${keepTeam.id}`)
-        console.log(`🗑️ Deleting duplicate Management Teams:`, deleteTeams.map(t => t.id))
+        // console.log(`🗑️ Keeping Management Team ID: ${keepTeam.id}`)
+        // console.log(`🗑️ Deleting duplicate Management Teams:`, deleteTeams.map(t => t.id))
 
         // Delete duplicate teams
         const { error: deleteError } = await supabase
@@ -849,11 +849,11 @@ export const DatabaseService = {
           .in('id', deleteTeams.map(t => t.id))
 
         if (deleteError) {
-          console.error('Error deleting duplicate teams:', deleteError)
+          // console.error('Error deleting duplicate teams:', deleteError)
           return { success: false, message: `Delete error: ${deleteError.message}` }
         }
 
-        console.log(`✅ Deleted ${deleteTeams.length} duplicate Management Team entries`)
+        // console.log(`✅ Deleted ${deleteTeams.length} duplicate Management Team entries`)
       }
 
       // Verify expected team structure
@@ -863,7 +863,7 @@ export const DatabaseService = {
         .order('name')
 
       if (verifyError) {
-        console.error('Error verifying teams:', verifyError)
+        // console.error('Error verifying teams:', verifyError)
         return { success: false, message: `Verification error: ${verifyError.message}` }
       }
 
@@ -879,13 +879,13 @@ export const DatabaseService = {
       const missingTeams = expectedOperationalTeams.filter(name => !foundTeams.includes(name))
       const operationalTeams = foundTeams.filter(name => name !== 'Management Team')
 
-      console.log('🔍 Team verification:')
-      console.log(`  Total teams: ${foundTeams.length}`)
-      console.log(`  Operational teams: ${operationalTeams.length}`)
-      console.log(`  Found teams: ${foundTeams.join(', ')}`)
+      // console.log('🔍 Team verification:')
+      // console.log(`  Total teams: ${foundTeams.length}`)
+      // console.log(`  Operational teams: ${operationalTeams.length}`)
+      // console.log(`  Found teams: ${foundTeams.join(', ')}`)
       
       if (missingTeams.length > 0) {
-        console.warn(`⚠️ Missing expected teams: ${missingTeams.join(', ')}`)
+        // console.warn(`⚠️ Missing expected teams: ${missingTeams.join(', ')}`)
       }
 
       const hasManagementTeam = foundTeams.includes('Management Team')
@@ -897,7 +897,7 @@ export const DatabaseService = {
       }
 
     } catch (error) {
-      console.error('Error in cleanupDuplicateTeams:', error)
+      // console.error('Error in cleanupDuplicateTeams:', error)
       return { success: false, message: `Cleanup failed: ${error}` }
     }
   },
@@ -909,7 +909,7 @@ export const DatabaseService = {
     }
 
     try {
-      console.log('🚨 EMERGENCY: Starting cleanup of duplicate Management Teams...')
+      // console.log('🚨 EMERGENCY: Starting cleanup of duplicate Management Teams...')
       
       // First, get ALL Management Teams to assess the scale of the problem
       const { data: allManagementTeams, error: queryError } = await supabase
@@ -919,15 +919,15 @@ export const DatabaseService = {
         .order('created_at', { ascending: true })
 
       if (queryError) {
-        console.error('❌ Emergency cleanup query failed:', queryError)
+        // console.error('❌ Emergency cleanup query failed:', queryError)
         return { success: false, message: `Query error: ${queryError.message}`, teamsRemoved: 0 }
       }
 
       const totalManagementTeams = allManagementTeams?.length || 0
-      console.log(`🔍 EMERGENCY: Found ${totalManagementTeams} Management Team entries`)
+      // console.log(`🔍 EMERGENCY: Found ${totalManagementTeams} Management Team entries`)
 
       if (totalManagementTeams <= 1) {
-        console.log('✅ No duplicate Management Teams found - emergency cleanup not needed')
+        // console.log('✅ No duplicate Management Teams found - emergency cleanup not needed')
         return { 
           success: true, 
           message: `Found ${totalManagementTeams} Management Team(s) - no cleanup needed`, 
@@ -936,27 +936,27 @@ export const DatabaseService = {
       }
 
       // This is the emergency situation - multiple Management Teams exist
-      console.log(`🚨 CRITICAL: ${totalManagementTeams} Management Teams found - emergency cleanup required!`)
+      // console.log(`🚨 CRITICAL: ${totalManagementTeams} Management Teams found - emergency cleanup required!`)
       
       // Keep the oldest Management Team (first in ascending order by created_at)
       const keepTeam = allManagementTeams[0]
       const duplicateTeams = allManagementTeams.slice(1)
       
-      console.log(`🔒 PRESERVING: Management Team ID ${keepTeam.id} (created: ${keepTeam.created_at})`)
-      console.log(`🗑️ REMOVING: ${duplicateTeams.length} duplicate Management Teams:`)
+      // console.log(`🔒 PRESERVING: Management Team ID ${keepTeam.id} (created: ${keepTeam.created_at})`)
+      // console.log(`🗑️ REMOVING: ${duplicateTeams.length} duplicate Management Teams:`)
       duplicateTeams.forEach(team => {
-        console.log(`   - ID ${team.id} (created: ${team.created_at})`)
+        // console.log(`   - ID ${team.id} (created: ${team.created_at})`)
       })
 
       // Before deleting teams, reassign any team members to the preserved Management Team
-      console.log('🔄 Checking for team members in duplicate teams...')
+      // console.log('🔄 Checking for team members in duplicate teams...')
       const { data: membersInDuplicateTeams, error: membersError } = await supabase
         .from('team_members')
         .select('id, name, team_id')
         .in('team_id', duplicateTeams.map(t => t.id))
 
       if (membersError) {
-        console.error('❌ Error checking team members:', membersError)
+        // console.error('❌ Error checking team members:', membersError)
         return { 
           success: false, 
           message: `Error checking team members: ${membersError.message}`, 
@@ -965,7 +965,7 @@ export const DatabaseService = {
       }
 
       if (membersInDuplicateTeams && membersInDuplicateTeams.length > 0) {
-        console.log(`🔄 Found ${membersInDuplicateTeams.length} team members in duplicate teams, reassigning to preserved team...`)
+        // console.log(`🔄 Found ${membersInDuplicateTeams.length} team members in duplicate teams, reassigning to preserved team...`)
         
         // Reassign all members to the preserved Management Team
         const { error: reassignError } = await supabase
@@ -974,7 +974,7 @@ export const DatabaseService = {
           .in('id', membersInDuplicateTeams.map(m => m.id))
 
         if (reassignError) {
-          console.error('❌ Error reassigning team members:', reassignError)
+          // console.error('❌ Error reassigning team members:', reassignError)
           return { 
             success: false, 
             message: `Error reassigning team members: ${reassignError.message}`, 
@@ -982,12 +982,12 @@ export const DatabaseService = {
           }
         }
 
-        console.log(`✅ Successfully reassigned ${membersInDuplicateTeams.length} team members to preserved Management Team`)
+        // console.log(`✅ Successfully reassigned ${membersInDuplicateTeams.length} team members to preserved Management Team`)
         membersInDuplicateTeams.forEach(member => {
-          console.log(`   - ${member.name} (ID: ${member.id}) moved from team ${member.team_id} to ${keepTeam.id}`)
+          // console.log(`   - ${member.name} (ID: ${member.id}) moved from team ${member.team_id} to ${keepTeam.id}`)
         })
       } else {
-        console.log('✅ No team members found in duplicate teams - no reassignment needed')
+        // console.log('✅ No team members found in duplicate teams - no reassignment needed')
       }
 
       // Now execute the emergency deletion
@@ -997,7 +997,7 @@ export const DatabaseService = {
         .in('id', duplicateTeams.map(t => t.id))
 
       if (deleteError) {
-        console.error('❌ Emergency deletion failed:', deleteError)
+        // console.error('❌ Emergency deletion failed:', deleteError)
         return { 
           success: false, 
           message: `Emergency deletion failed: ${deleteError.message}`, 
@@ -1005,7 +1005,7 @@ export const DatabaseService = {
         }
       }
 
-      console.log(`✅ EMERGENCY CLEANUP SUCCESS: Removed ${duplicateTeams.length} duplicate Management Teams`)
+      // console.log(`✅ EMERGENCY CLEANUP SUCCESS: Removed ${duplicateTeams.length} duplicate Management Teams`)
 
       // Verify the cleanup was successful
       const { data: verifyTeams, error: verifyError } = await supabase
@@ -1014,13 +1014,13 @@ export const DatabaseService = {
         .eq('name', 'Management Team')
 
       if (verifyError) {
-        console.warn('⚠️ Verification query failed, but deletion may have succeeded:', verifyError)
+        // console.warn('⚠️ Verification query failed, but deletion may have succeeded:', verifyError)
       } else {
         const remainingCount = verifyTeams?.length || 0
-        console.log(`🔍 VERIFICATION: ${remainingCount} Management Team(s) remaining after cleanup`)
+        // console.log(`🔍 VERIFICATION: ${remainingCount} Management Team(s) remaining after cleanup`)
         
         if (remainingCount !== 1) {
-          console.warn(`⚠️ Expected 1 Management Team after cleanup, found ${remainingCount}`)
+          // console.warn(`⚠️ Expected 1 Management Team after cleanup, found ${remainingCount}`)
         }
       }
 
@@ -1042,7 +1042,7 @@ export const DatabaseService = {
       }
 
     } catch (error) {
-      console.error('❌ Emergency cleanup failed with exception:', error)
+      // console.error('❌ Emergency cleanup failed with exception:', error)
       return { 
         success: false, 
         message: `Emergency cleanup failed: ${error}`, 
@@ -1067,11 +1067,11 @@ export const DatabaseService = {
           .order('name')
 
         if (error) {
-          console.error('Error fetching operational teams:', error)
+          // console.error('Error fetching operational teams:', error)
           return []
         }
 
-        console.log(`✅ Loaded ${data?.length || 0} operational teams`)
+        // console.log(`✅ Loaded ${data?.length || 0} operational teams`)
         return data || []
       },
       {
@@ -1093,7 +1093,7 @@ export const DatabaseService = {
       const validation = validateTeamMemberData(memberData);
       if (!validation.isValid) {
         const errorMessage = `Invalid team member data: ${validation.errors.join(', ')}`;
-        console.error('❌ Validation failed:', errorMessage);
+        // console.error('❌ Validation failed:', errorMessage);
         throw new Error(errorMessage);
       }
 
@@ -1106,7 +1106,7 @@ export const DatabaseService = {
         .is('inactive_date', null); // Only check active members
       
       if (checkError) {
-        console.error('Error checking for existing team member:', checkError);
+        // console.error('Error checking for existing team member:', checkError);
         return null;
       }
       
@@ -1121,7 +1121,7 @@ export const DatabaseService = {
           ? `Team member "${memberData.name}" already exists in the system (ID: ${duplicateFound.id})`
           : `Hebrew name "${memberData.hebrew}" already exists for member "${duplicateFound.name}" (ID: ${duplicateFound.id})`;
         
-        console.error(`❌ Duplicate team member:`, errorMessage);
+        // console.error(`❌ Duplicate team member:`, errorMessage);
         throw new Error(`${errorMessage}. Please use a different name or check if this person is already registered.`);
       }
       
@@ -1139,7 +1139,7 @@ export const DatabaseService = {
         .single()
       
       if (error) {
-        console.error('Error adding team member:', error)
+        // console.error('Error adding team member:', error)
         
         // Handle duplicate key constraint violations (fallback protection)
         if (error.code === '23505' && error.message.includes('team_members_name_key')) {
@@ -1148,10 +1148,10 @@ export const DatabaseService = {
         
         // Provide helpful guidance for RLS policy issues
         if (error.code === '42501') {
-          console.error('🚨 RLS POLICY ISSUE: Team member management is blocked by database security policies')
-          console.error('📋 Fix required: Run this SQL in Supabase SQL Editor:')
-          console.error('CREATE POLICY "Allow insert/update/delete on team_members" ON team_members FOR ALL USING (true);')
-          console.error('📖 See TEAM_MEMBER_RLS_FIX.md for complete instructions')
+          // console.error('🚨 RLS POLICY ISSUE: Team member management is blocked by database security policies')
+          // console.error('📋 Fix required: Run this SQL in Supabase SQL Editor:')
+          // console.error('CREATE POLICY "Allow insert/update/delete on team_members" ON team_members FOR ALL USING (true);')
+          // console.error('📖 See TEAM_MEMBER_RLS_FIX.md for complete instructions')
           throw new Error('Database security policies are preventing team member management. Please contact your administrator.')
         }
         
@@ -1159,7 +1159,7 @@ export const DatabaseService = {
         throw new Error(`Failed to add team member: ${error.message}`)
       }
       
-      console.log(`✅ Successfully added team member: ${data.name} (ID: ${data.id})`)
+      // console.log(`✅ Successfully added team member: ${data.name} (ID: ${data.id})`)
       
       return {
         id: data.id,
@@ -1171,7 +1171,7 @@ export const DatabaseService = {
         updated_at: data.updated_at
       }
     } catch (error) {
-      console.error('Error adding team member:', error)
+      // console.error('Error adding team member:', error)
       // Re-throw the error so calling code can handle it appropriately
       throw error
     }
@@ -1186,7 +1186,7 @@ export const DatabaseService = {
       // First verify the manager has permission to edit this member
       const canEdit = await this.canManagerEditMember(managerId, memberId)
       if (!canEdit) {
-        console.error('Manager does not have permission to edit this member')
+        // console.error('Manager does not have permission to edit this member')
         return false
       }
       
@@ -1200,14 +1200,14 @@ export const DatabaseService = {
         .eq('id', memberId)
       
       if (error) {
-        console.error('Error updating team member:', error)
+        // console.error('Error updating team member:', error)
         
         // Provide helpful guidance for RLS policy issues
         if (error.code === '42501') {
-          console.error('🚨 RLS POLICY ISSUE: Team member management is blocked by database security policies')
-          console.error('📋 Fix required: Run this SQL in Supabase SQL Editor:')
-          console.error('CREATE POLICY "Allow insert/update/delete on team_members" ON team_members FOR ALL USING (true);')
-          console.error('📖 See TEAM_MEMBER_RLS_FIX.md for complete instructions')
+          // console.error('🚨 RLS POLICY ISSUE: Team member management is blocked by database security policies')
+          // console.error('📋 Fix required: Run this SQL in Supabase SQL Editor:')
+          // console.error('CREATE POLICY "Allow insert/update/delete on team_members" ON team_members FOR ALL USING (true);')
+          // console.error('📖 See TEAM_MEMBER_RLS_FIX.md for complete instructions')
         }
         
         return false
@@ -1215,7 +1215,7 @@ export const DatabaseService = {
       
       return true
     } catch (error) {
-      console.error('Error updating team member:', error)
+      // console.error('Error updating team member:', error)
       return false
     }
   },
@@ -1229,14 +1229,14 @@ export const DatabaseService = {
       // First verify the manager has permission to delete this member
       const canEdit = await this.canManagerEditMember(managerId, memberId)
       if (!canEdit) {
-        console.error('Manager does not have permission to delete this member')
+        // console.error('Manager does not have permission to delete this member')
         return false
       }
       
       // Check if member is a manager
       const member = await this.getTeamMember(memberId)
       if (member?.isManager) {
-        console.error('Cannot delete team managers')
+        // console.error('Cannot delete team managers')
         return false
       }
       
@@ -1247,7 +1247,7 @@ export const DatabaseService = {
         .eq('member_id', memberId)
       
       if (scheduleError) {
-        console.error('Error deleting member schedule entries:', scheduleError)
+        // console.error('Error deleting member schedule entries:', scheduleError)
         return false
       }
       
@@ -1258,13 +1258,13 @@ export const DatabaseService = {
         .eq('id', memberId)
       
       if (error) {
-        console.error('Error deleting team member:', error)
+        // console.error('Error deleting team member:', error)
         return false
       }
       
       return true
     } catch (error) {
-      console.error('Error deleting team member:', error)
+      // console.error('Error deleting team member:', error)
       return false
     }
   },
@@ -1281,13 +1281,13 @@ export const DatabaseService = {
         .eq('id', memberId)
       
       if (error) {
-        console.error('Error fetching team member:', error)
+        // console.error('Error fetching team member:', error)
         return null
       }
       
       const data = members?.[0]
       if (!data) {
-        console.error(`Team member with ID ${memberId} not found`)
+        // console.error(`Team member with ID ${memberId} not found`)
         return null
       }
       
@@ -1302,7 +1302,7 @@ export const DatabaseService = {
         updated_at: data.updated_at
       }
     } catch (error) {
-      console.error('Error fetching team member:', error)  
+      // console.error('Error fetching team member:', error)  
       return null
     }
   },
@@ -1328,7 +1328,7 @@ export const DatabaseService = {
       // Check if they're on the same team
       return manager.team_id === member.team_id
     } catch (error) {
-      console.error('Error checking manager permissions:', error)
+      // console.error('Error checking manager permissions:', error)
       return false
     }
   },
@@ -1354,7 +1354,7 @@ export const DatabaseService = {
 
     // Validate date parameters
     if (!startDate || !endDate || startDate === 'undefined' || endDate === 'undefined') {
-      console.error('getPaginatedScheduleEntries: Invalid date parameters', { startDate, endDate });
+      // console.error('getPaginatedScheduleEntries: Invalid date parameters', { startDate, endDate });
       return { data: {}, hasMore: false };
     }
 
@@ -1363,7 +1363,7 @@ export const DatabaseService = {
     const end = new Date(endDate);
     
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      console.error('getPaginatedScheduleEntries: Invalid date format', { startDate, endDate });
+      // console.error('getPaginatedScheduleEntries: Invalid date format', { startDate, endDate });
       return { data: {}, hasMore: false };
     }
     
@@ -1374,7 +1374,7 @@ export const DatabaseService = {
     if (diffDays > 365) {
       // Only limit if requesting more than a year of data
       if (process.env.NODE_ENV === 'development') {
-        console.warn('getPaginatedScheduleEntries: Date range exceeds 365 days, limiting to 1 year');
+        // console.warn('getPaginatedScheduleEntries: Date range exceeds 365 days, limiting to 1 year');
       }
       
       // Limit to 1 year max to prevent excessive queries
@@ -1423,7 +1423,7 @@ export const DatabaseService = {
       const { data, error, count } = await query;
       
       if (error) {
-        console.error('Error fetching paginated schedule entries:', error);
+        // console.error('Error fetching paginated schedule entries:', error);
         return { data: {}, hasMore: false };
       }
 
@@ -1458,7 +1458,7 @@ export const DatabaseService = {
       };
 
     } catch (error) {
-      console.error('Error in getPaginatedScheduleEntries:', error);
+      // console.error('Error in getPaginatedScheduleEntries:', error);
       return { data: {}, hasMore: false };
     }
   },
@@ -1500,7 +1500,7 @@ export const DatabaseService = {
       const { data, error } = await query.order('updated_at', { ascending: false });
 
       if (error) {
-        console.error('Error in incremental sync:', error);
+        // console.error('Error in incremental sync:', error);
         return { data: {}, syncTimestamp, changesCount: 0 };
       }
 
@@ -1519,7 +1519,7 @@ export const DatabaseService = {
         };
       });
 
-      console.log(`📈 Incremental sync completed: ${data.length} changes since ${lastSyncTimestamp || 'full sync'}`);
+      // console.log(`📈 Incremental sync completed: ${data.length} changes since ${lastSyncTimestamp || 'full sync'}`);
 
       return {
         data: scheduleData,
@@ -1527,7 +1527,7 @@ export const DatabaseService = {
         changesCount: data.length
       };
     } catch (error) {
-      console.error('Error in getScheduleEntriesIncremental:', error);
+      // console.error('Error in getScheduleEntriesIncremental:', error);
       return { data: {}, syncTimestamp: new Date().toISOString(), changesCount: 0 };
     }
   },
@@ -1539,12 +1539,12 @@ export const DatabaseService = {
 
     // Debug logging for development
     if (process.env.NODE_ENV === 'development' && forceRefresh) {
-      console.log('🔍 DATABASE DEBUG - getScheduleEntries called:', {
-        startDate,
-        endDate,
-        teamId,
-        dayRange: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
-      });
+      // console.log('🔍 DATABASE DEBUG - getScheduleEntries called:', {
+//       //   startDate,
+//       //   endDate,
+//       //   teamId,
+//       //   dayRange: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+//       // });
     }
 
     // Use optimized pagination with a higher limit for calendar view
@@ -1553,11 +1553,11 @@ export const DatabaseService = {
     
     // Debug logging for empty results
     if (process.env.NODE_ENV === 'development' && Object.keys(result.data).length === 0) {
-      console.warn('⚠️ DATABASE DEBUG - No schedule data found:', {
-        startDate,
-        endDate,
-        teamId
-      });
+      // console.warn('⚠️ DATABASE DEBUG - No schedule data found:', {
+//       //   startDate,
+//       //   endDate,
+//       //   teamId
+//       // });
     }
     
     return result.data;
@@ -1591,7 +1591,7 @@ export const DatabaseService = {
         const { data, error } = await query
         
         if (error) {
-          console.error('Error fetching schedule entries:', error)
+          // console.error('Error fetching schedule entries:', error)
           return {}
         }
         
@@ -1899,7 +1899,7 @@ export const DatabaseService = {
         updated_by: 'emergency-recovery'
       };
       
-      console.warn('🚨 Using emergency sprint configuration to prevent app crash');
+      // console.warn('🚨 Using emergency sprint configuration to prevent app crash');
       return emergencySprint;
     }
       },
@@ -1959,7 +1959,7 @@ export const DatabaseService = {
       
       return !legacyError
     } catch (error) {
-      console.error('Error updating sprint settings:', error)
+      // console.error('Error updating sprint settings:', error)
       return false
     }
   },
@@ -1996,7 +1996,7 @@ export const DatabaseService = {
       return maxNumber + 1
       
     } catch (error) {
-      console.error('Error finding next available sprint number:', error)
+      // console.error('Error finding next available sprint number:', error)
       // Fallback to timestamp-based unique number
       return Math.floor(Date.now() / 100000)
     }
@@ -2027,7 +2027,7 @@ export const DatabaseService = {
           newSprintNumber = (maxSprint?.sprint_number || 0) + 1
         }
         
-        console.log('Generated sprint number:', newSprintNumber)
+        // console.log('Generated sprint number:', newSprintNumber)
         
         // Validate sprint number is not already in use
         const { data: existingSprint } = await supabase
@@ -2037,11 +2037,11 @@ export const DatabaseService = {
           .single()
         
         if (existingSprint) {
-          console.warn(`Sprint number ${newSprintNumber} already exists, finding next available`)
+          // console.warn(`Sprint number ${newSprintNumber} already exists, finding next available`)
           newSprintNumber = await this.getNextAvailableSprintNumber()
         }
       } catch (error) {
-        console.warn('Error getting sprint number, using timestamp fallback:', error)
+        // console.warn('Error getting sprint number, using timestamp fallback:', error)
         // Use timestamp as unique number if all else fails
         newSprintNumber = Math.floor(Date.now() / 100000)
       }
@@ -2086,7 +2086,7 @@ export const DatabaseService = {
           })
         
         if (historyError) {
-          console.error('Error inserting into sprint_history:', historyError)
+          // console.error('Error inserting into sprint_history:', historyError)
           // Continue anyway since enhanced_sprint_configs succeeded
         }
         
@@ -2120,14 +2120,14 @@ export const DatabaseService = {
           })
         
         if (historyError) {
-          console.error('Error inserting into sprint_history (legacy path):', historyError)
+          // console.error('Error inserting into sprint_history (legacy path):', historyError)
           // Continue anyway since global_sprint_settings succeeded
         }
       }
       
       return !legacyError
     } catch (error) {
-      console.error('Error starting new sprint:', error)
+      // console.error('Error starting new sprint:', error)
       return false
     }
   },
@@ -2180,26 +2180,26 @@ export const DatabaseService = {
 
   async updateSprintDates(startDate: string, endDate?: string, updatedBy: string = 'Harel Mazan'): Promise<boolean> {
     if (!isSupabaseConfigured()) {
-      console.error('Supabase not configured for updateSprintDates')
+      // console.error('Supabase not configured for updateSprintDates')
       return false
     }
 
     try {
       // Validate input parameters
       if (!startDate || typeof startDate !== 'string') {
-        console.error('Invalid startDate parameter')
+        // console.error('Invalid startDate parameter')
         return false
       }
 
       if (updatedBy !== 'Harel Mazan') {
-        console.error('Unauthorized user attempting to update sprint dates:', updatedBy)
+        // console.error('Unauthorized user attempting to update sprint dates:', updatedBy)
         return false
       }
 
       // Get current sprint settings to calculate end date if not provided
       const currentSprint = await this.getCurrentGlobalSprint()
       if (!currentSprint) {
-        console.error('No current sprint found for date update')
+        // console.error('No current sprint found for date update')
         return false
       }
 
@@ -2208,7 +2208,7 @@ export const DatabaseService = {
         // Calculate end date based on start date and current sprint length
         const start = new Date(startDate)
         if (isNaN(start.getTime())) {
-          console.error('Invalid start date format:', startDate)
+          // console.error('Invalid start date format:', startDate)
           return false
         }
         
@@ -2222,12 +2222,12 @@ export const DatabaseService = {
       const end = new Date(calculatedEndDate)
       
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        console.error('Invalid date format in updateSprintDates:', { startDate, endDate: calculatedEndDate })
+        // console.error('Invalid date format in updateSprintDates:', { startDate, endDate: calculatedEndDate })
         return false
       }
       
       if (start >= end) {
-        console.error('Invalid date range: start date must be before end date')
+        // console.error('Invalid date range: start date must be before end date')
         return false
       }
 
@@ -2237,7 +2237,7 @@ export const DatabaseService = {
       const tenYearsFromNow = new Date(now.getFullYear() + 10, now.getMonth(), now.getDate())
       
       if (start < tenYearsAgo || start > tenYearsFromNow || end < tenYearsAgo || end > tenYearsFromNow) {
-        console.error('Date out of reasonable bounds (±10 years)')
+        // console.error('Date out of reasonable bounds (±10 years)')
         return false
       }
 
@@ -2246,7 +2246,7 @@ export const DatabaseService = {
       const newSprintLength = Math.round(durationDays / 7)
 
       if (newSprintLength < 1 || newSprintLength > 4) {
-        console.error('Invalid sprint length: must be between 1 and 4 weeks, got:', newSprintLength)
+        // console.error('Invalid sprint length: must be between 1 and 4 weeks, got:', newSprintLength)
         return false
       }
 
@@ -2262,13 +2262,13 @@ export const DatabaseService = {
         .eq('id', 1)
 
       if (error) {
-        console.error('Database error updating sprint dates:', error)
+        // console.error('Database error updating sprint dates:', error)
         return false
       }
 
       return true
     } catch (err) {
-      console.error('Unexpected error in updateSprintDates:', err)
+      // console.error('Unexpected error in updateSprintDates:', err)
       return false
     }
   },
@@ -2284,7 +2284,7 @@ export const DatabaseService = {
       .single()
     
     if (error) {
-      console.error('Error fetching global sprint settings:', error)
+      // console.error('Error fetching global sprint settings:', error)
       return null
     }
     
@@ -2357,7 +2357,7 @@ export const DatabaseService = {
     // Potential = Max capacity minus hours lost to absences
     const potential = Math.max(0, maxCapacity - totalAbsenceHours);
     
-    console.log(`🧮 Potential calculation: ${maxCapacity}h max - ${totalAbsenceHours}h absences = ${potential}h potential`);
+    // console.log(`🧮 Potential calculation: ${maxCapacity}h max - ${totalAbsenceHours}h absences = ${potential}h potential`);
     
     return potential;
   },
@@ -2400,7 +2400,7 @@ export const DatabaseService = {
     if (!sprintData || !sprintData.sprint_start_date) {
       // Return a consistent fallback period instead of using current date
       // This prevents data inconsistency when sprint data is missing
-      console.warn('⚠️ No sprint data available, using consistent fallback period');
+      // console.warn('⚠️ No sprint data available, using consistent fallback period');
       return {
         startDate: '2024-01-01', // Consistent fallback start
         endDate: '2024-01-14'    // Consistent fallback end (2 weeks)
@@ -2432,7 +2432,7 @@ export const DatabaseService = {
         .lte('date', endDate);
 
       if (error) {
-        console.error('Error fetching sprint schedule entries:', error);
+        // console.error('Error fetching sprint schedule entries:', error);
         return 0;
       }
 
@@ -2445,7 +2445,7 @@ export const DatabaseService = {
 
       return totalHours;
     } catch (error) {
-      console.error('Error calculating sprint actual hours:', error);
+      // console.error('Error calculating sprint actual hours:', error);
       return 0;
     }
   },
@@ -2468,13 +2468,13 @@ export const DatabaseService = {
       const { results: basicResults, errors: basicErrors } = basicQueries;
 
       if (Object.keys(basicErrors).length > 0) {
-        console.warn('Basic queries failed in company metrics batch:', basicErrors);
+        // console.warn('Basic queries failed in company metrics batch:', basicErrors);
       }
 
       const { sprint: currentSprint, teams, members: allMembers } = basicResults;
 
       if (!currentSprint || !teams || !allMembers) {
-        console.error('Critical data missing for company metrics');
+        // console.error('Critical data missing for company metrics');
         return null;
       }
 
@@ -2487,7 +2487,7 @@ export const DatabaseService = {
       const scheduleData = await this.getScheduleEntries(startDateStr, endDateStr);
       const sprintWeeks = (currentSprint as any)?.sprint_length_weeks || 2;
 
-      console.log(`📅 Optimized metrics calculation: ${startDateStr} to ${endDateStr}`);
+      // console.log(`📅 Optimized metrics calculation: ${startDateStr} to ${endDateStr}`);
       
       // Pre-calculate all team metrics in memory (no additional queries)
       const teamCapacityData: TeamCapacityStatus[] = [];
@@ -2506,7 +2506,7 @@ export const DatabaseService = {
         const sprintPotential = calculateSprintPotentialFromData(teamScheduleData, memberIds, sprintWeeks, startDateStr, endDateStr);
         const teamActualHours = calculateActualHoursFromData(teamScheduleData, startDateStr, endDateStr);
         
-        console.log(`📊 Team ${team.name}: ${memberCount} members, ${maxCapacity}h max, ${sprintPotential}h potential (${sprintWeeks} weeks), ${teamActualHours}h actual`)
+        // console.log(`📊 Team ${team.name}: ${memberCount} members, ${maxCapacity}h max, ${sprintPotential}h potential (${sprintWeeks} weeks), ${teamActualHours}h actual`)
         
         // Calculate sprint-based utilization and capacity status (based on potential, not max)
         const utilization = sprintPotential > 0 ? Math.round((teamActualHours / sprintPotential) * 100) : 0;
@@ -2564,7 +2564,7 @@ export const DatabaseService = {
       };
 
     } catch (error) {
-      console.error('Error in getCompanyCapacityMetricsOptimized:', error);
+      // console.error('Error in getCompanyCapacityMetricsOptimized:', error);
       return null;
     }
   },
@@ -2605,7 +2605,7 @@ export const DatabaseService = {
         )
       ]
     } catch (error) {
-      console.error('Error fetching team capacity comparison:', error)
+      // console.error('Error fetching team capacity comparison:', error)
       return []
     }
   },
@@ -2625,7 +2625,7 @@ export const DatabaseService = {
       const cached = await cooDashboardCache.getCOODashboardData(targetDate)
       
       if (cached) {
-        console.log('📋 COO dashboard cache hit:', { date: targetDate });
+        // console.log('📋 COO dashboard cache hit:', { date: targetDate });
         return cached;
       }
       
@@ -2634,7 +2634,7 @@ export const DatabaseService = {
         .rpc('get_coo_dashboard_optimized', { p_date: targetDate });
 
       if (error) {
-        console.error('Error fetching optimized COO dashboard data:', error);
+        // console.error('Error fetching optimized COO dashboard data:', error);
         return null;
       }
 
@@ -2654,17 +2654,17 @@ export const DatabaseService = {
       // Cache the result
       await cooDashboardCache.setCOODashboardData(dashboardData, targetDate);
 
-      console.log('✅ Optimized COO dashboard loaded:', {
-        teamsCount: data?.length || 0,
-        totalMembers: dashboardData.totals.members,
-        totalHours: dashboardData.totals.hours,
-        queryReduction: '27 queries → 1 query (96% reduction)',
-        cached: true
-      });
+      // console.log('✅ Optimized COO dashboard loaded:', {
+//       //   teamsCount: data?.length || 0,
+//       //   totalMembers: dashboardData.totals.members,
+//       //   totalHours: dashboardData.totals.hours,
+//       //   queryReduction: '27 queries → 1 query (96% reduction)',
+//       //   cached: true
+//       // });
 
       return dashboardData;
     } catch (error) {
-      console.error('Error in getCOODashboardDataOptimized:', error);
+      // console.error('Error in getCOODashboardDataOptimized:', error);
       return null;
     }
   },
@@ -2679,17 +2679,17 @@ export const DatabaseService = {
       async () => {
         // Use COO circuit breaker to handle complex dashboard queries with extended timeout
         return await cooDashboardCircuitBreaker.execute(async () => {
-        console.log('🔍 Loading COO dashboard data...')
+        // console.log('🔍 Loading COO dashboard data...')
         
         const teams = await this.getTeams()
-        console.log('🏢 Teams loaded:', teams.length, teams.map(t => ({ id: t.id, name: t.name })))
+        // console.log('🏢 Teams loaded:', teams.length, teams.map(t => ({ id: t.id, name: t.name })))
         
         const allMembers = await this.getTeamMembers()
-        console.log('👥 All members loaded:', allMembers.length)
+        // console.log('👥 All members loaded:', allMembers.length)
       
       // Check for Product Team specifically
       const productTeam = teams.find(t => t.name.toLowerCase().includes('product'))
-      console.log('📦 Product Team found:', productTeam ? `${productTeam.name} (ID: ${productTeam.id})` : 'NOT FOUND')
+      // console.log('📦 Product Team found:', productTeam ? `${productTeam.name} (ID: ${productTeam.id})` : 'NOT FOUND')
       
       const companyMetrics = await this.getCompanyCapacityMetrics()
       const currentSprint = await this.getCurrentGlobalSprint()
@@ -2733,49 +2733,49 @@ export const DatabaseService = {
       const capacityGapPercentage = sprintMax > 0 ? Math.round(((sprintMax - companyMetrics.currentWeek.potentialHours) / sprintMax) * 100) : 0
       
       // Enhanced validation logging for COO dashboard calculations
-      console.log('🧮 COO Dashboard Calculation Summary:')
-      console.log(`📊 Total Members: ${allMembers.length}`)
-      console.log(`📅 Sprint Period: ${sprintDateRange.startDate} to ${sprintDateRange.endDate} (${sprintWeeks} weeks)`)
-      console.log(`⚡ Sprint Max: ${sprintMax}h (${allMembers.length} members × working days × 7h)`)
-      console.log(`🎯 Sprint Potential: ${companyMetrics.currentWeek.potentialHours}h (after absences)`)
-      console.log(`📈 Current Utilization: ${correctedUtilization}% (potential ÷ max)`)
-      console.log(`💪 Capacity Gap: ${capacityGap}h (${capacityGapPercentage}% of max capacity lost to absences/reasons)`)
-      console.log(`⏰ Actual Hours: ${companyMetrics.currentWeek.actualHours}h`)
-      console.log(`🔍 Gap Analysis: ${sprintMax}h - ${companyMetrics.currentWeek.potentialHours}h = ${capacityGap}h gap`)
+      // console.log('🧮 COO Dashboard Calculation Summary:')
+      // console.log(`📊 Total Members: ${allMembers.length}`)
+      // console.log(`📅 Sprint Period: ${sprintDateRange.startDate} to ${sprintDateRange.endDate} (${sprintWeeks} weeks)`)
+      // console.log(`⚡ Sprint Max: ${sprintMax}h (${allMembers.length} members × working days × 7h)`)
+      // console.log(`🎯 Sprint Potential: ${companyMetrics.currentWeek.potentialHours}h (after absences)`)
+      // console.log(`📈 Current Utilization: ${correctedUtilization}% (potential ÷ max)`)
+      // console.log(`💪 Capacity Gap: ${capacityGap}h (${capacityGapPercentage}% of max capacity lost to absences/reasons)`)
+      // console.log(`⏰ Actual Hours: ${companyMetrics.currentWeek.actualHours}h`)
+      // console.log(`🔍 Gap Analysis: ${sprintMax}h - ${companyMetrics.currentWeek.potentialHours}h = ${capacityGap}h gap`)
       
       // Additional debugging for gap calculation
       if (capacityGap === 0) {
-        console.log('⚠️ Zero gap detected - this may indicate:')
-        console.log('   • No absences recorded for this sprint period')
-        console.log('   • Sprint max and potential are identical')
-        console.log('   • Possible data issue or calculation problem')
+        // console.log('⚠️ Zero gap detected - this may indicate:')
+        // console.log('   • No absences recorded for this sprint period')
+        // console.log('   • Sprint max and potential are identical')
+        // console.log('   • Possible data issue or calculation problem')
       } else if (Math.abs(capacityGap) < 10) {
-        console.log(`ℹ️ Small gap (${capacityGap}h) detected - consider showing percentage gap for better visibility`)
+        // console.log(`ℹ️ Small gap (${capacityGap}h) detected - consider showing percentage gap for better visibility`)
       }
       
       // Enhanced validation checks with proper error handling
       if (sprintMax < companyMetrics.currentWeek.potentialHours) {
-        console.warn('⚠️ Warning: Sprint Potential exceeds Sprint Max - possible calculation error')
-        console.warn(`   Sprint Max: ${sprintMax}h, Potential: ${companyMetrics.currentWeek.potentialHours}h`)
+        // console.warn('⚠️ Warning: Sprint Potential exceeds Sprint Max - possible calculation error')
+        // console.warn(`   Sprint Max: ${sprintMax}h, Potential: ${companyMetrics.currentWeek.potentialHours}h`)
       }
       if (correctedUtilization > 100) {
-        console.warn('⚠️ Warning: Utilization exceeds 100% - possible data issue')
-        console.warn(`   Utilization: ${correctedUtilization}%`)
+        // console.warn('⚠️ Warning: Utilization exceeds 100% - possible data issue')
+        // console.warn(`   Utilization: ${correctedUtilization}%`)
       }
       if (capacityGap < 0) {
-        console.warn('⚠️ Warning: Negative capacity gap - potential exceeds max capacity')
-        console.warn(`   This suggests calculation error or data inconsistency`)
+        // console.warn('⚠️ Warning: Negative capacity gap - potential exceeds max capacity')
+        // console.warn(`   This suggests calculation error or data inconsistency`)
       }
       
       // Validate input data quality
       if (sprintMax === 0) {
-        console.error('❌ Critical: Sprint Max is 0 - check member count and working days calculation')
+        // console.error('❌ Critical: Sprint Max is 0 - check member count and working days calculation')
       }
       if (allMembers.length === 0) {
-        console.error('❌ Critical: No team members found - check data source')
+        // console.error('❌ Critical: No team members found - check data source')
       }
       if (isNaN(capacityGap) || !isFinite(capacityGap)) {
-        console.error('❌ Critical: Invalid capacity gap calculation - check input data types')
+        // console.error('❌ Critical: Invalid capacity gap calculation - check input data types')
       }
       
       return {
@@ -2858,7 +2858,7 @@ export const DatabaseService = {
       
       return cooUsers
     } catch (error) {
-      console.error('Error fetching COO users:', error)
+      // console.error('Error fetching COO users:', error)
       return []
     }
   },
@@ -2870,23 +2870,23 @@ export const DatabaseService = {
     }
     
     try {
-      console.log('🔍 Fetching detailed schedule data for date range:', startDate, 'to', endDate)
+      // console.log('🔍 Fetching detailed schedule data for date range:', startDate, 'to', endDate)
       
       // Get all teams
       const teams = await this.getTeams()
-      console.log('📊 Found teams:', teams.length)
+      // console.log('📊 Found teams:', teams.length)
       
       // Get all team members
       const allMembers = await this.getTeamMembers()
-      console.log('👥 Found members:', allMembers.length)
+      // console.log('👥 Found members:', allMembers.length)
       
       // Get schedule entries for the date range
       const scheduleEntries = await this.getScheduleEntries(startDate, endDate)
-      console.log('📅 Found schedule entries for', Object.keys(scheduleEntries).length, 'members')
+      // console.log('📅 Found schedule entries for', Object.keys(scheduleEntries).length, 'members')
       
       // Generate week days array
       const weekDays = this.generateWeekDays(startDate, endDate)
-      console.log('📆 Week days:', weekDays)
+      // console.log('📆 Week days:', weekDays)
       
       // Process teams and members
       const detailedTeams: DetailedTeamScheduleData[] = []
@@ -2947,12 +2947,12 @@ export const DatabaseService = {
       const overallUtilization = companyTotalPotential > 0 ? 
         Math.round((companyTotalActual / companyTotalPotential) * 100) : 0
       
-      console.log('✅ Generated detailed schedule data:', {
-        teams: detailedTeams.length,
-        totalMembers: companyTotalMembers,
-        totalActualHours: companyTotalActual,
-        utilization: overallUtilization
-      })
+      // console.log('✅ Generated detailed schedule data:', {
+//       //   teams: detailedTeams.length,
+//       //   totalMembers: companyTotalMembers,
+//       //   totalActualHours: companyTotalActual,
+//       //   utilization: overallUtilization
+//       // })
       
       return {
         teams: detailedTeams,
@@ -2969,7 +2969,7 @@ export const DatabaseService = {
         }
       }
     } catch (error) {
-      console.error('Error fetching detailed company schedule data:', error)
+      // console.error('Error fetching detailed company schedule data:', error)
       return null
     }
   },
@@ -3086,7 +3086,7 @@ export const DatabaseService = {
         .order('sprint_start_date', { ascending: false })
       
       if (error) {
-        console.error('Error fetching sprint history:', error)
+        // console.error('Error fetching sprint history:', error)
         return []
       }
       
@@ -3127,7 +3127,7 @@ export const DatabaseService = {
       
       return enrichedData
     } catch (error) {
-      console.error('Error in getSprintHistory:', error)
+      // console.error('Error in getSprintHistory:', error)
       return []
     }
   },
@@ -3162,7 +3162,7 @@ export const DatabaseService = {
         .single()
       
       if (error) {
-        console.error('Error creating sprint:', error)
+        // console.error('Error creating sprint:', error)
         return null
       }
       
@@ -3170,7 +3170,7 @@ export const DatabaseService = {
       const enrichedSprint = await this.enrichSprintData(data)
       return enrichedSprint
     } catch (error) {
-      console.error('Error in createSprint:', error)
+      // console.error('Error in createSprint:', error)
       return null
     }
   },
@@ -3192,13 +3192,13 @@ export const DatabaseService = {
         .select()
       
       if (error) {
-        console.error('Error updating sprint:', error)
+        // console.error('Error updating sprint:', error)
         return null
       }
       
       // Check if any rows were updated
       if (!data || data.length === 0) {
-        console.error(`Sprint with id ${sprintId} not found`)
+        // console.error(`Sprint with id ${sprintId} not found`)
         return null
       }
       
@@ -3206,7 +3206,7 @@ export const DatabaseService = {
       const enrichedSprint = await this.enrichSprintData(data[0])
       return enrichedSprint
     } catch (error) {
-      console.error('Error in updateSprint:', error)
+      // console.error('Error in updateSprint:', error)
       return null
     }
   },
@@ -3223,13 +3223,13 @@ export const DatabaseService = {
         .eq('id', sprintId)
       
       if (error) {
-        console.error('Error deleting sprint:', error)
+        // console.error('Error deleting sprint:', error)
         return false
       }
       
       return true
     } catch (error) {
-      console.error('Error in deleteSprint:', error)
+      // console.error('Error in deleteSprint:', error)
       return false
     }
   },
@@ -3247,7 +3247,7 @@ export const DatabaseService = {
         .order('sprint_start_date', { ascending: true })
       
       if (error) {
-        console.error('Error fetching sprints by date range:', error)
+        // console.error('Error fetching sprints by date range:', error)
         return []
       }
       
@@ -3258,7 +3258,7 @@ export const DatabaseService = {
       
       return enrichedData
     } catch (error) {
-      console.error('Error in getSprintsByDateRange:', error)
+      // console.error('Error in getSprintsByDateRange:', error)
       return []
     }
   },
@@ -3276,7 +3276,7 @@ export const DatabaseService = {
         .single()
       
       if (error) {
-        console.error('Error fetching sprint by ID:', error)
+        // console.error('Error fetching sprint by ID:', error)
         return null
       }
       
@@ -3286,7 +3286,7 @@ export const DatabaseService = {
       const enrichedSprint = await this.enrichSprintData(data)
       return enrichedSprint
     } catch (error) {
-      console.error('Error in getSprintById:', error)
+      // console.error('Error in getSprintById:', error)
       return null
     }
   },
@@ -3304,7 +3304,7 @@ export const DatabaseService = {
         .order('sprint_start_date', { ascending: status === 'upcoming' })
       
       if (error) {
-        console.error('Error fetching sprints by status:', error)
+        // console.error('Error fetching sprints by status:', error)
         return []
       }
       
@@ -3315,7 +3315,7 @@ export const DatabaseService = {
       
       return enrichedData
     } catch (error) {
-      console.error('Error in getSprintsByStatus:', error)
+      // console.error('Error in getSprintsByStatus:', error)
       return []
     }
   },
@@ -3332,13 +3332,13 @@ export const DatabaseService = {
         .eq('status', 'active')
       
       if (error) {
-        console.error('Error getting active sprint count:', error)
+        // console.error('Error getting active sprint count:', error)
         return 0
       }
       
       return count || 0
     } catch (error) {
-      console.error('Error in getActiveSprintCount:', error)
+      // console.error('Error in getActiveSprintCount:', error)
       return 0
     }
   },
@@ -3361,7 +3361,7 @@ export const DatabaseService = {
       const { data, error } = await query
       
       if (error) {
-        console.error('Error validating sprint date range:', error)
+        // console.error('Error validating sprint date range:', error)
         return { isValid: false, conflicts: [] }
       }
       
@@ -3372,7 +3372,7 @@ export const DatabaseService = {
       
       return { isValid: enrichedConflicts.length === 0, conflicts: enrichedConflicts }
     } catch (error) {
-      console.error('Error in validateSprintDateRange:', error)
+      // console.error('Error in validateSprintDateRange:', error)
       return { isValid: false, conflicts: [] }
     }
   },
@@ -3383,7 +3383,7 @@ export const DatabaseService = {
     
     // Handle optional dates safely
     if (!sprint.sprint_start_date || !sprint.sprint_end_date) {
-      console.warn('enrichSprintData: Missing required dates for sprint', sprint)
+      // console.warn('enrichSprintData: Missing required dates for sprint', sprint)
       return {
         ...sprint,
         sprint_start_date: sprint.sprint_start_date || '',
@@ -3505,7 +3505,7 @@ export const DatabaseService = {
         .select('status, sprint_length_weeks')
 
       if (error) {
-        console.error('Error fetching sprint summary:', error)
+        // console.error('Error fetching sprint summary:', error)
         return {
           totalSprints: 0,
           activeSprints: 0,
@@ -3533,7 +3533,7 @@ export const DatabaseService = {
         averageDuration
       }
     } catch (error) {
-      console.error('Error in getSprintSummary:', error)
+      // console.error('Error in getSprintSummary:', error)
       return {
         totalSprints: 0,
         activeSprints: 0,
@@ -3628,13 +3628,13 @@ The table creation script includes:
     }
 
     try {
-      console.log('🚀 Initializing sprint planning database...')
+      // console.log('🚀 Initializing sprint planning database...')
       
       // First, try to verify if table exists by attempting a simple query
       const tableVerification = await this.verifySprintTable()
       
       if (tableVerification.exists && !tableVerification.error) {
-        console.log('✅ Sprint database already initialized')
+        // console.log('✅ Sprint database already initialized')
         return { 
           success: true, 
           message: `Sprint database ready - ${tableVerification.recordCount} sprints available`,
@@ -3643,12 +3643,12 @@ The table creation script includes:
       }
 
       if (tableVerification.exists && tableVerification.error) {
-        console.warn('⚠️ Sprint table exists but has issues:', tableVerification.error)
+        // console.warn('⚠️ Sprint table exists but has issues:', tableVerification.error)
         return await this.handleTablePermissionIssues()
       }
 
       // Table doesn't exist - try to detect it through information_schema  
-      console.log('🔍 Table not accessible via direct query, checking database schema...')
+      // console.log('🔍 Table not accessible via direct query, checking database schema...')
       const { data: tables, error: tablesError } = await supabase
         .from('information_schema.tables')
         .select('table_name')
@@ -3656,17 +3656,17 @@ The table creation script includes:
         .eq('table_name', 'sprint_history')
 
       if (tablesError) {
-        console.warn('⚠️ Could not check information_schema:', tablesError.message)
+        // console.warn('⚠️ Could not check information_schema:', tablesError.message)
         // Continue with table creation attempt
       } else if (tables && tables.length > 0) {
-        console.log('📋 Table exists in schema but not accessible - likely a permission issue')
+        // console.log('📋 Table exists in schema but not accessible - likely a permission issue')
         return await this.handleTablePermissionIssues()
       }
 
       // Table truly doesn't exist - attempt creation or provide manual setup instructions
-      console.log('❌ Sprint table does not exist - manual creation required')
-      console.log('📋 Manual setup instructions:')
-      console.log(this.getManualSetupInstructions())
+      // console.log('❌ Sprint table does not exist - manual creation required')
+      // console.log('📋 Manual setup instructions:')
+      // console.log(this.getManualSetupInstructions())
       
       return {
         success: false,
@@ -3675,7 +3675,7 @@ The table creation script includes:
       }
 
     } catch (error) {
-      console.error('❌ Error initializing sprint database:', error)
+      // console.error('❌ Error initializing sprint database:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       
       return { 
@@ -3688,7 +3688,7 @@ The table creation script includes:
 
   async createSprintTablesManually(): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('🔧 Creating sprint tables manually using Supabase client...')
+      // console.log('🔧 Creating sprint tables manually using Supabase client...')
       
       // Since we can't execute raw SQL easily, let's try to create a minimal version
       // by inserting a test record and letting Supabase create the table structure
@@ -3711,7 +3711,7 @@ The table creation script includes:
         .insert([testSprint])
 
       if (insertError) {
-        console.error('Error creating table via insert:', insertError)
+        // console.error('Error creating table via insert:', insertError)
         return { success: false, message: `Table creation failed: ${insertError.message}` }
       }
 
@@ -3721,11 +3721,11 @@ The table creation script includes:
         .delete()
         .eq('sprint_number', 999)
 
-      console.log('✅ Sprint table created via insert method')
+      // console.log('✅ Sprint table created via insert method')
       return { success: true, message: 'Sprint table created successfully' }
 
     } catch (error) {
-      console.error('Error in createSprintTablesManually:', error)
+      // console.error('Error in createSprintTablesManually:', error)
       return { success: false, message: `Manual table creation failed: ${error}` }
     }
   },
@@ -3768,12 +3768,12 @@ The table creation script includes:
         .upsert(sampleSprints, { onConflict: 'sprint_number' })
 
       if (error) {
-        console.error('Error adding sample sprint data:', error)
+        // console.error('Error adding sample sprint data:', error)
       } else {
-        console.log('✅ Sample sprint data added')
+        // console.log('✅ Sample sprint data added')
       }
     } catch (error) {
-      console.error('Error adding sample sprint data:', error)
+      // console.error('Error adding sample sprint data:', error)
     }
   },
 
@@ -3828,7 +3828,7 @@ The table creation script includes:
       const { data, error, count } = await query
 
       if (error) {
-        console.error('Error fetching availability templates:', error)
+        // console.error('Error fetching availability templates:', error)
         return { templates: [], totalCount: 0, hasMore: false }
       }
 
@@ -3847,7 +3847,7 @@ The table creation script includes:
 
       return { templates, totalCount, hasMore }
     } catch (error) {
-      console.error('Error in getAvailabilityTemplates:', error)
+      // console.error('Error in getAvailabilityTemplates:', error)
       return { templates: [], totalCount: 0, hasMore: false }
     }
   },
@@ -3872,7 +3872,7 @@ The table creation script includes:
         .single()
 
       if (error) {
-        console.error('Error creating template:', error)
+        // console.error('Error creating template:', error)
         return null
       }
 
@@ -3886,7 +3886,7 @@ The table creation script includes:
         updatedAt: data.updated_at
       }
     } catch (error) {
-      console.error('Error in createTemplate:', error)
+      // console.error('Error in createTemplate:', error)
       return null
     }
   },
@@ -3912,7 +3912,7 @@ The table creation script includes:
         .single()
 
       if (error) {
-        console.error('Error updating template:', error)
+        // console.error('Error updating template:', error)
         return null
       }
 
@@ -3926,7 +3926,7 @@ The table creation script includes:
         updatedAt: data.updated_at
       }
     } catch (error) {
-      console.error('Error in updateTemplate:', error)
+      // console.error('Error in updateTemplate:', error)
       return null
     }
   },
@@ -3943,13 +3943,13 @@ The table creation script includes:
         .eq('id', templateId)
 
       if (error) {
-        console.error('Error deleting template:', error)
+        // console.error('Error deleting template:', error)
         return false
       }
 
       return true
     } catch (error) {
-      console.error('Error in deleteTemplate:', error)
+      // console.error('Error in deleteTemplate:', error)
       return false
     }
   },
@@ -3966,10 +3966,10 @@ The table creation script includes:
         .eq('id', templateId)
 
       if (error) {
-        console.error('Error incrementing template usage:', error)
+        // console.error('Error incrementing template usage:', error)
       }
     } catch (error) {
-      console.error('Error in incrementTemplateUsage:', error)
+      // console.error('Error in incrementTemplateUsage:', error)
     }
   },
 
@@ -3986,7 +3986,7 @@ The table creation script includes:
         .single()
 
       if (error) {
-        console.error('Error fetching template by ID:', error)
+        // console.error('Error fetching template by ID:', error)
         return null
       }
 
@@ -4000,7 +4000,7 @@ The table creation script includes:
         updatedAt: data.updated_at
       }
     } catch (error) {
-      console.error('Error in getTemplateById:', error)
+      // console.error('Error in getTemplateById:', error)
       return null
     }
   },
@@ -4031,7 +4031,7 @@ The table creation script includes:
 
     try {
       // Try to use enhanced database function for better performance
-      console.log('📞 Attempting to call database function get_daily_company_status...')
+      // console.log('📞 Attempting to call database function get_daily_company_status...')
       
       const { data: functionData, error: functionError } = await supabase
         .rpc('get_daily_company_status', { target_date: dateStr })
@@ -4040,20 +4040,20 @@ The table creation script includes:
         // Check if it's a function not found error
         if (functionError.message.includes('could not find function') || 
             functionError.message.includes('function') && functionError.message.includes('does not exist')) {
-          console.warn('⚠️ Database function get_daily_company_status not found, using fallback method')
+          // console.warn('⚠️ Database function get_daily_company_status not found, using fallback method')
           dailyStatusData = await this.getDailyCompanyStatusFallback(dateStr)
           usedFallback = true
         } else {
-          console.error('🚨 Database function error:', functionError)
+          // console.error('🚨 Database function error:', functionError)
           // For other errors, try fallback after a brief retry
           await this.delay(1000) // Wait 1 second
           
-          console.log('🔄 Retrying database function call...')
+          // console.log('🔄 Retrying database function call...')
           const { data: retryData, error: retryError } = await supabase
             .rpc('get_daily_company_status', { target_date: dateStr })
           
           if (retryError) {
-            console.warn('⚠️ Retry failed, using fallback method:', retryError.message)
+            // console.warn('⚠️ Retry failed, using fallback method:', retryError.message)
             dailyStatusData = await this.getDailyCompanyStatusFallback(dateStr)
             usedFallback = true
           } else {
@@ -4064,17 +4064,17 @@ The table creation script includes:
         dailyStatusData = functionData
       }
     } catch (error) {
-      console.error('🚨 Exception calling database function:', error)
-      console.log('🔄 Using fallback method due to exception')
+      // console.error('🚨 Exception calling database function:', error)
+      // console.log('🔄 Using fallback method due to exception')
       dailyStatusData = await this.getDailyCompanyStatusFallback(dateStr)
       usedFallback = true
     }
 
     if (usedFallback) {
-      console.log('🔧 Successfully retrieved data using fallback method')
+      // console.log('🔧 Successfully retrieved data using fallback method')
     }
 
-    console.log(`👥 Found ${dailyStatusData?.length || 0} daily status records`)
+    // console.log(`👥 Found ${dailyStatusData?.length || 0} daily status records`)
 
     try {
       // Process the data from the enhanced function or fallback
@@ -4115,9 +4115,9 @@ The table creation script includes:
         }
       })
 
-      console.log(`✅ Generated status for ${teamStatuses.length} teams:`)
+      // console.log(`✅ Generated status for ${teamStatuses.length} teams:`)
       teamStatuses.forEach(team => {
-        console.log(`  - ${team.name}: ${team.total} members (${team.available} available)`)
+        // console.log(`  - ${team.name}: ${team.total} members (${team.available} available)`)
       })
 
       return {
@@ -4130,18 +4130,18 @@ The table creation script includes:
       }
 
     } catch (error) {
-      console.error('🚨 Error processing daily company status data:', {
-        error: error instanceof Error ? {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        } : error,
-        errorString: String(error),
-        date: selectedDate.toISOString().split('T')[0],
-        timestamp: new Date().toISOString(),
-        usedFallback,
-        context: 'data_processing_phase'
-      })
+      // console.error('🚨 Error processing daily company status data:', {
+//         error: error instanceof Error ? {
+//           name: error.name,
+//           message: error.message,
+//           stack: error.stack
+//         } : error,
+//         errorString: String(error),
+//         date: selectedDate.toISOString().split('T')[0],
+//         timestamp: new Date().toISOString(),
+//         usedFallback,
+//         context: 'data_processing_phase'
+//       })
       
       // Provide user-friendly error message
       const userMessage = usedFallback 
@@ -4167,20 +4167,20 @@ The table creation script includes:
     operationName: string
   ): Promise<T> {
     try {
-      console.log(`🔄 Executing ${operationName}...`)
+      // console.log(`🔄 Executing ${operationName}...`)
       return await primaryOperation()
     } catch (error) {
-      console.warn(`⚠️ ${operationName} failed, trying fallback:`, error)
+      // console.warn(`⚠️ ${operationName} failed, trying fallback:`, error)
       
       try {
         const result = await fallbackOperation()
-        console.log(`✅ ${operationName} succeeded using fallback`)
+        // console.log(`✅ ${operationName} succeeded using fallback`)
         return result
       } catch (fallbackError) {
-        console.error(`🚨 Both primary and fallback ${operationName} failed:`, {
-          primaryError: error,
-          fallbackError
-        })
+        // console.error(`🚨 Both primary and fallback ${operationName} failed:`, {
+//           primaryError: error,
+//           fallbackError
+//         })
         throw new Error(`${operationName} failed: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
@@ -4223,7 +4223,7 @@ The table creation script includes:
       }))
 
     } catch (error) {
-      console.error('Error getting critical absences:', error)
+      // console.error('Error getting critical absences:', error)
       return []
     }
   },
@@ -4276,7 +4276,7 @@ The table creation script includes:
       }))
 
     } catch (error) {
-      console.error('Error getting reserve duty members:', error)
+      // console.error('Error getting reserve duty members:', error)
       return []
     }
   },
@@ -4360,7 +4360,7 @@ The table creation script includes:
       }))
 
     } catch (error) {
-      console.error('Error getting team capacity for date:', error)
+      // console.error('Error getting team capacity for date:', error)
       return []
     }
   },
@@ -4394,7 +4394,7 @@ The table creation script includes:
         sprint_end_date: null 
       }
     } catch (error) {
-      console.error('Error fetching sprint notes:', error)
+      // console.error('Error fetching sprint notes:', error)
       return { sprint_number: sprintNumber, notes: '', sprint_start_date: null, sprint_end_date: null }
     }
   },
@@ -4425,13 +4425,13 @@ The table creation script includes:
         })
 
       if (error) {
-        console.error('Error saving sprint notes:', error)
+        // console.error('Error saving sprint notes:', error)
         return false
       }
 
       return true
     } catch (error) {
-      console.error('Error saving sprint notes:', error)
+      // console.error('Error saving sprint notes:', error)
       return false
     }
   },
@@ -4472,7 +4472,7 @@ The table creation script includes:
         }
       }
     } catch (error) {
-      console.error('Error fetching sprint with navigation:', error)
+      // console.error('Error fetching sprint with navigation:', error)
       return null
     }
   },
@@ -4491,7 +4491,7 @@ The table creation script includes:
         .single()
       
       if (error) {
-        console.error('Error fetching team by ID:', error)
+        // console.error('Error fetching team by ID:', error)
         return null
       }
       
@@ -4504,7 +4504,7 @@ The table creation script includes:
         updated_at: data.updated_at
       }
     } catch (error) {
-      console.error('Error fetching team by ID:', error)
+      // console.error('Error fetching team by ID:', error)
       return null
     }
   },
@@ -4515,15 +4515,15 @@ The table creation script includes:
     }
     
     try {
-      console.log(`🔍 Loading team dashboard data for team ${teamId}...`)
+      // console.log(`🔍 Loading team dashboard data for team ${teamId}...`)
       
       // Get team members
       const teamMembers = await this.getTeamMembers(teamId)
-      console.log(`👥 Team members loaded: ${teamMembers.length}`)
+      // console.log(`👥 Team members loaded: ${teamMembers.length}`)
       
       // Get current sprint
       const currentSprint = await this.getCurrentGlobalSprint()
-      console.log(`🚀 Current sprint:`, currentSprint ? `Sprint ${currentSprint.current_sprint_number}` : 'None')
+      // console.log(`🚀 Current sprint:`, currentSprint ? `Sprint ${currentSprint.current_sprint_number}` : 'None')
       
       // Get current week schedule data for the team
       const currentWeekDates = this.getCurrentWeekDates()
@@ -4531,7 +4531,7 @@ The table creation script includes:
       const endDate = currentWeekDates[4].toISOString().split('T')[0]
       
       const scheduleData = await this.getScheduleEntries(startDate, endDate, teamId)
-      console.log(`📅 Schedule data loaded for ${Object.keys(scheduleData).length} members`)
+      // console.log(`📅 Schedule data loaded for ${Object.keys(scheduleData).length} members`)
       
       // Use the team calculation service to compute metrics
       const { TeamCalculationService } = await import('./teamCalculationService')
@@ -4546,7 +4546,7 @@ The table creation script includes:
       return teamMetrics
       
     } catch (error) {
-      console.error('❌ Error loading team dashboard data:', error)
+      // console.error('❌ Error loading team dashboard data:', error)
       return null
     }
   },
@@ -4574,7 +4574,7 @@ The table creation script includes:
   // Get current active enhanced sprint
   async getCurrentEnhancedSprint(): Promise<any> {
     if (!isSupabaseConfigured()) {
-      console.error('Supabase not configured for getCurrentEnhancedSprint')
+      // console.error('Supabase not configured for getCurrentEnhancedSprint')
       return null
     }
     
@@ -4585,13 +4585,13 @@ The table creation script includes:
         .single()
       
       if (error) {
-        console.error('Error fetching current enhanced sprint:', error)
+        // console.error('Error fetching current enhanced sprint:', error)
         return null
       }
       
       return data
     } catch (error) {
-      console.error('Error in getCurrentEnhancedSprint:', error)
+      // console.error('Error in getCurrentEnhancedSprint:', error)
       return null
     }
   },
@@ -4609,13 +4609,13 @@ The table creation script includes:
         .order('created_at', { ascending: false })
       
       if (error) {
-        console.error('Error fetching enhanced sprint configs:', error)
+        // console.error('Error fetching enhanced sprint configs:', error)
         return []
       }
       
       return data || []
     } catch (error) {
-      console.error('Error in getEnhancedSprintConfigs:', error)
+      // console.error('Error in getEnhancedSprintConfigs:', error)
       return []
     }
   },
@@ -4623,7 +4623,7 @@ The table creation script includes:
   // Create new enhanced sprint configuration
   async createEnhancedSprintConfig(config: any): Promise<any> {
     if (!isSupabaseConfigured()) {
-      console.error('Supabase not configured for createEnhancedSprintConfig')
+      // console.error('Supabase not configured for createEnhancedSprintConfig')
       return null
     }
     
@@ -4635,13 +4635,13 @@ The table creation script includes:
         .single()
       
       if (error) {
-        console.error('Error creating enhanced sprint config:', error)
+        // console.error('Error creating enhanced sprint config:', error)
         return null
       }
       
       return data
     } catch (error) {
-      console.error('Error in createEnhancedSprintConfig:', error)
+      // console.error('Error in createEnhancedSprintConfig:', error)
       return null
     }
   },
@@ -4659,13 +4659,13 @@ The table creation script includes:
         .eq('id', id)
       
       if (error) {
-        console.error('Error updating enhanced sprint config:', error)
+        // console.error('Error updating enhanced sprint config:', error)
         return false
       }
       
       return true
     } catch (error) {
-      console.error('Error in updateEnhancedSprintConfig:', error)
+      // console.error('Error in updateEnhancedSprintConfig:', error)
       return false
     }
   },
@@ -4683,13 +4683,13 @@ The table creation script includes:
         .order('team_name')
       
       if (error) {
-        console.error('Error fetching team sprint analytics:', error)
+        // console.error('Error fetching team sprint analytics:', error)
         return []
       }
       
       return data || []
     } catch (error) {
-      console.error('Error in getTeamSprintAnalytics:', error)
+      // console.error('Error in getTeamSprintAnalytics:', error)
       return []
     }
   },
@@ -4708,13 +4708,13 @@ The table creation script includes:
         .order('work_date')
       
       if (error) {
-        console.error('Error fetching sprint working days:', error)
+        // console.error('Error fetching sprint working days:', error)
         return []
       }
       
       return data || []
     } catch (error) {
-      console.error('Error in getSprintWorkingDays:', error)
+      // console.error('Error in getSprintWorkingDays:', error)
       return []
     }
   },
@@ -4733,13 +4733,13 @@ The table creation script includes:
         })
       
       if (error) {
-        console.error('Error calculating member sprint capacity:', error)
+        // console.error('Error calculating member sprint capacity:', error)
         return null
       }
       
       return data?.[0] || null
     } catch (error) {
-      console.error('Error in calculateMemberSprintCapacity:', error)
+      // console.error('Error in calculateMemberSprintCapacity:', error)
       return null
     }
   },
@@ -4757,13 +4757,13 @@ The table creation script includes:
         })
       
       if (error) {
-        console.error('Error auto-generating weekend entries:', error)
+        // console.error('Error auto-generating weekend entries:', error)
         return 0
       }
       
       return data || 0
     } catch (error) {
-      console.error('Error in autoGenerateWeekendEntries:', error)
+      // console.error('Error in autoGenerateWeekendEntries:', error)
       return 0
     }
   },
@@ -4788,7 +4788,7 @@ The table creation script includes:
         .eq('id', sprintId)
       
       if (error) {
-        console.error('Error activating enhanced sprint:', error)
+        // console.error('Error activating enhanced sprint:', error)
         return false
       }
       
@@ -4797,7 +4797,7 @@ The table creation script includes:
       
       return true
     } catch (error) {
-      console.error('Error in activateEnhancedSprint:', error)
+      // console.error('Error in activateEnhancedSprint:', error)
       return false
     }
   },
@@ -4838,13 +4838,13 @@ The table creation script includes:
         })
       
       if (error) {
-        console.error('Error updating schedule entry with sprint:', error)
+        // console.error('Error updating schedule entry with sprint:', error)
         return false
       }
       
       return true
     } catch (error) {
-      console.error('Error in updateScheduleEntryWithSprint:', error)
+      // console.error('Error in updateScheduleEntryWithSprint:', error)
       return false
     }
   },
@@ -4861,7 +4861,7 @@ The table creation script includes:
       if (error) {
         // Fallback to client-side conversion if function is missing
         if (error.message.includes('could not find function')) {
-          console.warn('⚠️ Database function value_to_hours not found, using client-side fallback');
+          // console.warn('⚠️ Database function value_to_hours not found, using client-side fallback');
           return this.convertValueToHoursClient(valueStr);
         }
         throw new Error(error.message);
@@ -4869,7 +4869,7 @@ The table creation script includes:
 
       return data || 0;
     } catch (error) {
-      console.error('Error converting value to hours:', error);
+      // console.error('Error converting value to hours:', error);
       return this.convertValueToHoursClient(valueStr);
     }
   },
@@ -5026,7 +5026,7 @@ The table creation script includes:
         additionalData: { memberIds: options.memberIds.slice(0, 5), startDate: options.startDate, endDate: options.endDate }
       });
       
-      console.error('Failed to fetch bulk schedule entries:', appError.userMessage);
+      // console.error('Failed to fetch bulk schedule entries:', appError.userMessage);
       return [];
     }
   },
@@ -5076,7 +5076,7 @@ The table creation script includes:
         action: 'getAllMembers'
       });
       
-      console.error('Failed to fetch all members:', appError.userMessage);
+      // console.error('Failed to fetch all members:', appError.userMessage);
       return [];
     }
   },
@@ -5121,7 +5121,7 @@ The table creation script includes:
       };
 
     } catch (error) {
-      console.error('Failed to create team member:', error);
+      // console.error('Failed to create team member:', error);
       throw error;
     }
   },
