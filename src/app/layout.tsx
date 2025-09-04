@@ -153,8 +153,8 @@ export default function RootLayout({
         <meta httpEquiv="Cache-Control" content="public, max-age=3600, stale-while-revalidate=86400" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         
-        {/* Service Worker registration script - external file for security - low priority */}
-        <script src="/scripts/service-worker-init.js" defer async></script>
+        {/* Service Worker registration script - TEMPORARILY DISABLED - external file for security - low priority */}
+        {/* <script src="/scripts/service-worker-init.js" defer async></script> */}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -191,8 +191,8 @@ export default function RootLayout({
         {/* Version display for mobile emergency debugging */}
         <LazyVersionDisplay />
         
-        {/* Non-critical scripts - loaded after main content for better LCP */}
-        <script 
+        {/* Non-critical scripts - TEMPORARILY DISABLED - loaded after main content for better LCP */}
+        {/* <script 
           src="/scripts/performance-monitor.js" 
           defer 
         ></script>
@@ -205,7 +205,7 @@ export default function RootLayout({
         <script 
           src="/scripts/mobile-touch-init.js" 
           defer 
-        ></script>
+        ></script> */}
       </body>
     </html>
   );

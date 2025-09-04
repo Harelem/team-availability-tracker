@@ -417,8 +417,15 @@ async function handleStaticAsset(request) {
         const networkResponse = await fetch(request);
         if (networkResponse.ok) {
           const cache = await caches.open(STATIC_CACHE);
-          const responseToCache = networkResponse.clone();
-          responseToCache.headers.set('sw-cached-date', Date.now().toString());
+          // Create new response with custom headers instead of modifying immutable ones
+          const responseBody = await networkResponse.clone().arrayBuffer();
+          const newHeaders = new Headers(networkResponse.headers);
+          newHeaders.set('sw-cached-date', Date.now().toString());
+          const responseToCache = new Response(responseBody, {
+            status: networkResponse.status,
+            statusText: networkResponse.statusText,
+            headers: newHeaders
+          });
           cache.put(request, responseToCache);
           return networkResponse;
         }
@@ -435,9 +442,16 @@ async function handleStaticAsset(request) {
     
     if (networkResponse.ok) {
       const cache = await caches.open(STATIC_CACHE);
-      const responseToCache = networkResponse.clone();
-      responseToCache.headers.set('sw-cached-date', Date.now().toString());
-      responseToCache.headers.set('sw-mobile-cached', isMobile.toString());
+      // Create new response with custom headers instead of modifying immutable ones
+      const responseBody = await networkResponse.clone().arrayBuffer();
+      const newHeaders = new Headers(networkResponse.headers);
+      newHeaders.set('sw-cached-date', Date.now().toString());
+      newHeaders.set('sw-mobile-cached', isMobile.toString());
+      const responseToCache = new Response(responseBody, {
+        status: networkResponse.status,
+        statusText: networkResponse.statusText,
+        headers: newHeaders
+      });
       cache.put(request, responseToCache);
     }
     
@@ -595,8 +609,15 @@ async function updateCacheInBackground(request) {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(STATIC_CACHE);
-      const responseToCache = response.clone();
-      responseToCache.headers.set('sw-cached-date', Date.now().toString());
+      // Create new response with custom headers instead of modifying immutable ones
+      const responseBody = await response.clone().arrayBuffer();
+      const newHeaders = new Headers(response.headers);
+      newHeaders.set('sw-cached-date', Date.now().toString());
+      const responseToCache = new Response(responseBody, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+      });
       cache.put(request, responseToCache);
     }
   } catch (error) {
