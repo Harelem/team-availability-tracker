@@ -63,6 +63,7 @@ export default function ManagerDashboard({
   teamMembers,
   className = ''
 }: ManagerDashboardProps) {
+  
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading, error: sprintError } = useGlobalSprint();
   

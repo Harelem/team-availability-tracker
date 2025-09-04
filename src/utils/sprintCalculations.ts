@@ -14,7 +14,23 @@ interface CachedSprintPeriod {
 const sprintPeriodCache = new Map<string, CachedSprintPeriod>();
 const SPRINT_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours cache
 
-export const calculateSprintPeriod = (currentSprint: CurrentGlobalSprint, offset: number = 0): SprintPeriod => {
+export const calculateSprintPeriod = (currentSprint: CurrentGlobalSprint | null, offset: number = 0): SprintPeriod => {
+  // NULL SAFETY: Handle null sprint data gracefully
+  if (!currentSprint || !currentSprint.sprint_start_date || !currentSprint.sprint_length_weeks) {
+    // Return sensible default for today's date with 2-week period
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Start of current week
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 13); // 2-week sprint
+    
+    return {
+      startDate: startOfWeek.toISOString().split('T')[0],
+      endDate: endOfWeek.toISOString().split('T')[0]
+    };
+  }
+  
   // Create cache key
   const cacheKey = `${currentSprint.sprint_start_date}_${currentSprint.sprint_length_weeks}_${offset}`;
   
@@ -141,22 +157,22 @@ export const getSprintDescription = (offset: number): string => {
 };
 
 // Sprint date calculation functions for Sprint Toggle feature
-export const getPreviousSprintDates = (currentSprint: CurrentGlobalSprint): SprintPeriod => {
+export const getPreviousSprintDates = (currentSprint: CurrentGlobalSprint | null): SprintPeriod => {
   return calculateSprintPeriod(currentSprint, -1);
 };
 
-export const getCurrentSprintDates = (currentSprint: CurrentGlobalSprint): SprintPeriod => {
+export const getCurrentSprintDates = (currentSprint: CurrentGlobalSprint | null): SprintPeriod => {
   return calculateSprintPeriod(currentSprint, 0);
 };
 
-export const getNextSprintDates = (currentSprint: CurrentGlobalSprint): SprintPeriod => {
+export const getNextSprintDates = (currentSprint: CurrentGlobalSprint | null): SprintPeriod => {
   return calculateSprintPeriod(currentSprint, 1);
 };
 
 // Get sprint dates by type for easier usage
 export type SprintType = 'previous' | 'current' | 'next';
 
-export const getSprintDatesByType = (currentSprint: CurrentGlobalSprint, sprintType: SprintType): SprintPeriod => {
+export const getSprintDatesByType = (currentSprint: CurrentGlobalSprint | null, sprintType: SprintType): SprintPeriod => {
   switch (sprintType) {
     case 'previous':
       return getPreviousSprintDates(currentSprint);
@@ -185,16 +201,18 @@ export const calculateDaysUntilSprintStart = (sprintStartDate: string): number =
 };
 
 // Get sprint number for a given sprint type
-export const getSprintNumber = (currentSprint: CurrentGlobalSprint, sprintType: SprintType): number => {
+export const getSprintNumber = (currentSprint: CurrentGlobalSprint | null, sprintType: SprintType): number => {
+  const baseSprintNumber = currentSprint?.current_sprint_number || 1;
+  
   switch (sprintType) {
     case 'previous':
-      return (currentSprint.current_sprint_number || 1) - 1;
+      return baseSprintNumber - 1;
     case 'current':
-      return currentSprint.current_sprint_number || 1;
+      return baseSprintNumber;
     case 'next':
-      return (currentSprint.current_sprint_number || 1) + 1;
+      return baseSprintNumber + 1;
     default:
-      return currentSprint.current_sprint_number || 1;
+      return baseSprintNumber;
   }
 };
 

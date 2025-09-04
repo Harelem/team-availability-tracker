@@ -22,8 +22,8 @@ const PersonalDashboard = dynamic(() => import('@/components/PersonalDashboard')
   ssr: false
 });
 
-// OPTIMIZED: Use React.lazy for better code splitting
-const LazyManagerDashboard = React.lazy(() => import('@/components/ManagerDashboard'));
+// TEMP: Direct import instead of lazy to debug loading issue
+import ManagerDashboard from '@/components/ManagerDashboard';
 
 // OPTIMIZED: Lazy load team selection for faster initial load  
 const TeamSelectionScreen = dynamic(() => import('@/components/TeamSelectionScreen'), {
@@ -108,6 +108,7 @@ function HomeContent() {
 
   // PERFORMANCE: Create stable references for PersonalDashboard props to prevent unnecessary re-renders
   const stableSelectedUser = useMemo(() => selectedUser, [selectedUser?.id, selectedUser?.name, selectedUser?.isManager]);
+  
   const stableSelectedTeam = useMemo(() => selectedTeam, [selectedTeam?.id, selectedTeam?.name]);
   const stableTeamMembers = useMemo(() => teamMembers, [teamMembers.length, teamMembers.map(m => m.id).join(',')]);
 
@@ -499,16 +500,14 @@ function HomeContent() {
             {canViewSprints(selectedUser) && selectedTeam && selectedUser && (
               <GlobalSprintProvider teamId={selectedTeam.id}>
                 <Suspense fallback={<LoadingState mode="inline" testId="sprint-dashboard-loading" showText text="Loading sprint data..." />}>
-                  {selectedUser.isManager ? (
-                    <React.Suspense fallback={<LoadingState mode="inline" testId="manager-dashboard-loading" showText text="Loading manager dashboard..." />}>
+                  {selectedUser?.isManager ? (
                       <ManagerDashboardErrorBoundary>
-                        <LazyManagerDashboard 
+                        <ManagerDashboard 
                           user={stableSelectedUser}
                           team={stableSelectedTeam}
                           teamMembers={stableTeamMembers}
                         />
                       </ManagerDashboardErrorBoundary>
-                    </React.Suspense>
                   ) : (
                     <PersonalDashboard 
                       user={stableSelectedUser}
@@ -523,16 +522,14 @@ function HomeContent() {
             {/* Show basic dashboard without sprint features if user can't view sprints */}
             {!canViewSprints(selectedUser) && selectedTeam && selectedUser && (
               <Suspense fallback={<LoadingState mode="inline" testId="basic-dashboard-loading" showText text="Loading dashboard..." />}>
-                {selectedUser.isManager ? (
-                  <React.Suspense fallback={<LoadingState mode="inline" testId="manager-dashboard-basic-loading" showText text="Loading manager dashboard..." />}>
+                {selectedUser?.isManager ? (
                     <ManagerDashboardErrorBoundary>
-                      <LazyManagerDashboard 
+                      <ManagerDashboard 
                         user={stableSelectedUser}
                         team={stableSelectedTeam}
                         teamMembers={stableTeamMembers}
                       />
                     </ManagerDashboardErrorBoundary>
-                  </React.Suspense>
                 ) : (
                   <PersonalDashboard 
                     user={stableSelectedUser}
