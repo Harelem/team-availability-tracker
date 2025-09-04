@@ -1,19 +1,12 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "installCommand": "npm ci",
-  "outputDirectory": ".next",
   "regions": ["iad1"],
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1",
-      "NODE_OPTIONS": "--max-old-space-size=4096",
-      "NODE_ENV": "production"
+      "NODE_OPTIONS": "--max-old-space-size=4096"
     }
-  },
-  "env": {
-    "NODE_ENV": "production"
   },
   "headers": [
     {
@@ -32,27 +25,6 @@
           "value": "strict-origin-when-cross-origin"
         }
       ]
-    },
-    {
-      "source": "/sw.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        },
-        {
-          "key": "Service-Worker-Allowed",
-          "value": "/"
-        }
-      ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/health",
-      "destination": "/pages/api/health.js"
-    }
-  ],
-  "trailingSlash": false,
-  "cleanUrls": true
+  ]
 }
