@@ -52,11 +52,11 @@
             <div class="summary-grid">
                 <div class="summary-card">
                     <h3>Total Phases</h3>
-                    <div class="value">8</div>
+                    <div class="value">9</div>
                 </div>
                 <div class="summary-card">
                     <h3>Passed</h3>
-                    <div class="value" style="color: #28a745">0</div>
+                    <div class="value" style="color: #28a745">1</div>
                 </div>
                 <div class="summary-card">
                     <h3>Failed</h3>
@@ -68,7 +68,7 @@
                 </div>
                 <div class="summary-card">
                     <h3>Execution Time</h3>
-                    <div class="value" style="color: #6f42c1">17s</div>
+                    <div class="value" style="color: #6f42c1">24s</div>
                 </div>
             </div>
         </div>
@@ -88,62 +88,8 @@
                     </div>
                     <div class="phase-content">
                         <div class="phase-description">Validates sprint calculations, Israeli work week compliance, and data consistency</div>
-                        <p><strong>Execution Time:</strong> 1201ms</p>
-                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run audit:data-accuracy
-FAIL __tests__/audit/dataAccuracy.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expression expected
-         ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/dataAccuracy.test.ts[0m:161:1]
-     [2m158[0m |         sprint_length_weeks: 2
-     [2m159[0m |       });
-     [2m160[0m | 
-     [2m161[0m |       render(<COOExecutiveDashboard />);
-         : [35;1m                                    ^[0m
-     [2m162[0m |       
-     [2m163[0m |       await waitFor(() => {
-     [2m164[0m |         // Should NOT find any mock data indicators
-         `----
-      [31mx[0m Expression expected
-         ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/dataAccuracy.test.ts[0m:161:1]
-     [2m158[0m |         sprint_length_weeks: 2
-     [2m159[0m |       });
-     [2m160[0m | 
-     [2m161[0m |       render(<COOExecutiveDashboard />);
-         : [35;1m                                     ^[0m
-     [2m162[0m |       
-     [2m163[0m |       await waitFor(() => {
-     [2m164[0m |         // Should NOT find any mock data indicators
-         `----
-      [31mx[0m Expression expected
-         ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/dataAccuracy.test.ts[0m:161:1]
-     [2m158[0m |         sprint_length_weeks: 2
-     [2m159[0m |       });
-     [2m160[0m | 
-     [2m161[0m |       render(<COOExecutiveDashboard />);
-         : [35;1m                                      ^[0m
-     [2m162[0m |       
-     [2m163[0m |       await waitFor(() => {
-     [2m164[0m |         // Should NOT find any mock data indicators
-         `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-Test Suites: 1 failed, 1 total
-Tests:       0 total
-Snapshots:   0 total
-Time:        0.448 s
-Ran all test suites matching __tests__/audit/dataAccuracy.test.ts.
-</p>
+                        <p><strong>Execution Time:</strong> 536ms</p>
+                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run audit:data-accuracy</p>
                         
                     </div>
                 </div>
@@ -160,39 +106,8 @@ Ran all test suites matching __tests__/audit/dataAccuracy.test.ts.
                     </div>
                     <div class="phase-content">
                         <div class="phase-description">Ensures design system compliance and consistent user experience</div>
-                        <p><strong>Execution Time:</strong> 859ms</p>
-                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run audit:ui-patterns
-FAIL __tests__/audit/uiPatterns.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expected '>', got 'data'
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/uiPatterns.test.ts[0m:27:1]
-     [2m24[0m | // Mock chart components to avoid canvas issues in tests
-     [2m25[0m | jest.mock('../../src/components/charts/SprintCapacityBarChart', () => {
-     [2m26[0m |   return function MockChart() {
-     [2m27[0m |     return <div data-testid="mock-chart">Chart Component</div>;
-        : [35;1m                ^^^^[0m
-     [2m28[0m |   };
-     [2m29[0m | });
-        `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-Test Suites: 1 failed, 1 total
-Tests:       0 total
-Snapshots:   0 total
-Time:        0.25 s
-Ran all test suites matching __tests__/audit/uiPatterns.test.ts.
-</p>
+                        <p><strong>Execution Time:</strong> 236ms</p>
+                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run audit:ui-patterns</p>
                         
                     </div>
                 </div>
@@ -203,260 +118,14 @@ Ran all test suites matching __tests__/audit/uiPatterns.test.ts.
                             Phase 3: Accessibility Compliance Audit
                             <span class="critical-badge">CRITICAL</span>
                         </div>
-                        <div class="phase-status status-fail">
-                            FAIL
+                        <div class="phase-status status-pass">
+                            PASS
                         </div>
                     </div>
                     <div class="phase-content">
                         <div class="phase-description">Comprehensive WCAG 2.1 AA compliance validation</div>
-                        <p><strong>Execution Time:</strong> 3858ms</p>
-                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run test:accessibility-full
-FAIL __tests__/accessibility/axe-config.ts
-  ● Test suite failed to run
-
-    Your test suite must contain at least one test.
-
-      at onResult (node_modules/@jest/core/build/index.js:1052:18)
-      at node_modules/@jest/core/build/index.js:1122:165
-      at node_modules/emittery/index.js:363:13
-          at Array.map (<anonymous>)
-      at Emittery.emit (node_modules/emittery/index.js:361:23)
-
-FAIL __tests__/accessibility/accessibility.test.tsx
-  ● Test suite failed to run
-
-    Cannot find module '@testing-library/user-event' from '__tests__/accessibility/accessibility.test.tsx'
-
-      11 |
-      12 | // Test utilities
-    > 13 | import { axeConfig } from './axe-config';
-         |                                          ^
-      14 |
-      15 | // Components to test
-      16 | import MobileNavigation from '@/components/mobile/MobileNavigation';
-
-      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:863:11)
-      at Object.<anonymous> (__tests__/accessibility/accessibility.test.tsx:13:59)
-
-Failed to collect coverage from /Users/harel/team-availability-tracker/src/lib/recognitionService.ts
-ERROR:   [31mx[0m Expression expected
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/lib/recognitionService.ts[0m:541:1]
- [2m538[0m |   }
- [2m539[0m | }
- [2m540[0m | 
- [2m541[0m | */
-     : [35;1m^[0m
-     `----
-  [31mx[0m Unterminated regexp literal
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/lib/recognitionService.ts[0m:541:1]
- [2m538[0m |   }
- [2m539[0m | }
- [2m540[0m | 
- [2m541[0m | */
-     : [35;1m ^[0m
-     `----
-  [31mx[0m Expression expected
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/lib/recognitionService.ts[0m:541:1]
- [2m538[0m |   }
- [2m539[0m | }
- [2m540[0m | 
- [2m541[0m | */
-     `----
-
-
-Caused by:
-    Syntax Error
-STACK: Error:   [31mx[0m Expression expected
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/lib/recognitionService.ts[0m:541:1]
- [2m538[0m |   }
- [2m539[0m | }
- [2m540[0m | 
- [2m541[0m | */
-     : [35;1m^[0m
-     `----
-  [31mx[0m Unterminated regexp literal
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/lib/recognitionService.ts[0m:541:1]
- [2m538[0m |   }
- [2m539[0m | }
- [2m540[0m | 
- [2m541[0m | */
-     : [35;1m ^[0m
-     `----
-  [31mx[0m Expression expected
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/lib/recognitionService.ts[0m:541:1]
- [2m538[0m |   }
- [2m539[0m | }
- [2m540[0m | 
- [2m541[0m | */
-     `----
-
-
-Caused by:
-    Syntax Error
-    at Object.transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:949:33)
-    at transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:1021:21)
-    at process (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/jest-transformer.js:65:45)
-    at ScriptTransformer.transformSourceAsync (/Users/harel/team-availability-tracker/node_modules/@jest/transform/build/index.js:462:25)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async generateEmptyCoverage (/Users/harel/team-availability-tracker/node_modules/@jest/reporters/build/CoverageWorker.js:92:9)
-Failed to collect coverage from /Users/harel/team-availability-tracker/src/components/modals/TeamDetailModal.tsx
-ERROR:   [31mx[0m Unexpected token `div`. Expected jsx identifier
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/components/modals/TeamDetailModal.tsx[0m:184:1]
- [2m181[0m | 
- [2m182[0m | 
- [2m183[0m |   return (
- [2m184[0m |     <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center sm:p-4">
-     : [35;1m     ^^^[0m
- [2m185[0m |       <div
- [2m186[0m |         ref={modalRef}
- [2m187[0m |         role="dialog"
-     `----
-
-
-Caused by:
-    Syntax Error
-STACK: Error:   [31mx[0m Unexpected token `div`. Expected jsx identifier
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/components/modals/TeamDetailModal.tsx[0m:184:1]
- [2m181[0m | 
- [2m182[0m | 
- [2m183[0m |   return (
- [2m184[0m |     <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center sm:p-4">
-     : [35;1m     ^^^[0m
- [2m185[0m |       <div
- [2m186[0m |         ref={modalRef}
- [2m187[0m |         role="dialog"
-     `----
-
-
-Caused by:
-    Syntax Error
-    at Object.transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:949:33)
-    at transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:1021:21)
-    at process (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/jest-transformer.js:65:45)
-    at ScriptTransformer.transformSourceAsync (/Users/harel/team-availability-tracker/node_modules/@jest/transform/build/index.js:462:25)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async generateEmptyCoverage (/Users/harel/team-availability-tracker/node_modules/@jest/reporters/build/CoverageWorker.js:92:9)
-Failed to collect coverage from /Users/harel/team-availability-tracker/src/components/recognition/RecognitionBadge.tsx
-ERROR:   [31mx[0m Expression expected
-    ,-[[36;1;4m/Users/harel/team-availability-tracker/src/components/recognition/RecognitionBadge.tsx[0m:94:1]
- [2m91[0m |         )}
- [2m92[0m |       </div>
- [2m93[0m | 
- [2m94[0m |       {/* Detailed tooltip for larger badges */}
-    : [35;1m                                               ^[0m
- [2m95[0m |       {isHovered && size !== 'sm' && (
- [2m96[0m |         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
- [2m97[0m |           <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-xs">
-    `----
-
-
-Caused by:
-    Syntax Error
-STACK: Error:   [31mx[0m Expression expected
-    ,-[[36;1;4m/Users/harel/team-availability-tracker/src/components/recognition/RecognitionBadge.tsx[0m:94:1]
- [2m91[0m |         )}
- [2m92[0m |       </div>
- [2m93[0m | 
- [2m94[0m |       {/* Detailed tooltip for larger badges */}
-    : [35;1m                                               ^[0m
- [2m95[0m |       {isHovered && size !== 'sm' && (
- [2m96[0m |         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
- [2m97[0m |           <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-xs">
-    `----
-
-
-Caused by:
-    Syntax Error
-    at Object.transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:949:33)
-    at transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:1021:21)
-    at process (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/jest-transformer.js:65:45)
-    at ScriptTransformer.transformSourceAsync (/Users/harel/team-availability-tracker/node_modules/@jest/transform/build/index.js:462:25)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async generateEmptyCoverage (/Users/harel/team-availability-tracker/node_modules/@jest/reporters/build/CoverageWorker.js:92:9)
-Failed to collect coverage from /Users/harel/team-availability-tracker/src/components/recognition/RecognitionDashboard.tsx
-ERROR:   [31mx[0m Expression expected
-    ,-[[36;1;4m/Users/harel/team-availability-tracker/src/components/recognition/RecognitionDashboard.tsx[0m:95:1]
- [2m92[0m | 
- [2m93[0m |   return (
- [2m94[0m |     <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
- [2m95[0m |       {/* Header */}
-    : [35;1m                   ^[0m
- [2m96[0m |       <div className="flex justify-between items-center mb-6">
- [2m97[0m |         <div className="flex items-center space-x-2">
- [2m98[0m |           <Award className="h-6 w-6 text-blue-600" />
-    `----
-
-
-Caused by:
-    Syntax Error
-STACK: Error:   [31mx[0m Expression expected
-    ,-[[36;1;4m/Users/harel/team-availability-tracker/src/components/recognition/RecognitionDashboard.tsx[0m:95:1]
- [2m92[0m | 
- [2m93[0m |   return (
- [2m94[0m |     <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
- [2m95[0m |       {/* Header */}
-    : [35;1m                   ^[0m
- [2m96[0m |       <div className="flex justify-between items-center mb-6">
- [2m97[0m |         <div className="flex items-center space-x-2">
- [2m98[0m |           <Award className="h-6 w-6 text-blue-600" />
-    `----
-
-
-Caused by:
-    Syntax Error
-    at Object.transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:949:33)
-    at transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:1021:21)
-    at process (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/jest-transformer.js:65:45)
-    at ScriptTransformer.transformSourceAsync (/Users/harel/team-availability-tracker/node_modules/@jest/transform/build/index.js:462:25)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async generateEmptyCoverage (/Users/harel/team-availability-tracker/node_modules/@jest/reporters/build/CoverageWorker.js:92:9)
-Failed to collect coverage from /Users/harel/team-availability-tracker/src/components/recognition/TeamRecognitionLeaderboard.tsx
-ERROR:   [31mx[0m Expression expected
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/components/recognition/TeamRecognitionLeaderboard.tsx[0m:114:1]
- [2m111[0m | 
- [2m112[0m |   return (
- [2m113[0m |     <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
- [2m114[0m |       {/* Header */}
-     : [35;1m                   ^[0m
- [2m115[0m |       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
- [2m116[0m |         <div className="flex items-center space-x-2">
- [2m117[0m |           <Trophy className="h-6 w-6 text-yellow-600" />
-     `----
-
-
-Caused by:
-    Syntax Error
-STACK: Error:   [31mx[0m Expression expected
-     ,-[[36;1;4m/Users/harel/team-availability-tracker/src/components/recognition/TeamRecognitionLeaderboard.tsx[0m:114:1]
- [2m111[0m | 
- [2m112[0m |   return (
- [2m113[0m |     <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
- [2m114[0m |       {/* Header */}
-     : [35;1m                   ^[0m
- [2m115[0m |       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
- [2m116[0m |         <div className="flex items-center space-x-2">
- [2m117[0m |           <Trophy className="h-6 w-6 text-yellow-600" />
-     `----
-
-
-Caused by:
-    Syntax Error
-    at Object.transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:949:33)
-    at transformSync (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/index.js:1021:21)
-    at process (/Users/harel/team-availability-tracker/node_modules/next/dist/build/swc/jest-transformer.js:65:45)
-    at ScriptTransformer.transformSourceAsync (/Users/harel/team-availability-tracker/node_modules/@jest/transform/build/index.js:462:25)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    at async generateEmptyCoverage (/Users/harel/team-availability-tracker/node_modules/@jest/reporters/build/CoverageWorker.js:92:9)
-Jest: "global" coverage threshold for statements (70%) not met: 0%
-Jest: "global" coverage threshold for branches (70%) not met: 0%
-Jest: "global" coverage threshold for lines (70%) not met: 0%
-Jest: "global" coverage threshold for functions (70%) not met: 0%
-Test Suites: 2 failed, 2 total
-Tests:       0 total
-Snapshots:   0 total
-Time:        3.396 s
-Ran all test suites matching __tests__/accessibility.
-</p>
+                        <p><strong>Execution Time:</strong> 81ms</p>
+                        
                         
                     </div>
                 </div>
@@ -473,140 +142,8 @@ Ran all test suites matching __tests__/accessibility.
                     </div>
                     <div class="phase-content">
                         <div class="phase-description">End-to-end feature functionality and cross-component integration</div>
-                        <p><strong>Execution Time:</strong> 1043ms</p>
-                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run test:integration
-FAIL __tests__/audit/recognitionIntegration.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expected '>', got 'userId'
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/recognitionIntegration.test.ts[0m:84:1]
-     [2m81[0m |         refreshAchievements: jest.fn()
-     [2m82[0m |       });
-     [2m83[0m |       
-     [2m84[0m |       render(<RecognitionDashboard userId={1} />);
-        : [35;1m                                   ^^^^^^[0m
-     [2m85[0m |       
-     [2m86[0m |       await waitFor(() => {
-     [2m87[0m |         expect(screen.getByText('Perfect Week')).toBeInTheDocument();
-        `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-FAIL __tests__/audit/burnoutIntegration.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expression expected
-         ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/burnoutIntegration.test.ts[0m:170:1]
-     [2m167[0m |         { id: 1, name: 'Product Team', description: 'Product development team' }
-     [2m168[0m |       ]);
-     [2m169[0m |       
-     [2m170[0m |       render(<COOExecutiveDashboard />);
-         : [35;1m                                    ^[0m
-     [2m171[0m |       
-     [2m172[0m |       await waitFor(() => {
-     [2m173[0m |         // Should show burnout risk indicators
-         `----
-      [31mx[0m Expression expected
-         ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/burnoutIntegration.test.ts[0m:170:1]
-     [2m167[0m |         { id: 1, name: 'Product Team', description: 'Product development team' }
-     [2m168[0m |       ]);
-     [2m169[0m |       
-     [2m170[0m |       render(<COOExecutiveDashboard />);
-         : [35;1m                                     ^[0m
-     [2m171[0m |       
-     [2m172[0m |       await waitFor(() => {
-     [2m173[0m |         // Should show burnout risk indicators
-         `----
-      [31mx[0m Expression expected
-         ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/burnoutIntegration.test.ts[0m:170:1]
-     [2m167[0m |         { id: 1, name: 'Product Team', description: 'Product development team' }
-     [2m168[0m |       ]);
-     [2m169[0m |       
-     [2m170[0m |       render(<COOExecutiveDashboard />);
-         : [35;1m                                      ^[0m
-     [2m171[0m |       
-     [2m172[0m |       await waitFor(() => {
-     [2m173[0m |         // Should show burnout risk indicators
-         `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-FAIL __tests__/audit/cooIntegration.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expected '>', got 'data'
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/cooIntegration.test.ts[0m:31:1]
-     [2m28[0m | 
-     [2m29[0m | // Mock chart components
-     [2m30[0m | jest.mock('recharts', () => ({
-     [2m31[0m |   ResponsiveContainer: ({ children }: any) => <div data-testid="responsive-container">{children}</div>,
-        : [35;1m                                                   ^^^^[0m
-     [2m32[0m |   BarChart: ({ children }: any) => <div role="img" aria-label="Bar chart" data-testid="bar-chart">{children}</div>,
-     [2m33[0m |   PieChart: ({ children }: any) => <div role="img" aria-label="Pie chart" data-testid="pie-chart">{children}</div>,
-     [2m34[0m |   LineChart: ({ children }: any) => <div role="img" aria-label="Line chart" data-testid="line-chart">{children}</div>,
-        `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-FAIL __tests__/audit/templatesIntegration.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expected '>', got 'onApplyTemplate'
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/templatesIntegration.test.ts[0m:39:1]
-     [2m36[0m |       
-     [2m37[0m |       mockDatabaseService.getUserTemplates.mockResolvedValue([]);
-     [2m38[0m |       
-     [2m39[0m |       render(<TemplateManager onApplyTemplate={mockApplyTemplate} />);
-        : [35;1m                              ^^^^^^^^^^^^^^^[0m
-     [2m40[0m |       
-     [2m41[0m |       await waitFor(() => {
-     [2m42[0m |         expect(screen.getByText('Availability Templates')).toBeInTheDocument();
-        `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-Test Suites: 4 failed, 4 total
-Tests:       0 total
-Snapshots:   0 total
-Time:        0.457 s
-Ran all test suites matching __tests__/audit/burnoutIntegration.test.ts|__tests__/audit/cooIntegration.test.ts|__tests__/audit/recognitionIntegration.test.ts|__tests__/audit/templatesIntegration.test.ts.
-</p>
+                        <p><strong>Execution Time:</strong> 244ms</p>
+                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run test:integration</p>
                         
                     </div>
                 </div>
@@ -623,62 +160,8 @@ Ran all test suites matching __tests__/audit/burnoutIntegration.test.ts|__tests_
                     </div>
                     <div class="phase-content">
                         <div class="phase-description">Performance benchmarks, memory usage, and optimization validation</div>
-                        <p><strong>Execution Time:</strong> 640ms</p>
-                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run audit:performance
-FAIL __tests__/audit/performance.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expression expected
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/performance.test.ts[0m:62:1]
-     [2m59[0m |       
-     [2m60[0m |       const startTime = performance.now();
-     [2m61[0m |       
-     [2m62[0m |       render(<COOExecutiveDashboard />);
-        : [35;1m                                    ^[0m
-     [2m63[0m |       
-     [2m64[0m |       await waitFor(() => {
-     [2m65[0m |         expect(screen.getByText('27')).toBeInTheDocument(); // Total employees loaded
-        `----
-      [31mx[0m Expression expected
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/performance.test.ts[0m:62:1]
-     [2m59[0m |       
-     [2m60[0m |       const startTime = performance.now();
-     [2m61[0m |       
-     [2m62[0m |       render(<COOExecutiveDashboard />);
-        : [35;1m                                     ^[0m
-     [2m63[0m |       
-     [2m64[0m |       await waitFor(() => {
-     [2m65[0m |         expect(screen.getByText('27')).toBeInTheDocument(); // Total employees loaded
-        `----
-      [31mx[0m Expression expected
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/performance.test.ts[0m:62:1]
-     [2m59[0m |       
-     [2m60[0m |       const startTime = performance.now();
-     [2m61[0m |       
-     [2m62[0m |       render(<COOExecutiveDashboard />);
-        : [35;1m                                      ^[0m
-     [2m63[0m |       
-     [2m64[0m |       await waitFor(() => {
-     [2m65[0m |         expect(screen.getByText('27')).toBeInTheDocument(); // Total employees loaded
-        `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-Test Suites: 1 failed, 1 total
-Tests:       0 total
-Snapshots:   0 total
-Time:        0.22 s
-Ran all test suites matching __tests__/audit/performance.test.ts.
-</p>
+                        <p><strong>Execution Time:</strong> 218ms</p>
+                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run audit:performance</p>
                         
                     </div>
                 </div>
@@ -694,41 +177,9 @@ Ran all test suites matching __tests__/audit/performance.test.ts.
                         </div>
                     </div>
                     <div class="phase-content">
-                        <div class="phase-description">Security measures, input sanitization, and vulnerability assessment</div>
-                        <p><strong>Execution Time:</strong> 640ms</p>
-                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run audit:security
-FAIL __tests__/audit/security.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expected '>', got 'onApplyTemplate'
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/security.test.ts[0m:61:1]
-     [2m58[0m |         return { id: 'sanitized-template', name: sanitizedName };
-     [2m59[0m |       });
-     [2m60[0m |       
-     [2m61[0m |       render(<TemplateManager onApplyTemplate={jest.fn()} />);
-        : [35;1m                              ^^^^^^^^^^^^^^^[0m
-     [2m62[0m |       
-     [2m63[0m |       fireEvent.click(screen.getByText('Availability Templates'));
-     [2m64[0m |       
-        `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-Test Suites: 1 failed, 1 total
-Tests:       0 total
-Snapshots:   0 total
-Time:        0.209 s
-Ran all test suites matching __tests__/audit/security.test.ts.
-</p>
+                        <div class="phase-description">Security tests, static analysis, and vulnerability assessment with Semgrep</div>
+                        <p><strong>Execution Time:</strong> 285ms</p>
+                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run audit:security-enhanced</p>
                         
                     </div>
                 </div>
@@ -736,7 +187,37 @@ Ran all test suites matching __tests__/audit/security.test.ts.
                 <div class="phase">
                     <div class="phase-header">
                         <div class="phase-title">
-                            Phase 7: Cross-Browser Compatibility
+                            Phase 7: Static Code Security Analysis
+                            <span class="critical-badge">CRITICAL</span>
+                        </div>
+                        <div class="phase-status status-fail">
+                            FAIL
+                        </div>
+                    </div>
+                    <div class="phase-content">
+                        <div class="phase-description">Semgrep static analysis for security vulnerabilities and code quality</div>
+                        <p><strong>Execution Time:</strong> 13155ms</p>
+                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: npm run semgrep:ci
+Downloading semgrep (37.9MiB)
+ Downloading semgrep
+Installed 47 packages in 119ms
+/Users/harel/.cache/uv/archive-v0/HEquf4CEttbwkJhZt2t5k/lib/python3.10/site-packages/opentelemetry/instrumentation/dependencies.py:4: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import (
+[00.11][[33mWARNING[0m]: Skipping unknown field 'pattern-not' in rule "typescript-sql-injection-risk"
+[0m[00.11][[33mWARNING[0m]: Skipping unknown field 'pattern-not-inside' in rule "typescript-sql-injection-risk"
+[0m[00.11][[33mWARNING[0m]: Skipping unknown field 'pattern-inside' in rule "typescript-insecure-random"
+[0m[00.11][[33mWARNING[0m]: Skipping unknown field 'pattern-not-inside' in rule "typescript-hardcoded-credentials"
+[0m[00.11][[33mWARNING[0m]: Skipping unknown field 'pattern-not-inside' in rule "nextjs-unsafe-redirect"
+[0m[00.11][[33mWARNING[0m]: Skipping unknown field 'pattern-not-inside' in rule "react-unsafe-dangerouslysetinnerhtml"
+[0m</p>
+                        
+                    </div>
+                </div>
+            
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-title">
+                            Phase 8: Cross-Browser Compatibility
                             
                         </div>
                         <div class="phase-status status-fail">
@@ -745,62 +226,8 @@ Ran all test suites matching __tests__/audit/security.test.ts.
                     </div>
                     <div class="phase-content">
                         <div class="phase-description">Browser compatibility and responsive design validation</div>
-                        <p><strong>Execution Time:</strong> 579ms</p>
-                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: jest __tests__/audit/browserCompatibility.test.ts --verbose
-FAIL __tests__/audit/browserCompatibility.test.ts
-  ● Test suite failed to run
-
-      [31mx[0m Expression expected
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/browserCompatibility.test.ts[0m:53:1]
-     [2m50[0m |       expect(hasFlexboxSupport).toBe(true);
-     [2m51[0m |       
-     [2m52[0m |       // Should use flexbox layouts in components
-     [2m53[0m |       render(<COOExecutiveDashboard />);
-        : [35;1m                                    ^[0m
-     [2m54[0m |       
-     [2m55[0m |       const flexContainer = document.querySelector('[class*="flex"]');
-     [2m56[0m |       if (flexContainer) {
-        `----
-      [31mx[0m Expression expected
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/browserCompatibility.test.ts[0m:53:1]
-     [2m50[0m |       expect(hasFlexboxSupport).toBe(true);
-     [2m51[0m |       
-     [2m52[0m |       // Should use flexbox layouts in components
-     [2m53[0m |       render(<COOExecutiveDashboard />);
-        : [35;1m                                     ^[0m
-     [2m54[0m |       
-     [2m55[0m |       const flexContainer = document.querySelector('[class*="flex"]');
-     [2m56[0m |       if (flexContainer) {
-        `----
-      [31mx[0m Expression expected
-        ,-[[36;1;4m/Users/harel/team-availability-tracker/__tests__/audit/browserCompatibility.test.ts[0m:53:1]
-     [2m50[0m |       expect(hasFlexboxSupport).toBe(true);
-     [2m51[0m |       
-     [2m52[0m |       // Should use flexbox layouts in components
-     [2m53[0m |       render(<COOExecutiveDashboard />);
-        : [35;1m                                      ^[0m
-     [2m54[0m |       
-     [2m55[0m |       const flexContainer = document.querySelector('[class*="flex"]');
-     [2m56[0m |       if (flexContainer) {
-        `----
-
-
-    Caused by:
-        Syntax Error
-
-      at Object.transformSync (node_modules/next/src/build/swc/index.ts:1232:25)
-      at transformSync (node_modules/next/src/build/swc/index.ts:1322:19)
-      at Object.process (node_modules/next/src/build/swc/jest-transformer.ts:105:25)
-      at ScriptTransformer.transformSource (node_modules/@jest/transform/build/index.js:422:31)
-      at ScriptTransformer._transformAndBuildScript (node_modules/@jest/transform/build/index.js:519:40)
-      at ScriptTransformer.transform (node_modules/@jest/transform/build/index.js:558:19)
-
-Test Suites: 1 failed, 1 total
-Tests:       0 total
-Snapshots:   0 total
-Time:        0.214 s
-Ran all test suites matching __tests__/audit/browserCompatibility.test.ts.
-</p>
+                        <p><strong>Execution Time:</strong> 311ms</p>
+                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: jest __tests__/audit/browserCompatibility.test.ts --verbose</p>
                         
                     </div>
                 </div>
@@ -808,7 +235,7 @@ Ran all test suites matching __tests__/audit/browserCompatibility.test.ts.
                 <div class="phase">
                     <div class="phase-header">
                         <div class="phase-title">
-                            Phase 8: Production Readiness Validation
+                            Phase 9: Production Readiness Validation
                             <span class="critical-badge">CRITICAL</span>
                         </div>
                         <div class="phase-status status-fail">
@@ -817,69 +244,8 @@ Ran all test suites matching __tests__/audit/browserCompatibility.test.ts.
                     </div>
                     <div class="phase-content">
                         <div class="phase-description">Deployment readiness, configuration, and operational preparedness</div>
-                        <p><strong>Execution Time:</strong> 621ms</p>
-                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: jest __tests__/audit/productionReadiness.test.ts --verbose
-FAIL __tests__/audit/productionReadiness.test.ts
-  Production Readiness Validation
-    Environment Configuration Validation
-      ✓ should validate all required environment variables (2 ms)
-      ✓ should validate secure configuration for production (1 ms)
-      ✓ should validate database connection configuration
-    Performance Thresholds Validation
-      ✓ should meet Core Web Vitals thresholds
-      ✓ should validate API response time thresholds (1 ms)
-      ✓ should validate memory usage thresholds
-    Security Readiness Validation
-      ✓ should validate SSL/TLS configuration
-      ✓ should validate security headers configuration
-      ✓ should validate authentication and session security
-    Monitoring and Logging Readiness
-      ✓ should validate error tracking configuration
-      ✓ should validate application logging configuration (1 ms)
-      ✓ should validate performance monitoring setup
-    Database Readiness Validation
-      ✓ should validate database schema and migrations (2 ms)
-      ✓ should validate database backup and recovery setup
-      ✓ should validate database performance configuration
-    Deployment Pipeline Validation
-      ✓ should validate CI/CD pipeline configuration
-      ✓ should validate health check endpoints (1 ms)
-      ✓ should validate rollback capabilities
-    Load Testing and Capacity Validation
-      ✓ should validate load testing results
-      ✓ should validate capacity planning calculations
-    Operational Readiness Checklist
-      ✕ should validate operational runbooks and documentation (1 ms)
-      ✓ should validate team training and knowledge transfer
-      ✓ should validate production environment access controls
-
-  ● Production Readiness Validation › Operational Readiness Checklist › should validate operational runbooks and documentation
-
-    expect(received).toBeGreaterThan(expected)
-
-    Matcher error: received value must be a number or bigint
-
-    Received has type:  date
-    Received has value: 2024-01-15T00:00:00.000Z
-
-      579 |         const lastUpdated = new Date(doc.lastUpdated);
-      580 |         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    > 581 |         expect(lastUpdated).toBeGreaterThan(thirtyDaysAgo);
-          |                             ^
-      582 |       });
-      583 |     });
-      584 |
-
-      at toBeGreaterThan (__tests__/audit/productionReadiness.test.ts:581:29)
-          at Array.forEach (<anonymous>)
-      at Object.forEach (__tests__/audit/productionReadiness.test.ts:577:38)
-
-Test Suites: 1 failed, 1 total
-Tests:       1 failed, 22 passed, 23 total
-Snapshots:   0 total
-Time:        0.245 s
-Ran all test suites matching __tests__/audit/productionReadiness.test.ts.
-</p>
+                        <p><strong>Execution Time:</strong> 170ms</p>
+                        <p style="color: #dc3545;"><strong>Error:</strong> Command failed: jest __tests__/audit/productionReadiness.test.ts --verbose</p>
                         
                     </div>
                 </div>
@@ -887,7 +253,7 @@ Ran all test suites matching __tests__/audit/productionReadiness.test.ts.
         </div>
         
         <div class="footer">
-            <p>Generated on 8/3/2025, 12:07:12 PM</p>
+            <p>Generated on 9/4/2025, 11:01:25 PM</p>
             <p>Node.js v22.17.0 • darwin • Audit Version 1.0.0</p>
         </div>
     </div>

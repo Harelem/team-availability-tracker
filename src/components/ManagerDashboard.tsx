@@ -856,6 +856,7 @@ export default function ManagerDashboard({
         teamMembers={teamMembers}
         currentSprint={currentSprint}
         teamName={team.name}
+        selectedSprint={selectedSprint}
       />
     </div>
   );

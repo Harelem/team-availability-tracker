@@ -1514,7 +1514,7 @@ const PersonalCalendar = React.memo(function PersonalCalendar({
     prevProps.user?.name === nextProps.user?.name &&
     prevProps.user?.hebrew === nextProps.user?.hebrew &&
     prevProps.editable === nextProps.editable &&
-    prevProps.onScheduleUpdate === nextProps.onScheduleUpdate
+    prevProps.onDataChange === nextProps.onDataChange
   );
 });
 

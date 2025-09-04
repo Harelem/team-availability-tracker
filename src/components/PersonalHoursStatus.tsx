@@ -31,14 +31,12 @@ const PersonalHoursStatus = React.memo(function PersonalHoursStatus({ user, team
 
   // Memoize expensive calculations
   const { currentPeriod, nextPeriod } = useMemo(() => {
-    if (!currentSprint || !currentSprint.sprint_start_date || !currentSprint.sprint_end_date) {
+    if (!currentSprint || !currentSprint.sprint_start_date || !currentSprint.sprint_length_weeks) {
       return { currentPeriod: null, nextPeriod: null };
     }
     
-    const currentPeriod = {
-      startDate: currentSprint.sprint_start_date,
-      endDate: currentSprint.sprint_end_date
-    };
+    // Use consistent sprint period calculation instead of database dates
+    const currentPeriod = calculateSprintPeriod(currentSprint, 0);
     const nextPeriod = calculateSprintPeriod(currentSprint, 1);
     
     return { currentPeriod, nextPeriod };
@@ -77,6 +75,18 @@ const PersonalHoursStatus = React.memo(function PersonalHoursStatus({ user, team
       const currentWorkingDays = Math.max(0, calculateWorkingDaysInPeriod(currentPeriod.startDate, currentPeriod.endDate));
       const currentFilledDays = Math.max(0, Object.keys(currentUserData).length);
       
+      // Debug logging for data validation
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 PersonalHoursStatus Debug:', {
+          userId: user.id,
+          userName: user.name,
+          currentPeriod,
+          currentWorkingDays,
+          currentFilledDays,
+          currentDataKeys: Object.keys(currentUserData)
+        });
+      }
+      
       const currentSubmittedHours = Object.values(currentUserData).reduce((sum: number, entry: any) => {
         if (!entry || !entry.value) return sum;
         switch (entry.value) {
@@ -87,42 +97,71 @@ const PersonalHoursStatus = React.memo(function PersonalHoursStatus({ user, team
         }
       }, 0);
       
+      // Add validation to prevent impossible completion rates
+      const cappedFilledDays = Math.min(currentFilledDays, currentWorkingDays);
+      const validCompletionRate = currentWorkingDays > 0 ? Math.min(100, (cappedFilledDays / currentWorkingDays) * 100) : 0;
+      
       const currentSprintResult = {
-        filledDays: currentFilledDays,
+        filledDays: cappedFilledDays,
         totalDays: currentWorkingDays,
-        completionRate: currentWorkingDays > 0 ? (currentFilledDays / currentWorkingDays) * 100 : 0,
-        isComplete: currentFilledDays >= currentWorkingDays,
-        status: (currentFilledDays >= currentWorkingDays ? 'complete' : currentFilledDays > 0 ? 'partial' : 'missing') as 'complete' | 'partial' | 'missing',
+        completionRate: validCompletionRate,
+        isComplete: cappedFilledDays >= currentWorkingDays,
+        status: (cappedFilledDays >= currentWorkingDays ? 'complete' : cappedFilledDays > 0 ? 'partial' : 'missing') as 'complete' | 'partial' | 'missing',
         submittedHours: currentSubmittedHours,
         totalPossibleHours: currentWorkingDays * 7
       };
       
       setCurrentSprintStatus(currentSprintResult);
 
-      // Process next sprint
-      const nextUserData = nextData[user.id] || {};
-      const nextWorkingDays = Math.max(0, calculateWorkingDaysInPeriod(nextPeriod.startDate, nextPeriod.endDate));
-      const nextFilledDays = Math.max(0, Object.keys(nextUserData).length);
+      // Process next sprint - but only if it has started
+      const today = new Date();
+      const nextSprintStartDate = new Date(nextPeriod.startDate);
+      const hasNextSprintStarted = today >= nextSprintStartDate;
       
-      const nextSubmittedHours = Object.values(nextUserData).reduce((sum: number, entry: any) => {
-        if (!entry || !entry.value) return sum;
-        switch (entry.value) {
-          case '1': return sum + 7;
-          case '0.5': return sum + 3.5;
-          case 'X': return sum + 0;
-          default: return sum;
-        }
-      }, 0);
+      let nextSprintResult;
       
-      const nextSprintResult = {
-        filledDays: nextFilledDays,
-        totalDays: nextWorkingDays,
-        completionRate: nextWorkingDays > 0 ? (nextFilledDays / nextWorkingDays) * 100 : 0,
-        isComplete: nextFilledDays >= nextWorkingDays,
-        status: (nextFilledDays >= nextWorkingDays ? 'complete' : nextFilledDays > 0 ? 'partial' : 'missing') as 'complete' | 'partial' | 'missing',
-        submittedHours: nextSubmittedHours,
-        totalPossibleHours: nextWorkingDays * 7
-      };
+      if (hasNextSprintStarted) {
+        // Next sprint has started, calculate real data
+        const nextUserData = nextData[user.id] || {};
+        const nextWorkingDays = Math.max(0, calculateWorkingDaysInPeriod(nextPeriod.startDate, nextPeriod.endDate));
+        const nextFilledDays = Math.max(0, Object.keys(nextUserData).length);
+        
+        const nextSubmittedHours = Object.values(nextUserData).reduce((sum: number, entry: any) => {
+          if (!entry || !entry.value) return sum;
+          switch (entry.value) {
+            case '1': return sum + 7;
+            case '0.5': return sum + 3.5;
+            case 'X': return sum + 0;
+            default: return sum;
+          }
+        }, 0);
+        
+        // Add validation for next sprint too
+        const cappedNextFilledDays = Math.min(nextFilledDays, nextWorkingDays);
+        const validNextCompletionRate = nextWorkingDays > 0 ? Math.min(100, (cappedNextFilledDays / nextWorkingDays) * 100) : 0;
+        
+        nextSprintResult = {
+          filledDays: cappedNextFilledDays,
+          totalDays: nextWorkingDays,
+          completionRate: validNextCompletionRate,
+          isComplete: cappedNextFilledDays >= nextWorkingDays,
+          status: (cappedNextFilledDays >= nextWorkingDays ? 'complete' : cappedNextFilledDays > 0 ? 'partial' : 'missing') as 'complete' | 'partial' | 'missing',
+          submittedHours: nextSubmittedHours,
+          totalPossibleHours: nextWorkingDays * 7
+        };
+      } else {
+        // Next sprint hasn't started yet, show placeholder data
+        const nextWorkingDays = Math.max(0, calculateWorkingDaysInPeriod(nextPeriod.startDate, nextPeriod.endDate));
+        nextSprintResult = {
+          filledDays: 0,
+          totalDays: nextWorkingDays,
+          completionRate: 0,
+          isComplete: false,
+          status: 'missing' as const,
+          submittedHours: 0,
+          totalPossibleHours: nextWorkingDays * 7
+        };
+      }
       
       setNextSprintStatus(nextSprintResult);
 

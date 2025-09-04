@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { X, Users, Clock, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Users, Clock, CheckCircle, AlertCircle, Calendar, Loader2 } from 'lucide-react';
 import { TeamMember, CurrentGlobalSprint } from '@/types';
 import { DESIGN_SYSTEM, combineClasses, COMPONENT_PATTERNS } from '@/utils/designSystem';
+import { RealTimeCalculationService, type TeamMemberSubmissionStatus } from '@/lib/realTimeCalculationService';
+import { SprintType, getSprintDatesByType, getSprintNumber } from '@/utils/sprintCalculations';
 
 interface TeamCompletionModalProps {
   isOpen: boolean;
@@ -11,16 +13,7 @@ interface TeamCompletionModalProps {
   teamMembers: TeamMember[];
   currentSprint?: CurrentGlobalSprint | null;
   teamName: string;
-}
-
-interface MemberCompletionStatus {
-  member: TeamMember;
-  hoursSubmitted: number;
-  daysCompleted: number;
-  totalDays: number;
-  completionPercentage: number;
-  status: 'complete' | 'partial' | 'not-started';
-  lastUpdate?: Date;
+  selectedSprint: SprintType;
 }
 
 export default function TeamCompletionModal({
@@ -28,8 +21,66 @@ export default function TeamCompletionModal({
   onClose,
   teamMembers,
   currentSprint,
-  teamName
+  teamName,
+  selectedSprint
 }: TeamCompletionModalProps) {
+  // State for real team data
+  const [memberStatuses, setMemberStatuses] = useState<TeamMemberSubmissionStatus[]>([]);
+  const [teamStats, setTeamStats] = useState<{
+    totalMembers: number;
+    completedMembers: number;
+    completionPercentage: number;
+    totalSubmittedHours: number;
+    sprintPotentialHours: number;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch real team data when modal opens or sprint changes
+  useEffect(() => {
+    if (!isOpen || !teamMembers.length || !currentSprint) return;
+
+    const fetchTeamData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Get the team ID from the first team member
+        const teamId = teamMembers[0].team_id;
+        if (!teamId) {
+          throw new Error('No team ID found');
+        }
+
+        // Get the selected sprint date range
+        const sprintDates = getSprintDatesByType(currentSprint, selectedSprint);
+
+        // Use the flexible calculation method with dynamic date ranges
+        const teamSubmissionData = await RealTimeCalculationService.calculateTeamSubmissionStatus(
+          teamMembers,
+          sprintDates.startDate,
+          sprintDates.endDate,
+          teamId
+        );
+        
+        setMemberStatuses(teamSubmissionData.memberStatuses);
+        setTeamStats({
+          totalMembers: teamSubmissionData.totalMembers,
+          completedMembers: teamSubmissionData.completedMembers,
+          completionPercentage: teamSubmissionData.completionPercentage,
+          totalSubmittedHours: teamSubmissionData.totalSubmittedHours,
+          sprintPotentialHours: teamSubmissionData.sprintPotentialHours
+        });
+      } catch (error) {
+        console.error('Error fetching team completion data:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load team data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTeamData();
+  }, [isOpen, teamMembers, currentSprint, selectedSprint]);
+
   // Handle ESC key to close modal
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -51,42 +102,6 @@ export default function TeamCompletionModal({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  // Calculate member completion status based on actual sprint data
-  const memberStatuses: MemberCompletionStatus[] = teamMembers.map(member => {
-    // Use actual sprint working days (10 for 2-week sprint)
-    const totalDays = currentSprint?.sprint_length_weeks ? currentSprint.sprint_length_weeks * 5 : 10;
-    
-    // Calculate actual completion based on realistic data
-    // For now, using a more realistic completion pattern instead of random
-    const memberIndex = teamMembers.findIndex(m => m.id === member.id);
-    const baseCompletion = 0.6 + (memberIndex * 0.05) % 0.4; // Varies between 60-100%
-    const daysCompleted = Math.floor(totalDays * baseCompletion);
-    const hoursSubmitted = daysCompleted * (member.isManager ? 3.5 : 7); // Manager hours vs regular
-    const completionPercentage = Math.round((daysCompleted / totalDays) * 100);
-    
-    let status: MemberCompletionStatus['status'] = 'not-started';
-    if (completionPercentage === 100) status = 'complete';
-    else if (completionPercentage > 0) status = 'partial';
-    
-    return {
-      member,
-      hoursSubmitted,
-      daysCompleted,
-      totalDays,
-      completionPercentage,
-      status,
-      lastUpdate: new Date(Date.now() - (memberIndex * 86400000)) // Staggered last updates
-    };
-  });
-
-  // Calculate team statistics
-  const totalMembers = memberStatuses.length;
-  const completeMembers = memberStatuses.filter(m => m.status === 'complete').length;
-  const partialMembers = memberStatuses.filter(m => m.status === 'partial').length;
-  const notStartedMembers = memberStatuses.filter(m => m.status === 'not-started').length;
-  const teamCompletionPercentage = totalMembers > 0 ? Math.round((completeMembers / totalMembers) * 100) : 0;
-  const totalHours = memberStatuses.reduce((sum, m) => sum + m.hoursSubmitted, 0);
 
   return (
     <div 
@@ -112,7 +127,7 @@ export default function TeamCompletionModal({
             <div>
               <h2 className="text-xl font-semibold text-gray-900">{teamName} Team Status</h2>
               <p className="text-sm text-gray-600">
-                {currentSprint ? `Sprint ${currentSprint.current_sprint_number}` : 'Current Period'} • {totalMembers} members
+                {currentSprint ? `Sprint ${getSprintNumber(currentSprint, selectedSprint)}` : 'Current Period'} • {teamStats?.totalMembers || teamMembers.length} members
               </p>
             </div>
           </div>
@@ -126,78 +141,116 @@ export default function TeamCompletionModal({
           </button>
         </div>
 
-        {/* Simplified Team Summary */}
-        <div className={combineClasses(
-          'border-b border-gray-200',
-          DESIGN_SYSTEM.spacing.lg,
-          'text-center'
-        )}>
-          <div className="text-3xl font-bold text-gray-900 mb-2">
-            {completeMembers}/{totalMembers}
+        {/* Loading State */}
+        {isLoading && (
+          <div className={combineClasses(
+            'border-b border-gray-200',
+            DESIGN_SYSTEM.spacing.lg,
+            'text-center'
+          )}>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mr-3" />
+              <span className="text-gray-600">Loading team data...</span>
+            </div>
           </div>
-          <div className="text-sm text-gray-600 mb-4">
-            Members completed • {totalHours}h total submitted
-          </div>
-          
-          {/* Simple Progress Indicator */}
-          <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-            <div 
-              className={combineClasses(
-                'h-4 rounded-full transition-all duration-300',
-                teamCompletionPercentage >= 90 ? 'bg-green-500' :
-                teamCompletionPercentage >= 70 ? 'bg-blue-500' :
-                teamCompletionPercentage >= 50 ? 'bg-yellow-500' :
-                'bg-red-500'
-              )}
-              style={{ width: `${teamCompletionPercentage}%` }}
-            />
-          </div>
-          <div className="text-xs text-gray-500">
-            {teamCompletionPercentage}% team completion
-          </div>
-        </div>
+        )}
 
-        {/* Simplified Member Status List */}
-        <div className={combineClasses(
-          DESIGN_SYSTEM.spacing.lg,
-          'overflow-y-auto max-h-96'
-        )}>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Members Status</h3>
-          
-          <div className="space-y-2">
-            {memberStatuses.map(({ member, hoursSubmitted, completionPercentage, status }) => (
-              <div key={member.id} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 font-medium text-sm">
-                      {member.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">{member.name}</div>
-                    <div className="text-sm text-gray-500">{member.hebrew}</div>
-                  </div>
-                  {member.isManager && (
-                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
-                      Manager
-                    </span>
-                  )}
-                </div>
-                
-                <div className="text-right">
-                  <div className="font-medium text-gray-900">{hoursSubmitted}h</div>
-                  <div className={`text-sm ${
-                    status === 'complete' ? 'text-green-600' :
-                    status === 'partial' ? 'text-yellow-600' :
-                    'text-red-600'
-                  }`}>
-                    {completionPercentage}% complete
-                  </div>
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className={combineClasses(
+            'border-b border-gray-200',
+            DESIGN_SYSTEM.spacing.lg
+          )}>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
+                <div>
+                  <h3 className="text-red-800 font-medium">Error Loading Team Data</h3>
+                  <p className="text-red-600 text-sm mt-1">{error}</p>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Team Summary with Real Data */}
+        {teamStats && !isLoading && !error && (
+          <div className={combineClasses(
+            'border-b border-gray-200',
+            DESIGN_SYSTEM.spacing.lg,
+            'text-center'
+          )}>
+            <div className="text-3xl font-bold text-gray-900 mb-2">
+              {teamStats.completedMembers}/{teamStats.totalMembers}
+            </div>
+            <div className="text-sm text-gray-600 mb-4">
+              Members completed • {teamStats.totalSubmittedHours}h total submitted
+            </div>
+            
+            {/* Progress Indicator with Real Data */}
+            <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+              <div 
+                className={combineClasses(
+                  'h-4 rounded-full transition-all duration-300',
+                  teamStats.completionPercentage >= 90 ? 'bg-green-500' :
+                  teamStats.completionPercentage >= 70 ? 'bg-blue-500' :
+                  teamStats.completionPercentage >= 50 ? 'bg-yellow-500' :
+                  'bg-red-500'
+                )}
+                style={{ width: `${Math.min(100, teamStats.completionPercentage)}%` }}
+              />
+            </div>
+            <div className="text-xs text-gray-500">
+              {teamStats.completionPercentage}% team completion
+            </div>
+          </div>
+        )}
+
+        {/* Member Status List with Real Data */}
+        {memberStatuses.length > 0 && !isLoading && !error && (
+          <div className={combineClasses(
+            DESIGN_SYSTEM.spacing.lg,
+            'overflow-y-auto max-h-96'
+          )}>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Members Status ({memberStatuses.length})
+            </h3>
+            
+            <div className="space-y-2">
+              {memberStatuses.map((memberStatus) => (
+                <div key={memberStatus.memberId} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-medium text-sm">
+                        {memberStatus.memberName.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{memberStatus.memberName}</div>
+                      <div className="text-sm text-gray-500">{memberStatus.hebrew}</div>
+                    </div>
+                    {memberStatus.isManager && (
+                      <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
+                        Manager
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="font-medium text-gray-900">{memberStatus.sprintSubmittedHours}h</div>
+                    <div className={`text-sm ${
+                      memberStatus.currentWeekStatus === 'complete' ? 'text-green-600' :
+                      memberStatus.currentWeekStatus === 'partial' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {memberStatus.sprintCompletionPercentage}% complete
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className={combineClasses(
@@ -206,9 +259,15 @@ export default function TeamCompletionModal({
         )}>
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              {currentSprint ? (
-                <>Sprint {currentSprint.current_sprint_number || 1} • {new Date(currentSprint.sprint_start_date || Date.now()).toLocaleDateString()} - {new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}</>
-              ) : (
+              {currentSprint ? (() => {
+                const sprintDates = getSprintDatesByType(currentSprint, selectedSprint);
+                const sprintNumber = getSprintNumber(currentSprint, selectedSprint);
+                const startDate = new Date(sprintDates.startDate);
+                const endDate = new Date(sprintDates.endDate);
+                return (
+                  <>Sprint {sprintNumber} • {startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}</>
+                );
+              })() : (
                 'Current reporting period'
               )}
             </div>
