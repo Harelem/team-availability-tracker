@@ -91,13 +91,14 @@ export default function ManagerDashboard({
   const [isUpdatingData, setIsUpdatingData] = useState(false);
   const updateDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Calculate working days in sprint (excluding weekends)
+  // Calculate working days in sprint (excluding weekends) - now uses selected sprint
   const sprintWorkingDays = useMemo(() => {
     if (!currentSprint) return [];
     
+    const sprintDates = getSprintDatesByType(currentSprint, selectedSprint);
     const dates: Date[] = [];
-    const start = new Date(currentSprint.sprint_start_date || Date.now());
-    const end = new Date(currentSprint.sprint_end_date || Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const start = new Date(sprintDates.startDate);
+    const end = new Date(sprintDates.endDate);
     
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dayOfWeek = d.getDay();
@@ -107,7 +108,7 @@ export default function ManagerDashboard({
       }
     }
     return dates;
-  }, [currentSprint]);
+  }, [currentSprint, selectedSprint]);
 
   // Fetch actual sprint hours directly from database
   const fetchActualSprintHours = useCallback(async (): Promise<{ actualHours: number; potentialHours: number } | null> => {
@@ -157,7 +158,7 @@ export default function ManagerDashboard({
       console.error('❌ Error in fetchActualSprintHours:', error);
       return null;
     }
-  }, [currentSprint, team?.id, teamMembers, sprintWorkingDays]);
+  }, [currentSprint, team?.id, teamMembers, sprintWorkingDays, selectedSprint]);
 
   // Load team statistics
   const loadTeamStats = useCallback(async () => {
@@ -315,7 +316,7 @@ export default function ManagerDashboard({
     } finally {
       setIsLoadingTeamData(false);
     }
-  }, [currentSprint, team?.id, teamMembers, sprintWorkingDays]);
+  }, [currentSprint, team?.id, teamMembers, sprintWorkingDays, selectedSprint]);
 
   // PERFORMANCE FIX: Debounced update function to prevent cascade recalculations
   const debouncedLoadTeamStats = useCallback(() => {
@@ -344,6 +345,36 @@ export default function ManagerDashboard({
         clearTimeout(updateDebounceRef.current);
       }
     };
+  }, []);
+
+  // Keyboard shortcuts for sprint navigation
+  React.useEffect(() => {
+    const handleKeydown = (event: KeyboardEvent) => {
+      // Only trigger if Alt is pressed and not typing in an input field
+      if (!event.altKey || ['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement)?.tagName)) {
+        return;
+      }
+
+      switch (event.key) {
+        case '1':
+          event.preventDefault();
+          setSelectedSprint('previous');
+          break;
+        case '2':
+          event.preventDefault();
+          setSelectedSprint('current');
+          break;
+        case '3':
+          event.preventDefault();
+          setSelectedSprint('next');
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
   }, []);
 
   const teamStats = useMemo(() => {
@@ -749,6 +780,35 @@ export default function ManagerDashboard({
               })()}
             </div>
           </div>
+
+          {/* Next Sprint Progress Bar */}
+          {selectedSprint === 'next' && (
+            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              {(() => {
+                // Calculate fill percentage for next sprint
+                const fillPercentage = teamMembers.length > 0 
+                  ? Math.round((memberSubmissionStatuses.filter(status => status.sprintSubmittedHours > 0).length / teamMembers.length) * 100)
+                  : 0;
+
+                return (
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-amber-800">
+                      מילוי שעות לספרינט הבא: {fillPercentage}%
+                    </div>
+                    <div className="w-full bg-amber-200 rounded-full h-3">
+                      <div 
+                        className="bg-amber-500 h-3 rounded-full transition-all duration-300 ease-in-out"
+                        style={{ width: `${fillPercentage}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-xs text-amber-700">
+                      {memberSubmissionStatuses.filter(status => status.sprintSubmittedHours > 0).length} מתוך {teamMembers.length} חברי צוות מילאו שעות
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       )}
 
