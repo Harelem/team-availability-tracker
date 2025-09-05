@@ -421,6 +421,9 @@ async function handleStaticAsset(request) {
           const responseBody = await networkResponse.clone().arrayBuffer();
           const newHeaders = new Headers(networkResponse.headers);
           newHeaders.set('sw-cached-date', Date.now().toString());
+          // Ensure correct MIME type is set
+          const mimeType = getMimeType(request.url);
+          newHeaders.set('Content-Type', mimeType);
           const responseToCache = new Response(responseBody, {
             status: networkResponse.status,
             statusText: networkResponse.statusText,
@@ -447,6 +450,9 @@ async function handleStaticAsset(request) {
       const newHeaders = new Headers(networkResponse.headers);
       newHeaders.set('sw-cached-date', Date.now().toString());
       newHeaders.set('sw-mobile-cached', isMobile.toString());
+      // Ensure correct MIME type is set
+      const mimeType = getMimeType(request.url);
+      newHeaders.set('Content-Type', mimeType);
       const responseToCache = new Response(responseBody, {
         status: networkResponse.status,
         statusText: networkResponse.statusText,
@@ -560,7 +566,28 @@ function shouldSkipCache(pathname) {
 }
 
 function isStaticAsset(pathname) {
-  return /\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/.test(pathname);
+  return /\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot|ico)$/.test(pathname);
+}
+
+function getMimeType(pathname) {
+  const ext = pathname.split('.').pop()?.toLowerCase();
+  const mimeTypes = {
+    'js': 'application/javascript',
+    'css': 'text/css',
+    'html': 'text/html',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'ico': 'image/x-icon',
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+    'ttf': 'font/ttf',
+    'eot': 'application/vnd.ms-fontobject',
+    'json': 'application/json'
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
 }
 
 function isCriticalApiCall(pathname) {
@@ -613,6 +640,9 @@ async function updateCacheInBackground(request) {
       const responseBody = await response.clone().arrayBuffer();
       const newHeaders = new Headers(response.headers);
       newHeaders.set('sw-cached-date', Date.now().toString());
+      // Ensure correct MIME type is set
+      const mimeType = getMimeType(request.url);
+      newHeaders.set('Content-Type', mimeType);
       const responseToCache = new Response(responseBody, {
         status: response.status,
         statusText: response.statusText,
