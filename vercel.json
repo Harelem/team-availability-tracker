@@ -10,7 +10,7 @@
   },
   "headers": [
     {
-      "source": "/_next/static/**/*.css",
+      "source": "/_next/static/(.*)\\.css",
       "headers": [
         {
           "key": "Content-Type",
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "source": "/_next/static/**/*.js",
+      "source": "/_next/static/(.*)\\.js",
       "headers": [
         {
           "key": "Content-Type",
