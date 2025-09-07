@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Users, Clock, Calendar, AlertCircle, TrendingUp, Settings, BarChart3, Table } from 'lucide-react';
 import { TeamMember, Team, CurrentGlobalSprint } from '@/types';
 import PersonalDashboard from './PersonalDashboard';
@@ -66,6 +66,23 @@ export default function ManagerDashboard({
   
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading, error: sprintError } = useGlobalSprint();
+  
+  // Add delay before showing warning to prevent premature display
+  const [showSprintWarning, setShowSprintWarning] = useState(false);
+  
+  useEffect(() => {
+    // Only show warning if there's really no sprint after a reasonable delay
+    const warningTimeout = setTimeout(() => {
+      if (!currentSprint && !sprintLoading && !sprintError) {
+        setShowSprintWarning(true);
+      }
+    }, 3000); // Wait 3 seconds before showing warning
+    
+    return () => {
+      clearTimeout(warningTimeout);
+      setShowSprintWarning(false);
+    };
+  }, [currentSprint, sprintLoading, sprintError]);
   
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -706,8 +723,8 @@ export default function ManagerDashboard({
         </div>
       )}
       
-      {/* Show warning if no sprint data available */}
-      {!currentSprint && !sprintLoading && (
+      {/* Show warning if no sprint data available after timeout */}
+      {showSprintWarning && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
           <div className="flex items-center">
             <AlertCircle className="w-6 h-6 text-yellow-600 mr-3" />
@@ -816,7 +833,7 @@ export default function ManagerDashboard({
       {/* Tab Navigation */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+          <nav className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-8 px-4 sm:px-6 py-2 sm:py-0">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -826,16 +843,17 @@ export default function ManagerDashboard({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={combineClasses(
-                    'py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
+                    'py-3 sm:py-4 px-3 sm:px-1 border-l-4 sm:border-l-0 sm:border-b-2 font-medium text-sm transition-colors flex items-center gap-3 rounded-md sm:rounded-none min-h-[60px] sm:min-h-auto touch-manipulation',
                     isActive
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-500 text-blue-600 bg-blue-50 sm:bg-transparent'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 sm:hover:bg-transparent'
                   )}
                 >
-                  <Icon className="w-4 h-4" />
-                  <div className="text-center">
-                    <div>{tab.label}</div>
-                    <div className="text-xs mt-1 opacity-75">{tab.description}</div>
+                  <Icon className="w-5 h-5 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <div className="flex-1 text-left sm:text-center">
+                    <div className="font-medium">{tab.label}</div>
+                    <div className="text-xs mt-1 opacity-75 hidden sm:block">{tab.description}</div>
+                    <div className="text-xs mt-1 opacity-75 block sm:hidden truncate">{tab.description}</div>
                   </div>
                 </button>
               );
