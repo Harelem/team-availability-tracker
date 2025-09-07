@@ -38,6 +38,23 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
   
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading } = useGlobalSprint();
+  
+  // Add delay before showing no sprint warning to prevent premature display
+  const [showNoSprintWarning, setShowNoSprintWarning] = useState(false);
+  
+  useEffect(() => {
+    // Only show warning if there's really no sprint after a reasonable delay
+    const warningTimeout = setTimeout(() => {
+      if (!currentSprint && !sprintLoading) {
+        setShowNoSprintWarning(true);
+      }
+    }, 5000); // Wait 5 seconds before showing warning
+    
+    return () => {
+      clearTimeout(warningTimeout);
+      setShowNoSprintWarning(false);
+    };
+  }, [currentSprint, sprintLoading]);
   const [personalStats, setPersonalStats] = useState<PersonalStats>({
     hoursSubmitted: 0,
     daysPresent: 0,
@@ -263,8 +280,8 @@ const PersonalDashboard = React.memo(function PersonalDashboard({
     );
   }
 
-  // Show message if no sprint is available
-  if (!currentSprint) {
+  // Show message if no sprint is available after timeout
+  if (showNoSprintWarning && !currentSprint) {
     return (
       <div className={`space-y-6 ${className}`}>
         {/* Personal Header */}

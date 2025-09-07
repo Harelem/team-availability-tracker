@@ -76,7 +76,7 @@ export default function ManagerDashboard({
       if (!currentSprint && !sprintLoading && !sprintError) {
         setShowSprintWarning(true);
       }
-    }, 3000); // Wait 3 seconds before showing warning
+    }, 5000); // Wait 5 seconds before showing warning
     
     return () => {
       clearTimeout(warningTimeout);

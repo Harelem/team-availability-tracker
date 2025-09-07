@@ -10,7 +10,7 @@
   },
   "headers": [
     {
-      "source": "/_next/static/(.*)\\.css",
+      "source": "/_next/static/css/(.*)",
       "headers": [
         {
           "key": "Content-Type",
