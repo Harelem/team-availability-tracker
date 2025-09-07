@@ -217,20 +217,7 @@ export function GlobalSprintProvider({ children, teamId }: GlobalSprintProviderP
 
   // Load data on mount and when teamId changes
   useEffect(() => {
-    // Initial load with retry logic for production reliability
-    const loadWithRetry = async () => {
-      await refreshSprint();
-      
-      // If no sprint loaded after first attempt, retry after a delay
-      setTimeout(async () => {
-        if (!currentSprint && !isRefreshingRef.current) {
-          console.log('Sprint not loaded on first attempt, retrying...');
-          await refreshSprint();
-        }
-      }, 2000);
-    };
-    
-    loadWithRetry();
+    refreshSprint();
   }, [teamId, refreshSprint]);
 
   // Auto-refresh every 10 minutes to reduce server load (optimized for performance)
