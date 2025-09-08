@@ -141,7 +141,7 @@
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
     "playwright": "^1.55.0",
-    "puppeteer": "^24.17.0",
+    "puppeteer": "^24.19.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.0",
     "typescript": "^5"
