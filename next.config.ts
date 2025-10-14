@@ -24,21 +24,12 @@ const nextConfig: NextConfig = {
     
     // Enhanced webpack build cache for faster builds
     webpackBuildWorker: true,
-    
+
     // Optimize CSS for better performance
     optimizeCss: true,
-    
-    // React strict mode enforcement for better hydration consistency
-    strictNextHead: true,
-    
-    // Optimize server-side rendering
-    serverMinification: true,
-    
+
     // Memory optimization for better build performance
     memoryBasedWorkersCount: true,
-    
-    // Enable TypeScript plugin for better development experience
-    typedRoutes: false,
   },
   
   // Turbopack configuration (moved from experimental.turbo)
