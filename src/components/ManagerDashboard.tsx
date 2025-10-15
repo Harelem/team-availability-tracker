@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
 import { Users, Clock, Calendar, AlertCircle, TrendingUp, Settings, BarChart3, Table } from 'lucide-react';
 import { TeamMember, Team, CurrentGlobalSprint } from '@/types';
 import PersonalDashboard from './PersonalDashboard';
@@ -13,12 +13,14 @@ import { useGlobalSprint } from '@/contexts/GlobalSprintContext';
 import { DESIGN_SYSTEM, combineClasses } from '@/utils/designSystem';
 import { RealTimeCalculationService, type TeamMemberSubmissionStatus } from '@/lib/realTimeCalculationService';
 import { supabase } from '@/lib/supabase';
-import { 
-  SprintType, 
-  getSprintDatesByType, 
-  getSprintNumber, 
-  calculateDaysUntilSprintStart 
+import {
+  SprintType,
+  getSprintDatesByType,
+  getSprintNumber,
+  calculateDaysUntilSprintStart
 } from '@/utils/sprintCalculations';
+import { useMobileDetection } from '@/hooks/useMobileDetection';
+import { perfLog } from '@/lib/performanceLogger';
 
 interface ManagerDashboardProps {
   user: TeamMember;
@@ -57,15 +59,18 @@ const tabs: TabConfig[] = [
   }
 ];
 
-export default function ManagerDashboard({
+const ManagerDashboard = memo(function ManagerDashboard({
   user,
   team,
   teamMembers,
   className = ''
 }: ManagerDashboardProps) {
-  
+
   // Get current sprint from context
   const { currentSprint, isLoading: sprintLoading, error: sprintError } = useGlobalSprint();
+
+  // PERFORMANCE: Detect mobile device for adaptive debouncing
+  const isMobile = useMobileDetection();
   
   // Add delay before showing warning to prevent premature display
   const [showSprintWarning, setShowSprintWarning] = useState(false);
@@ -140,11 +145,15 @@ export default function ManagerDashboard({
       const sprintUuid = `00000000-0000-0000-0000-${String(actualSprintId).padStart(12, '0')}`;
       const memberIds = teamMembers.map(m => m.id);
       
-      console.log('🔍 Fetching actual sprint hours:', {
-        sprintId: currentSprint.id,
-        sprintUuid,
-        teamId: team.id,
-        memberIds: memberIds.slice(0, 3) // Show first 3 for brevity
+      perfLog.debug('Fetching actual sprint hours', {
+        component: 'ManagerDashboard',
+        action: 'fetchActualSprintHours',
+        data: {
+          sprintId: currentSprint.id,
+          sprintUuid,
+          teamId: team.id,
+          memberCount: memberIds.length
+        }
       });
 
       // Query schedule entries for team members in the sprint
@@ -155,25 +164,33 @@ export default function ManagerDashboard({
         .in('member_id', memberIds);
 
       if (error) {
-        console.error('❌ Error fetching schedule entries:', error);
+        perfLog.error('Error fetching schedule entries', error, {
+          component: 'ManagerDashboard',
+          action: 'fetchActualSprintHours'
+        });
         return null;
       }
 
       const actualHours = scheduleEntries?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0;
       const potentialHours = teamMembers.length * sprintWorkingDays.length * 7;
 
-      console.log('✅ Actual sprint hours calculated:', {
-        scheduleEntriesCount: scheduleEntries?.length || 0,
-        actualHours,
-        potentialHours,
-        workingDays: sprintWorkingDays.length,
-        teamSize: teamMembers.length
+      perfLog.debug('Actual sprint hours calculated', {
+        component: 'ManagerDashboard',
+        data: {
+          scheduleEntriesCount: scheduleEntries?.length || 0,
+          actualHours,
+          potentialHours,
+          workingDays: sprintWorkingDays.length,
+          teamSize: teamMembers.length
+        }
       });
 
       return { actualHours, potentialHours };
-      
+
     } catch (error) {
-      console.error('❌ Error in fetchActualSprintHours:', error);
+      perfLog.error('Error in fetchActualSprintHours', error, {
+        component: 'ManagerDashboard'
+      });
       return null;
     }
   }, [currentSprint, team?.id, teamMembers, sprintWorkingDays, selectedSprint]);
@@ -256,23 +273,29 @@ export default function ManagerDashboard({
           .in('member_id', memberIds);
         
         if (queryError) {
-          console.error('❌ Database query error:', queryError);
+          perfLog.error('Database query error', queryError, {
+            component: 'ManagerDashboard',
+            action: 'loadTeamStats'
+          });
         }
-          
+
         const directTotal = scheduleEntries?.reduce((sum, entry) => sum + (entry.hours || 0), 0) || 0;
         const directPotential = teamMembers.length * sprintWorkingDays.length * 7;
-        
-        // PERFORMANCE FIX: Remove database query result logging for production performance
-        
+
         // Use direct query result if service returns zero but DB has data
         if (teamStats.totalSubmittedHours === 0 && directTotal > 0) {
-          // Using direct query result instead of service
+          perfLog.debug('Using direct query result instead of service', {
+            component: 'ManagerDashboard',
+            data: { directTotal, directPotential }
+          });
           teamStats.totalSubmittedHours = directTotal;
           teamStats.sprintPotentialHours = directPotential;
         }
-        
+
       } catch (dbError) {
-        console.error('❌ Direct database query failed:', dbError);
+        perfLog.error('Direct database query failed', dbError, {
+          component: 'ManagerDashboard'
+        });
       }
 
       // Also try our dedicated fetchActualSprintHours function as final fallback
@@ -311,12 +334,15 @@ export default function ManagerDashboard({
       });
 
     } catch (error) {
-      console.error('Error loading team stats:', error);
-      
+      perfLog.error('Error loading team stats', error, {
+        component: 'ManagerDashboard',
+        action: 'loadTeamStats'
+      });
+
       // Error fallback - provide basic data so UI doesn't break
       const errorFallbackWorkingDays = Math.max(sprintWorkingDays.length, 10);
       const errorFallbackPotential = teamMembers.length * errorFallbackWorkingDays * 7;
-      
+
       setTeamCompletionData({
         totalMembers: teamMembers.length,
         completedMembers: 0,
@@ -325,31 +351,38 @@ export default function ManagerDashboard({
         sprintPotentialHours: errorFallbackPotential,
       });
       setMemberSubmissionStatuses([]);
-      
-      console.log('🚨 Applied error fallback data:', {
-        workingDays: errorFallbackWorkingDays,
-        potentialHours: errorFallbackPotential
+
+      perfLog.debug('Applied error fallback data', {
+        component: 'ManagerDashboard',
+        data: {
+          workingDays: errorFallbackWorkingDays,
+          potentialHours: errorFallbackPotential
+        }
       });
-      
+
     } finally {
       setIsLoadingTeamData(false);
     }
   }, [currentSprint, team?.id, teamMembers, sprintWorkingDays, selectedSprint]);
 
-  // PERFORMANCE FIX: Debounced update function to prevent cascade recalculations
+  // PERFORMANCE FIX: Mobile-adaptive debounced update function to prevent cascade recalculations
   const debouncedLoadTeamStats = useCallback(() => {
     if (updateDebounceRef.current) {
       clearTimeout(updateDebounceRef.current);
     }
-    
+
     setIsUpdatingData(true);
-    
+
+    // PERFORMANCE: Longer debounce on mobile (1000ms) to reduce CPU usage
+    // Mobile devices benefit from less frequent calculations
+    const debounceTime = isMobile ? 1000 : 500;
+
     updateDebounceRef.current = setTimeout(() => {
       loadTeamStats().finally(() => {
         setIsUpdatingData(false);
       });
-    }, 500); // 500ms debounce to batch multiple rapid updates
-  }, [loadTeamStats]);
+    }, debounceTime);
+  }, [loadTeamStats, isMobile]);
 
   // Load team stats on mount and when dependencies change
   React.useEffect(() => {
@@ -423,14 +456,17 @@ export default function ManagerDashboard({
     const calculatedPotentialHours = teamMembers.length * sprintWorkingDays.length * 7;
     const finalPotentialHours = teamCompletionData.sprintPotentialHours || calculatedPotentialHours;
     
-    // PERFORMANCE FIX: Reduced logging frequency
-    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) { // Only 10% of calculations log
-      console.log('📊 Final teamStats calculation:', {
-        dataSourcePotential: teamCompletionData.sprintPotentialHours,
-        calculatedPotential: calculatedPotentialHours,
-        finalPotentialUsed: finalPotentialHours,
-        workingDays: sprintWorkingDays.length,
-        teamSize: teamMembers.length
+    // PERFORMANCE FIX: Reduced logging frequency (10% sample)
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+      perfLog.debug('Final teamStats calculation', {
+        component: 'ManagerDashboard',
+        data: {
+          dataSourcePotential: teamCompletionData.sprintPotentialHours,
+          calculatedPotential: calculatedPotentialHours,
+          finalPotentialUsed: finalPotentialHours,
+          workingDays: sprintWorkingDays.length,
+          teamSize: teamMembers.length
+        }
       });
     }
 
@@ -843,7 +879,7 @@ export default function ManagerDashboard({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={combineClasses(
-                    'py-3 sm:py-4 px-3 sm:px-1 border-l-4 sm:border-l-0 sm:border-b-2 font-medium text-sm transition-colors flex items-center gap-3 rounded-md sm:rounded-none min-h-[60px] sm:min-h-auto touch-manipulation',
+                    'py-3 sm:py-4 px-3 sm:px-1 border-l-4 sm:border-l-0 sm:border-b-2 font-medium text-sm transition-colors flex items-center gap-3 rounded-md sm:rounded-none min-h-[56px] sm:min-h-[48px] touch-manipulation',
                     isActive
                       ? 'border-blue-500 text-blue-600 bg-blue-50 sm:bg-transparent'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 sm:hover:bg-transparent'
@@ -878,4 +914,6 @@ export default function ManagerDashboard({
       />
     </div>
   );
-}
+});
+
+export default ManagerDashboard;
