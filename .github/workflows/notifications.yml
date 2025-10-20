@@ -36,7 +36,7 @@ jobs:
     if: always()
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 📊 Get workflow status
         id: workflow-status
@@ -218,7 +218,7 @@ jobs:
 
       - name: ✉️ Send email notification
         if: env.SMTP_HOST != ''
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v6
         with:
           server_address: ${{ secrets.SMTP_HOST }}
           server_port: ${{ secrets.SMTP_PORT }}
@@ -356,7 +356,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.message_type == 'weekly_report'
     steps:
       - name: 📥 Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 📊 Generate weekly report
         run: |
